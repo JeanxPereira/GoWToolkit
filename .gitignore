@@ -62,6 +62,9 @@ compile_commands.json
 .DS_Store
 Thumbs.db
 
+# Claude Code
+.claude/
+
 # Config (user-specific runtime config)
 gowtool.cfg
 
