@@ -1,0 +1,63 @@
+#pragma once
+
+#include <GLFW/glfw3.h>
+#include <vector>
+#include <cstdint>
+#include "App.h"
+#include "core/AppConfig.h"
+
+class Window {
+public:
+    Window();
+    ~Window();
+
+    void loop();
+    void fullFrame();
+
+    // Called from main() before constructing Window
+    static void initNative();
+
+    GLFWwindow* getGLFWwindow() const { return m_window; }
+    
+    // Config accessors
+    bool isBorderless() const { return !m_config.nativeDecorations; }
+
+private:
+    // ── Platform-specific (implemented per OS in window/platform/) ──
+    void configureGLFW();
+    void setupNativeWindow();
+    void beginNativeWindowFrame();
+    void endNativeWindowFrame();
+
+    // ── Lifecycle ───────────────────────────────────────────────────
+    void initGLFW();
+    void initImGui();
+    void exitGLFW();
+    void exitImGui();
+
+    // ── Frame phases ────────────────────────────────────────────────
+    void frameBegin();
+    void frame();
+    void frameEnd();
+
+    // ── Optimizations ───────────────────────────────────────────────
+    bool shouldRender();   // vtx buffer diff — skip GPU when idle
+    void unlockFrameRate();
+
+    // ── Members ─────────────────────────────────────────────────────
+    GLFWwindow*  m_window   = nullptr;
+    App          m_app;
+    AppConfig    m_config;
+
+    // Frame rate control
+    bool   m_shouldUnlockFrameRate = false;
+    double m_fpsUnlockedEndTime    = 0.0;
+    bool   m_firstFrame            = true;
+
+    // Vtx buffer diff
+    std::vector<uint8_t> m_previousVtxData;
+    size_t               m_previousVtxDataSize = 0;
+
+    // Config path
+    std::string m_configPath;
+};
