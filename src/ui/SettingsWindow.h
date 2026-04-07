@@ -34,9 +34,9 @@ private:
 
     // Interface settings state
     float m_uiScale       = 1.0f;
-    float m_fontGlobalScale = 1.0f;
-    float m_fontSize      = 15.0f;
+    float m_fontSize      = 14.0f;
     int   m_fontSelected  = 0;
+    bool  m_fontSizeChanged = false; // deferred rebuild (ImHex pattern)
     bool  m_justOpened    = true;
 
     std::vector<FontEntry> m_fonts;
@@ -44,6 +44,7 @@ private:
     // Drawing helpers — one per category
     void DrawInterfaceCategory();
     void DrawAppearanceCategory();
+    void DrawViewportCategory();
 
     // Internal
     void PopulateFontList();

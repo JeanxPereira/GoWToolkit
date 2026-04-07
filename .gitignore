@@ -76,3 +76,7 @@ gowtool.cfg
 *.dwo
 Testing/
 .cache/
+build_*.txt
+
+# Third-party generated
+third_party/ffmpeg/

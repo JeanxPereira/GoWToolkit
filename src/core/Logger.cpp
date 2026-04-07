@@ -37,12 +37,12 @@ void Logger::Log(LogLevel level, const char* fmt, ...) {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_entries.push_back({level, std::string(timeBuffer), std::string(buffer)});
     
-    // Eco no console padrão
+    // Eco no console padrão (Debug não é impresso)
     if (level == LogLevel::Error) {
         std::cerr << "[" << timeBuffer << "] [ERROR] " << buffer << std::endl;
     } else if (level == LogLevel::Warning) {
         std::cout << "[" << timeBuffer << "] [WARN]  " << buffer << std::endl;
-    } else {
+    } else if (level == LogLevel::Info) {
         std::cout << "[" << timeBuffer << "] [INFO]  " << buffer << std::endl;
     }
 }

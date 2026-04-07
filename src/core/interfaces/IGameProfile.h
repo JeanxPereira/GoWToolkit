@@ -31,8 +31,6 @@ public:
     // e popula a estrutura do jogo no OpenWad
     virtual bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad) = 0;
 
-    // Cria uma NodeInstance (ex: MDL, TXR) se o schema existir e carrega os dados
-    virtual std::shared_ptr<NodeInstance> CreateNodeInstance(const std::string& typeName, std::shared_ptr<IFile> fileData) = 0;
 };
 
 } // namespace GOW

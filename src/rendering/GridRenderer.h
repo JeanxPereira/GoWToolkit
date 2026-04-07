@@ -13,7 +13,7 @@ public:
     ~GridRenderer();
 
     void Initialize();
-    void Draw(const glm::mat4& view, const glm::mat4& projection);
+    void Draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec4& gridColor);
 
 private:
     GLuint m_vao = 0;

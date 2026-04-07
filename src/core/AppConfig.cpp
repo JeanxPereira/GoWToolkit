@@ -1,13 +1,11 @@
 #include "core/AppConfig.h"
 #include "imgui.h"
 #include <fstream>
-#include <sstream>
 #include <string>
-#include <unordered_map>
 
 #pragma pack(push, 1)
 struct ConfigBinaryData {
-    char magic[4]; // 'G', 'C', 'F', 'G'
+    char magic[4]; // 'G','T','K','C' (v5+) or legacy 'G','C','F','G'
     uint32_t version;
     int windowX;
     int windowY;
@@ -22,9 +20,31 @@ struct ConfigBinaryData {
     float fontScale;
     bool nativeDecorations;
     bool nativeMenuBar;
+    float audioVolume;
+    
+    // V6 additions
+    float bgTopR, bgTopG, bgTopB;
+    float bgBotR, bgBotG, bgBotB;
+    float boneR,  boneG,  boneB;
+    float wireR,  wireG,  wireB;
+    float matcapR, matcapG, matcapB;
+    float gridR,  gridG,  gridB,  gridA;
+    float hlR, hlG, hlB, hlA;
+
     uint32_t imguiStateSize;
+    char fontPath[256];
 };
 #pragma pack(pop)
+
+static AppConfig* s_instance = nullptr;
+
+AppConfig* AppConfig::Get() {
+    return s_instance;
+}
+
+void AppConfig::SetInstance(AppConfig* cfg) {
+    s_instance = cfg;
+}
 
 // ── Load ───────────────────────────────────────────────────────────────────
 AppConfig AppConfig::load(const std::string& path) {
@@ -34,7 +54,9 @@ AppConfig AppConfig::load(const std::string& path) {
 
     ConfigBinaryData data;
     if (f.read(reinterpret_cast<char*>(&data), sizeof(ConfigBinaryData))) {
-        if (data.magic[0] == 'G' && data.magic[1] == 'C' && data.magic[2] == 'F' && data.magic[3] == 'G') {
+        bool isGTKC = (data.magic[0] == 'G' && data.magic[1] == 'T' && data.magic[2] == 'K' && data.magic[3] == 'C');
+        bool isGCFG = (data.magic[0] == 'G' && data.magic[1] == 'C' && data.magic[2] == 'F' && data.magic[3] == 'G');
+        if (isGTKC || isGCFG) {
             cfg.windowX = data.windowX;
             cfg.windowY = data.windowY;
             cfg.windowW = data.windowW;
@@ -45,12 +67,33 @@ AppConfig AppConfig::load(const std::string& path) {
             cfg.accentB = data.accentB;
             cfg.accentA = data.accentA;
             cfg.uiScale = data.uiScale;
-            cfg.fontScale = data.fontScale;
+            cfg.fontSize = data.fontScale; // fontScale slot stores fontSize now
+
+            // Migration: old configs stored FontGlobalScale (0.5–3.0)
+            if (cfg.fontSize <= 5.0f) cfg.fontSize = 14.0f;
 
             if (data.version >= 2)
                 cfg.nativeDecorations = data.nativeDecorations;
             if (data.version >= 3)
                 cfg.nativeMenuBar = data.nativeMenuBar;
+            if (data.version >= 4) {
+                cfg.audioVolume = data.audioVolume;
+            }
+            if (data.version >= 6) {
+                cfg.bgTopR = data.bgTopR; cfg.bgTopG = data.bgTopG; cfg.bgTopB = data.bgTopB;
+                cfg.bgBotR = data.bgBotR; cfg.bgBotG = data.bgBotG; cfg.bgBotB = data.bgBotB;
+                cfg.boneR  = data.boneR;  cfg.boneG  = data.boneG;  cfg.boneB  = data.boneB;
+                cfg.wireR  = data.wireR;  cfg.wireG  = data.wireG;  cfg.wireB  = data.wireB;
+                cfg.matcapR= data.matcapR;cfg.matcapG= data.matcapG;cfg.matcapB= data.matcapB;
+                cfg.gridR  = data.gridR;  cfg.gridG  = data.gridG;  cfg.gridB  = data.gridB;  cfg.gridA = data.gridA;
+                cfg.hlR    = data.hlR;    cfg.hlG    = data.hlG;    cfg.hlB    = data.hlB;    cfg.hlA   = data.hlA;
+            }
+            if (data.version >= 7) {
+                char safeStr[257];
+                std::strncpy(safeStr, data.fontPath, 256);
+                safeStr[256] = '\0';
+                cfg.fontPath = safeStr;
+            }
 
             if (data.imguiStateSize > 0) {
                 // Read embedded imgui config
@@ -68,8 +111,8 @@ void AppConfig::save(const std::string& path) const {
     if (!f.is_open()) return;
 
     ConfigBinaryData data;
-    data.magic[0] = 'G'; data.magic[1] = 'C'; data.magic[2] = 'F'; data.magic[3] = 'G';
-    data.version = 3;
+    data.magic[0] = 'G'; data.magic[1] = 'T'; data.magic[2] = 'K'; data.magic[3] = 'C';
+    data.version = 7;
     data.windowX = windowX;
     data.windowY = windowY;
     data.windowW = windowW;
@@ -80,10 +123,23 @@ void AppConfig::save(const std::string& path) const {
     data.accentB = accentB;
     data.accentA = accentA;
     data.uiScale = uiScale;
-    data.fontScale = fontScale;
+    data.fontScale = fontSize; // fontSize stored in the fontScale binary slot
     data.nativeDecorations = nativeDecorations;
     data.nativeMenuBar = nativeMenuBar;
+    data.audioVolume = audioVolume;
+    
+    data.bgTopR = bgTopR; data.bgTopG = bgTopG; data.bgTopB = bgTopB;
+    data.bgBotR = bgBotR; data.bgBotG = bgBotG; data.bgBotB = bgBotB;
+    data.boneR  = boneR;  data.boneG  = boneG;  data.boneB  = boneB;
+    data.wireR  = wireR;  data.wireG  = wireG;  data.wireB  = wireB;
+    data.matcapR = matcapR; data.matcapG = matcapG; data.matcapB = matcapB;
+    data.gridR  = gridR;  data.gridG  = gridG;  data.gridB  = gridB;  data.gridA = gridA;
+    data.hlR    = hlR;    data.hlG    = hlG;    data.hlB    = hlB;    data.hlA   = hlA;
+
     data.imguiStateSize = (uint32_t)imguiIniState.size();
+    
+    std::strncpy(data.fontPath, fontPath.c_str(), 255);
+    data.fontPath[255] = '\0';
 
     f.write(reinterpret_cast<const char*>(&data), sizeof(ConfigBinaryData));
     
@@ -141,4 +197,7 @@ void AppConfig::applyAccent() const {
     // ScrollbarGrab é usado como hover dos botões da titlebar
     s.Colors[ImGuiCol_ScrollbarGrabActive]  = accent;
     s.Colors[ImGuiCol_ScrollbarGrabHovered] = alpha(accent, 0.70f);
+
+    // Modal dim: dark transparent overlay (not white)
+    s.Colors[ImGuiCol_ModalWindowDimBg]    = ImVec4(0.0f, 0.0f, 0.0f, 0.50f);
 }

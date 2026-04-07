@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ── Identity ─────────────────────────────────────────────────── -->
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>@MACOSX_BUNDLE_EXECUTABLE_NAME@</string>
+    <key>CFBundleIdentifier</key>
+    <string>@MACOSX_BUNDLE_GUI_IDENTIFIER@</string>
+    <key>CFBundleName</key>
+    <string>@MACOSX_BUNDLE_BUNDLE_NAME@</string>
+    <key>CFBundleDisplayName</key>
+    <string>God Of War Toolkit</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
+    <!-- ── Versioning ───────────────────────────────────────────────── -->
+    <key>CFBundleShortVersionString</key>
+    <string>@MACOSX_BUNDLE_SHORT_VERSION_STRING@</string>
+    <key>CFBundleVersion</key>
+    <string>@MACOSX_BUNDLE_BUNDLE_VERSION@</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <!-- ── Icon (Liquid Glass via actool Assets.car) ────────────────── -->
+    <key>CFBundleIconName</key>
+    <string>GoWToolkit</string>
+
+    <!-- ── System Requirements ──────────────────────────────────────── -->
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
+
+    <!-- ── App Category ─────────────────────────────────────────────── -->
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.developer-tools</string>
+
+    <!-- ── Foreground GUI app (never a background agent) ────────────── -->
+    <!-- Explicit false prevents the OS from treating the process as a      -->
+    <!-- background daemon even when launched outside of Finder.            -->
+    <key>LSBackgroundOnly</key>
+    <false/>
+
+    <!-- ── Principal Class (Cocoa) ──────────────────────────────────── -->
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+</dict>
+</plist>

@@ -52,8 +52,6 @@ bool beginMainMenuBar() {
             s_initialized = true;
         }
         return macosmenu_beginMainMenuBar();
-    } else {
-        macosmenu_clear();
     }
 #endif
     return ImGui::BeginMainMenuBar();

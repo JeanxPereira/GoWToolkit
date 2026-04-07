@@ -37,7 +37,6 @@ std::unique_ptr<GOW2VpkParser::VpkData> GOW2VpkParser::Parse(const std::shared_p
         return nullptr;
     }
 
-    // Skip first sector (2048 bytes) then read interleaved ADPCM blocks
     const uint32_t SECTOR_SIZE = 2048;
     const uint32_t BLOCK_SIZE = 0x1000; // 4096 bytes per channel per block
     uint32_t totalBlockSize = BLOCK_SIZE * channels;

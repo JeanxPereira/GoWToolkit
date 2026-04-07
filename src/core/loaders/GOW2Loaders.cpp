@@ -3,6 +3,7 @@
 #include "ui/viewers/ImageViewer.h"
 #include "ui/viewers/MaterialViewer.h"
 #include "ui/viewers/SoundPlayer.h"
+#include "ui/viewers/VideoPlayer.h"
 #include "core/parsers/gow2/MeshParser.h"
 #include "core/parsers/gow2/TextureParser.h"
 #include "core/parsers/gow2/MaterialParser.h"
@@ -28,7 +29,7 @@ static const ParsedEntry* FindEntryWithPayload(const std::vector<ParsedEntry>& e
 // ── GOW2ModelLoader ──────────────────────────────────────────────────────────
 
 bool GOW2ModelLoader::canHandle(const std::string& schemaType) const {
-    return schemaType == "GOW2_MDL";
+    return schemaType == "GOW2_MDL" || schemaType == "GOW2_SERVER_INSTANCE" || schemaType == "GOW2_OBJ";
 }
 
 std::shared_ptr<IDocumentContent> GOW2ModelLoader::load(const ParsedEntry& entry, OpenWad& wad) {
@@ -38,21 +39,44 @@ std::shared_ptr<IDocumentContent> GOW2ModelLoader::load(const ParsedEntry& entry
     const ParsedEntry* meshEntry = nullptr;
     std::vector<const ParsedEntry*> matEntries;
 
-    if (!entry.children.empty()) {
-        for (const auto& child : entry.children) {
-            if (child.schemaType == "GOW2_MESH" || child.schemaType == "GOW2_MDL")
-                meshEntry = &child;
-            else if (child.schemaType == "GOW2_MAT") {
+    std::string baseName = entry.name;
+    if (baseName.find("obj_") == 0) baseName = baseName.substr(4);
+    else if (baseName.find("mdl_") == 0) baseName = baseName.substr(4);
+    else if (baseName.find("mesh_") == 0) baseName = baseName.substr(5);
+
+    std::string targetMdl = "mdl_" + baseName;
+    std::string targetMesh = "mesh_" + baseName;
+    std::string targetObj = "obj_" + baseName;
+
+    // A helper to traverse the entire WAD if necessary
+    std::function<void(const std::vector<ParsedEntry>&)> searchWad = [&](const std::vector<ParsedEntry>& nodes) {
+        for (const auto& child : nodes) {
+            if (!meshEntry && (child.schemaType == "GOW2_MESH" || child.schemaType == "GOW2_MDL")) {
+                if (child.name == entry.name || child.name == targetMdl || child.name == targetMesh || child.name == baseName) {
+                    meshEntry = &child;
+                }
+            } else if (child.schemaType == "GOW2_MAT") {
                 const ParsedEntry* matEntry = &child;
                 if (matEntry->size == 0) {
                     if (auto realMat = FindEntryWithPayload(wad.entries, matEntry->name, "GOW2_MAT"))
                         matEntry = realMat;
                 }
+                // Try to heuristically add materials that belong to this model or global SKSText
+                // But GOW2 mesh natively points to material IDs. We just collect all valid ones.
                 matEntries.push_back(matEntry);
             }
+            searchWad(child.children);
         }
+    };
+
+    if (entry.schemaType == "GOW2_SERVER_INSTANCE" || entry.schemaType == "GOW2_OBJ") {
+        searchWad(wad.entries); // global scan for related
+    } else if (!entry.children.empty()) {
+        searchWad(entry.children); // fallback local scan
+        if (!meshEntry) searchWad(wad.entries); // global scan if not found
     } else {
         meshEntry = &entry;
+        searchWad(wad.entries); // globally gather materials
     }
 
     if (meshEntry) {
@@ -79,11 +103,7 @@ std::shared_ptr<IDocumentContent> GOW2ModelLoader::load(const ParsedEntry& entry
                 textures.push_back(std::move(texData));
             }
             vp->LoadFromMeshData(*meshData, textures);
-        } else {
-            vp->AddTestCube();
         }
-    } else {
-        vp->AddTestCube();
     }
     return vp;
 }
@@ -102,8 +122,6 @@ std::shared_ptr<IDocumentContent> GOW2MeshLoader::load(const ParsedEntry& entry,
     if (meshData && !meshData->parts.empty()) {
         std::vector<std::unique_ptr<GOW::TextureData>> textures;
         vp->LoadFromMeshData(*meshData, textures);
-    } else {
-        vp->AddTestCube();
     }
     return vp;
 }
@@ -130,14 +148,24 @@ bool GOW2MaterialLoader::canHandle(const std::string& schemaType) const {
 
 std::shared_ptr<IDocumentContent> GOW2MaterialLoader::load(const ParsedEntry& entry, OpenWad& wad) {
     if (!wad.fileSource) return nullptr;
+    
     const ParsedEntry* matEntryToParse = &entry;
     if (matEntryToParse->size == 0) {
         if (auto realMat = FindEntryWithPayload(wad.entries, matEntryToParse->name, "GOW2_MAT"))
             matEntryToParse = realMat;
     }
+
     auto matData = GOW::GOW2MaterialParser::Parse(*matEntryToParse, wad.fileSource);
-    if (matData)
-        return std::make_shared<GOW::MaterialViewer>(entry.name, std::move(matData));
+
+    if (matData) {
+        return std::make_shared<GOW::MaterialViewer>(
+            entry.name, 
+            std::move(matData), 
+            [](const std::string& texName) -> unsigned int {
+                return 0; 
+            }
+        );
+    }
     return nullptr;
 }
 
@@ -181,6 +209,24 @@ std::shared_ptr<IDocumentContent> GOW2VpkLoader::load(const ParsedEntry& entry, 
     if (vpkData && !vpkData->pcmData.empty())
         return std::make_shared<GOW::SoundPlayer>(entry.name, std::move(vpkData->pcmData), vpkData->sampleRate, vpkData->channels);
     return nullptr;
+}
+
+// ── GOW2PssLoader ────────────────────────────────────────────────────────────
+// Handles PSS (FMV cutscenes) and PSW (PSS variant).
+// Both are MPEG-2 Program Streams — FFmpeg opens them natively.
+// The file lives inside a PAK/ISO so we pass the IFile directly via AVIO;
+// no temp file extraction is needed.
+
+bool GOW2PssLoader::canHandle(const std::string& schemaType) const {
+    return schemaType == "GOW2_PSS" || schemaType == "GOW2_PSW";
+}
+
+std::shared_ptr<IDocumentContent> GOW2PssLoader::load(const ParsedEntry& entry, OpenWad& wad) {
+    if (!wad.fileSource) return nullptr;
+
+    // Wrap the relevant byte range so the AVIO cursor stays within this file
+    auto slice = std::make_shared<GOW::SliceFile>(wad.fileSource, entry.offset, entry.size);
+    return std::make_shared<GOW::VideoPlayer>(entry.name, slice);
 }
 
 } // namespace GOW

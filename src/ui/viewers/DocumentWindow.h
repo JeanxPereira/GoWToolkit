@@ -11,6 +11,9 @@ public:
     void Draw();
     void CloseAll();
     void CloseActiveTab();
+    
+    std::shared_ptr<IDocumentContent> GetActiveDocument() const;
+    bool HasActiveDocument() const;
 
 private:
     std::vector<std::shared_ptr<IDocumentContent>> m_tabs;

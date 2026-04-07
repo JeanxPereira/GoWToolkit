@@ -10,7 +10,6 @@ namespace GOW {
 class AppConfig;
 
 // Shared context passed to all panels via IPanel::draw(AppContext&).
-// Replaces the old pattern of panels accessing extern App* g_App.
 struct AppContext {
     AssetDatabase&        db;
     ParsedEntry*&         selected;

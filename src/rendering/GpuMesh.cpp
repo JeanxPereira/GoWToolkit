@@ -88,6 +88,21 @@ void GpuMesh::Upload(const std::vector<GpuVertex>& vertices,
                           (void*)offsetof(GpuVertex, color));
     glEnableVertexAttribArray(3);
 
+    // location 4: uv1 (vec2) — secondary UV for env mapping
+    glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
+                          (void*)offsetof(GpuVertex, uv1));
+    glEnableVertexAttribArray(4);
+
+    // location 5: boneWeights (vec4)
+    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
+                          (void*)offsetof(GpuVertex, boneWeights));
+    glEnableVertexAttribArray(5);
+
+    // location 6: boneIndices (uvec4) — integer attribute
+    glVertexAttribIPointer(6, 4, GL_UNSIGNED_INT, sizeof(GpuVertex),
+                           (void*)offsetof(GpuVertex, boneIndices));
+    glEnableVertexAttribArray(6);
+
     glBindVertexArray(0);
 }
 

@@ -18,13 +18,27 @@ std::shared_ptr<IGameProfile> ProfileManager::DetectProfileForFile(const std::fi
 }
 
 std::shared_ptr<IGameProfile> ProfileManager::FindProfileByHint(const std::string& hint) const {
+    std::string hintLower = hint;
+    for (auto& c : hintLower) c = (char)tolower(c);
+
+    // Short aliases recognized before substring search
+    // Maps common CLI hints → substring that will match the full profile name
+    const std::pair<const char*, const char*> aliases[] = {
+        {"gow1",      "god of war i"},
+        {"gow2",      "god of war ii"},
+        {"gowr",      "ragnarok"},
+        {"ragnarok",  "ragnarok"},
+        {"ps2",       "ps2"},
+        {"ps4",       "ps4"},
+        {"ps5",       "ps5"},
+    };
+    for (auto [alias, expanded] : aliases) {
+        if (hintLower == alias) { hintLower = expanded; break; }
+    }
+
     for (const auto& profile : m_profiles) {
-        auto name = profile->GetName();
-        // case-insensitive substring match
-        std::string nameLower = name;
-        std::string hintLower = hint;
+        std::string nameLower = profile->GetName();
         for (auto& c : nameLower) c = (char)tolower(c);
-        for (auto& c : hintLower) c = (char)tolower(c);
         if (nameLower.find(hintLower) != std::string::npos)
             return profile;
     }

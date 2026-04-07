@@ -36,6 +36,58 @@ static bool s_resetNeeded  = true;
 // ── Public C API ────────────────────────────────────────────────────────────
 
 void macosmenu_init(void) {
+    // Ensure NSApp.mainMenu exists — GLFW should create one, but be safe
+    if (!NSApp.mainMenu) {
+        NSMenu* mainMenu = [[NSMenu alloc] init];
+
+        // Create the Application menu (first item is always the app menu)
+        NSMenuItem* appMenuItem = [[NSMenuItem alloc] init];
+        NSMenu* appMenu = [[NSMenu alloc] init];
+
+        // Add standard items
+        NSString* appName = [[NSProcessInfo processInfo] processName];
+        [appMenu addItemWithTitle:[NSString stringWithFormat:@"About %@", appName]
+                           action:@selector(orderFrontStandardAboutPanel:)
+                    keyEquivalent:@""];
+        [appMenu addItem:[NSMenuItem separatorItem]];
+        [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", appName]
+                           action:@selector(hide:)
+                    keyEquivalent:@"h"];
+        NSMenuItem* hideOthers = [appMenu addItemWithTitle:@"Hide Others"
+                                                    action:@selector(hideOtherApplications:)
+                                             keyEquivalent:@"h"];
+        [hideOthers setKeyEquivalentModifierMask:NSEventModifierFlagCommand | NSEventModifierFlagOption];
+        [appMenu addItemWithTitle:@"Show All"
+                           action:@selector(unhideAllApplications:)
+                    keyEquivalent:@""];
+        [appMenu addItem:[NSMenuItem separatorItem]];
+        [appMenu addItemWithTitle:[NSString stringWithFormat:@"Quit %@", appName]
+                           action:@selector(terminate:)
+                    keyEquivalent:@"q"];
+
+        [appMenuItem setSubmenu:appMenu];
+        [mainMenu addItem:appMenuItem];
+
+        // Create a Window menu
+        NSMenuItem* windowMenuItem = [[NSMenuItem alloc] init];
+        NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
+        [windowMenu addItemWithTitle:@"Minimize"
+                              action:@selector(performMiniaturize:)
+                       keyEquivalent:@"m"];
+        [windowMenu addItemWithTitle:@"Zoom"
+                              action:@selector(performZoom:)
+                       keyEquivalent:@""];
+        [windowMenu addItem:[NSMenuItem separatorItem]];
+        [windowMenu addItemWithTitle:@"Bring All to Front"
+                              action:@selector(arrangeInFront:)
+                       keyEquivalent:@""];
+        [windowMenuItem setSubmenu:windowMenu];
+        [mainMenu addItem:windowMenuItem];
+
+        [NSApp setMainMenu:mainMenu];
+        [NSApp setWindowsMenu:windowMenu];
+    }
+
     s_menuStackSize = 0;
     s_menuStack[0] = NSApp.mainMenu;
     s_menuStackSize = 1;
@@ -44,7 +96,7 @@ void macosmenu_init(void) {
 
 void macosmenu_clear(void) {
     if (!s_menuStack[0]) return;
-    // Remove all items except the Application menu (index 0)
+    // Remove all items except the Application menu (index 0) and Window menu (last)
     while (s_menuStack[0].itemArray.count > 2) {
         [s_menuStack[0] removeItemAtIndex:1];
     }
@@ -79,9 +131,10 @@ bool macosmenu_beginMenu(const char* label, bool enabled) {
         menuItem.title = title;
         [menuItem setSubmenu:newMenu];
 
+        // Insert before the Window menu (which is always last)
         menuIndex = [s_menuStack[s_menuStackSize - 1] numberOfItems];
-        if (s_menuStackSize == 1)
-            menuIndex -= 1; // Insert before the Window menu placeholder
+        if (s_menuStackSize == 1 && menuIndex > 0)
+            menuIndex -= 1;
 
         [s_menuStack[s_menuStackSize - 1] insertItem:menuItem atIndex:menuIndex];
     }

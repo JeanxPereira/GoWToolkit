@@ -3,6 +3,7 @@
 #include "vfs/SliceFile.h"
 #include "vfs/IsoFileSystem.h"
 #include "core/Logger.h"
+#include "types/TypeRegistry.h"
 #include <GLFW/glfw3.h> // For glfwPostEmptyEvent
 #include <thread>
 #include <chrono>
@@ -186,21 +187,22 @@ void AssetDatabase::CloseIso(size_t idx) {
 // ── EnsureNodeData ─────────────────────────────────────────────────────────
 bool AssetDatabase::EnsureNodeData(ParsedEntry* e, OpenWad& parentWad) {
     if (!e) return false;
-    if (e->instance) return true;
+    if (e->assetNode) return true;
 
     if (!parentWad.profile || !parentWad.fileSource) {
         LOG_ERR("[AssetDatabase] Cannot load data for '%s', parent WAD has no file handle.", e->name.c_str());
         return false;
     }
 
-    // Slice directly from the cached fileSource!
-    auto slice = std::make_shared<GOW::SliceFile>(parentWad.fileSource, e->offset, e->size);
-    e->instance = parentWad.profile->CreateNodeInstance(e->schemaType, slice);
-    
-    if (e->instance) return true;
+    if (auto* handler = GOW::TypeRegistry::Get().Resolve(e->typeId)) {
+        auto sliceWindow = std::make_shared<GOW::SliceFile>(parentWad.fileSource, e->offset, e->size);
+        e->assetNode = handler->Parse(sliceWindow);
+    }
+
+    if (e->assetNode) return true;
 
     // Most types don't have struct schemas yet. Only log at debug level to avoid spam.
-    LOG_DEBUG("[AssetDatabase] No schema for '%s' (Type: %s)", e->name.c_str(), e->schemaType.c_str());
+    LOG_DEBUG("[AssetDatabase] No schema/handler for '%s' (TypeId: %d)", e->name.c_str(), (int)e->typeId);
     return false;
 }
 

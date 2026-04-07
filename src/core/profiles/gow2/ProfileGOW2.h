@@ -20,10 +20,11 @@ public:
     
     bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad) override;
     
-    std::shared_ptr<NodeInstance> CreateNodeInstance(const std::string& typeName, std::shared_ptr<IFile> fileData) override;
-
 private:
     void RegisterSchemas();
+    bool LoadFromArchiveGOW1(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad);
+    bool LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
+                              IFile* tocFile, OpenWad& outWad);
 
     std::map<std::string, std::shared_ptr<StructDef>> m_schemas;
 };

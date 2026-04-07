@@ -19,9 +19,6 @@ public:
     bool ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) override;
     
     bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad) override;
-    
-    std::shared_ptr<NodeInstance> CreateNodeInstance(const std::string& typeName, std::shared_ptr<IFile> fileData) override;
-
 private:
     std::map<std::string, std::shared_ptr<StructDef>> m_schemas;
 };

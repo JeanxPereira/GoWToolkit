@@ -25,7 +25,29 @@ void Window::configureGLFW() {
 
 // ── Pre-window platform setup ───────────────────────────────────────────────
 void Window::initNative() {
-    // No-op on macOS for now (could add font enumeration, dock menu, etc.)
+    // When launched as a bare executable (not via Finder/.app bundle) the OS
+    // classifies the process as a background/CLI tool: no Dock entry, no
+    // Cmd+Tab, and the titlebar shows the parent shell name instead of the
+    // app name.
+    //
+    // TransformProcessType re-classifies the process as a regular foreground
+    // GUI app at the OS level.  Must be called BEFORE glfwInit() so that the
+    // Cocoa backend finds a fully-promoted NSApplication.
+    // This call is a documented no-op when the process is already a foreground
+    // app (i.e. launched via .app bundle), so it is always safe to call.
+    ProcessSerialNumber psn = {0, kCurrentProcess};
+    TransformProcessType(&psn, kProcessTransformToForegroundApplication);
+
+    // Ensure NSApp exists and is initialized before GLFW touches Cocoa.
+    // [NSApplication sharedApplication] is idempotent — safe to call even if
+    // GLFW would call it anyway.  Without this, [NSApp activateIgnoringOtherApps]
+    // below silently becomes a no-op because NSApp is still nil.
+    [NSApplication sharedApplication];
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+
+    // Bring the app to the foreground immediately.  Without this, when launched
+    // from the terminal the window opens behind the Terminal window.
+    [NSApp activateIgnoringOtherApps:YES];
 }
 
 // ── Post-window platform setup ──────────────────────────────────────────────

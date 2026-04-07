@@ -2,6 +2,7 @@
 #include "rendering/ShaderManager.h"
 #include <glad/glad.h>
 #include <imgui.h>
+#include "core/AppConfig.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace GOW {
@@ -11,132 +12,51 @@ Viewport3D::Viewport3D(const std::string& name) : m_name(name) {
 }
 
 Viewport3D::~Viewport3D() {
-    ClearMeshes(); // This will delete m_glTextures and clear m_meshes
+    ClearScene();
 
     if (m_msaaFbo) glDeleteFramebuffers(1, &m_msaaFbo);
     if (m_msaaColor) glDeleteTextures(1, &m_msaaColor);
     if (m_msaaRbo) glDeleteRenderbuffers(1, &m_msaaRbo);
-    
+
     if (m_fbo) glDeleteFramebuffers(1, &m_fbo);
     if (m_colorTex) glDeleteTextures(1, &m_colorTex);
 }
 
 std::string Viewport3D::GetName() const { return m_name; }
 
-void Viewport3D::AddMesh(std::shared_ptr<GpuMesh> mesh) {
-    m_meshes.push_back(mesh);
-    // Auto-focus on first mesh
-    if (m_meshes.size() == 1) {
-        m_camera.FocusOn(mesh->GetBounds());
-    }
-}
-
-void Viewport3D::ClearMeshes() {
-    m_meshes.clear();
-    if (!m_glTextures.empty()) {
-        glDeleteTextures((GLsizei)m_glTextures.size(), m_glTextures.data());
-        m_glTextures.clear();
-    }
+void Viewport3D::ClearScene() {
+    m_sceneRenderer.reset();
+    m_needsRedraw = true;
 }
 
 void Viewport3D::LoadFromMeshData(const MeshData& data, const std::vector<std::unique_ptr<TextureData>>& textures) {
-    ClearMeshes();
+    ClearScene();
+    if (data.parts.empty()) return;
 
-    // 1. Upload all valid textures to OpenGL
-    std::vector<GLuint> texMap(textures.size(), 0);
-    for (size_t i = 0; i < textures.size(); i++) {
-        const auto& tex = textures[i];
-        if (tex && tex->IsValid()) {
-            GLuint glTex;
-            glGenTextures(1, &glTex);
-            glBindTexture(GL_TEXTURE_2D, glTex);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex->width, tex->height,
-                         0, GL_RGBA, GL_UNSIGNED_BYTE, tex->pixels.data());
-            
-            texMap[i] = glTex;
-            m_glTextures.push_back(glTex);
-        }
-    }
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    // 2. Create meshes and assign textures
-    for (const auto& part : data.parts) {
-        if (part.indices.empty() || part.vertices.empty()) continue;
-        auto gpuMesh = std::make_shared<GpuMesh>();
-        gpuMesh->Upload(part.vertices, part.indices);
-
-        if (part.materialId >= 0 && part.materialId < (int)texMap.size() && texMap[part.materialId] != 0) {
-            gpuMesh->SetTexture(texMap[part.materialId]);
-        }
-
-        AddMesh(gpuMesh);
-    }
+    m_sceneRenderer = std::make_unique<SceneRenderer>();
+    m_sceneRenderer->BuildFromMeshData(data, textures);
+    m_camera.FocusOn(m_sceneRenderer->GetBounds());
+    m_needsRedraw = true;
 }
 
-void Viewport3D::AddTestCube() {
-    auto cube = std::make_shared<GpuMesh>();
-    
-    std::vector<GpuVertex> verts = {
-        // Front face (red)
-        { {-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.2f, 0.2f, 1.0f} },
-        { { 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}, {1.0f, 0.2f, 0.2f, 1.0f} },
-        { { 0.5f,  0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.2f, 0.2f, 1.0f} },
-        { {-0.5f,  0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}, {1.0f, 0.2f, 0.2f, 1.0f} },
-        // Back face (green)
-        { {-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f,-1.0f}, {0.0f, 0.0f}, {0.2f, 1.0f, 0.2f, 1.0f} },
-        { {-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f,-1.0f}, {0.0f, 1.0f}, {0.2f, 1.0f, 0.2f, 1.0f} },
-        { { 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f,-1.0f}, {1.0f, 1.0f}, {0.2f, 1.0f, 0.2f, 1.0f} },
-        { { 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f,-1.0f}, {1.0f, 0.0f}, {0.2f, 1.0f, 0.2f, 1.0f} },
-        // Top face (blue)
-        { {-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, {0.2f, 0.2f, 1.0f, 1.0f} },
-        { {-0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {0.2f, 0.2f, 1.0f, 1.0f} },
-        { { 0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, {0.2f, 0.2f, 1.0f, 1.0f} },
-        { { 0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.2f, 0.2f, 1.0f, 1.0f} },
-        // Bottom face (yellow)
-        { {-0.5f, -0.5f, -0.5f}, {0.0f,-1.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 1.0f, 0.2f, 1.0f} },
-        { { 0.5f, -0.5f, -0.5f}, {0.0f,-1.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.2f, 1.0f} },
-        { { 0.5f, -0.5f,  0.5f}, {0.0f,-1.0f, 0.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 0.2f, 1.0f} },
-        { {-0.5f, -0.5f,  0.5f}, {0.0f,-1.0f, 0.0f}, {0.0f, 1.0f}, {1.0f, 1.0f, 0.2f, 1.0f} },
-        // Right face (magenta)
-        { { 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.2f, 1.0f, 1.0f} },
-        { { 0.5f,  0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, {1.0f, 0.2f, 1.0f, 1.0f} },
-        { { 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {1.0f, 0.2f, 1.0f, 1.0f} },
-        { { 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 0.2f, 1.0f, 1.0f} },
-        // Left face (cyan)
-        { {-0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f},{0.0f, 0.0f}, {0.2f, 1.0f, 1.0f, 1.0f} },
-        { {-0.5f, -0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f},{1.0f, 0.0f}, {0.2f, 1.0f, 1.0f, 1.0f} },
-        { {-0.5f,  0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f},{1.0f, 1.0f}, {0.2f, 1.0f, 1.0f, 1.0f} },
-        { {-0.5f,  0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f},{0.0f, 1.0f}, {0.2f, 1.0f, 1.0f, 1.0f} }
-    };
-    
-    std::vector<uint32_t> indices = {
-        0, 1, 2,  2, 3, 0,       // Front
-        4, 5, 6,  6, 7, 4,       // Back
-        8, 9, 10, 10, 11, 8,     // Top
-        12, 13, 14, 14, 15, 12,  // Bottom
-        16, 17, 18, 18, 19, 16,  // Right
-        20, 21, 22, 22, 23, 20   // Left
-    };
-    
-    cube->Upload(verts, indices);
-    AddMesh(cube);
+void Viewport3D::LoadScene(std::unique_ptr<SceneData> scene) {
+    ClearScene();
+    if (!scene || scene->IsEmpty()) return;
+
+    m_sceneRenderer = std::make_unique<SceneRenderer>();
+    m_sceneRenderer->Build(*scene);
+    m_camera.FocusOn(m_sceneRenderer->GetBounds());
+    m_needsRedraw = true;
 }
 
 void Viewport3D::InitFBO() {
-    // Generate MSAA FBO
     glGenFramebuffers(1, &m_msaaFbo);
     glGenTextures(1, &m_msaaColor);
     glGenRenderbuffers(1, &m_msaaRbo);
 
-    // Generate Resolve FBO
     glGenFramebuffers(1, &m_fbo);
     glGenTextures(1, &m_colorTex);
 
-    // Make sure shaders are ready
     ShaderManager::Get().Initialize();
 }
 
@@ -146,8 +66,9 @@ void Viewport3D::ResizeFBO(int width, int height) {
 
     m_fboWidth = width;
     m_fboHeight = height;
+    m_needsRedraw = true;
 
-    // 1. Setup MSAA FBO
+    // MSAA FBO
     glBindFramebuffer(GL_FRAMEBUFFER, m_msaaFbo);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_msaaColor);
     glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, m_msaaSamples, GL_RGBA8, width, height, GL_TRUE);
@@ -157,7 +78,7 @@ void Viewport3D::ResizeFBO(int width, int height) {
     glRenderbufferStorageMultisample(GL_RENDERBUFFER, m_msaaSamples, GL_DEPTH24_STENCIL8, width, height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_msaaRbo);
 
-    // 2. Setup Resolve FBO
+    // Resolve FBO
     glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
     glBindTexture(GL_TEXTURE_2D, m_colorTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
@@ -174,113 +95,323 @@ void Viewport3D::Draw() {
 
     ResizeFBO((int)avail.x, (int)avail.y);
 
-    float aspect = (float)m_fboWidth / (float)m_fboHeight;
-    glm::mat4 view = m_camera.GetViewMatrix();
-    glm::mat4 proj = m_camera.GetProjectionMatrix(aspect);
-    glm::mat4 model = glm::mat4(1.0f);
+    // ── Render to FBO ────────────────────────────────────────────────
+    if (m_needsRedraw && m_fboWidth > 0 && m_fboHeight > 0) {
+        m_needsRedraw = false;
 
-    // ── Render to MSAA FBO ─────────────────────────────────────────────
-    glBindFramebuffer(GL_FRAMEBUFFER, m_msaaFbo);
-    glViewport(0, 0, m_fboWidth, m_fboHeight);
-    glClearColor(0.12f, 0.12f, 0.14f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_MULTISAMPLE);
+        float aspect = (float)m_fboWidth / (float)m_fboHeight;
+        glm::mat4 view = m_camera.GetViewMatrix();
+        glm::mat4 proj = m_camera.GetProjectionMatrix(aspect);
 
-    // Grid
-    if (showGrid) {
-        glDepthMask(GL_FALSE);
-        m_grid.Draw(view, proj);
-        glDepthMask(GL_TRUE);
-    }
+        glBindFramebuffer(GL_FRAMEBUFFER, m_msaaFbo);
+        glViewport(0, 0, m_fboWidth, m_fboHeight);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_MULTISAMPLE);
 
-    // Meshes
-    if (!m_meshes.empty()) {
-        auto* shader = ShaderManager::Get().GetShader("default");
-        if (shader) {
-            shader->Use();
-            shader->SetMat4("uModel", model);
-            shader->SetMat4("uView", view);
-            shader->SetMat4("uProjection", proj);
-            shader->SetVec3("uLightDir", glm::normalize(glm::vec3(0.5f, 1.0f, 0.3f)));
-            shader->SetVec3("uViewPos", glm::vec3(glm::inverse(view)[3]));
+        bool hasContent = m_sceneRenderer && !m_sceneRenderer->IsEmpty();
+        auto* cfg = AppConfig::Get();
 
-            if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-            for (auto& mesh : m_meshes) {
-                if (mesh->HasTexture()) {
-                    shader->SetInt("uUseTexture", 1);
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, mesh->GetTexture());
-                    shader->SetInt("uTexture0", 0);
-                } else {
-                    shader->SetInt("uUseTexture", 0);
-                }
-                mesh->Draw();
-            }
-
-            // Unbind texture
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        // ── Background gradient ────────────────────��─────────────────
+        if (hasContent && cfg) {
+            SceneRenderer::RenderBackground(
+                glm::vec3(cfg->bgTopR, cfg->bgTopG, cfg->bgTopB),
+                glm::vec3(cfg->bgBotR, cfg->bgBotG, cfg->bgBotB)
+            );
+        } else if (hasContent) {
+            SceneRenderer::RenderBackground(bgTopColor, bgBottomColor);
+        } else if (cfg) {
+            // Empty viewport: darker gradient based on configured top color
+            SceneRenderer::RenderBackground(
+                glm::vec3(cfg->bgTopR * 0.8f, cfg->bgTopG * 0.8f, cfg->bgTopB * 0.8f),
+                glm::vec3(cfg->bgBotR * 0.8f, cfg->bgBotG * 0.8f, cfg->bgBotB * 0.8f)
+            );
+        } else {
+            // Empty viewport: darker gradient
+            SceneRenderer::RenderBackground(
+                glm::vec3(0.14f, 0.14f, 0.16f),
+                glm::vec3(0.06f, 0.06f, 0.08f)
+            );
         }
+
+        // Re-enable depth after background pass (RenderBackground disables it)
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        // ── Scene ────────────────────────────────────────────────────
+        if (hasContent) {
+            if (m_sceneRenderer->HasSky()) {
+                m_sceneRenderer->RenderSky(view, proj, shadingMode);
+            }
+            
+            m_sceneRenderer->Render(view, proj, shadingMode);
+
+            if (showBones && m_sceneRenderer->HasSkeleton()) {
+                m_sceneRenderer->RenderSkeleton(view, proj);
+            }
+        }
+
+        // ── Grid ────────────────────────────────────────────────────────────
+        if (showGrid) {
+            glm::vec4 gridColor = cfg ? glm::vec4(cfg->gridR, cfg->gridG, cfg->gridB, cfg->gridA) 
+                                      : glm::vec4(0.35f, 0.35f, 0.35f, 0.5f);
+            // Draw grid WITHOUT writing to the depth buffer so it doesn't clip transparent objects
+            glDepthMask(GL_FALSE);
+            // Allow grid lines to render if exactly coplanar
+            glDepthFunc(GL_LEQUAL);
+            m_grid.Draw(view, proj, gridColor);
+            glDepthFunc(GL_LESS);
+            glDepthMask(GL_TRUE);
+        }
+
+        // ── Resolve MSAA ────────────────────────���────────────────────
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, m_msaaFbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
+        glBlitFramebuffer(0, 0, m_fboWidth, m_fboHeight, 0, 0, m_fboWidth, m_fboHeight,
+                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDisable(GL_MULTISAMPLE);
     }
 
-    // ── Resolve MSAA FBO to Normal FBO ─────────────────────────────────
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_msaaFbo);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
-    glBlitFramebuffer(0, 0, m_fboWidth, m_fboHeight, 0, 0, m_fboWidth, m_fboHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glDisable(GL_MULTISAMPLE);
-
-    // ── Display in ImGui ───────────────────────────────────────────────
+    // ── Display cached texture ────────────────────────��─────────────
     ImVec2 uv0(0, 1), uv1(1, 0); // flip Y for OpenGL
     ImGui::Image((void*)(intptr_t)m_colorTex, avail, uv0, uv1);
 
-    // ── Input handling ─────────────────────────────────────────────────
-    if (ImGui::IsItemHovered()) {
-        ImGuiIO& io = ImGui::GetIO();
+    m_viewportHovered = ImGui::IsItemHovered();
 
-        // Right-drag: orbit
-        if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
-            m_camera.ProcessMouseDrag(io.MouseDelta.x, io.MouseDelta.y);
-        }
-        // Middle-drag: pan
-        if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
-            m_camera.ProcessMousePan(io.MouseDelta.x, io.MouseDelta.y);
-        }
-        // Scroll: zoom
-        if (io.MouseWheel != 0.0f) {
-            m_camera.ProcessScroll(io.MouseWheel);
-        }
+    // ── Input ───────────────────────��───────────────────────────────
+    HandleInput();
+
+    // ── Toolbar overlay ─────────────────────────────────────────────
+    ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+    DrawToolbar(avail, cursorPos);
+
+    // ── Object list ────────────────────────────��────────────────────
+    DrawObjectList(avail, cursorPos);
+
+    // ── Empty viewport message ─────────────────────────���────────────
+    if (!m_sceneRenderer || m_sceneRenderer->IsEmpty()) {
+        const char* msg = "No mesh loaded";
+        ImVec2 textSize = ImGui::CalcTextSize(msg);
+        ImGui::SetCursorScreenPos(ImVec2(
+            cursorPos.x + (avail.x - textSize.x) * 0.5f,
+            cursorPos.y - avail.y * 0.5f - textSize.y * 0.5f
+        ));
+        ImGui::TextDisabled("%s", msg);
+    }
+}
+
+void Viewport3D::HandleInput() {
+    if (!m_viewportHovered) return;
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Right-drag: orbit
+    if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) &&
+        (io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f)) {
+        m_camera.ProcessMouseDrag(io.MouseDelta.x, io.MouseDelta.y);
+        m_needsRedraw = true;
+    }
+    // Middle-drag: pan
+    if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle) &&
+        (io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f)) {
+        m_camera.ProcessMousePan(io.MouseDelta.x, io.MouseDelta.y);
+        m_needsRedraw = true;
+    }
+    // Scroll: zoom
+    if (io.MouseWheel != 0.0f) {
+        m_camera.ProcessScroll(io.MouseWheel);
+        m_needsRedraw = true;
     }
 
-    // ── Toolbar overlay ────────────────────────────────────────────────
-    ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+    // Keyboard shortcuts
+    if (!io.WantCaptureKeyboard) {
+        // F: Focus / frame all
+        if (ImGui::IsKeyPressed(ImGuiKey_F) && m_sceneRenderer && !m_sceneRenderer->IsEmpty()) {
+            m_camera.FocusOn(m_sceneRenderer->GetBounds());
+            m_needsRedraw = true;
+        }
+        // Z: Cycle shading mode
+        if (ImGui::IsKeyPressed(ImGuiKey_Z)) {
+            switch (shadingMode) {
+                case ShadingMode::Solid:        shadingMode = ShadingMode::Matcap;       break;
+                case ShadingMode::Matcap:       shadingMode = ShadingMode::Textured;     break;
+                case ShadingMode::Textured:     shadingMode = ShadingMode::Wireframe;    break;
+                case ShadingMode::Wireframe:    shadingMode = ShadingMode::TexturedWire; break;
+                case ShadingMode::TexturedWire: shadingMode = ShadingMode::Solid;        break;
+            }
+            m_needsRedraw = true;
+        }
+        // G: Toggle grid
+        if (ImGui::IsKeyPressed(ImGuiKey_G)) {
+            showGrid = !showGrid;
+            m_needsRedraw = true;
+        }
+        // Numpad 5: Reset camera
+        if (ImGui::IsKeyPressed(ImGuiKey_Keypad5)) {
+            m_camera.Reset();
+            m_needsRedraw = true;
+        }
+    }
+}
+
+void Viewport3D::DrawToolbar(ImVec2 avail, ImVec2 cursorPos) {
     ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + 4, cursorPos.y - avail.y + 4));
 
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.18f, 0.85f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.25f, 0.3f, 0.9f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.35f, 0.35f, 0.4f, 0.95f));
 
-    if (ImGui::SmallButton(wireframe ? "[W] Wire" : "[W] Solid")) wireframe = !wireframe;
+    // Shading mode cycle button
+    const char* shadingLabel = nullptr;
+    switch (shadingMode) {
+        case ShadingMode::Solid:        shadingLabel = "Solid";     break;
+        case ShadingMode::Matcap:       shadingLabel = "Matcap";    break;
+        case ShadingMode::Textured:     shadingLabel = "Textured";  break;
+        case ShadingMode::Wireframe:    shadingLabel = "Wire";      break;
+        case ShadingMode::TexturedWire: shadingLabel = "Wire (Tex)";break;
+    }
+    if (ImGui::SmallButton(shadingLabel)) {
+        switch (shadingMode) {
+            case ShadingMode::Solid:        shadingMode = ShadingMode::Matcap;       break;
+            case ShadingMode::Matcap:       shadingMode = ShadingMode::Textured;     break;
+            case ShadingMode::Textured:     shadingMode = ShadingMode::Wireframe;    break;
+            case ShadingMode::Wireframe:    shadingMode = ShadingMode::TexturedWire; break;
+            case ShadingMode::TexturedWire: shadingMode = ShadingMode::Solid;        break;
+        }
+        m_needsRedraw = true;
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Shading mode [Z]");
+
     ImGui::SameLine();
-    if (ImGui::SmallButton(showGrid ? "[G] Grid" : "[G] No Grid")) showGrid = !showGrid;
+    if (ImGui::SmallButton(showGrid ? "Grid" : "No Grid")) {
+        showGrid = !showGrid;
+        m_needsRedraw = true;
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Toggle grid [G]");
+
+    if (m_sceneRenderer && !m_sceneRenderer->IsEmpty()) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton(showObjectList ? "List" : "No List")) {
+            showObjectList = !showObjectList;
+        }
+    }
+
     ImGui::SameLine();
-    if (ImGui::SmallButton("[R] Reset")) m_camera.Reset();
+    if (ImGui::SmallButton("Focus")) {
+        if (m_sceneRenderer && !m_sceneRenderer->IsEmpty()) {
+            m_camera.FocusOn(m_sceneRenderer->GetBounds());
+        } else {
+            m_camera.Reset();
+        }
+        m_needsRedraw = true;
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Frame all [F]");
+
+    // Show Bones toggle
+    if (m_sceneRenderer && m_sceneRenderer->HasSkeleton()) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton(showBones ? "Bones" : "No Bones")) {
+            showBones = !showBones;
+            m_needsRedraw = true;
+        }
+        ImGui::SameLine();
+        bool noSkin = m_sceneRenderer->GetDebugDisableSkin();
+        if (ImGui::SmallButton(noSkin ? "[NoSkin]" : "Skin")) {
+            m_sceneRenderer->SetDebugDisableSkin(!noSkin);
+            m_needsRedraw = true;
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Toggle skinning (debug)");
+    }
 
     // Stats
-    int totalVerts = 0, totalTris = 0;
-    for (auto& m : m_meshes) {
-        totalVerts += m->GetVertexCount();
-        totalTris  += m->GetIndexCount() / 3;
-    }
-    if (totalVerts > 0) {
-        ImGui::SameLine();
-        ImGui::TextDisabled("| %d verts, %d tris", totalVerts, totalTris);
+    if (m_sceneRenderer && !m_sceneRenderer->IsEmpty()) {
+        int totalVerts = m_sceneRenderer->GetTotalVertices();
+        int totalTris  = m_sceneRenderer->GetTotalTriangles();
+        if (totalVerts > 0) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("| %d verts, %d tris", totalVerts, totalTris);
+        }
     }
 
-    ImGui::PopStyleColor(2);
+    // FPS counter — bottom center
+    {
+        char fpsBuf[32];
+        snprintf(fpsBuf, sizeof(fpsBuf), "%.0f FPS", ImGui::GetIO().Framerate);
+        ImVec2 fpsSize = ImGui::CalcTextSize(fpsBuf);
+        ImGui::SetCursorScreenPos(ImVec2(
+            cursorPos.x + (avail.x - fpsSize.x) * 0.5f,
+            cursorPos.y - fpsSize.y - 4.0f
+        ));
+        ImGui::TextDisabled("%s", fpsBuf);
+    }
+
+    ImGui::PopStyleColor(3);
+}
+
+void Viewport3D::DrawInspector(AppContext& ctx) {
+    ImGui::Text("Viewport Settings");
+    ImGui::Separator();
+
+    const char* shadingLabel = "Solid\0Matcap\0Textured\0Wireframe\0TexturedWire\0";
+    int mode = (int)shadingMode;
+    if (ImGui::Combo("Shading", &mode, shadingLabel)) {
+        shadingMode = (ShadingMode)mode;
+        m_needsRedraw = true;
+    }
+
+    if (ImGui::Checkbox("Show Grid", &showGrid)) m_needsRedraw = true;
+    if (m_sceneRenderer && m_sceneRenderer->HasSkeleton()) {
+        if (ImGui::Checkbox("Show Bones", &showBones)) m_needsRedraw = true;
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Scene Mesh Batches");
+    
+    if (!m_sceneRenderer || m_sceneRenderer->IsEmpty()) {
+        ImGui::TextDisabled("No meshes in scene.");
+        return;
+    }
+
+    auto& batches = m_sceneRenderer->GetBatches();
+    
+    // Create a scrollable region for the batches
+    ImGui::BeginChild("MeshBatches", ImVec2(0, 0), true);
+    for (size_t i = 0; i < batches.size(); ++i) {
+        auto& batch = batches[i];
+
+        ImGui::PushID((int)i);
+
+        if (ImGui::Checkbox("##vis", &batch.isVisible)) {
+            m_needsRedraw = true;
+        }
+        ImGui::SameLine();
+
+        std::string label = batch.name.empty() ? ("Part " + std::to_string(i)) : batch.name;
+        ImGui::Selectable(label.c_str(), false);
+
+        if (ImGui::IsItemHovered()) {
+            if (!batch.isHighlighted) {
+                batch.isHighlighted = true;
+                m_needsRedraw = true;
+            }
+        } else {
+            if (batch.isHighlighted) {
+                batch.isHighlighted = false;
+                m_needsRedraw = true;
+            }
+        }
+
+        ImGui::PopID();
+    }
+    ImGui::EndChild();
+}
+
+void Viewport3D::DrawObjectList(ImVec2 avail, ImVec2 cursorPos) {
+    // Moved to DrawInspector
 }
 
 } // namespace GOW

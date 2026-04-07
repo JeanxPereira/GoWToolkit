@@ -169,12 +169,20 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
             uint32_t addr = u0 & 0x00FFFFFF;
 
             if (cmd == 1) {
-                // SampleRef at addr relative to bank header
-                size_t sampleRefOff = absHeaderStart + addr;
+                // SampleRef at addr relative to SMPD block start (which is relative to bank header)
+                size_t sampleRefOff = absHeaderStart + smpdStart + addr;
                 if (sampleRefOff + 24 > buf.size()) break;
 
                 uint32_t adpcmOffset = ReadU32LE(buf.data() + sampleRefOff + 16);
                 uint32_t adpcmSize   = ReadU32LE(buf.data() + sampleRefOff + 20);
+
+                // Dump the 24 bytes of SampleRef
+                std::string dump = "";
+                for (int d = 0; d < 24; ++d) {
+                    char hex[4];
+                    sprintf(hex, "%02X ", buf[sampleRefOff + d]);
+                    dump += hex;
+                }
 
                 // Link this ADPCM data to the corresponding sound
                 // Find which sound maps to this bank sound index
@@ -183,8 +191,8 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
                         snd.adpcmOffset = adpcmOffset;
                         snd.adpcmSize = adpcmSize;
                         snd.hasData = true;
-                        LOG_INFO("[GOW2Sound] Sound '%s': ADPCM offset=0x%X, size=0x%X",
-                                 snd.name.c_str(), adpcmOffset, adpcmSize);
+                        LOG_INFO("[GOW2Sound] Sound '%s': ADPCM offset=0x%X, size=0x%X, hex=%s",
+                                 snd.name.c_str(), adpcmOffset, adpcmSize, dump.c_str());
                         break;
                     }
                 }

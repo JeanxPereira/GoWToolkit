@@ -1,5 +1,6 @@
 #include "ui/IsoBrowser.h"
 #include "ui/AppContext.h"
+#include "fonts/SFSymbols.h"
 #include "core/vfs/IsoFileSystem.h"
 #include "UIHelpers.h"
 #include "imgui.h"
@@ -24,7 +25,7 @@ void IsoBrowser::draw(AppContext& ctx) {
         bool open = ImGui::TreeNodeEx(filename.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
 
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - 16);
-        if (ImGui::SmallButton("x")) {
+        if (ImGui::SmallButton(ICON_SF_XMARK)) {
             db.CloseIso(i);
             if (open) ImGui::TreePop();
             continue;
@@ -47,7 +48,7 @@ void IsoBrowser::draw(AppContext& ctx) {
             if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
                 ImGui::Text("Size: %s", FormatBytes(entry.size).c_str());
-                ImGui::Text("LBA: %u", entry.lba);
+                ImGui::Text("Offset: 0x%llX", (unsigned long long)entry.offset);
                 ImGui::EndTooltip();
             }
 

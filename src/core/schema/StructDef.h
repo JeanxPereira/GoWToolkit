@@ -16,10 +16,12 @@ public:
         return *this;
     }
 
+    StructDef& AddUInt16(std::string name) { return AddField(std::move(name), FieldType::UInt16); }
     StructDef& AddInt32(std::string name) { return AddField(std::move(name), FieldType::Int32); }
     StructDef& AddUInt32(std::string name) { return AddField(std::move(name), FieldType::UInt32); }
     StructDef& AddFloat(std::string name)  { return AddField(std::move(name), FieldType::Float); }
     StructDef& AddVector3(std::string name) { return AddField(std::move(name), FieldType::Vector3); }
+    StructDef& AddVector4(std::string name) { return AddField(std::move(name), FieldType::Vector4); }
     StructDef& AddMatrix4x4(std::string name) { return AddField(std::move(name), FieldType::Matrix4x4); }
     StructDef& AddHexDump(std::string name, size_t bytes) { return AddField(std::move(name), FieldType::HexDump, bytes); }
 

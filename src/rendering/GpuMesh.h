@@ -10,10 +10,14 @@ using GLuint = unsigned int;
 namespace GOW {
 
 struct GpuVertex {
-    glm::vec3 position{0.0f};
-    glm::vec3 normal{0.0f};
-    glm::vec2 uv{0.0f};
-    glm::vec4 color{1.0f};
+    glm::vec3  position    {0.0f};
+    glm::vec3  normal      {0.0f};
+    glm::vec2  uv          {0.0f};
+    glm::vec4  color       {1.0f};
+    // ── GOWR additions (zero-initialised; GOW2 paths never write these) ─
+    glm::vec2  uv1         {0.0f};
+    glm::vec4  boneWeights {0.0f};
+    glm::uvec4 boneIndices {0u};
 };
 
 class GpuMesh {
@@ -48,7 +52,7 @@ private:
     int    m_indexCount  = 0;
     int    m_vertexCount = 0;
     BoundingBox m_bounds;
-    GLuint m_textureId = 0; // Optional diffuse texture
+    GLuint m_textureId = 0;
 };
 
 } // namespace GOW

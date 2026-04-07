@@ -43,25 +43,28 @@ void Camera::ProcessMousePan(float dx, float dy) {
 }
 
 void Camera::ProcessScroll(float delta) {
-    m_distance -= delta * m_distance * 0.1f;
-    m_distance = std::clamp(m_distance, 0.1f, 500.0f);
+    // Use exponential zoom to handle large scroll deltas safely.
+    // If delta is positive (scroll up/zoom in), distance multiplies by < 1.0 (gets closer).
+    // If delta is negative (scroll down/zoom out), distance multiplies by > 1.0 (gets further).
+    m_distance *= std::pow(0.9f, delta);
+    m_distance = std::clamp(m_distance, 0.1f, 50000.0f);
     UpdatePosition();
 }
 
 void Camera::FocusOn(const BoundingBox& bbox) {
     m_target = bbox.Center();
-    m_distance = bbox.Radius() * 2.5f;
+    m_distance = bbox.Radius() * 3.0f;
     if (m_distance < 1.0f) m_distance = 5.0f;
-    m_yaw = 0.4f;
-    m_pitch = 0.3f;
+    m_yaw = glm::radians(45.0f);
+    m_pitch = glm::radians(15.0f);
     UpdatePosition();
 }
 
 void Camera::Reset() {
     m_target = glm::vec3(0.0f);
     m_distance = 5.0f;
-    m_yaw = 0.0f;
-    m_pitch = 0.3f;
+    m_yaw = glm::radians(45.0f);
+    m_pitch = glm::radians(15.0f);
     UpdatePosition();
 }
 

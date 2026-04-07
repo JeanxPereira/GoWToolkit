@@ -25,17 +25,17 @@ public:
     void Reset();
 
     // Configurable
-    float fov     = 45.0f;
+    float fov     = 55.0f;
     float nearPlane = 0.01f;
-    float farPlane  = 1000.0f;
+    float farPlane  = 50000.0f;
 
 private:
     void UpdatePosition();
 
     glm::vec3 m_target{0.0f, 0.0f, 0.0f};
     float m_distance = 5.0f;
-    float m_yaw   = 0.0f;   // radians
-    float m_pitch = 0.3f;   // radians
+    float m_yaw   = glm::radians(45.0f);   // 1/4 isometric view (right side)
+    float m_pitch = glm::radians(15.0f);   // slight elevation
 
     glm::vec3 m_position{0.0f};
     glm::vec3 m_up{0.0f, 1.0f, 0.0f};

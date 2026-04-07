@@ -4,6 +4,7 @@
 
 #if defined(__APPLE__)
     #include <mach-o/dyld.h>
+    #include <CoreFoundation/CoreFoundation.h>
 #elif defined(_WIN32)
     #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
@@ -43,8 +44,28 @@ inline std::filesystem::path getExecutableDir() {
     return std::filesystem::current_path();
 }
 
+// On macOS, when running from a .app bundle the resources live in
+// Contents/Resources/ rather than next to the executable.
+// Detect this by checking if the executable dir ends with .app/Contents/MacOS.
+inline std::filesystem::path getResourceDir() {
+#if defined(__APPLE__)
+    auto execDir = getExecutableDir();
+    // Check if we're inside a .app bundle: .../Foo.app/Contents/MacOS
+    auto contents = execDir.parent_path();           // .../Foo.app/Contents
+    auto bundle   = contents.parent_path();          // .../Foo.app
+    if (execDir.filename() == "MacOS"
+        && contents.filename() == "Contents"
+        && bundle.extension() == ".app") {
+        return contents / "Resources";
+    }
+#endif
+    // Not in a bundle (or non-Apple): resources are next to the executable
+    return getExecutableDir();
+}
+
 inline std::string resolvePath(const std::string& relativePath) {
-    return (getExecutableDir() / relativePath).string();
+    return (getResourceDir() / relativePath).string();
 }
 
 } // namespace PathUtils
+

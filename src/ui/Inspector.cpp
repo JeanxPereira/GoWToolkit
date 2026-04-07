@@ -2,11 +2,20 @@
 #include "ui/AppContext.h"
 #include "UIHelpers.h"
 #include "imgui.h"
+#include "ui/viewers/DocumentWindow.h"
+#include "ui/viewers/IDocumentContent.h"
 
 void Inspector::draw(AppContext& ctx) {
     if (!visible) return;
 
     ImGui::Begin("Inspector", &visible);
+
+    if (ctx.documentWindow.HasActiveDocument()) {
+        auto doc = ctx.documentWindow.GetActiveDocument();
+        doc->DrawInspector(ctx);
+        ImGui::End();
+        return;
+    }
 
     ParsedEntry* entry = ctx.selected;
 
@@ -17,8 +26,8 @@ void Inspector::draw(AppContext& ctx) {
     }
 
     // Header with type + name
-    ImGui::TextColored(ColorForType(entry->schemaType),
-        "[%s]", TypeName(entry->schemaType));
+    ImGui::TextColored(ColorForType(GOW::GameVersion::GOW2, entry->typeId, entry->schemaType),
+        "[%s]", TypeName(GOW::GameVersion::GOW2, entry->typeId, entry->schemaType));
     ImGui::SameLine();
     ImGui::TextUnformatted(entry->name.c_str());
     ImGui::Separator();

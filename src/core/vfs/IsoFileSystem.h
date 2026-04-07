@@ -7,7 +7,7 @@ namespace GOW {
 
 struct IsoEntry {
     std::string name;
-    uint32_t lba;
+    uint64_t offset;  // absolute byte offset within the ISO file
     uint32_t size;
     bool isDirectory;
 };
@@ -28,7 +28,7 @@ public:
     const std::string& GetPath() const { return m_path; }
 
 private:
-    void ParseDirectoryRecord(uint32_t sector, uint32_t size, const std::string& currentPath);
+    void ParseDirectoryRecord(uint32_t sector, uint32_t size, const std::string& currentPath, uint64_t baseOffset = 0);
     
     
     bool m_isValid = false;

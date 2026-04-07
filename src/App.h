@@ -7,6 +7,7 @@
 #include "ui/ViewerRegistry.h"
 #include "core/AssetDatabase.h"
 #include "core/AppConfig.h"
+#include "core/RecentFiles.h"
 #include <GLFW/glfw3.h>
 #include <memory>
 #include <string>
@@ -35,7 +36,8 @@ private:
     void drawOpenDialog();
     void setupDockLayout(ImGuiID dockspace_id);
     void registerPanels();
-    void registerViewers();
+    void openRecentFile(RecentEntry entry);
+    std::string getRecentsPath() const;
 
     AssetDatabase         m_db;
     PanelRegistry         m_panels;
@@ -47,6 +49,9 @@ private:
     ParsedEntry*          m_selected = nullptr;
     bool                  m_wantClose         = false;
     bool                  m_layoutInitialized = false;
+
+    // Recents
+    RecentFiles           m_recentFiles;
 
     // Open dialog state
     bool m_showOpenDialog = false;

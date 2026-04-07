@@ -21,6 +21,15 @@ void DocumentWindow::CloseActiveTab() {
     }
 }
 
+bool DocumentWindow::HasActiveDocument() const {
+    return m_activeTabIndex >= 0 && m_activeTabIndex < (int)m_tabs.size();
+}
+
+std::shared_ptr<IDocumentContent> DocumentWindow::GetActiveDocument() const {
+    if (HasActiveDocument()) return m_tabs[m_activeTabIndex];
+    return nullptr;
+}
+
 void DocumentWindow::Draw() {
     if (m_tabs.empty()) {
         ImGui::Begin("Viewer");

@@ -16,17 +16,29 @@
 static Window* s_windowInstance = nullptr;
 
 static void glfw_error_callback(int error, const char* desc) {
+    // GLFW_PLATFORM_ERROR (65544) "Cannot query workarea without screen" is a
+    // known benign error that occurs on macOS when running under a remote
+    // desktop session (TeamViewer, VNC, RDP, or any virtual display) instead
+    // of a real physical NSScreen.  The Cocoa backend queries the monitor's
+    // usable area during window creation/positioning; that call fails
+    // gracefully on a virtual display — the window still opens and renders
+    // correctly, so the message is just noise.  All other errors are logged.
+#if defined(__APPLE__)
+    if (error == GLFW_PLATFORM_ERROR && desc && strstr(desc, "workarea"))
+        return;
+#endif
     fprintf(stderr, "GLFW error %d: %s\n", error, desc);
 }
 
 // ── Constructor / Destructor ────────────────────────────────────────────────
 
 Window::Window()
-    : m_configPath(PathUtils::resolvePath("gowtool.cfg"))
+    : m_configPath(PathUtils::resolvePath("gowtool.gtkc"))
 {
     s_windowInstance = this;
 
     m_config = AppConfig::load(m_configPath);
+    AppConfig::SetInstance(&m_config);
 
     initGLFW();
     initImGui();
@@ -72,6 +84,15 @@ Window::~Window() {
 
 void Window::initGLFW() {
     glfwSetErrorCallback(glfw_error_callback);
+
+#if defined(__APPLE__)
+    // Prevent the Cocoa backend from trying to install a global application
+    // menu bar before a real screen is available.  On virtual/remote displays
+    // (TeamViewer, VNC, headless CI) this avoids spurious platform errors
+    // during glfwInit() and subsequent monitor queries.
+    glfwInitHint(GLFW_COCOA_MENUBAR, GLFW_FALSE);
+#endif
+
     if (!glfwInit()) {
         fprintf(stderr, "Failed to initialize GLFW\n");
         std::exit(-1);
@@ -81,7 +102,7 @@ void Window::initGLFW() {
     configureGLFW();
 
     m_window = glfwCreateWindow(m_config.windowW, m_config.windowH,
-                                "GoWTool", nullptr, nullptr);
+                                "God Of War Toolkit", nullptr, nullptr);
     if (!m_window) {
         glfwTerminate();
         fprintf(stderr, "Failed to create GLFW window\n");
@@ -94,6 +115,25 @@ void Window::initGLFW() {
 
     glfwMakeContextCurrent(m_window);
     glfwSwapInterval(1);
+
+    // Track window attributes dynamically since macOS shutdown can miss late bounds queries
+    glfwSetWindowPosCallback(m_window, [](GLFWwindow* window, int xpos, int ypos) {
+        if (!glfwGetWindowAttrib(window, GLFW_MAXIMIZED)) {
+            if (Window* w = (Window*)glfwGetWindowUserPointer(window)) {
+                w->m_config.windowX = xpos;
+                w->m_config.windowY = ypos;
+            }
+        }
+    });
+
+    glfwSetWindowSizeCallback(m_window, [](GLFWwindow* window, int width, int height) {
+        if (!glfwGetWindowAttrib(window, GLFW_MAXIMIZED)) {
+            if (Window* w = (Window*)glfwGetWindowUserPointer(window)) {
+                w->m_config.windowW = width;
+                w->m_config.windowH = height;
+            }
+        }
+    });
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         fprintf(stderr, "Failed to initialize OpenGL loader\n");
@@ -133,7 +173,6 @@ void Window::initImGui() {
     m_config.applyAccent();
     if (m_config.uiScale != 1.0f)
         ImGui::GetStyle().ScaleAllSizes(m_config.uiScale);
-    io.FontGlobalScale = m_config.fontScale;
 
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
 #if defined(__APPLE__)
@@ -167,6 +206,8 @@ void Window::loop() {
             m_firstFrame = false;
         } else {
             bool active = ImGui::IsMouseDown(ImGuiMouseButton_Left)
+                       || ImGui::IsMouseDown(ImGuiMouseButton_Right)
+                       || ImGui::IsMouseDown(ImGuiMouseButton_Middle)
                        || ImGui::IsAnyItemActive()
                        || ImGui::IsKeyDown(ImGuiMod_Ctrl)
                        || m_shouldUnlockFrameRate
@@ -239,21 +280,24 @@ void Window::frame() {
 // ── frameEnd ────────────────────────────────────────────────────────────────
 
 void Window::frameEnd() {
-    m_app.frameEnd();
-
     endNativeWindowFrame();
 
     ImGui::Render();
 
-    // Vertex buffer diff — only do GPU work if something changed
-    if (shouldRender()) {
-        int w, h;
-        glfwGetFramebufferSize(m_window, &w, &h);
-        glViewport(0, 0, w, h);
-        glClearColor(0.10f, 0.10f, 0.10f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        glfwSwapBuffers(m_window);
+    // Always render: shouldRender() only diffs ImGui vertex buffers, which doesn't
+    // detect FBO texture content changes (same texture ID, new pixels). Always
+    // presenting is safe because the event-wait system already limits idle FPS.
+    {
+        ImDrawData* drawData = ImGui::GetDrawData();
+        if (drawData) {
+            int w, h;
+            glfwGetFramebufferSize(m_window, &w, &h);
+            glViewport(0, 0, w, h);
+            glClearColor(0.10f, 0.10f, 0.10f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            ImGui_ImplOpenGL3_RenderDrawData(drawData);
+            glfwSwapBuffers(m_window);
+        }
     }
 
     // Viewport windows (external OS windows) must ALWAYS be updated and
@@ -267,6 +311,11 @@ void Window::frameEnd() {
         ImGui::RenderPlatformWindowsDefault();
         glfwMakeContextCurrent(backup);
     }
+
+    // Font rebuild MUST happen after all rendering is complete.
+    // Rebuilding the atlas before Render() invalidates the font texture
+    // that the current frame's draw commands reference.
+    m_app.frameEnd();
 }
 
 // ── shouldRender — vtx buffer diff (zero GPU idle) ──────────────────────────

@@ -15,6 +15,8 @@ public:
     SoundPlayer(const std::string& name, std::vector<int16_t> pcmData, uint32_t sampleRate, uint32_t channels = 1);
     ~SoundPlayer() override;
 
+    static float s_volume; // shared across all instances, synced to AppConfig
+
     std::string GetName() const override;
     void Draw() override;
 

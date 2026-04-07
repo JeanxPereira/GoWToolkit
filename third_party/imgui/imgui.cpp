@@ -1,4 +1,4 @@
-// dear imgui, v1.92.7 WIP
+// dear imgui, v1.92.7
 // (main code and documentation)
 
 // Help:
@@ -403,10 +403,7 @@ IMPLEMENTING SUPPORT for ImGuiBackendFlags_RendererHasTextures:
                           - likewise io.MousePos and GetMousePos() will use OS coordinates.
                             If you query mouse positions to interact with non-imgui coordinates you will need to offset them, e.g. subtract GetWindowViewport()->Pos.
 
- - 2026/03/12 (1.92.7) - Changed default ImTextureID_Invalid to -1 instead of 0 if not #define-d. (#9293, #8745, #8465, #7090)
-                         It seems like a better default since it will work with backends storing indices or memory offsets inside ImTextureID, where 0 might be a valid value.
-                         If this is causing problem with e.g. your custom ImTextureID definition, you can add '#define ImTextureID_Invalid 0' to your imconfig.h + PLEASE report this to GitHub.
-                         If you have hard-coded e.g. 'if (tex_id == 0)' checks they should be updated. e.g. OpenGL2, OpenGL3 and SDLRenderer3 backends incorrectly had 'IM_ASSERT(tex->TexID == 0)' lines which were replaced with 'IM_ASSERT(tex->TexID == ImTextureID_Invalid)'. (#9295)
+ - 2026/03/19 (1.92.7) - MultiSelect: renamed ImGuiMultiSelectFlags_SelectOnClick to ImGuiMultiSelectFlags_SelectOnAuto.
  - 2026/02/26 (1.92.7) - Separator: fixed a legacy quirk where Separator() was submitting a zero-height item for layout purpose, even though it draws a 1-pixel separator.
                          The fix could affect code e.g. computing height from multiple widgets in order to allocate vertical space for a footer or multi-line status bar. (#2657, #9263)
                          The "Console" example had such a bug:
@@ -1168,10 +1165,10 @@ IMPLEMENTING SUPPORT for ImGuiBackendFlags_RendererHasTextures:
  ----------
 
  Q: About the ID Stack system..
-   - Why is my widget not reacting when I click on it?
-   - How can I have widgets with an empty label?
-   - How can I have multiple widgets with the same label?
-   - How can I have multiple windows with the same label?
+   - How can I have multiple widgets with the same label? (using ## or PushID)
+   - How can I have widgets with an empty label? (using ##)
+   - How can I make a label dynamic? (using ###)
+   - General description of the label and ID Stack system.
  Q: How can I display an image? What is ImTextureID, how does it work?
  Q: How can I use my own math types instead of ImVec2?
  Q: How can I interact with standard C++ types (such as std::string and std::vector)?
@@ -3340,8 +3337,7 @@ ImGuiListClipper::~ImGuiListClipper()
 
 void ImGuiListClipper::Begin(int items_count, float items_height)
 {
-    if (Ctx == NULL)
-        Ctx = ImGui::GetCurrentContext();
+    Ctx = ImGui::GetCurrentContext();
 
     ImGuiContext& g = *Ctx;
     ImGuiWindow* window = g.CurrentWindow;
@@ -4742,11 +4738,12 @@ void ImGui::GcCompactTransientMiscBuffers()
 // Not freed:
 // - ImGuiWindow, ImGuiWindowSettings, Name, StateStorage, ColumnsStorage (may hold useful data)
 // This should have no noticeable visual effect. When the window reappear however, expect new allocation/buffer growth/copy cost.
+// FIXME: Consider exposing of elaborating GC policy, e.g. being able to trim excessive ImDrawList gaps. (#9303)
 void ImGui::GcCompactTransientWindowBuffers(ImGuiWindow* window)
 {
     window->MemoryCompacted = true;
-    window->MemoryDrawListIdxCapacity = window->DrawList->IdxBuffer.Capacity;
-    window->MemoryDrawListVtxCapacity = window->DrawList->VtxBuffer.Capacity;
+    window->MemoryDrawListIdxCapacity = ImMin((int)(window->DrawList->IdxBuffer.Size * 1.05f), window->DrawList->IdxBuffer.Capacity);
+    window->MemoryDrawListVtxCapacity = ImMin((int)(window->DrawList->VtxBuffer.Size * 1.05f), window->DrawList->VtxBuffer.Capacity);
     window->IDStack.clear();
     window->DrawList->_ClearFreeMemory();
     window->DC.ChildWindows.clear();
@@ -5318,12 +5315,12 @@ static ImDrawList* GetViewportBgFgDrawList(ImGuiViewportP* viewport, size_t draw
     }
 
     // Our ImDrawList system requires that there is always a command
-    if (viewport->BgFgDrawListsLastFrame[drawlist_no] != g.FrameCount)
+    if (viewport->BgFgDrawListsLastTimeActive[drawlist_no] != (float)g.Time)
     {
         draw_list->_ResetForNewFrame();
         draw_list->PushTexture(g.IO.Fonts->TexRef);
         draw_list->PushClipRect(viewport->Pos, viewport->Pos + viewport->Size, false);
-        viewport->BgFgDrawListsLastFrame[drawlist_no] = g.FrameCount;
+        viewport->BgFgDrawListsLastTimeActive[drawlist_no] = (float)g.Time;
     }
     return draw_list;
 }
@@ -5762,7 +5759,7 @@ void ImGui::NewFrame()
     // As a result, custom widget using ButtonBehavior() _without_ ItemAdd() need to call KeepAliveID() themselves.
     if (g.ActiveId != 0 && g.ActiveIdIsAlive != g.ActiveId && g.ActiveIdPreviousFrame == g.ActiveId)
     {
-        IMGUI_DEBUG_LOG_ACTIVEID("NewFrame(): ClearActiveID() because it isn't marked alive anymore!\n");
+        IMGUI_DEBUG_LOG_ACTIVEID("NewFrame(): ClearActiveID() 0x%08X because it isn't marked alive anymore!\n", g.ActiveId);
         ClearActiveID();
     }
 
@@ -5864,7 +5861,8 @@ void ImGui::NewFrame()
 
     // Mark all windows as not visible and compact unused memory.
     IM_ASSERT(g.WindowsFocusOrder.Size <= g.Windows.Size);
-    const float memory_compact_start_time = (g.GcCompactAll || g.IO.ConfigMemoryCompactTimer < 0.0f) ? FLT_MAX : (float)g.Time - g.IO.ConfigMemoryCompactTimer;
+    const bool gc_all = (g.GcCompactAll || g.IO.ConfigMemoryCompactTimer < 0.0f);
+    const float memory_compact_start_time = gc_all ? FLT_MAX : (float)g.Time - g.IO.ConfigMemoryCompactTimer;
     for (ImGuiWindow* window : g.Windows)
     {
         window->WasActive = window->Active;
@@ -5874,7 +5872,7 @@ void ImGui::NewFrame()
         window->BeginCount = 0;
 
         // Garbage collect transient buffers of recently unused windows
-        if (!window->WasActive && !window->MemoryCompacted && window->LastTimeActive < memory_compact_start_time)
+        if ((!window->WasActive || gc_all) && !window->MemoryCompacted && window->LastTimeActive < memory_compact_start_time)
             GcCompactTransientWindowBuffers(window);
     }
 
@@ -6351,7 +6349,7 @@ void ImGui::Render()
     for (ImGuiViewportP* viewport : g.Viewports)
     {
         InitViewportDrawData(viewport);
-        if (viewport->BgFgDrawLists[0] != NULL)
+        if (viewport->BgFgDrawLists[0] != NULL && viewport->BgFgDrawListsLastTimeActive[0] == (float)g.Time)
             AddDrawListToDrawDataEx(&viewport->DrawDataP, viewport->DrawDataBuilder.Layers[0], GetBackgroundDrawList(viewport));
     }
 
@@ -6383,7 +6381,7 @@ void ImGui::Render()
         FlattenDrawDataIntoSingleLayer(&viewport->DrawDataBuilder);
 
         // Add foreground ImDrawList (for each active viewport)
-        if (viewport->BgFgDrawLists[1] != NULL)
+        if (viewport->BgFgDrawLists[1] != NULL && viewport->BgFgDrawListsLastTimeActive[1] == (float)g.Time)
             AddDrawListToDrawDataEx(&viewport->DrawDataP, viewport->DrawDataBuilder.Layers[0], GetForegroundDrawList(viewport));
 
         // We call _PopUnusedDrawCmd() last thing, as RenderDimmedBackgrounds() rely on a valid command being there (especially in docking branch).
@@ -10710,11 +10708,12 @@ static void UpdateAliasKey(ImGuiKey key, bool v, float analog_value)
 // [Internal] Do not use directly
 static ImGuiKeyChord GetMergedModsFromKeys()
 {
+    // Bypass IsKeyDown() for the unlikely case where user used a ImGuiInputFlags_LockXXXX on those.
     ImGuiKeyChord mods = 0;
-    if (ImGui::IsKeyDown(ImGuiMod_Ctrl))     { mods |= ImGuiMod_Ctrl; }
-    if (ImGui::IsKeyDown(ImGuiMod_Shift))    { mods |= ImGuiMod_Shift; }
-    if (ImGui::IsKeyDown(ImGuiMod_Alt))      { mods |= ImGuiMod_Alt; }
-    if (ImGui::IsKeyDown(ImGuiMod_Super))    { mods |= ImGuiMod_Super; }
+    if (ImGui::GetKeyData(ImGuiMod_Ctrl)->Down)     { mods |= ImGuiMod_Ctrl; }
+    if (ImGui::GetKeyData(ImGuiMod_Shift)->Down)    { mods |= ImGuiMod_Shift; }
+    if (ImGui::GetKeyData(ImGuiMod_Alt)->Down)      { mods |= ImGuiMod_Alt; }
+    if (ImGui::GetKeyData(ImGuiMod_Super)->Down)    { mods |= ImGuiMod_Super; }
     return mods;
 }
 
@@ -11797,6 +11796,8 @@ bool    ImGui::ErrorLog(const char* msg)
     return g.IO.ConfigErrorRecoveryEnableAssert;
 }
 
+// Display an error tooltip when same ID as HoveredId was submitted multiple times.
+// See code in ItemHoverable() for an explanation of why we associate this error to HoveredId + code drawing of rectangles over individual items instances.
 void ImGui::ErrorCheckEndFrameFinalizeErrorTooltip()
 {
 #ifndef IMGUI_DISABLE_DEBUG_TOOLS
@@ -15663,14 +15664,14 @@ bool ImGui::SetDragDropPayload(const char* type, const void* data, size_t data_s
             // Store in heap
             g.DragDropPayloadBufHeap.resize((int)data_size);
             payload.Data = g.DragDropPayloadBufHeap.Data;
-            memcpy(payload.Data, data, data_size);
+            memcpy(payload.Data, data, (size_t)(int)data_size);
         }
         else if (data_size > 0)
         {
             // Store locally
             memset(&g.DragDropPayloadBufLocal, 0, sizeof(g.DragDropPayloadBufLocal));
             payload.Data = g.DragDropPayloadBufLocal;
-            memcpy(payload.Data, data, data_size);
+            memcpy(payload.Data, data, (size_t)(int)data_size);
         }
         else
         {
@@ -16540,6 +16541,12 @@ void ImGui::LocalizeRegisterEntries(const ImGuiLocEntry* entries, int count)
 // - DestroyPlatformWindows()
 //-----------------------------------------------------------------------------
 
+const char* ImGuiViewport::GetDebugName() const
+{
+    const ImGuiViewportP* viewport = (const ImGuiViewportP*)this;
+    return viewport->Window ? viewport->Window->Name : "n/a";
+}
+
 void ImGuiPlatformIO::ClearPlatformHandlers()
 {
     Platform_GetClipboardTextFn = NULL;
@@ -16855,6 +16862,8 @@ static void ImGui::UpdateViewportsNewFrame()
     }
     AddUpdateViewport(NULL, IMGUI_VIEWPORT_DEFAULT_ID, main_viewport_pos, main_viewport_size, ImGuiViewportFlags_OwnedByApp | ImGuiViewportFlags_CanHostOtherWindows);
 
+    const float memory_compact_start_time = (g.GcCompactAll || g.IO.ConfigMemoryCompactTimer < 0.0f) ? FLT_MAX : (float)g.Time - g.IO.ConfigMemoryCompactTimer;
+
     g.CurrentDpiScale = 0.0f;
     g.CurrentViewport = NULL;
     g.MouseViewport = NULL;
@@ -16904,6 +16913,14 @@ static void ImGui::UpdateViewportsNewFrame()
             viewport->BuildWorkInsetMax = ImVec2(insets.z, insets.w);
         }
         viewport->UpdateWorkRect();
+
+        // Garbage collect transient buffers of recently BG/FG drawlists
+        for (int dl_n = 0; dl_n < IM_COUNTOF(viewport->BgFgDrawLists); dl_n++)
+            if (viewport->BgFgDrawListsLastTimeActive[dl_n] < memory_compact_start_time && viewport->BgFgDrawLists[dl_n] != NULL)
+            {
+                IM_DELETE(viewport->BgFgDrawLists[dl_n]);
+                viewport->BgFgDrawLists[dl_n] = NULL;
+            }
 
         // Reset alpha every frame. Users of transparency (docking) needs to request a lower alpha back.
         viewport->Alpha = 1.0f;
@@ -22708,6 +22725,7 @@ void ImGui::ShowMetricsWindow(bool* p_open)
     {
         ImGuiDebugAllocInfo* info = &g.DebugAllocInfo;
         Text("%d current allocations", info->TotalAllocCount - info->TotalFreeCount);
+        Text("Releasing selected unused buffers after: %.2f secs", g.IO.ConfigMemoryCompactTimer);
         if (SmallButton("GC now")) { g.GcCompactAll = true; }
         Text("Recent frames with allocations:");
         int buf_size = IM_COUNTOF(info->LastEntriesBuf);
