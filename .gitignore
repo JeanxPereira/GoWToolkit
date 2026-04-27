@@ -75,6 +75,7 @@ gowtool.cfg
 *.swp
 *.dwo
 Testing/
+testing/
 .cache/
 build_*.txt
 

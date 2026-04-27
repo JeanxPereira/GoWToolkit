@@ -7,6 +7,7 @@
 #include <string>
 
 std::string SystemOpenFileDialog();
+std::string SystemSaveFileDialog(const std::string& defaultName);
 
 // ── Formatting ─────────────────────────────────────────────────────────────
 

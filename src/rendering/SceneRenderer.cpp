@@ -34,6 +34,7 @@ void SceneRenderer::Build(const SceneData& scene) {
     Clear();
 
     m_skeleton = scene.skeleton;
+    m_animData = scene.animations;
     // Flip Z axis: GOW2 models face -Z, we want them facing the camera
     m_instanceTransform = glm::scale(scene.instanceTransform, glm::vec3(1.0f, 1.0f, -1.0f));
 
@@ -69,6 +70,7 @@ void SceneRenderer::Build(const SceneData& scene) {
         batch.textureLayer = part.textureLayer;
         batch.jointMap = part.jointMap;
         batch.hasSkeleton = scene.HasSkeleton();
+        batch.isSky = part.isSky;
 
         // Bounds — computed from transformed positions so FocusOn targets rendered space
         for (const auto& v : part.vertices) {
@@ -136,9 +138,13 @@ void SceneRenderer::Build(const SceneData& scene) {
 
     m_hasSky = scene.isSky;
 
+    if (m_skeleton) {
+        ComputeJointPalette();
+    }
+
     // Sort into opaque vs translucent batches (additive or layered)
     for (auto& batch : m_batches) {
-        if (m_hasSky) {
+        if (batch.isSky) {
             m_skyBatches.push_back(&batch);
         } else if (batch.blendMode != BlendMode::Normal || batch.textureLayer > 0) {
             m_additiveBatches.push_back(&batch);
@@ -297,6 +303,64 @@ static glm::mat4 BuildLocalTRS(const GOW::ObjectData& obj, int i) {
     return T * R * S;
 }
 
+// ── Animation API ─────────────────────────────────────────────────────────────
+
+void SceneRenderer::SetAnimation(int groupIdx, int actIdx) {
+    if (!m_animData || !m_skeleton) return;
+    if (!m_animPlayer) {
+        m_animPlayer = std::make_unique<AnimationPlayer>();
+    }
+    m_animPlayer->SetAnimation(m_animData.get(), groupIdx, actIdx, m_skeleton.get());
+}
+
+void SceneRenderer::StopAnimation() {
+    if (m_animPlayer) {
+        m_animPlayer->Stop();
+        // Recompute idle joint palette
+        ComputeJointPalette();
+    }
+}
+
+bool SceneRenderer::UpdateAnimation(float dt) {
+    if (!m_animPlayer || !m_animPlayer->IsPlaying()) return false;
+
+    bool changed = m_animPlayer->Update(dt);
+    if (changed) {
+        // Diagnostic: save pelvis before
+        glm::vec4 pelvisBefore(0);
+        if (m_jointPalette.size() > 2) pelvisBefore = m_jointPalette[2][3];
+
+        // Override joint palette with animated pose
+        auto animatedMats = m_animPlayer->ComputeJointMatrices();
+        if (!animatedMats.empty()) {
+            m_jointPalette = std::move(animatedMats);
+            // Update debug world positions from animated palette
+            m_jointWorldPos.resize(m_jointPalette.size());
+            for (size_t i = 0; i < m_jointPalette.size(); ++i) {
+                m_jointWorldPos[i] = glm::vec3(m_jointPalette[i][3]);
+            }
+        }
+
+        // Diagnostic: compare
+        static int animDiagCnt = 0;
+        if (animDiagCnt++ % 120 == 0 && m_jointPalette.size() > 2) {
+            glm::vec4 pelvisAfter = m_jointPalette[2][3];
+            LOG_INFO("[PalDiag] pelvis palette[2].trans: before=(%.2f,%.2f,%.2f) after=(%.2f,%.2f,%.2f)",
+                     pelvisBefore.x, pelvisBefore.y, pelvisBefore.z,
+                     pelvisAfter.x, pelvisAfter.y, pelvisAfter.z);
+            // Also print rotation of pelvis in animated local data
+            auto localRot = m_animPlayer->GetJointRotations();
+            if (localRot.size() > 2) {
+                LOG_INFO("[PalDiag] pelvis localRot[2]=(%.1f,%.1f,%.1f,%.1f)",
+                         localRot[2].x, localRot[2].y, localRot[2].z, localRot[2].w);
+            }
+        }
+    }
+    return changed;
+}
+
+// ── Joint palette ──────────────────────────────────────────────────────────
+
 void SceneRenderer::ComputeJointPalette() {
     if (!m_skeleton) return;
 
@@ -409,11 +473,6 @@ void SceneRenderer::RenderSky(const glm::mat4& view, const glm::mat4& proj, Shad
     auto* shader = ShaderManager::Get().GetShader("scene");
     if (!shader) return;
 
-    // Compute joint palette
-    if (m_skeleton) {
-        ComputeJointPalette();
-    }
-
     // Sky rendering: use rotation-only view matrix (strip translation)
     glm::mat4 skyView = glm::mat4(glm::mat3(view)); 
 
@@ -434,11 +493,6 @@ void SceneRenderer::Render(const glm::mat4& view, const glm::mat4& proj, Shading
 
     auto* shader = ShaderManager::Get().GetShader("scene");
     if (!shader) return;
-
-    // Compute joint palette
-    if (m_skeleton) {
-        ComputeJointPalette();
-    }
 
     // Compute base shader mode for filled faces
     bool isWireframeMode = (mode == ShadingMode::Wireframe || mode == ShadingMode::TexturedWire);
@@ -733,6 +787,9 @@ void SceneRenderer::Clear() {
     m_ownedTextures.clear();
 
     m_bounds = {};
+
+    m_animData.reset();
+    m_animPlayer.reset();
 }
 
 } // namespace GOW

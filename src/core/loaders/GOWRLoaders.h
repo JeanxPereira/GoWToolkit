@@ -28,4 +28,24 @@ public:
     std::shared_ptr<IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override;
 };
 
+class GOWRTextureHandler : public ITypeHandler {
+public:
+    TypeId  GetId()    const override { return TypeId::TexturePair; }
+    const char*  GetName()  const override { return "GOWR Texture Pair"; }
+    uint32_t     GetMagic() const override { return 0x00; }
+    std::shared_ptr<IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override;
+};
+
+
+class GOWRRigHandler : public ITypeHandler {
+public:
+    TypeId  GetId()    const override { return TypeId::GameObjectProto; }
+    const char*  GetName()  const override { return "GOWR Proto Rig"; }
+    uint32_t     GetMagic() const override { return 0x00; }
+    std::shared_ptr<IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override;
+};
+
+class TexPackIndex;
+TexPackIndex& GetTexIndex();
+
 } // namespace GOW

@@ -7,6 +7,7 @@
 #include "MeshData.h"
 #include "ObjectData.h"
 #include "TextureData.h"
+#include "AnimationData.h"
 
 namespace GOW {
 
@@ -44,6 +45,9 @@ struct SceneData {
 
     // Skeleton from Object (empty for static meshes)
     std::shared_ptr<ObjectData>                 skeleton;
+
+    // Animation clips from ANM child (shared to allow player to reference)
+    std::shared_ptr<AnimationData>              animations;
 
     // Geometry from Mesh (multiple parts, each with materialId + jointMap)
     std::vector<MeshPart>                       meshParts;

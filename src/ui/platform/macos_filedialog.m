@@ -39,4 +39,24 @@ const char* macos_openFileDialog(const char* const* extensions, int extCount) {
     return NULL;
 }
 
+const char* macos_saveFileDialog(const char* defaultName) {
+    @autoreleasepool {
+        NSSavePanel* panel = [NSSavePanel savePanel];
+        [panel setTitle:@"Save File"];
+        
+        if (defaultName) {
+            [panel setNameFieldStringValue:[NSString stringWithUTF8String:defaultName]];
+        }
+        
+        if ([panel runModal] == NSModalResponseOK) {
+            NSURL* url = [panel URL];
+            if (url) {
+                const char* path = [[url path] UTF8String];
+                return strdup(path);
+            }
+        }
+    }
+    return NULL;
+}
+
 #endif // __APPLE__

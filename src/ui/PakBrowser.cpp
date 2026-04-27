@@ -7,6 +7,8 @@
 #include "ui/AppContext.h"
 #include "ui/ViewerRegistry.h"
 #include "ui/viewers/DocumentWindow.h"
+#include <fstream>
+#include "core/Logger.h"
 
 
 void PakBrowser::draw(AppContext &ctx) {
@@ -60,6 +62,38 @@ void PakBrowser::draw(AppContext &ctx) {
       ImGui::TreeNodeEx((std::string(icon) + " " + entry.name).c_str(), flags);
       ImGui::PopStyleColor();
       ImGui::TreePop();
+      
+      ImGui::PushID((int)entry.offset);
+      if (ImGui::BeginPopupContextItem()) {
+          if (ImGui::MenuItem(ICON_SF_DOCUMENT_ON_DOCUMENT " Copy Name")) {
+              ImGui::SetClipboardText(entry.name.c_str());
+          }
+          if (ImGui::MenuItem(ICON_SF_SQUARE_AND_ARROW_DOWN " Extract File")) {
+              std::string savePath = SystemSaveFileDialog(entry.name);
+              if (!savePath.empty()) {
+                  auto fileHandle = db.OpenPakEntryAsFile(&entry, pak);
+                  if (fileHandle) {
+                      std::vector<uint8_t> dumpData(entry.size);
+                      fileHandle->Seek(0, 0);
+                      fileHandle->Read(dumpData.data(), entry.size);
+                      if (!dumpData.empty()) {
+                          std::ofstream out(savePath, std::ios::binary);
+                          if (out.is_open()) {
+                              out.write(reinterpret_cast<const char*>(dumpData.data()), dumpData.size());
+                              out.close();
+                              LOG_INFO("Extracted %s to %s", entry.name.c_str(), savePath.c_str());
+                          } else {
+                              LOG_ERR("Failed to open path for writing: %s", savePath.c_str());
+                          }
+                      }
+                  } else {
+                      LOG_ERR("Failed to open pak entry for extraction.", "");
+                  }
+              }
+          }
+          ImGui::EndPopup();
+      }
+      ImGui::PopID();
 
       if (ImGui::IsItemClicked()) {
         ctx.selected = &entry;

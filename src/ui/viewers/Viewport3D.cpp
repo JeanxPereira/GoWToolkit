@@ -26,6 +26,7 @@ std::string Viewport3D::GetName() const { return m_name; }
 
 void Viewport3D::ClearScene() {
     m_sceneRenderer.reset();
+    m_sceneData.reset();
     m_needsRedraw = true;
 }
 
@@ -43,10 +44,14 @@ void Viewport3D::LoadScene(std::unique_ptr<SceneData> scene) {
     ClearScene();
     if (!scene || scene->IsEmpty()) return;
 
+    // Keep a shared copy for animation access
+    m_sceneData = std::shared_ptr<SceneData>(scene.release());
+
     m_sceneRenderer = std::make_unique<SceneRenderer>();
-    m_sceneRenderer->Build(*scene);
+    m_sceneRenderer->Build(*m_sceneData);
     m_camera.FocusOn(m_sceneRenderer->GetBounds());
     m_needsRedraw = true;
+    m_lastFrameTime = 0.0f;
 }
 
 void Viewport3D::InitFBO() {
@@ -94,6 +99,15 @@ void Viewport3D::Draw() {
     if (avail.x <= 0 || avail.y <= 0) return;
 
     ResizeFBO((int)avail.x, (int)avail.y);
+
+    // ── Animation update (every frame, regardless of redraw) ─────────
+    float currentTime = (float)ImGui::GetTime();
+    float dt = (m_lastFrameTime > 0.0f) ? (currentTime - m_lastFrameTime) : 0.0f;
+    m_lastFrameTime = currentTime;
+
+    if (m_sceneRenderer && m_sceneRenderer->UpdateAnimation(dt)) {
+        m_needsRedraw = true;
+    }
 
     // ── Render to FBO ────────────────────────────────────────────────
     if (m_needsRedraw && m_fboWidth > 0 && m_fboHeight > 0) {
@@ -368,16 +382,114 @@ void Viewport3D::DrawInspector(AppContext& ctx) {
         if (ImGui::Checkbox("Show Bones", &showBones)) m_needsRedraw = true;
     }
 
+    // ── Animation Section ─────────────────────────────────────────────
+    if (m_sceneRenderer && m_sceneRenderer->HasAnimations()) {
+        ImGui::Separator();
+        ImGui::Text("Animations");
+
+        auto* animData = m_sceneRenderer->GetAnimationData();
+        auto* player = m_sceneRenderer->GetAnimPlayer();
+
+        // Animation group/act tree
+        ImGui::BeginChild("AnimTree", ImVec2(0, 150), true);
+        for (int ig = 0; ig < (int)animData->groups.size(); ++ig) {
+            const auto& group = animData->groups[ig];
+            if (group.isExternal || group.acts.empty()) continue;
+
+            // Only show skinning acts (type 0)
+            int skinIdx = animData->FindSkinningTypeIndex();
+            if (skinIdx < 0) continue;
+
+            bool groupOpen = ImGui::TreeNodeEx(group.name.c_str(),
+                ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth);
+
+            if (groupOpen) {
+                for (int ia = 0; ia < (int)group.acts.size(); ++ia) {
+                    const auto& act = group.acts[ia];
+
+                    bool isSelected = player && player->IsPlaying()
+                        && player->GetCurrentGroupIndex() == ig
+                        && player->GetCurrentActIndex() == ia;
+
+                    char label[128];
+                    snprintf(label, sizeof(label), "%s  [%.1fs]",
+                             act.name.c_str(), act.duration);
+
+                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf
+                        | ImGuiTreeNodeFlags_NoTreePushOnOpen
+                        | ImGuiTreeNodeFlags_SpanAvailWidth;
+                    if (isSelected) flags |= ImGuiTreeNodeFlags_Selected;
+
+                    ImGui::TreeNodeEx((void*)(intptr_t)(ig * 1000 + ia), flags, "%s", label);
+
+                    // Double-click to play
+                    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
+                        m_sceneRenderer->SetAnimation(ig, ia);
+                        m_needsRedraw = true;
+                    }
+                }
+                ImGui::TreePop();
+            }
+        }
+        ImGui::EndChild();
+
+        // Transport controls
+        bool isPlaying = player && player->IsPlaying();
+
+        if (ImGui::Button(isPlaying ? "Stop" : "Play", ImVec2(60, 0))) {
+            if (isPlaying) {
+                m_sceneRenderer->StopAnimation();
+                m_needsRedraw = true;
+            } else if (player) {
+                // Resume with current group/act
+                int g = player->GetCurrentGroupIndex();
+                int a = player->GetCurrentActIndex();
+                if (g >= 0 && a >= 0) {
+                    m_sceneRenderer->SetAnimation(g, a);
+                    m_needsRedraw = true;
+                }
+            }
+        }
+
+        if (player) {
+            ImGui::SameLine();
+            bool loop = player->IsLooping();
+            if (ImGui::Checkbox("Loop", &loop)) {
+                player->SetLooping(loop);
+            }
+
+            // Timeline slider
+            if (isPlaying || player->GetDuration() > 0.0f) {
+                float t = player->GetTime();
+                float dur = player->GetDuration();
+                if (dur > 0.0f) {
+                    ImGui::SetNextItemWidth(-1);
+                    if (ImGui::SliderFloat("##timeline", &t, 0.0f, dur, "%.2fs / %.2fs")) {
+                        player->SetTime(t);
+                        m_needsRedraw = true;
+                    }
+                }
+            }
+
+            // Current animation name
+            if (isPlaying) {
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.6f, 1.0f), "Playing: %s",
+                                 player->GetCurrentActName().c_str());
+            }
+        }
+    }
+
+    // ── Mesh Batches ────────────────────────────────────────────────
     ImGui::Separator();
     ImGui::Text("Scene Mesh Batches");
-    
+
     if (!m_sceneRenderer || m_sceneRenderer->IsEmpty()) {
         ImGui::TextDisabled("No meshes in scene.");
         return;
     }
 
     auto& batches = m_sceneRenderer->GetBatches();
-    
+
     // Create a scrollable region for the batches
     ImGui::BeginChild("MeshBatches", ImVec2(0, 0), true);
     for (size_t i = 0; i < batches.size(); ++i) {

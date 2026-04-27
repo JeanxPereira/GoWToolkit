@@ -563,6 +563,34 @@ void WadNodeBuilder::Pass4_Finalize(OpenWad& outWad) {
 // Helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
+static TypeId RoleToTypeId(WadEntryRole role) {
+    switch (role) {
+        case WadEntryRole::ShaderContainer: return TypeId::ShaderContainer;
+        case WadEntryRole::ShaderVertex: return TypeId::ShaderVertex;
+        case WadEntryRole::ShaderPixel: return TypeId::ShaderPixel;
+        case WadEntryRole::MeshGpu: return TypeId::MeshGpu;
+        case WadEntryRole::MeshDefn: return TypeId::MeshDefn;
+        case WadEntryRole::GameObjectProto: return TypeId::GameObjectProto;
+        case WadEntryRole::GameObjectInst: return TypeId::GameObjectInst;
+        case WadEntryRole::GameObjectOverride: return TypeId::GameObjectOverride;
+        case WadEntryRole::TexturePair: return TypeId::TexturePair;
+        case WadEntryRole::TextureGpu: return TypeId::TexturePair;
+        case WadEntryRole::TextureCpu: return TypeId::TexturePair;
+        case WadEntryRole::Material: return TypeId::Material;
+        case WadEntryRole::MaterialRef: return TypeId::MaterialRef;
+        case WadEntryRole::LodBinding: return TypeId::LodBinding;
+        case WadEntryRole::AnimClip: return TypeId::AnimClip;
+        case WadEntryRole::SoundEmitter: return TypeId::SoundEmitter;
+        case WadEntryRole::ParticleEmitter: return TypeId::ParticleEmitter;
+        case WadEntryRole::ParticleSystem: return TypeId::ParticleSystem;
+        case WadEntryRole::ClientGuid: return TypeId::ClientGuid;
+        case WadEntryRole::WadIdentity: return TypeId::WadIdentity;
+        case WadEntryRole::SharedWadRef: return TypeId::SharedWadRef;
+        case WadEntryRole::Sentinel: return TypeId::Sentinel;
+        default: return TypeId::Unknown;
+    }
+}
+
 ParsedEntry WadNodeBuilder::ToNode(const RawEntry& r, const std::string& wadFilename) {
     ParsedEntry e;
     e.name        = r.name;
@@ -572,6 +600,7 @@ ParsedEntry WadNodeBuilder::ToNode(const RawEntry& r, const std::string& wadFile
     e.wadName     = wadFilename;
     e.role        = r.role;
     e.block       = r.block;
+    e.typeId      = RoleToTypeId(r.role);
     e.displayName = r.displayName;
     return e;
 }
@@ -590,6 +619,7 @@ ParsedEntry WadNodeBuilder::MakeFolder(
     f.wadName    = m_wadFilename;
     f.size       = 0;
     f.offset     = 0;
+    f.typeId     = RoleToTypeId(role);
     return f;
 }
 

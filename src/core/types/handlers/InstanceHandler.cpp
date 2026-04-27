@@ -165,6 +165,9 @@ public:
         // 4. Apply sky flag from instance data
         if (instData->isSky) {
             scene->isSky = true;
+            for (auto& part : scene->meshParts) {
+                part.isSky = true;
+            }
             LOG_INFO("[InstanceHandler] Marking scene as sky for instance '%s'", entry.name.c_str());
         }
 

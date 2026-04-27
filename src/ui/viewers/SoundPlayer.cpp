@@ -225,7 +225,7 @@ void SoundPlayer::DrawToolbar() {
     if (ImGui::SmallButton(ICON_SF_PLAY_FILL))
       Play();
   } else if (m_state == PlayState::Playing) {
-    if (ImGui::SmallButton(ICON_SF_STOP_FILL))
+    if (ImGui::SmallButton(ICON_SF_PAUSE_FILL))
       Pause();
   } else {
     ImGui::BeginDisabled();

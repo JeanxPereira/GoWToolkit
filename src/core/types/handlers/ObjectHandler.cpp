@@ -12,7 +12,9 @@
 #include "core/parsers/gow2/MeshParser.h"
 #include "core/parsers/gow2/MaterialParser.h"
 #include "core/parsers/gow2/TextureParser.h"
+#include "core/parsers/gow2/AnimationParser.h"
 #include "core/parsers/shared/SceneNode.h"
+#include "core/parsers/shared/ScriptTargetParser.h"
 #include "core/vfs/SliceFile.h"
 #include "core/Logger.h"
 #include "ui/viewers/Viewport3D.h"
@@ -77,6 +79,7 @@ static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
                           GOW::SceneData& scene) {
     std::vector<const ParsedEntry*> meshSources;
     std::vector<const ParsedEntry*> matEntries;
+    bool isModelSky = false;
 
     // Iterate children by type (like Go's mdl.Marshal iterating SubGroupNodes)
     for (const auto& child : model.children) {
@@ -94,6 +97,12 @@ static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
                 }
             } else if (child.typeId == GOW::TypeId::Material) {
                 matEntries.push_back(mat);
+            }
+        } else if (child.typeId == GOW::TypeId::Script && child.size > 0) {
+            std::string target = GOW::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
+            if (target == "SCR_Sky") {
+                isModelSky = true;
+                LOG_INFO("[ProcessModel] Found SCR_Sky on model '%s', marking as sky", model.name.c_str());
             }
         }
     }
@@ -144,6 +153,7 @@ static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
                 LOG_INFO("[ProcessModel]   part '%s' materialId=%d (raw) → %d (offset)",
                          p.name.c_str(), p.materialId, p.materialId + (int)materialOffset);
                 p.materialId += materialOffset;
+                p.isSky = isModelSky;
                 scene.meshParts.push_back(std::move(p));
             }
         }
@@ -180,6 +190,20 @@ static std::unique_ptr<GOW::SceneData> BuildSceneFromObjectEntry(
             }
             if (!model->children.empty()) {
                 ProcessModel(*model, wad, *scene);
+            }
+        }
+        // 2b. Parse Animation child (like Go's obj.Marshal case *anm.Animations)
+        else if (child.typeId == GOW::TypeId::Animation && child.size > 0) {
+            GOW::SliceFile slice(wad.fileSource, child.offset, child.size);
+            std::vector<uint8_t> anmBuf(child.size);
+            slice.Seek(0, SEEK_SET);
+            slice.Read(anmBuf.data(), child.size);
+            auto animData = GOW::GOW2AnimationParser::Parse(anmBuf.data(), child.size);
+            if (animData) {
+                scene->animations = std::shared_ptr<GOW::AnimationData>(animData.release());
+                LOG_INFO("[ObjectHandler] Parsed animation '%s': %d groups, %d acts",
+                         child.name.c_str(), (int)scene->animations->groups.size(),
+                         scene->animations->TotalActs());
             }
         }
     }

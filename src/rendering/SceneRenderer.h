@@ -1,6 +1,7 @@
 #pragma once
 #include "core/parsers/shared/SceneNode.h"
 #include "ShaderManager.h"
+#include "AnimationPlayer.h"
 #include "GpuMesh.h"
 #include <vector>
 #include <memory>
@@ -29,6 +30,7 @@ struct RenderBatch {
     bool                        hasTexture = false;
     bool                        hasEnvmap  = false;
     bool                        hasSkeleton = false;
+    bool                        isSky = false;
 };
 
 /// Owns the GPU representation of a SceneData and renders it.
@@ -77,6 +79,20 @@ public:
     std::vector<RenderBatch>& GetBatches() { return m_batches; }
     bool GetDebugDisableSkin() const { return m_debugDisableSkin; }
     void SetDebugDisableSkin(bool v) { m_debugDisableSkin = v; }
+
+    // ── Animation API ──────────────────────────────────────────────────
+    bool HasAnimations() const { return m_animData != nullptr; }
+    const AnimationData* GetAnimationData() const { return m_animData.get(); }
+    AnimationPlayer* GetAnimPlayer() { return m_animPlayer.get(); }
+
+    /// Start playing a specific animation group/act.
+    void SetAnimation(int groupIdx, int actIdx);
+
+    /// Stop and reset to idle pose.
+    void StopAnimation();
+
+    /// Advance animation. Returns true if the scene needs redrawing.
+    bool UpdateAnimation(float dt);
 private:
     void ComputeJointPalette();
     std::vector<glm::mat4> BuildBatchPalette(const RenderBatch& batch) const;
@@ -106,6 +122,10 @@ private:
 
     bool                                m_diagDone = false; // reset on Clear()
     bool                                m_debugDisableSkin = false; // debug toggle
+
+    // Animation
+    std::shared_ptr<AnimationData>      m_animData;
+    std::unique_ptr<AnimationPlayer>    m_animPlayer;
 };
 
 } // namespace GOW

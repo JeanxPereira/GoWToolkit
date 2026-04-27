@@ -10,9 +10,15 @@ struct TextureData {
     std::string name;
     uint32_t width = 0;
     uint32_t height = 0;
-    std::vector<uint8_t> pixels; // RGBA8, row-major, top-to-bottom
+    std::vector<uint8_t> pixels; // Raw pixel data
     
-    bool IsValid() const { return width > 0 && height > 0 && pixels.size() == width * height * 4; }
+    bool isCompressed = false;
+    uint32_t glInternalFormat = 0x8058; // GL_RGBA8 by default
+    
+    // Optional additional dimensions for block compressed
+    uint32_t dataSize = 0;
+    
+    bool IsValid() const { return width > 0 && height > 0 && !pixels.empty(); }
 };
 
 } // namespace GOW

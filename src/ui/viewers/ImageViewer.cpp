@@ -33,8 +33,47 @@ void ImageViewer::UploadToGPU() {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_texture->width, m_texture->height,
-               0, GL_RGBA, GL_UNSIGNED_BYTE, m_texture->pixels.data());
+  if (m_texture->isCompressed) {
+      // Calculate correct mip0 size based on format
+      // BC1/BC4: 8 bytes per 4x4 block, BC2/BC3/BC5/BC6/BC7: 16 bytes per 4x4 block
+      uint32_t blockW = (m_texture->width + 3) / 4;
+      uint32_t blockH = (m_texture->height + 3) / 4;
+      uint32_t bytesPerBlock = 16; // default for BC7, BC3, BC5, BC6
+      uint32_t fmt = m_texture->glInternalFormat;
+      if (fmt == 0x83F0 || fmt == 0x83F1 || fmt == 0x8C4C || fmt == 0x8C4D ||  // BC1
+          fmt == 0x8DBB || fmt == 0x8DBC) {                                       // BC4
+          bytesPerBlock = 8;
+      }
+      uint32_t mip0Size = blockW * blockH * bytesPerBlock;
+      
+      // Only upload mip0 (decSize from block may include all mips)
+      uint32_t uploadSize = std::min(mip0Size, static_cast<uint32_t>(m_texture->pixels.size()));
+      
+      glCompressedTexImage2D(GL_TEXTURE_2D, 0, m_texture->glInternalFormat,
+                             m_texture->width, m_texture->height,
+                             0, uploadSize, m_texture->pixels.data());
+      
+      GLenum err = glGetError();
+      if (err != GL_NO_ERROR) {
+          printf("[ImageViewer] glCompressedTexImage2D error: 0x%X (fmt=0x%X %ux%u %u bytes)\n",
+                 err, m_texture->glInternalFormat, m_texture->width, m_texture->height, uploadSize);
+      }
+      
+      // Set swizzle masks for single/dual channel formats
+      // BC4 (RGTC1): single Red channel → display as grayscale (R,R,R,1)
+      if (fmt == 0x8DBB || fmt == 0x8DBC) {
+          GLint swizzle[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+          glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
+      }
+      // BC5 (RGTC2): RG channels → display as normal map (R,G,1,1)
+      else if (fmt == 0x8DBD || fmt == 0x8DBE) {
+          GLint swizzle[] = { GL_RED, GL_GREEN, GL_ONE, GL_ONE };
+          glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
+      }
+  } else {
+      glTexImage2D(GL_TEXTURE_2D, 0, m_texture->glInternalFormat, m_texture->width, m_texture->height,
+                   0, GL_RGBA, GL_UNSIGNED_BYTE, m_texture->pixels.data());
+  }
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 

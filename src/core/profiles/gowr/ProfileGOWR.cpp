@@ -10,6 +10,9 @@
 #include <vector>
 #include <map>
 #include <lz4frame.h>
+#include <mutex>
+#include <thread>
+#include "../../loaders/GOWRLoaders.h"
 
 // ── ProfileGOWR.cpp ────────────────────────────────────────────────────────
 // Binary structures (GOWRWadHeader, GOWRFileDesc, GOWRTypeToString) have been
@@ -198,6 +201,10 @@ bool ProfileGOWR::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
 
     LOG_INFO("[GOWR] Parsed WAD: %u entries → %zu root nodes.",
         header.fileCount, outWad.entries.size());
+        
+    // Kick off background TexPack indexing (GetTexIndex spawns thread internally)
+    GetTexIndex();
+
     return true;
 }
 

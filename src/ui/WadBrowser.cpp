@@ -11,6 +11,7 @@
 #include "ui/viewers/MapViewer.h"
 #include <functional>
 #include <string>
+#include <fstream>
 
 
 void WadBrowser::draw(AppContext &ctx) {
@@ -201,6 +202,25 @@ void WadBrowser::draw(AppContext &ctx) {
 
           if (ImGui::MenuItem(ICON_SF_DOCUMENT_ON_DOCUMENT " Copy Name")) {
             ImGui::SetClipboardText(entry.name.c_str());
+          }
+
+          if (wad.fileSource && ImGui::MenuItem(ICON_SF_SQUARE_AND_ARROW_DOWN " Extract File")) {
+            std::string savePath = SystemSaveFileDialog(entry.name);
+            if (!savePath.empty()) {
+                std::vector<uint8_t> dumpData(entry.size);
+                wad.fileSource->Seek(entry.offset, 0);
+                wad.fileSource->Read(dumpData.data(), entry.size);
+                if (!dumpData.empty()) {
+                    std::ofstream out(savePath, std::ios::binary);
+                    if (out.is_open()) {
+                        out.write(reinterpret_cast<const char*>(dumpData.data()), dumpData.size());
+                        out.close();
+                        LOG_INFO("Extracted %s to %s", entry.name.c_str(), savePath.c_str());
+                    } else {
+                        LOG_ERR("Failed to open path for writing: %s", savePath.c_str());
+                    }
+                }
+            }
           }
 
           ImGui::EndPopup();

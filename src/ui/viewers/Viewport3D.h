@@ -57,6 +57,9 @@ private:
     // Unified scene renderer — all content goes through here
     std::unique_ptr<SceneRenderer> m_sceneRenderer;
 
+    // Keep scene data around for animation access
+    std::shared_ptr<SceneData> m_sceneData;
+
     // FBO state
     unsigned int m_msaaFbo = 0;
     unsigned int m_msaaColor = 0;
@@ -71,6 +74,7 @@ private:
 
     bool m_needsRedraw = true;
     bool m_viewportHovered = false;
+    float m_lastFrameTime = 0.0f;  // For animation delta time
 };
 
 } // namespace GOW

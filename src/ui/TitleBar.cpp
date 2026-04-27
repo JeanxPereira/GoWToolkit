@@ -62,8 +62,7 @@ void loadIconFont(const char *ttfPath, float size) {
 
   // SFSymbols.ttf has glyphs in two ranges: U+0100..U+0C5F and U+F000..U+FFFF
   static const ImWchar ranges[] = {
-      (ImWchar)0x0100, (ImWchar)0x0C5F,  // Low range (document, cube, chevron, etc.)
-      (ImWchar)0xF000, (ImWchar)0xFFFF,  // High range (xmark, play, photo, folder, etc.)
+      (ImWchar)0xE000, (ImWchar)0xFA19,  // 16-bit perfectly remapped icons
       0
   };
 

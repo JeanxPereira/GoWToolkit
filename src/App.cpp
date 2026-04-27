@@ -8,7 +8,6 @@
 #include "ui/NativeWindow.h"
 #include "ui/TitleBar.h"
 
-
 // Panel headers
 #include "ui/Inspector.h"
 #include "ui/IsoBrowser.h"
@@ -17,13 +16,11 @@
 #include "ui/StatusBar.h"
 #include "ui/WadBrowser.h"
 
-
 // Viewer headers
 #include "ui/viewers/ImageViewer.h"
 #include "ui/viewers/MaterialViewer.h"
 #include "ui/viewers/SoundPlayer.h"
 #include "ui/viewers/Viewport3D.h"
-
 
 #include "core/Logger.h"
 #include "core/PathUtils.h"
@@ -423,8 +420,9 @@ void App::drawMenuItems() {
         else
           gameLabel = entry.gameHint;
 
-        std::string label = entry.displayName + "  [" + gameLabel + " " +
-                            ICON_SF_CUBE_FILL + " " + entry.fileType + "]";
+        // std::string label = entry.displayName + "  [" + gameLabel + " " +
+        //                     ICON_SF_CUBE_FILL + " " + entry.fileType + "]";
+        std::string label = entry.displayName + " [" + gameLabel + "]";
 
         if (NativeMenuBar::menuItem(label.c_str())) {
           entryToOpen = entry;
@@ -445,7 +443,7 @@ void App::drawMenuItems() {
     }
 
     NativeMenuBar::separator();
-    if (NativeMenuBar::menuItem(ICON_SF_XMARK_APP " Exit", "Alt+F4"))
+    if (NativeMenuBar::menuItem("Exit", "Alt+F4"))
       exit(0);
     NativeMenuBar::endMenu();
   }

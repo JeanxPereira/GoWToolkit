@@ -206,7 +206,7 @@ else()
     add_executable(GoWToolkit ${SOURCES})
 endif()
 
-target_include_directories(GoWToolkit PRIVATE src)
+target_include_directories(GoWToolkit PRIVATE src third_party/bcdec)
 
 # Expõe a API nativa do GLFW (glfwGetCocoaWindow, glfwGetWin32Window, etc.)
 target_compile_definitions(GoWToolkit PRIVATE

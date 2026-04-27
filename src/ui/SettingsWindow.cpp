@@ -222,11 +222,22 @@ void SettingsWindow::draw(AppContext & /*ctx*/) {
   ImGui::End();
 }
 
+#include "FontDebuggerWindow.h"
+
 // ── Category: Interface ─────────────────────────────────────────────────────
 
 void SettingsWindow::DrawInterfaceCategory() {
   ImGuiIO &io = ImGui::GetIO();
   ImGuiStyle &style = ImGui::GetStyle();
+
+  static bool showFontDebug = false;
+  if (ImGui::Button("Open SF Symbols Debugger")) {
+    showFontDebug = true;
+  }
+  if (showFontDebug) {
+    GOW::FontDebuggerWindow::Draw(&showFontDebug);
+  }
+  ImGui::Separator();
 
   // ── Sub: Scaling ────────────────────────────────────────────────────
   if (BeginSubWindow("Scaling")) {

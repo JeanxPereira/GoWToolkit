@@ -170,12 +170,18 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
                     entry.typeId = TypeId::PalData;
                     entry.schemaType = "GOW2_PAL";
                 } else {
-                    entry.schemaType = "GOW2_UNKNOWN";
                     if (rawTag.size >= 4) {
                         uint32_t magic;
                         std::memcpy(&magic, payloadMagic, 4);
-                        LOG_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u magic=0x%08X", entry.name.c_str(), rawTag.size, magic);
+                        if ((magic & 0x80000000) != 0) {
+                            entry.typeId = TypeId::Chunk;
+                            entry.schemaType = "GOW2_CHUNK";
+                        } else {
+                            entry.schemaType = "GOW2_UNKNOWN";
+                            LOG_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u magic=0x%08X", entry.name.c_str(), rawTag.size, magic);
+                        }
                     } else {
+                        entry.schemaType = "GOW2_UNKNOWN";
                         LOG_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u (no magic)", entry.name.c_str(), rawTag.size);
                     }
                 }

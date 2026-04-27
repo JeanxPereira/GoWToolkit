@@ -92,6 +92,9 @@ inline std::string GOWRTypeToString(uint16_t type) {
         // Audio
         case 0x00C8: return "GOWR_SOUND_BANK";
         case 0x00C9: return "GOWR_SOUND_DATA";
+        // Unknowns explicitly tracked
+        case 0x0002: return "GOWR_UNKNOWN_2";
+        case 0x0021: return "GOWR_UNKNOWN_33";
         default:     return "GOWR_UNKNOWN_" + std::to_string(type);
     }
 }

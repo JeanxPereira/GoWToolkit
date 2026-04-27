@@ -15,6 +15,7 @@ struct MeshPart {
     uint32_t textureLayer = 0;            // which DMA instance/layer this came from
     std::vector<uint16_t> jointMap;       // local joint index → global skeleton joint
     bool useBindToJoint = true;           // true = use inverse bind pose (skinned)
+    bool isSky = false;                   // true = this part should be rendered without writing depth
 };
 
 // The full CPU-side mesh representation

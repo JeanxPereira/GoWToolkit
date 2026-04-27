@@ -225,9 +225,7 @@ public:
               mergedScene->meshParts.push_back(std::move(part));
             }
 
-            // Inherit sky flag
-            if (instScene->isSky)
-              mergedScene->isSky = true;
+            // (No longer merging isSky at the scene level; mesh parts preserve their own isSky flag)
 
             instanceCount++;
           } else {
