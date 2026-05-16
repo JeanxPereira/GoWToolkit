@@ -81,10 +81,10 @@ private:
 
         uint64_t meshHash;
 
-        uint8_t bufferCount;
-        uint8_t indicesStride;    // 2 = uint16, 4 = uint32
-        uint8_t bytesPerVertex;   // interleaved stride (valid when bufferCount == 1)
-        uint8_t componentCount;
+        uint8_t  bufferCount;
+        uint8_t  indicesStride;   // 2 = uint16, 4 = uint32
+        uint16_t bytesPerVertex;  // interleaved stride (valid when bufferCount == 1)
+        uint8_t  componentCount;
     };
 
     // ── Private helpers ───────────────────────────────────────────────────

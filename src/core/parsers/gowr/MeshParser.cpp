@@ -75,11 +75,15 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<IFile>& f,
     f->Read(&bufOffRel,  4);   // +0x64
     f->Read(&h.meshHash, 8);   // +0x68
 
+    // +0x80: u8 bufferCount
+    // +0x81: u8 indicesStride (2 = u16 indices, 4 = u32)
+    // +0x82: u16 bytesPerVertex (interleaved stride when bufferCount==1)
+    // +0x84: u8 componentCount
     f->Seek(base + 0x80, SEEK_SET);
     f->Read(&h.bufferCount,    1);
     f->Read(&h.indicesStride,  1);
-    f->Read(&h.bytesPerVertex, 1);
-    f->Read(&h.componentCount, 1);
+    f->Read(&h.bytesPerVertex, 2);  // u16 stride; field at +0x82..+0x83
+    f->Read(&h.componentCount, 1);  // +0x84
 
     h.componentOffsetAbs = base + compOffRel;
     h.bufOffsetsAbs      = base + bufOffRel;

@@ -367,24 +367,12 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
             if (e.block != WadBlock::Assets || e.consumed) continue;
 
             if (e.role == WadEntryRole::TextureGpu) {
-                // Build TexturePair virtual parent
-                ParsedEntry pairNode = MakeFolder(
-                    e.name, "GOWR_TEXTURE_PAIR",
-                    WadEntryRole::TexturePair, WadBlock::Assets);
-                pairNode.size        = e.size;
-                pairNode.offset      = e.offset;
+                // TexturePair flat node — GPU + CPU sub-entries are internal
+                // streaming plumbing with no standalone view, so we hide them.
+                ParsedEntry pairNode = ToNode(e, m_wadFilename);
+                pairNode.role        = WadEntryRole::TexturePair;
+                pairNode.schemaType  = "GOWR_TEXTURE_PAIR";
                 pairNode.displayName = StripTextureHash(e.name);
-
-                ParsedEntry gpuChild = ToNode(e, m_wadFilename);
-                gpuChild.displayName = "[GPU]";
-                pairNode.children.push_back(std::move(gpuChild));
-
-                if (e.pairIdx >= 0 && e.pairIdx < static_cast<int>(m_entries.size())) {
-                    ParsedEntry cpuChild = ToNode(m_entries[e.pairIdx], m_wadFilename);
-                    cpuChild.displayName = "[CPU]";
-                    pairNode.children.push_back(std::move(cpuChild));
-                }
-
                 assetsFolder.children.push_back(std::move(pairNode));
 
             } else if (e.role == WadEntryRole::LodBinding) {

@@ -86,6 +86,24 @@ target_include_directories(imgui_lib PUBLIC
 )
 target_link_libraries(imgui_lib PUBLIC glfw glad)
 
+# ── ImPlot (2D plotting for ImGui) ────────────────────────────────────────
+FetchContent_Declare(
+    implot
+    GIT_REPOSITORY https://github.com/epezent/implot.git
+    GIT_TAG        master
+    SOURCE_DIR     ${CMAKE_SOURCE_DIR}/third_party/implot
+    GIT_SHALLOW    TRUE
+    UPDATE_DISCONNECTED TRUE
+)
+FetchContent_Populate(implot)
+
+add_library(implot_lib STATIC
+    third_party/implot/implot.cpp
+    third_party/implot/implot_items.cpp
+)
+target_include_directories(implot_lib PUBLIC third_party/implot)
+target_link_libraries(implot_lib PUBLIC imgui_lib)
+
 # ── FFmpeg ────────────────────────────────────────────────────────────────
 #
 #   Windows : baixa prebuilt (BtbN GPL shared) via FetchContent
@@ -221,7 +239,7 @@ target_compile_definitions(GoWToolkit PRIVATE
 # Platform libs
 if(WIN32)
     target_link_libraries(GoWToolkit PRIVATE
-        imgui_lib glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
+        imgui_lib implot_lib glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
         opengl32 comdlg32 dwmapi
     )
     set_target_properties(GoWToolkit PROPERTIES
@@ -229,7 +247,7 @@ if(WIN32)
     )
 elseif(APPLE)
     target_link_libraries(GoWToolkit PRIVATE
-        imgui_lib glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
+        imgui_lib implot_lib glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
         "-framework OpenGL"
         "-framework AudioToolbox"
         "-framework CoreAudio"
@@ -239,7 +257,7 @@ elseif(APPLE)
     )
 else()
     target_link_libraries(GoWToolkit PRIVATE
-        imgui_lib glfw glad lz4_lib miniaudio ffmpeg_lib GL dl pthread m
+        imgui_lib implot_lib glfw glad lz4_lib miniaudio ffmpeg_lib GL dl pthread m
     )
 endif()
 

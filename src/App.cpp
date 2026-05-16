@@ -21,6 +21,13 @@
 #include "ui/viewers/MaterialViewer.h"
 #include "ui/viewers/SoundPlayer.h"
 #include "ui/viewers/Viewport3D.h"
+#include "ui/viewers/AnimCurveView.h"
+#include "ui/viewers/WadStatsView.h"
+
+// Core subsystems
+#include "core/Events.h"
+#include "core/TaskManager.h"
+#include "core/ToolkitApi.h"
 
 #include "core/Logger.h"
 #include "core/PathUtils.h"
@@ -33,6 +40,8 @@ void App::registerPanels() {
   m_panels.add(std::make_unique<Inspector>());
   m_panels.add(std::make_unique<StatusBar>());
   m_panels.add(std::make_unique<SettingsWindow>());
+  m_panels.add(std::make_unique<AnimCurveView>());
+  m_panels.add(std::make_unique<WadStatsView>());
 
   // Set initial visibility
   if (auto *iso = dynamic_cast<IsoBrowser *>(m_panels.find("ISO Browser")))
@@ -40,6 +49,12 @@ void App::registerPanels() {
   if (auto *settings =
           dynamic_cast<SettingsWindow *>(m_panels.find("Settings")))
     settings->visible = false;
+  if (auto *animCurves =
+          dynamic_cast<AnimCurveView *>(m_panels.find("Anim Curves")))
+    animCurves->visible = false;
+  if (auto *wadStats =
+          dynamic_cast<WadStatsView *>(m_panels.find("WAD Stats")))
+    wadStats->visible = false;
 }
 
 App::App() {}
@@ -47,6 +62,9 @@ App::App() {}
 void App::init(GLFWwindow *window, AppConfig *config) {
   m_window = window;
   m_config = config;
+
+  // Initialize core subsystems
+  GOW::Api::Init(&m_db, config);
 
   // On macOS: nativeDecorations=true means use traffic lights
   // (borderless=false) On Windows/Linux: always borderless custom titlebar
@@ -75,6 +93,9 @@ void App::init(GLFWwindow *window, AppConfig *config) {
 
   // Load recent files
   m_recentFiles.Load(getRecentsPath());
+
+  // Signal startup complete
+  EventStartupFinished::post();
 }
 
 // ── Frame Phases ────────────────────────────────────────────────────────────
@@ -86,8 +107,15 @@ void App::frameBegin() {
 }
 
 void App::frame() {
-  // Process any resolved async loadings
+  // Process task manager deferred calls and garbage collection
+  GOW::TaskManager::runDeferredCalls();
+  GOW::TaskManager::collectGarbage();
+
+  // Process any resolved async loadings (legacy — will be removed when fully migrated)
   m_db.UpdateAsyncLoadStatus();
+
+  // Per-frame tick event for animations, progress bars, etc.
+  EventFrameTick::post();
 
   // ── Host window fullscreen ─────────────────────────────────────────────
   ImGuiViewport *vp = ImGui::GetMainViewport();

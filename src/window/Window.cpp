@@ -8,8 +8,11 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "implot.h"
 
 #include "core/PathUtils.h"
+#include "core/TaskManager.h"
+#include "core/Events.h"
 #include "ui/NativeWindow.h"
 
 // ── Globals needed by GLFW callbacks ────────────────────────────────────────
@@ -44,6 +47,9 @@ Window::Window()
     initImGui();
     setupNativeWindow();
 
+    // Initialize core systems
+    GOW::TaskManager::init();
+
     m_app.init(m_window, &m_config);
 
     // 1:1 ImHex: live resize via OS refresh callback
@@ -73,6 +79,11 @@ Window::~Window() {
 
         m_config.save(m_configPath);
     }
+
+    // Shutdown core systems
+    EventShutdown::post();
+    GOW::EventManager::clear();
+    GOW::TaskManager::exit();
 
     exitImGui();
     exitGLFW();
@@ -149,6 +160,7 @@ void Window::initGLFW() {
 void Window::initImGui() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
 
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -187,6 +199,7 @@ void Window::initImGui() {
 void Window::exitImGui() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 }
 

@@ -1,6 +1,7 @@
 #include "ui/WadBrowser.h"
 #include "UIHelpers.h"
 #include "core/AssetDatabase.h"
+#include "core/Events.h"
 #include "core/Logger.h"
 #include "core/WadTypes.h"
 #include "fonts/SFSymbols.h"
@@ -66,6 +67,7 @@ void WadBrowser::draw(AppContext &ctx) {
       if (wadOpen)
         ImGui::TreePop();
       ImGui::PopID();
+      EventWadClosed::post(wadIdx);
       db.CloseWad(wadIdx);
       break;
     }
@@ -137,6 +139,7 @@ void WadBrowser::draw(AppContext &ctx) {
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
           ctx.selected = &entry;
           db.EnsureNodeData(ctx.selected, wad);
+          EventAssetSelected::post(&entry, &wad);
         }
 
         // ── Double-click action ────────────────────────────────

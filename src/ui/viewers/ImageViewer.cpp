@@ -92,19 +92,19 @@ void ImageViewer::Draw() {
   ImGui::SameLine();
 
   if (ImGui::SmallButton(ICON_SF_PLUS_MAGNIFYINGGLASS))
-    m_zoom = std::min(m_zoom * 1.5f, 16.0f);
+    m_zoomTarget = std::min(m_zoomTarget * 1.5f, 16.0f);
   ImGui::SameLine();
   if (ImGui::SmallButton(ICON_SF_MINUS_MAGNIFYINGGLASS))
-    m_zoom = std::max(m_zoom / 1.5f, 0.125f);
+    m_zoomTarget = std::max(m_zoomTarget / 1.5f, 0.125f);
   ImGui::SameLine();
   if (ImGui::SmallButton("1:1"))
-    m_zoom = 1.0f;
+    m_zoomTarget = 1.0f;
   ImGui::SameLine();
   if (ImGui::SmallButton("Fit")) {
     ImVec2 avail = ImGui::GetContentRegionAvail();
     float scaleX = avail.x / m_texture->width;
     float scaleY = avail.y / m_texture->height;
-    m_zoom = std::min(scaleX, scaleY);
+    m_zoomTarget = std::min(scaleX, scaleY);
   }
   ImGui::SameLine();
   ImGui::Checkbox("Alpha", &m_showAlpha);
@@ -112,38 +112,98 @@ void ImageViewer::Draw() {
   ImGui::PopStyleColor(2);
   ImGui::Separator();
 
-  // Image display
   ImVec2 avail = ImGui::GetContentRegionAvail();
-  float imgW = m_texture->width * m_zoom;
-  float imgH = m_texture->height * m_zoom;
+  if (avail.x <= 1.0f || avail.y <= 1.0f) return;
 
-  // Center the image if it's smaller than the viewport
-  ImVec2 cursor = ImGui::GetCursorScreenPos();
-  float offsetX = (avail.x > imgW) ? (avail.x - imgW) * 0.5f : 0.0f;
-  float offsetY = (avail.y > imgH) ? (avail.y - imgH) * 0.5f : 0.0f;
+  const ImVec2 origin = ImGui::GetCursorScreenPos();
+  ImGui::InvisibleButton("##texcanvas", avail,
+                         ImGuiButtonFlags_MouseButtonLeft |
+                         ImGuiButtonFlags_MouseButtonMiddle);
+  const bool hovered = ImGui::IsItemHovered();
+  const bool active  = ImGui::IsItemActive();
+  ImGuiIO& io = ImGui::GetIO();
 
-  // Checkerboard background for alpha
-  ImGui::BeginChild("##texview", avail, false,
-                    ImGuiWindowFlags_HorizontalScrollbar);
+  const float texW = static_cast<float>(m_texture->width);
+  const float texH = static_cast<float>(m_texture->height);
 
-  if (offsetX > 0 || offsetY > 0) {
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
+  // First-frame init: center image at current zoom.
+  if (!m_panInitialized) {
+    m_panTarget.x = (avail.x - texW * m_zoomTarget) * 0.5f;
+    m_panTarget.y = (avail.y - texH * m_zoomTarget) * 0.5f;
+    m_pan  = m_panTarget;
+    m_zoom = m_zoomTarget;
+    m_panInitialized = true;
   }
 
-  ImGui::Image((void *)(intptr_t)m_glTexture, ImVec2(imgW, imgH), ImVec2(0, 0),
-               ImVec2(1, 1));
-
-  // Scroll zoom
-  if (ImGui::IsItemHovered()) {
-    float wheel = ImGui::GetIO().MouseWheel;
-    if (wheel > 0)
-      m_zoom = std::min(m_zoom * 1.2f, 16.0f);
-    if (wheel < 0)
-      m_zoom = std::max(m_zoom / 1.2f, 0.125f);
+  // Cursor-anchored wheel zoom: adjust pan TARGET so the image point currently
+  // under the cursor stays under the cursor once zoom finishes lerping.
+  if (hovered && io.MouseWheel != 0.0f) {
+    const float factor  = std::pow(1.15f, io.MouseWheel);
+    const float newZoom = std::clamp(m_zoomTarget * factor, 0.125f, 16.0f);
+    if (newZoom != m_zoomTarget) {
+      const ImVec2 mouseLocal(io.MousePos.x - origin.x - m_panTarget.x,
+                              io.MousePos.y - origin.y - m_panTarget.y);
+      const float scale = newZoom / m_zoomTarget;
+      m_panTarget.x -= mouseLocal.x * (scale - 1.0f);
+      m_panTarget.y -= mouseLocal.y * (scale - 1.0f);
+      m_zoomTarget = newZoom;
+    }
   }
 
-  ImGui::EndChild();
+  // Toolbar zoom buttons recenter the image around viewport center.
+  // Drag adds mouse delta to pan target.
+  if (active &&
+      (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f) ||
+       ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0f))) {
+    m_panTarget.x += io.MouseDelta.x;
+    m_panTarget.y += io.MouseDelta.y;
+    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+  } else if (hovered) {
+    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+  }
+
+  // Bounds with margin computed against TARGET zoom so target stays reachable.
+  const float kMargin = 80.0f;
+  auto clampPan = [&](ImVec2 v, float zoom) {
+    const float w = texW * zoom, h = texH * zoom;
+    if (w <= avail.x) {
+      const float c = (avail.x - w) * 0.5f;
+      v.x = std::clamp(v.x, c - kMargin, c + kMargin);
+    } else {
+      v.x = std::clamp(v.x, avail.x - w - kMargin, kMargin);
+    }
+    if (h <= avail.y) {
+      const float c = (avail.y - h) * 0.5f;
+      v.y = std::clamp(v.y, c - kMargin, c + kMargin);
+    } else {
+      v.y = std::clamp(v.y, avail.y - h - kMargin, kMargin);
+    }
+    return v;
+  };
+  m_panTarget = clampPan(m_panTarget, m_zoomTarget);
+
+  // Smooth zoom + pan with identical exp-decay coefficient so the anchor stays
+  // consistent throughout the lerp. ~150ms settle.
+  const float dt = std::clamp(io.DeltaTime, 1.0f / 240.0f, 1.0f / 30.0f);
+  const float k  = 1.0f - std::exp(-18.0f * dt);
+  m_zoom  += (m_zoomTarget  - m_zoom)  * k;
+  m_pan.x += (m_panTarget.x - m_pan.x) * k;
+  m_pan.y += (m_panTarget.y - m_pan.y) * k;
+
+  // Snap when within sub-pixel of target to prevent infinite tiny lerping.
+  if (std::abs(m_zoomTarget - m_zoom) < 0.0005f)    m_zoom  = m_zoomTarget;
+  if (std::abs(m_panTarget.x - m_pan.x) < 0.25f)    m_pan.x = m_panTarget.x;
+  if (std::abs(m_panTarget.y - m_pan.y) < 0.25f)    m_pan.y = m_panTarget.y;
+
+  const float imgW = texW * m_zoom;
+  const float imgH = texH * m_zoom;
+
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+  const ImVec2 p0(origin.x + m_pan.x, origin.y + m_pan.y);
+  const ImVec2 p1(p0.x + imgW, p0.y + imgH);
+  dl->PushClipRect(origin, ImVec2(origin.x + avail.x, origin.y + avail.y), true);
+  dl->AddImage((ImTextureID)(intptr_t)m_glTexture, p0, p1);
+  dl->PopClipRect();
 }
 
 } // namespace GOW

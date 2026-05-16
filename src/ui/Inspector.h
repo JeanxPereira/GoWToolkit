@@ -5,9 +5,14 @@
 
 class Inspector : public IPanel {
 public:
+    Inspector();
+    ~Inspector();
+
     void draw(AppContext& ctx) override;
     std::string_view getName() const override { return "Inspector"; }
 
 private:
     InfoTab m_info_tab;
+    ParsedEntry* m_selectedEntry = nullptr;
+    OpenWad* m_selectedWad = nullptr;
 };

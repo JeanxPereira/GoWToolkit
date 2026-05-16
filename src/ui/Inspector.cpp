@@ -4,6 +4,30 @@
 #include "imgui.h"
 #include "ui/viewers/DocumentWindow.h"
 #include "ui/viewers/IDocumentContent.h"
+#include "core/Events.h"
+
+Inspector::Inspector() {
+    EventAssetSelected::subscribe(this, [this](ParsedEntry* entry, OpenWad* wad) {
+        m_selectedEntry = entry;
+        m_selectedWad = wad;
+    });
+
+    EventWadClosed::subscribe(this, [this](size_t /* wadIdx */) {
+        m_selectedEntry = nullptr;
+        m_selectedWad = nullptr;
+    });
+
+    EventAllClosed::subscribe(this, [this]() {
+        m_selectedEntry = nullptr;
+        m_selectedWad = nullptr;
+    });
+}
+
+Inspector::~Inspector() {
+    EventAssetSelected::unsubscribe(this);
+    EventWadClosed::unsubscribe(this);
+    EventAllClosed::unsubscribe(this);
+}
 
 void Inspector::draw(AppContext& ctx) {
     if (!visible) return;
@@ -17,7 +41,7 @@ void Inspector::draw(AppContext& ctx) {
         return;
     }
 
-    ParsedEntry* entry = ctx.selected;
+    ParsedEntry* entry = m_selectedEntry;
 
     if (!entry) {
         ImGui::TextDisabled("No entry selected");

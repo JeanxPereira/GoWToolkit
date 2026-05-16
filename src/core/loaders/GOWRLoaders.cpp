@@ -19,6 +19,8 @@
 #include "../parsers/gowr/Rdna2Detiler.h"
 #include "../parsers/gowr/BcDecoder.h"
 
+using GOW::Rdna2::Detile;
+
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
@@ -252,11 +254,10 @@ public:
     }
 
     std::string GetName() const override { return "Tex: " + m_name; }
-    
+
     void Draw() override {
         auto& texIdx = GetTexIndex();
-        
-        // 1. Handle TOC Loading State
+
         if (!texIdx.IsLoaded()) {
             ImGui::SetCursorPos(ImVec2(ImGui::GetWindowSize().x * 0.5f - 150, ImGui::GetWindowSize().y * 0.5f - 20));
             ImGui::Text("Loading Texture Index (TOCs) in background...");
@@ -265,184 +266,126 @@ public:
             return;
         }
 
-        // 2. Initial Load
         if (!m_initialized) {
             m_initialized = true;
             FirstLoad(texIdx);
         }
 
-        // 3. Main Splitter
-        if (m_rawTiledData.empty()) {
-            ImGui::TextColored(ImVec4(1,0,0,1), "Texture load failed or missing raw data.");
+        if (m_failReason) {
+            ImGui::TextColored(ImVec4(1,0.6f,0.6f,1), "Texture load failed: %s", m_failReason);
+            ImGui::Text("Name: %s", m_name.c_str());
+            ImGui::Text("Hash: 0x%016llx", (unsigned long long)m_hash);
+            if (m_texW || m_texH)   ImGui::Text("Size: %ux%u", m_texW, m_texH);
+            if (m_swMode != 0xFFFF) ImGui::Text("sw_mode: %u  pipeBankXor: 0x%x", m_swMode, m_pipeBankXor);
             return;
         }
 
-        // Draw Live Debugger on the left, Viewer on the right
-        ImGui::BeginChild("TexDebugger", ImVec2(280, 0), true);
-        ImGui::Text("RDNA2 Detile Debugger");
-        ImGui::Separator();
-        
-        bool changed = false;
-        ImGui::Text("Size: %ux%u", m_texW, m_texH);
-        ImGui::Text("Format: %u %s", m_fmt, m_isBc ? "(BC)" : "(Raw)");
-        ImGui::Text("BlockBytes: %u", m_blockBytes);
-        
-        ImGui::Separator();
-        ImGui::Text("Descriptor Info:");
-        ImGui::Text("Orig SwMode: %u", m_origSwMode);
-        ImGui::Text("Orig PipeXor: %u", m_origPipeBankXor);
-        
-        ImGui::Separator();
-        ImGui::Text("Tweak Parameters:");
-        
-        changed |= ImGui::InputInt("SW_MODE", &m_debugSwMode);
-        changed |= ImGui::InputInt("PipeBankXor", &m_debugPipeBankXor);
-        
-        int blockSizes[] = {256, 4096, 65536};
-        const char* blockNames[] = {"256B", "4KB", "64KB"};
-        if (ImGui::Combo("Macro Block", &m_debugMacroIdx, blockNames, 3)) changed = true;
-        
-        if (ImGui::Button("Apply Detile", ImVec2(-1, 30)) || changed) {
-            RefreshTexture();
-        }
-        
-        if (ImGui::Button("Reset to Original", ImVec2(-1, 30))) {
-            m_debugSwMode = m_origSwMode;
-            m_debugPipeBankXor = m_origPipeBankXor;
-            m_debugMacroIdx = 1; // 4KB default
-            RefreshTexture();
-        }
-        
-        ImGui::EndChild();
-        
-        ImGui::SameLine();
-        ImGui::BeginChild("TexView");
-        if (m_realViewer) {
-            m_realViewer->Draw();
-        } else {
-            ImGui::Text("Failed to detile/decompress with these parameters.");
-        }
-        ImGui::EndChild();
+        if (m_realViewer) m_realViewer->Draw();
     }
 
 private:
     ParsedEntry m_entry;
     std::string m_name;
-    uint64_t m_hash = 0;
-    bool m_initialized = false;
+    uint64_t    m_hash = 0;
+    bool        m_initialized = false;
+    const char* m_failReason  = nullptr;
+
     std::shared_ptr<ImageViewer> m_realViewer;
-    
-    std::vector<uint8_t> m_rawTiledData;
-    uint32_t m_texW = 0, m_texH = 0;
-    uint32_t m_fmt = 0;
-    BcFormat m_bcFmt = BcFormat::BC1;
-    bool m_isBc = false;
-    uint32_t m_blockBytes = 8;
-    
-    uint32_t m_origSwMode = 0;
-    uint32_t m_origPipeBankXor = 0;
-    
-    int m_debugSwMode = 0;
-    int m_debugPipeBankXor = 0;
-    int m_debugMacroIdx = 1; // 0=256B, 1=4KB, 2=64KB
+
+    uint32_t  m_texW = 0, m_texH = 0;
+    uint32_t  m_swMode = 0xFFFF;
+    uint32_t  m_pipeBankXor = 0;
+    BcFormat  m_bcFmt = BcFormat::BC1;
 
     void FirstLoad(TexPackIndex& texIdx) {
-        if (!m_hash) return;
+        if (!m_hash) { m_failReason = "no hash in name"; return; }
+
         TexpackEntry texEntry;
-        if (!texIdx.FindTexture(m_hash, texEntry)) return;
-        
+        if (!texIdx.FindTexture(m_hash, texEntry)) { m_failReason = "hash not in texpack index"; return; }
+
         auto file = texIdx.GetFile(texEntry.packIdx);
-        if (!file || !file->IsValid()) return;
-        
+        if (!file || !file->IsValid()) { m_failReason = "texpack file unavailable"; return; }
+
+        m_texW = texEntry.width;
+        m_texH = texEntry.height;
+
+        // Block layout: 16B header + 256B GNF descriptor + tiled data at +0x124.
         file->Seek(static_cast<int64_t>(texEntry.blockDataOffset), 0);
-        uint32_t bMagic = 0, off = 0, bLen = 0, bUnk = 0;
-        file->Read(&bMagic, 4); file->Read(&off, 4); file->Read(&bLen, 4); file->Read(&bUnk, 4);
-        
-        if (off == 0x20) return;
-        
+        uint32_t bMagic = 0, bDataOff = 0, bLen = 0, bUnk = 0;
+        file->Read(&bMagic, 4); file->Read(&bDataOff, 4); file->Read(&bLen, 4); file->Read(&bUnk, 4);
+
         uint8_t gnfBuf[0x100] = {};
         file->Read(gnfBuf, 0x100);
-        
-        m_texW = *(uint16_t*)(&gnfBuf[0x06]);
-        m_texH = *(uint16_t*)(&gnfBuf[0x08]);
-        
-        uint32_t dw2C_raw = *reinterpret_cast<uint32_t*>(gnfBuf + 0x2C);
-        
-        file->Seek(static_cast<int64_t>(texEntry.blockDataOffset) + 0x100 + 0x14 + 0x08, 0);
-        uint32_t decSize = 0;
-        file->Read(&decSize, 4);
-        file->Seek(4, 1);
-        
-        if (decSize == 0 || decSize > 1024 * 1024 * 64) {
-            decSize = dw2C_raw;
-            file->Seek(static_cast<int64_t>(texEntry.blockDataOffset) + 0x124, 0);
+
+        // PS5 AGC T# at +0x10 (after 16-byte GNF header). 8 dwords.
+        // dw3 bits[24:20] = sw_mode, bits[21:8] = pipeBankXor (14-bit).
+        // dw1 bits[25:20] = data_format (AGC enum — empirically BC1=0x2A here).
+        const uint32_t dw1 = *reinterpret_cast<uint32_t*>(gnfBuf + 0x14);
+        const uint32_t dw3 = *reinterpret_cast<uint32_t*>(gnfBuf + 0x1C);
+
+        m_swMode      = (dw3 >> 20) & 0x1F;
+        m_pipeBankXor = (dw3 >> 8)  & 0x3FFF;
+        const uint32_t dataFmt = (dw1 >> 20) & 0x3F;
+
+        // Map AGC data_format → BC format. Values verified against DDS FourCC
+        // (DXT1/ATI1/ATI2/DX10) for GOWR PC.
+        bool isBc = true;
+        switch (dataFmt) {
+            case 0x29: m_bcFmt = BcFormat::BC1; break;  // BC1 SRGB
+            case 0x2A: m_bcFmt = BcFormat::BC1; break;  // BC1 UNORM
+            case 0x2F: m_bcFmt = BcFormat::BC4; break;  // BC4 (ATI1)
+            case 0x31: m_bcFmt = BcFormat::BC5; break;  // BC5 (ATI2)
+            case 0x35: m_bcFmt = BcFormat::BC7; break;  // BC7 SRGB
+            case 0x36: m_bcFmt = BcFormat::BC7; break;  // BC7 UNORM
+            default:
+                isBc = false;
+                break;
         }
-        
-        m_rawTiledData.resize(decSize);
-        file->Read(m_rawTiledData.data(), decSize);
-        
-        uint32_t dw1A = *(uint32_t*)(&gnfBuf[0x40 + 4]);
-        uint32_t dw1C = *(uint32_t*)(&gnfBuf[0x40 + 12]);
-        
-        m_fmt = dw1A & 0x3F;
-        m_isBc = GnfFmtToBc(m_fmt, m_bcFmt);
-        m_blockBytes = m_isBc ? BcBlockSize(m_bcFmt) : 8;
-        
-        m_origSwMode = (dw1C >> 20) & 0x1F;
-        m_origPipeBankXor = (dw1C >> 8) & 0x3FFF;
-        
-        m_debugSwMode = m_origSwMode;
-        m_debugPipeBankXor = m_origPipeBankXor;
-        if (m_origSwMode >= 8 && m_origSwMode <= 11) m_debugMacroIdx = 2;
-        else if (m_origSwMode >= 4 && m_origSwMode <= 7) m_debugMacroIdx = 1;
-        else if (m_origSwMode >= 1 && m_origSwMode <= 3) m_debugMacroIdx = 0;
-        
-        RefreshTexture();
-    }
-    
-    void RefreshTexture() {
-        if (m_rawTiledData.empty()) return;
-        m_realViewer = nullptr; // release old
-        
+        if (!isBc) { m_failReason = "unsupported AGC data_format"; return; }
+
+        const uint32_t blockBytes = BcBlockSize(m_bcFmt);
+        const uint32_t blocksX = (m_texW + 3) / 4;
+        const uint32_t blocksY = (m_texH + 3) / 4;
+        const size_t   linearBcSz = size_t(blocksX) * blocksY * blockBytes;
+
+        // Multi-mip blocks store mips smallest→largest; mip0 occupies the last
+        // `linearBcSz` bytes of the block's raw data area.
+        const int64_t mip0Off = static_cast<int64_t>(texEntry.blockDataOffset)
+                              + static_cast<int64_t>(bDataOff)
+                              + static_cast<int64_t>(texEntry.rawSize)
+                              - static_cast<int64_t>(linearBcSz);
+        std::vector<uint8_t> tiled(linearBcSz);
+        file->Seek(mip0Off, 0);
+        file->Read(tiled.data(), tiled.size());
+
+        std::vector<uint8_t> linearBc(linearBcSz, 0);
+        bool detiled = false;
+        if (m_swMode == 0) {
+            std::memcpy(linearBc.data(), tiled.data(), linearBcSz);
+            detiled = true;
+        } else {
+            detiled = Rdna2::Detile(tiled.data(), tiled.size(),
+                                    linearBc.data(),
+                                    blocksX, blocksY, blockBytes,
+                                    m_swMode, m_pipeBankXor);
+        }
+        if (!detiled) { m_failReason = "no detile equation for this sw_mode"; return; }
+
+        std::vector<uint8_t> rgba;
+        if (!DecompressBc(linearBc.data(), linearBcSz, m_texW, m_texH, m_bcFmt, rgba)) {
+            m_failReason = "BC decompress failed";
+            return;
+        }
+
         auto texData = std::make_unique<TextureData>();
         texData->name = m_name;
         texData->width = m_texW;
         texData->height = m_texH;
-        
-        uint32_t swMode = m_debugSwMode;
-        uint32_t appliedXor = m_debugPipeBankXor;
-        if (swMode < 16) appliedXor = 0; // standard modes
-        
-        if (m_isBc) {
-            uint32_t blocksX = (m_texW + 3) / 4;
-            uint32_t blocksY = (m_texH + 3) / 4;
-            size_t linearBcSz = (size_t)blocksX * blocksY * m_blockBytes;
-            std::vector<uint8_t> linearBc(linearBcSz, 0);
-            
-            if (swMode == 0) {
-                if (m_rawTiledData.size() >= linearBcSz)
-                    std::memcpy(linearBc.data(), m_rawTiledData.data(), linearBcSz);
-            } else {
-                uint32_t macros[] = {256, 4096, 65536};
-                uint32_t macro = macros[m_debugMacroIdx];
-                DetileRdna2(m_rawTiledData.data(), m_rawTiledData.size(), linearBc.data(), blocksX, blocksY, m_blockBytes, appliedXor, macro);
-            }
-            
-            std::vector<uint8_t> rgba;
-            if (!DecompressBc(linearBc.data(), linearBcSz, m_texW, m_texH, m_bcFmt, rgba)) {
-                return;
-            }
-            texData->isCompressed = false;
-            texData->glInternalFormat = 0x1908;
-            texData->dataSize = rgba.size();
-            texData->pixels = std::move(rgba);
-        } else {
-            texData->isCompressed = false;
-            texData->glInternalFormat = 0x1908;
-            texData->dataSize = m_rawTiledData.size();
-            texData->pixels = m_rawTiledData; // copy
-        }
-        
+        texData->isCompressed = false;
+        texData->glInternalFormat = 0x1908;  // GL_RGBA
+        texData->dataSize = rgba.size();
+        texData->pixels = std::move(rgba);
+
         m_realViewer = std::make_shared<ImageViewer>(m_name, std::move(texData));
     }
 };

@@ -2,30 +2,64 @@
 #include "ui/AppContext.h"
 #include "core/Logger.h"
 #include "core/AssetDatabase.h"
+#include "core/TaskManager.h"
 #include "imgui.h"
 
 void StatusBar::draw(AppContext& ctx) {
     if (!visible) return;
     ImGui::Begin("Log", &visible);
 
-    auto loadState = ctx.db.m_loadState.load();
-    if (loadState == AssetDatabase::LoadState::LoadingWad || 
-        loadState == AssetDatabase::LoadState::LoadingIsoPak) {
-        ImGui::TextUnformatted(ctx.db.m_loadMessage.c_str());
+    // ── TaskManager Progress (new system) ────────────────────────────
+    auto& tasks = GOW::TaskManager::getRunningTasks();
+    bool hasVisibleTasks = false;
+
+    for (auto& task : tasks) {
+        if (task->isFinished() || task->isBackgroundTask()) continue;
+        hasVisibleTasks = true;
+
+        ImGui::TextUnformatted(task->getName().c_str());
         ImGui::SameLine();
-        
-        // Use an indeterminate-like continuous progress if loadProgress stays at 0.0f
-        float progress = ctx.db.m_loadProgress.load();
-        if (progress == 0.0f) progress = (float)ImGui::GetTime() * 0.5f; 
-        else progress = progress; 
-        // ProgressBar wraps around if progress > 1.0f but we just want an animated bar.
-        // Let's use ImGui animated indeterminate bar if we wrap it, or just use modulo.
-        float displayProgress = std::fmod(progress, 1.0f);
-        
-        ImGui::ProgressBar(displayProgress, ImVec2(-1.0f, 0.0f), "");
-        ImGui::Separator();
+
+        uint64_t maxVal = task->getMaxValue();
+        if (maxVal > 0) {
+            // Determinate progress
+            float progress = (float)task->getValue() / (float)maxVal;
+            ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f));
+        } else {
+            // Indeterminate progress (animated)
+            float t = std::fmod((float)ImGui::GetTime() * 0.5f, 1.0f);
+            ImGui::ProgressBar(t, ImVec2(-1.0f, 0.0f), "");
+        }
     }
 
+    // ── Legacy AssetDatabase progress (while migration is in progress) ──
+    if (!hasVisibleTasks) {
+        auto loadState = ctx.db.m_loadState.load();
+        if (loadState == AssetDatabase::LoadState::LoadingWad || 
+            loadState == AssetDatabase::LoadState::LoadingIsoPak) {
+            ImGui::TextUnformatted(ctx.db.m_loadMessage.c_str());
+            ImGui::SameLine();
+            
+            float progress = ctx.db.m_loadProgress.load();
+            if (progress == 0.0f) progress = (float)ImGui::GetTime() * 0.5f; 
+            float displayProgress = std::fmod(progress, 1.0f);
+            
+            ImGui::ProgressBar(displayProgress, ImVec2(-1.0f, 0.0f), "");
+            hasVisibleTasks = true;
+        }
+    }
+
+    // ── Background tasks indicator ──────────────────────────────────
+    size_t bgCount = GOW::TaskManager::getRunningBackgroundTaskCount();
+    if (bgCount > 0) {
+        if (hasVisibleTasks) ImGui::Separator();
+        ImGui::TextDisabled("Background tasks: %zu", bgCount);
+        hasVisibleTasks = true;
+    }
+
+    if (hasVisibleTasks) ImGui::Separator();
+
+    // ── Log viewer ──────────────────────────────────────────────────
     if (ImGui::Button("Clear")) {
         GOW::Logger::Get().Clear();
     }

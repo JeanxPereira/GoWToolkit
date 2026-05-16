@@ -1,5 +1,6 @@
 #include "Viewport3D.h"
 #include "rendering/ShaderManager.h"
+#include "core/Events.h"
 #include <glad/glad.h>
 #include <imgui.h>
 #include "core/AppConfig.h"
@@ -46,6 +47,10 @@ void Viewport3D::LoadScene(std::unique_ptr<SceneData> scene) {
 
     // Keep a shared copy for animation access
     m_sceneData = std::shared_ptr<SceneData>(scene.release());
+    
+    if (m_sceneData->animations) {
+        EventAnimationLoaded::post(m_sceneData->animations);
+    }
 
     m_sceneRenderer = std::make_unique<SceneRenderer>();
     m_sceneRenderer->Build(*m_sceneData);
