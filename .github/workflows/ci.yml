@@ -110,9 +110,16 @@ jobs:
       - name: Build
         run: ${{ matrix.build_cmd }}
 
-      # ── Package Artifact ─────────────────────────────────────────────
-      - name: Package artifact
-        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+      # ── Package Artifact (Unix) ─────────────────────────────
+      - name: Package artifact (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: ${{ matrix.package_cmd }}
+
+      # ── Package Artifact (Windows) ──────────────────────────
+      - name: Package artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: ${{ matrix.package_cmd }}
 
       # ── Upload Artifact ──────────────────────────────────────────────
