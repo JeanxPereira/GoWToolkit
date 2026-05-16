@@ -31,6 +31,9 @@ struct RenderBatch {
     bool                        hasEnvmap  = false;
     bool                        hasSkeleton = false;
     bool                        isSky = false;
+    uint64_t                    meshHash = 0;       // GOWR LOD-blob id (0 = internal/embedded)
+    int                         vertexCount = 0;    // cached for inspector
+    int                         triangleCount = 0;
 };
 
 /// Owns the GPU representation of a SceneData and renders it.

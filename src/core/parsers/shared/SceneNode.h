@@ -40,6 +40,10 @@ struct SceneData {
     // Transform from Instance (position/rotation/scale in world)
     glm::mat4                                   instanceTransform {1.0f};
 
+    // If true, apply scale(1,1,-1) on top of instanceTransform.
+    // GOW2 models face -Z and need this; GOWR is already in screen-correct space.
+    bool                                        flipZ = true;
+
     // If true, this scene is a sky dome (rendered with rotation-only view, depth cleared after)
     bool                                        isSky = false;
 

@@ -16,6 +16,7 @@ struct MeshPart {
     std::vector<uint16_t> jointMap;       // local joint index → global skeleton joint
     bool useBindToJoint = true;           // true = use inverse bind pose (skinned)
     bool isSky = false;                   // true = this part should be rendered without writing depth
+    uint64_t meshHash = 0;                // GOWR LOD-blob identifier (0 = internal/embedded)
 };
 
 // The full CPU-side mesh representation

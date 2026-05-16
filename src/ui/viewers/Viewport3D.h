@@ -75,6 +75,10 @@ private:
     bool m_needsRedraw = true;
     bool m_viewportHovered = false;
     float m_lastFrameTime = 0.0f;  // For animation delta time
+
+    // Photoshop-style click-and-drag toggling across visibility checkboxes
+    bool m_dragToggleActive = false;
+    bool m_dragToggleValue  = false;
 };
 
 } // namespace GOW

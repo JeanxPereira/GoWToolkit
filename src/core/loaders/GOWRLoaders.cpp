@@ -6,6 +6,9 @@
 #include "core/parsers/gowr/MeshParser.h"
 #include "core/parsers/gowr/LodPackIndex.h"
 #include "core/parsers/gowr/TexPackIndex.h"
+#include "core/parsers/gowr/ProtoParser.h"
+#include "core/parsers/gowr/MgParser.h"
+#include "core/parsers/shared/SceneNode.h"
 #include "ui/viewers/ImageViewer.h"
 #include "core/Logger.h"
 #include "core/vfs/SliceFile.h"
@@ -29,52 +32,42 @@ using GOW::Rdna2::Detile;
 
 namespace GOW {
 
-// ── Resolve game root from config.ini ─────────────────────────────────────
-static std::filesystem::path ReadGameRootFromConfig() {
+// ── Search candidates for runtime files (config.ini, lodpacks.txt) ─────────
+static std::vector<std::filesystem::path> ResourceSearchDirs() {
     std::vector<std::filesystem::path> candidates;
-    
-    // 1. Current working directory
-    auto cwd = std::filesystem::current_path();
-    candidates.push_back(cwd);
-    LOG_INFO("[GOWRLoaders] CWD: %s", cwd.string().c_str());
-    
+    candidates.push_back(std::filesystem::current_path());
+
 #ifdef __APPLE__
-    // 2. macOS: resolve exe path from _NSGetExecutablePath
-    {
-        char exeBuf[4096] = {};
-        uint32_t bufSize = sizeof(exeBuf);
-        if (_NSGetExecutablePath(exeBuf, &bufSize) == 0) {
-            try {
-                auto exePath = std::filesystem::path(exeBuf);
-                auto exeDir = exePath.parent_path();
-                candidates.push_back(exeDir);
-                LOG_INFO("[GOWRLoaders] Exe dir: %s", exeDir.string().c_str());
-                
-                // Walk up: MacOS -> Contents -> .app -> build/
-                auto buildDir = exeDir.parent_path().parent_path().parent_path();
-                candidates.push_back(buildDir);
-                LOG_INFO("[GOWRLoaders] Build dir: %s", buildDir.string().c_str());
-            } catch (const std::exception& e) {
-                LOG_WARN("[GOWRLoaders] Failed to resolve exe path: %s", e.what());
-            }
-        } else {
-            LOG_WARN("[GOWRLoaders] _NSGetExecutablePath failed");
-        }
+    char exeBuf[4096] = {};
+    uint32_t bufSize = sizeof(exeBuf);
+    if (_NSGetExecutablePath(exeBuf, &bufSize) == 0) {
+        try {
+            auto exePath = std::filesystem::path(exeBuf);
+            auto exeDir  = exePath.parent_path();
+            candidates.push_back(exeDir);
+            // Walk up: MacOS -> Contents -> .app -> build/
+            candidates.push_back(exeDir.parent_path().parent_path().parent_path());
+        } catch (...) {}
     }
 #endif
-    
-    // 3. Log all candidates and try each
-    std::ifstream cfg;
-    std::filesystem::path configPath;
-    for (const auto& dir : candidates) {
-        configPath = dir / "config.ini";
-        LOG_INFO("[GOWRLoaders] Trying: %s", configPath.string().c_str());
-        cfg.open(configPath);
-        if (cfg.is_open()) {
-            LOG_INFO("[GOWRLoaders] Found config.ini at: %s", configPath.string().c_str());
-            break;
-        }
+    return candidates;
+}
+
+static std::filesystem::path FindResource(const std::string& filename) {
+    for (const auto& dir : ResourceSearchDirs()) {
+        auto p = dir / filename;
+        if (std::filesystem::exists(p)) return p;
     }
+    return {};
+}
+
+// ── Resolve game root from config.ini ─────────────────────────────────────
+static std::filesystem::path ReadGameRootFromConfig() {
+    auto configPath = FindResource("config.ini");
+    if (configPath.empty()) return {};
+    LOG_INFO("[GOWRLoaders] Found config.ini at: %s", configPath.string().c_str());
+
+    std::ifstream cfg(configPath);
     if (!cfg.is_open()) return {};
 
     std::string line;
@@ -102,11 +95,11 @@ static LodPackIndex* s_lodIndex = nullptr;
 static LodPackIndex& GetLodIndex() {
     if (!s_lodIndex) {
         s_lodIndex = new LodPackIndex();
-        auto exeDir      = std::filesystem::current_path();
-        auto lodpacksTxt = exeDir / "lodpacks.txt";
+        auto lodpacksTxt = FindResource("lodpacks.txt");
         auto gameRoot    = ReadGameRootFromConfig();
 
-        if (!gameRoot.empty() && std::filesystem::exists(lodpacksTxt)) {
+        if (!gameRoot.empty() && !lodpacksTxt.empty()) {
+            LOG_INFO("[GOWRLoaders] Found lodpacks.txt at: %s", lodpacksTxt.string().c_str());
             s_lodIndex->LoadFromList(lodpacksTxt, gameRoot);
         } else {
             LOG_WARN("[GOWRLoaders] config.ini or lodpacks.txt not found — LOD lookup disabled");
@@ -217,10 +210,121 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
         return std::make_shared<Viewport3D>(entry.name);
     }
 
-    // ── Upload to viewport ─────────────────────────────────────────────
+    // ── Find paired MG_<base> file (bone-binding, no _gpu suffix) ─────
+    std::shared_ptr<IFile> mgFile;
+    std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMg;
+    findMg = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+        for (const auto& e : entries) {
+            if (e.role == WadEntryRole::MeshDefn &&
+                e.name.rfind("MG_", 0) == 0)
+            {
+                std::string n = e.name.substr(3); // strip "MG_"
+                if (n.size() > 4 && n.substr(n.size() - 4) == "_gpu") continue;
+                auto d = n.rfind("---");
+                if (d != std::string::npos) n = n.substr(0, d);
+                if (n == base) return &e;
+            }
+            if (!e.children.empty()) {
+                auto* f = findMg(e.children);
+                if (f) return f;
+            }
+        }
+        return nullptr;
+    };
+
+    const ParsedEntry* mgEntry = findMg(wad.entries);
+    if (mgEntry) {
+        mgFile = std::make_shared<SliceFile>(
+            wad.fileSource, mgEntry->offset, mgEntry->size);
+        LOG_INFO("[GOWRLoaders] MG bone-binding: %s (size=%u)",
+                 mgEntry->name.c_str(), mgEntry->size);
+    }
+
+    // ── Find paired goProto* file (skeleton) ───────────────────────────
+    // Naming: MESH_athena10_0 → look for goProtoathena10 (strip MESH_/MG_,
+    // trailing _N, and trailing ---HASH).
+    std::string protoBase = base;
+    // Strip trailing "_<digits>" suffix if present (e.g. "athena10_0" → "athena10")
+    auto usPos = protoBase.find_last_of('_');
+    if (usPos != std::string::npos && usPos + 1 < protoBase.size()) {
+        bool allDigits = true;
+        for (size_t k = usPos + 1; k < protoBase.size(); ++k) {
+            if (!isdigit((unsigned char)protoBase[k])) { allDigits = false; break; }
+        }
+        if (allDigits) protoBase = protoBase.substr(0, usPos);
+    }
+
+    std::shared_ptr<ObjectData> skeleton;
+    std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findProto;
+    findProto = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+        for (const auto& e : entries) {
+            if (e.role == WadEntryRole::GameObjectProto) {
+                std::string n = e.name;
+                if (n.rfind("goProto", 0) == 0) n = n.substr(7);
+                auto d = n.rfind("---");
+                if (d != std::string::npos) n = n.substr(0, d);
+                if (n == protoBase) return &e;
+            }
+            if (!e.children.empty()) {
+                auto* f = findProto(e.children);
+                if (f) return f;
+            }
+        }
+        return nullptr;
+    };
+
+    const ParsedEntry* protoEntry = findProto(wad.entries);
+    if (protoEntry) {
+        auto protoFile = std::make_shared<SliceFile>(
+            wad.fileSource, protoEntry->offset, protoEntry->size);
+        skeleton = GOWRProtoParser::Parse(protoFile);
+        if (skeleton) {
+            LOG_INFO("[GOWRLoaders] Proto rig '%s': %zu bones",
+                     protoEntry->name.c_str(), skeleton->joints.size());
+        }
+    } else {
+        LOG_INFO("[GOWRLoaders] No goProto sibling for '%s' (base='%s')",
+                 entry.name.c_str(), protoBase.c_str());
+    }
+
+    // ── Build SceneData and load into viewport ─────────────────────────
     auto vp = std::make_shared<Viewport3D>(entry.name);
-    std::vector<std::unique_ptr<TextureData>> noTextures; // textures wired later
-    vp->LoadFromMeshData(data, noTextures);
+
+    if (skeleton) {
+        // ── Rigid skinning per submesh: read MG, assign parentBone, override
+        //    per-vertex bone indices/weights with (1.0, bone0).
+        if (mgFile) {
+            // We need the MESH-file submesh count to size the parentBone table.
+            // The mesh parser stores parts in the same order as MESH submeshes
+            // it produced; their materialId encodes the original submesh index.
+            uint32_t meshSubCount = 0;
+            for (const auto& p : data.parts)
+                if (p.materialId + 1 > meshSubCount) meshSubCount = p.materialId + 1;
+
+            std::vector<uint16_t> parentBone;
+            if (GOWRMgParser::Parse(mgFile, meshSubCount, parentBone)) {
+                for (auto& p : data.parts) {
+                    uint16_t pb = (p.materialId < parentBone.size())
+                                    ? parentBone[p.materialId] : 0xFFFF;
+                    if (pb == 0xFFFF) pb = 0;
+                    p.jointMap = { pb };
+                    for (auto& v : p.vertices) {
+                        v.boneIndices = glm::uvec4(0, 0, 0, 0);
+                        v.boneWeights = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+                    }
+                }
+            }
+        }
+
+        auto scene = std::make_unique<SceneData>();
+        scene->skeleton  = skeleton;
+        scene->flipZ     = true;    // mesh and bones both face -Z; flip once for screen
+        scene->meshParts = std::move(data.parts);
+        vp->LoadScene(std::move(scene));
+    } else {
+        std::vector<std::unique_ptr<TextureData>> noTextures;
+        vp->LoadFromMeshData(data, noTextures);
+    }
     return vp;
 }
 

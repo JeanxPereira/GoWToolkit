@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Linux x64 ──────────────────────────────────────────────────
+          - os: ubuntu-22.04
+            name: Linux x64
+            artifact_name: GoWToolkit-linux-x64
+            cmake_generator: Ninja
+            cmake_args: -DCMAKE_BUILD_TYPE=Release
+            build_cmd: cmake --build build
+            package_cmd: |
+              mkdir -p staging
+              cp build/GoWToolkit staging/
+              cp -r build/third_party/fonts staging/third_party/fonts 2>/dev/null || true
+              tar -czf GoWToolkit-linux-x64.tar.gz -C staging .
+            artifact_path: GoWToolkit-linux-x64.tar.gz
+
+          # ── macOS ARM64 (Apple Silicon) ─────────────────────────────────
+          - os: macos-14
+            name: macOS ARM64
+            artifact_name: GoWToolkit-macOS-arm64
+            cmake_generator: Ninja
+            cmake_args: -DCMAKE_BUILD_TYPE=Release
+            build_cmd: cmake --build build
+            package_cmd: |
+              cd build
+              zip -r ../GoWToolkit-macOS-arm64.zip GoWToolkit.app
+            artifact_path: GoWToolkit-macOS-arm64.zip
+
+          # ── macOS x64 (Intel) ───────────────────────────────────────────
+          - os: macos-13
+            name: macOS x64
+            artifact_name: GoWToolkit-macOS-x64
+            cmake_generator: Ninja
+            cmake_args: -DCMAKE_BUILD_TYPE=Release
+            build_cmd: cmake --build build
+            package_cmd: |
+              cd build
+              zip -r ../GoWToolkit-macOS-x64.zip GoWToolkit.app
+            artifact_path: GoWToolkit-macOS-x64.zip
+
+          # ── Windows x64 (MSVC) ──────────────────────────────────────────
+          - os: windows-2022
+            name: Windows x64
+            artifact_name: GoWToolkit-windows-x64
+            cmake_generator: Visual Studio 17 2022
+            cmake_args: -A x64
+            build_cmd: cmake --build build --config Release
+            package_cmd: |
+              mkdir staging
+              Copy-Item -Path build\Release\* -Destination staging\ -Recurse
+              Copy-Item -Path build\third_party\fonts -Destination staging\third_party\fonts -Recurse -ErrorAction SilentlyContinue
+              Compress-Archive -Path staging\* -DestinationPath GoWToolkit-windows-x64.zip
+            artifact_path: GoWToolkit-windows-x64.zip
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # ── Cache CMake FetchContent downloads ───────────────────────────
+      - name: Cache CMake dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-cmake-deps-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-deps-
+
+      # ── Install Dependencies (Linux) ─────────────────────────────────
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build g++ pkg-config \
+            libgl-dev libx11-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxi-dev libwayland-dev libxkbcommon-dev \
+            libavformat-dev libavcodec-dev libswscale-dev \
+            libswresample-dev libavutil-dev
+
+      # ── Install Dependencies (macOS) ─────────────────────────────────
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake ninja ffmpeg pkg-config
+
+      # ── Configure CMake ──────────────────────────────────────────────
+      - name: Configure CMake
+        run: cmake -G "${{ matrix.cmake_generator }}" ${{ matrix.cmake_args }} -B build
+
+      # ── Build ────────────────────────────────────────────────────────
+      - name: Build
+        run: ${{ matrix.build_cmd }}
+
+      # ── Package Artifact ─────────────────────────────────────────────
+      - name: Package artifact
+        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+        run: ${{ matrix.package_cmd }}
+
+      # ── Upload Artifact ──────────────────────────────────────────────
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_path }}
+          retention-days: 30
+
+  # ════════════════════════════════════════════════════════════════════
+  # Release — only triggered on version tags (v*)
+  # ════════════════════════════════════════════════════════════════════
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: false
+
+      - name: List artifacts
+        run: find . -type f -name "GoWToolkit-*" | sort
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            GoWToolkit-linux-x64/GoWToolkit-linux-x64.tar.gz
+            GoWToolkit-macOS-arm64/GoWToolkit-macOS-arm64.zip
+            GoWToolkit-macOS-x64/GoWToolkit-macOS-x64.zip
+            GoWToolkit-windows-x64/GoWToolkit-windows-x64.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

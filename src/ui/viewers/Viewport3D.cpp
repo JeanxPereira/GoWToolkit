@@ -495,36 +495,135 @@ void Viewport3D::DrawInspector(AppContext& ctx) {
 
     auto& batches = m_sceneRenderer->GetBatches();
 
-    // Create a scrollable region for the batches
-    ImGui::BeginChild("MeshBatches", ImVec2(0, 0), true);
+    // Group consecutive batches that share the same non-zero meshHash:
+    //   each shared LOD blob in the lodpack is referenced by N consecutive
+    //   submeshes representing LOD0..LODn of one logical mesh part.
+    //   meshHash == 0 (internal/embedded LOD) gets its own single-entry group.
+    struct LodGroup { uint64_t hash; std::vector<size_t> idx; };
+    std::vector<LodGroup> groups;
     for (size_t i = 0; i < batches.size(); ++i) {
-        auto& batch = batches[i];
+        const uint64_t h = batches[i].meshHash;
+        if (h != 0 && !groups.empty() && groups.back().hash == h) {
+            groups.back().idx.push_back(i);
+        } else {
+            groups.push_back({h, {i}});
+        }
+    }
 
-        ImGui::PushID((int)i);
+    auto renderVisibilityToggle = [this](RenderBatch& batch) {
+        bool prev = batch.isVisible;
+        ImGui::Checkbox("##vis", &batch.isVisible);
+        bool itemHovered = ImGui::IsItemHovered();
+        bool toggledByClick = (prev != batch.isVisible);
 
-        if (ImGui::Checkbox("##vis", &batch.isVisible)) {
+        if (toggledByClick) {
+            m_dragToggleActive = true;
+            m_dragToggleValue  = batch.isVisible;
+            m_needsRedraw = true;
+        } else if (m_dragToggleActive && itemHovered &&
+                   ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+            if (batch.isVisible != m_dragToggleValue) {
+                batch.isVisible = m_dragToggleValue;
+                m_needsRedraw = true;
+            }
+        }
+    };
+
+    auto renderHighlightOnHover = [this](RenderBatch& batch) {
+        bool hovered = ImGui::IsItemHovered();
+        if (hovered != batch.isHighlighted) {
+            batch.isHighlighted = hovered;
             m_needsRedraw = true;
         }
+    };
+
+    ImGui::BeginChild("MeshBatches", ImVec2(0, 0), true);
+
+    for (size_t g = 0; g < groups.size(); ++g) {
+        const auto& grp = groups[g];
+
+        // Single-entry group (internal LOD or lone hashed part): render flat row
+        if (grp.idx.size() == 1) {
+            size_t i = grp.idx[0];
+            auto& batch = batches[i];
+            ImGui::PushID((int)i);
+            renderVisibilityToggle(batch);
+            ImGui::SameLine();
+            std::string label = batch.name.empty() ? ("Part " + std::to_string(i)) : batch.name;
+            if (batch.meshHash == 0) label += "  (internal)";
+            ImGui::Selectable(label.c_str(), false);
+            renderHighlightOnHover(batch);
+            ImGui::PopID();
+            continue;
+        }
+
+        // Multi-LOD group: collapsible tree
+        ImGui::PushID((int)(1000 + g));
+
+        // Group-level visibility checkbox: ANY visible → checked; toggling sets all
+        bool anyVisible = false, allVisible = true;
+        for (size_t i : grp.idx) {
+            if (batches[i].isVisible) anyVisible = true;
+            else                       allVisible = false;
+        }
+        bool groupVis = anyVisible;
+        bool prevGroupVis = groupVis;
+        ImGui::Checkbox("##groupvis", &groupVis);
+        bool groupHovered = ImGui::IsItemHovered();
+        bool groupClicked = (prevGroupVis != groupVis);
+
+        if (groupClicked) {
+            for (size_t i : grp.idx) batches[i].isVisible = groupVis;
+            m_dragToggleActive = true;
+            m_dragToggleValue  = groupVis;
+            m_needsRedraw = true;
+        } else if (m_dragToggleActive && groupHovered &&
+                   ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+            bool wantVis = m_dragToggleValue;
+            if (anyVisible != wantVis || !allVisible) {
+                for (size_t i : grp.idx) batches[i].isVisible = wantVis;
+                m_needsRedraw = true;
+            }
+        }
+
         ImGui::SameLine();
 
-        std::string label = batch.name.empty() ? ("Part " + std::to_string(i)) : batch.name;
-        ImGui::Selectable(label.c_str(), false);
+        char header[96];
+        std::snprintf(header, sizeof(header),
+                      "Mesh Group %zu  (%zu LODs, hash %016llX)",
+                      g, grp.idx.size(),
+                      (unsigned long long)grp.hash);
 
-        if (ImGui::IsItemHovered()) {
-            if (!batch.isHighlighted) {
-                batch.isHighlighted = true;
-                m_needsRedraw = true;
+        bool open = ImGui::TreeNodeEx(header,
+            ImGuiTreeNodeFlags_SpanAvailWidth);
+
+        if (open) {
+            for (size_t k = 0; k < grp.idx.size(); ++k) {
+                size_t i = grp.idx[k];
+                auto& batch = batches[i];
+                ImGui::PushID((int)i);
+                renderVisibilityToggle(batch);
+                ImGui::SameLine();
+                char lodLabel[96];
+                std::snprintf(lodLabel, sizeof(lodLabel),
+                              "LOD %zu  (%dv, %dt)",
+                              k, batch.vertexCount, batch.triangleCount);
+                ImGui::Selectable(lodLabel, false);
+                renderHighlightOnHover(batch);
+                ImGui::PopID();
             }
-        } else {
-            if (batch.isHighlighted) {
-                batch.isHighlighted = false;
-                m_needsRedraw = true;
-            }
+            ImGui::TreePop();
         }
 
         ImGui::PopID();
     }
+
     ImGui::EndChild();
+
+    // Release the drag-toggle smear on mouse-up
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        m_dragToggleActive = false;
+    }
 }
 
 void Viewport3D::DrawObjectList(ImVec2 avail, ImVec2 cursorPos) {

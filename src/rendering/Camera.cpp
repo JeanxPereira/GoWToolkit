@@ -53,8 +53,9 @@ void Camera::ProcessScroll(float delta) {
 
 void Camera::FocusOn(const BoundingBox& bbox) {
     m_target = bbox.Center();
-    m_distance = bbox.Radius() * 3.0f;
-    if (m_distance < 1.0f) m_distance = 5.0f;
+    float r = bbox.Radius();
+    float halfFov = glm::radians(fov * 0.5f);
+    m_distance = std::max(r / std::sin(halfFov) * 1.2f, 0.1f);
     m_yaw = glm::radians(45.0f);
     m_pitch = glm::radians(15.0f);
     UpdatePosition();

@@ -35,8 +35,10 @@ void SceneRenderer::Build(const SceneData& scene) {
 
     m_skeleton = scene.skeleton;
     m_animData = scene.animations;
-    // Flip Z axis: GOW2 models face -Z, we want them facing the camera
-    m_instanceTransform = glm::scale(scene.instanceTransform, glm::vec3(1.0f, 1.0f, -1.0f));
+    // GOW2 models face -Z; GOWR is already in screen-correct space.
+    m_instanceTransform = scene.flipZ
+        ? glm::scale(scene.instanceTransform, glm::vec3(1.0f, 1.0f, -1.0f))
+        : scene.instanceTransform;
 
     // Upload textures from SceneData (indexed by materialId, then layer)
     std::vector<std::vector<GLuint>> textureIds(scene.textures.size());
@@ -71,6 +73,9 @@ void SceneRenderer::Build(const SceneData& scene) {
         batch.jointMap = part.jointMap;
         batch.hasSkeleton = scene.HasSkeleton();
         batch.isSky = part.isSky;
+        batch.meshHash = part.meshHash;
+        batch.vertexCount = (int)part.vertices.size();
+        batch.triangleCount = (int)part.indices.size() / 3;
 
         // Bounds — computed from transformed positions so FocusOn targets rendered space
         for (const auto& v : part.vertices) {
@@ -190,10 +195,14 @@ void SceneRenderer::BuildFromMeshData(const MeshData& data,
         auto mesh = std::make_shared<GpuMesh>();
         mesh->Upload(part.vertices, part.indices);
         batch.gpuMesh = mesh;
+        batch.meshHash = part.meshHash;
+        batch.vertexCount = (int)part.vertices.size();
+        batch.triangleCount = (int)part.indices.size() / 3;
 
         for (const auto& v : part.vertices) {
-            boundsMin = glm::min(boundsMin, v.position);
-            boundsMax = glm::max(boundsMax, v.position);
+            glm::vec3 tp = glm::vec3(m_instanceTransform * glm::vec4(v.position, 1.0f));
+            boundsMin = glm::min(boundsMin, tp);
+            boundsMax = glm::max(boundsMax, tp);
         }
 
         // Resolve texture by material ID
@@ -214,7 +223,12 @@ void SceneRenderer::BuildFromMeshData(const MeshData& data,
         m_opaqueBatches.push_back(&batch);
     }
 
-    LOG_INFO("[SceneRenderer] Built %zu batches from MeshData.", m_batches.size());
+    LOG_INFO("[SceneRenderer] Built %zu batches from MeshData. Bounds min=(%.3f,%.3f,%.3f) max=(%.3f,%.3f,%.3f) center=(%.3f,%.3f,%.3f) radius=%.3f",
+             m_batches.size(),
+             boundsMin.x, boundsMin.y, boundsMin.z,
+             boundsMax.x, boundsMax.y, boundsMax.z,
+             m_bounds.Center().x, m_bounds.Center().y, m_bounds.Center().z,
+             m_bounds.Radius());
 }
 
 // ── Joint palette ───────────────────────────────────────────────────────────
@@ -729,6 +743,22 @@ void SceneRenderer::RenderSkeleton(const glm::mat4& view, const glm::mat4& proj)
         lines.push_back({pos + glm::vec3( d, 0, 0), jointDot});
         lines.push_back({pos + glm::vec3(0, -d, 0), jointDot});
         lines.push_back({pos + glm::vec3(0,  d, 0), jointDot});
+
+        // ── Per-joint orientation axes (X=red, Y=green, Z=blue) ─────────
+        // Extract basis vectors from the joint's world rest matrix.
+        // This shows whether the bone's local frame is rotated correctly
+        // relative to the mesh (e.g. palm direction).
+        glm::mat4 worldMat = m_instanceTransform * joint.renderMat;
+        glm::vec3 ax = glm::vec3(worldMat[0]);
+        glm::vec3 ay = glm::vec3(worldMat[1]);
+        glm::vec3 az = glm::vec3(worldMat[2]);
+        float aLen = 0.04f;
+        glm::vec4 axR(1, 0.2f, 0.2f, 1);
+        glm::vec4 axG(0.2f, 1, 0.2f, 1);
+        glm::vec4 axB(0.3f, 0.5f, 1, 1);
+        lines.push_back({pos, axR}); lines.push_back({pos + glm::normalize(ax) * aLen, axR});
+        lines.push_back({pos, axG}); lines.push_back({pos + glm::normalize(ay) * aLen, axG});
+        lines.push_back({pos, axB}); lines.push_back({pos + glm::normalize(az) * aLen, axB});
     }
 
     if (lines.empty()) return;

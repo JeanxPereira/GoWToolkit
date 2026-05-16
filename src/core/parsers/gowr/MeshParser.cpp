@@ -186,17 +186,15 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<IFile>& gpu,
             // ── Normal ──────────────────────────────────────────────────
             case Semantic::Normal:
                 if (c.format == AttrFormat::R10G10B10) {
-                    // 3 × 10-bit signed packed in uint32.
-                    // Confirmed bit layout from C# log:
-                    //   norm[0] = (0.5449, 0.7207, -0.4238)
+                    // 3 × 10-bit biased-unsigned packed in uint32 (DirectX style).
+                    // Port of GoWRknk.cs:839-843:
+                    //   num4 = (float)(num59 & 0x3FF) - 512f) / 512f
                     // Encoding: X=[9:0], Y=[19:10], Z=[29:20], W=[31:30] ignored
-                    // Scale: /511.0f  (same as C#: /511.9f approximated)
                     uint32_t packed;
                     gpu->Read(&packed, 4);
                     auto unpack10 = [](uint32_t p, int shift) -> float {
-                        int32_t v = (p >> shift) & 0x3FF;
-                        if (v & 0x200) v |= ~0x3FF;  // sign-extend
-                        return (float)v / 511.0f;
+                        uint32_t u = (p >> shift) & 0x3FF;
+                        return ((float)u - 512.0f) / 512.0f;
                     };
                     v.normal.x = unpack10(packed,  0);
                     v.normal.y = unpack10(packed, 10);
@@ -206,32 +204,30 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<IFile>& gpu,
                 break;
 
             // ── UV0 (primary UV, stream UV1 in C# naming) ───────────────
+            // Port of GoWRknk.cs:865-879:
+            //   fmt=0 (float32): raw
+            //   fmt=6 (unorm16): raw/65536
+            //   fmt=7 (snorm16): raw/32768
             case Semantic::UV0:
                 if (c.format == AttrFormat::Float32 && c.compCount >= 2) {
                     gpu->Read(&v.uv.x, 4);
                     gpu->Read(&v.uv.y, 4);
                 } else if (c.format == AttrFormat::Uint16 && c.compCount >= 2) {
-                    // unorm16: raw/65535
                     uint16_t u, vv;
                     gpu->Read(&u,  2);
                     gpu->Read(&vv, 2);
-                    v.uv.x = (float)u  / 65535.0f;
-                    v.uv.y = (float)vv / 65535.0f;
+                    v.uv.x = (float)u  / 65536.0f;
+                    v.uv.y = (float)vv / 65536.0f;
                 } else if (c.format == AttrFormat::Int16 && c.compCount >= 2) {
-                    // snorm16: raw/32767
                     int16_t u, vv;
                     gpu->Read(&u,  2);
                     gpu->Read(&vv, 2);
-                    v.uv.x = (float)u  / 32767.0f;
-                    v.uv.y = (float)vv / 32767.0f;
+                    v.uv.x = (float)u  / 32768.0f;
+                    v.uv.y = (float)vv / 32768.0f;
                 }
                 break;
 
             // ── UV1 / UV2 / UV3 (lightmap, detail, etc.) ────────────────
-            // Stored in extra UV channels. We carry UV1 into uv1; UV2/UV3
-            // are stored in extra channels if MeshPart supports them.
-            // For geometry display only UV0 is strictly needed, but we
-            // read and store UV1 since some materials require it (lightmap).
             case Semantic::UV1:
                 if (c.format == AttrFormat::Float32 && c.compCount >= 2) {
                     gpu->Read(&v.uv1.x, 4);
@@ -240,14 +236,14 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<IFile>& gpu,
                     uint16_t u, vv;
                     gpu->Read(&u,  2);
                     gpu->Read(&vv, 2);
-                    v.uv1.x = (float)u  / 65535.0f;
-                    v.uv1.y = (float)vv / 65535.0f;
+                    v.uv1.x = (float)u  / 65536.0f;
+                    v.uv1.y = (float)vv / 65536.0f;
                 } else if (c.format == AttrFormat::Int16 && c.compCount >= 2) {
                     int16_t u, vv;
                     gpu->Read(&u,  2);
                     gpu->Read(&vv, 2);
-                    v.uv1.x = (float)u  / 32767.0f;
-                    v.uv1.y = (float)vv / 32767.0f;
+                    v.uv1.x = (float)u  / 32768.0f;
+                    v.uv1.y = (float)vv / 32768.0f;
                 }
                 break;
 
@@ -416,11 +412,13 @@ bool GOWRMeshParser::Parse(std::shared_ptr<IFile> meshFile,
             continue;
         }
 
-        // If meshHash is 0 → LOD data is embedded inline in the GPU file
-        // (no lodpack lookup needed). The gpuFile passed in is already correct.
-        // If meshHash != 0 → caller should have already resolved the LOD blob
-        // via LodPackIndex and wrapped it in a MemoryFile before calling Parse().
-        // (See GOWRLoaders.cpp for how this is orchestrated.)
+        // Parse() reads geometry directly from gpuFile. That only works for
+        // submeshes with internal LOD (hash == 0). External-LOD submeshes need
+        // ParseWithLodPack; here we skip them rather than read garbage.
+        if (hdr.meshHash != 0) {
+            ++skipped;
+            continue;
+        }
 
         std::vector<ComponentDesc> comps;
         ReadComponents(meshFile, hdr, comps);
@@ -454,6 +452,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<IFile> meshFile,
 
         MeshPart part;
         part.materialId = smIdx;
+        part.meshHash   = hdr.meshHash;
 
         if (!ReadVertices(gpuFile, hdr, comps, bufOffsets, part)) { ++skipped; continue; }
         if (!ReadIndices (gpuFile, hdr, part))                    { ++skipped; continue; }
@@ -606,6 +605,7 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<IFile>    meshFile,
 
         MeshPart part;
         part.materialId = smIdx;
+        part.meshHash   = hdr.meshHash;
 
         if (!ReadVertices(lodFile, hdr, comps, bufOffsets, part)) { ++skipped; continue; }
         if (!ReadIndices (lodFile, hdr, part))                    { ++skipped; continue; }
