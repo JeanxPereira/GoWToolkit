@@ -103,13 +103,40 @@ void WadBrowser::draw(AppContext &ctx) {
     return;
   }
 
-  ImGui::SetNextItemWidth(-1);
+  static const char* kindNames[] = { "All Kinds", "Image", "Mesh", "Audio", "Video", "Material", "Animation" };
+  static const GOW::MediaKind kindValues[] = {
+      GOW::MediaKind::Unknown, // All
+      GOW::MediaKind::Image,
+      GOW::MediaKind::Mesh,
+      GOW::MediaKind::Audio,
+      GOW::MediaKind::Video,
+      GOW::MediaKind::Material,
+      GOW::MediaKind::Animation
+  };
+
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 130);
   ImGui::InputTextWithHint("##filter", "Filter entries...", m_filter,
                            sizeof(m_filter));
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(120);
+  ImGui::Combo("##kind_filter", &m_kindFilterIndex, kindNames, IM_ARRAYSIZE(kindNames));
+
   std::string filterLower(m_filter);
   for (auto &c : filterLower)
     c = (char)tolower(c);
   bool hasFilter = !filterLower.empty();
+
+  bool hasKindFilter = (m_kindFilterIndex > 0);
+  GOW::MediaKind targetKind = hasKindFilter ? kindValues[m_kindFilterIndex] : GOW::MediaKind::Unknown;
+
+  std::function<bool(const ParsedEntry&)> hasMatchingDescendant;
+  hasMatchingDescendant = [&](const ParsedEntry& entry) {
+      if (entry.kind == targetKind) return true;
+      for (const auto& child : entry.children) {
+          if (hasMatchingDescendant(child)) return true;
+      }
+      return false;
+  };
 
   ImGui::Separator();
 
@@ -167,6 +194,13 @@ void WadBrowser::draw(AppContext &ctx) {
                typeLower.find(filterLower) != std::string::npos);
           if (!matchesFilter && entry.children.empty())
             return;
+        }
+
+        // Kind filter check: respects hierarchy
+        if (hasKindFilter) {
+            if (entry.kind != targetKind && !hasMatchingDescendant(entry)) {
+                return;
+            }
         }
 
         // ── GOWR viewability filter ──────────────────────────

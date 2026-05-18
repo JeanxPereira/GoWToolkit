@@ -531,3 +531,18 @@
   - [x] Para asset com `kind == Unknown`, retorna `nullptr` e triggera o fallback.
   - [x] Build + tests verdes.
   - [x] WadBrowser/PakBrowser atualizados para preferir `OpenByKind`.
+
+---
+
+## 2026-05-18 — M2.T6 — Filter na tree por MediaKind (UI)
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Facilidade UX para exibir apenas os arquivos baseados na categorização simplificada do MediaKind (Image, Audio, etc).
+- **Arquivos modificados**:
+  - `src/ui/WadBrowser.h` — Adicionado `m_kindFilterIndex`.
+  - `src/ui/WadBrowser.cpp` — Adicionado Combobox (All Kinds, Image, Mesh, Audio, Video, Material, Animation) em conjunto com um closure `hasMatchingDescendant` para validar a filtragem de nós estruturais no UI.
+- **AC verificados**:
+  - [x] User pode esconder tudo exceto imagens.
+  - [x] Filtro respeita hierarquia (folders permanecem abertos se possuírem arquivos correspondentes).
+  - [x] A persistência foi pulada por ser opcional e não demandar modificações de esquema serializado nesta etapa.

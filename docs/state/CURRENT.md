@@ -7,17 +7,16 @@
 M2 — Camada MediaKind
 
 ## Task em progresso
-nenhuma — M2.T5 fechada.
+nenhuma — M2.T6 fechada.
 
 ## Próxima task no pipeline
-M2.T6 — Filter na tree por MediaKind (UI).
+M2.Gate — Validação final do milestone M2.
 
 ## Blockers
 nenhum
 
 ## Notas para o próximo agente
-- **M2.T5 (`ViewerRegistry::OpenByKind`)**: Implementado. Para evitar quebrar as coisas antes da M3, as factories de MediaKind temporariamente invocam o handler antigo de fallback caso ele exista. Tanto o `WadBrowser` quanto o `PakBrowser` foram atualizados para tentar `OpenByKind` primeiro se `kind != Unknown`.
-- Unit tests pass.
+- **M2.T6 (Filter por MediaKind)**: Implementado no WadBrowser. Usando um ComboBox indexado para filtrar entre MediaKinds definidos, checando hierarquia de pastas.
 
 ## Progresso M1 (fechada)
 - T1 ✓ `6454eac`
@@ -34,4 +33,5 @@ nenhum
 - T3 ✓ (Antigravity)
 - T4 ✓ (Antigravity)
 - T5 ✓ (Antigravity)
-- T6 + Gate pendentes
+- T6 ✓ (Antigravity)
+- Gate pendente
