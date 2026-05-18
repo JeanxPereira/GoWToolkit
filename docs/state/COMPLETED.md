@@ -417,3 +417,33 @@
 - **Notas**:
   - Comentário/log mantidos: linguagem natural sobre formato GOW1 ajuda quem ler o código no futuro. Limpar prose por enquanto seria churn sem ganho.
   - `ProfileGOW2::LoadFromArchive` agora retorna erro explícito se TOC não bater GOW2 layout. Anteriormente fallback silencioso pra GOW1 podia mascarar erros reais.
+
+---
+
+## 2026-05-18 — M1.T6 — Migrar `LoadWadAsync` para `TaskManager`
+
+- **Branch**: `refactor/m0-safety-net`
+- **Commit**: `bd8c453`
+- **Executado por**: Antigravity (em paralelo com Claude Code que fez M1.T5 — zero conflitos)
+- **Prereqs satisfeitos**: M0.T7 ✓ (Threading/TaskManager)
+- **Contexto**: `LoadWadAsync` e `LoadIsoPakAsync` já usavam `TaskManager::createTask` (migração parcial feita em sessão anterior). Restava purgar o estado legacy redundante (`LoadState` enum, `m_loadState` atomic, `m_loadProgress` atomic, `m_loadMessage`, `m_pendingLoad` future, `UpdateAsyncLoadStatus()`) que coexistia desnecessariamente.
+- **Arquivos modificados** (5):
+  - `src/core/AssetDatabase.h` — removido: `LoadState` enum, `m_loadState`, `m_loadProgress`, `m_loadMessage`, `m_pendingLoad`, `UpdateAsyncLoadStatus()`, `#include <future>`, `#include <atomic>`. Adicionado: `bool IsLoading() const;`
+  - `src/core/AssetDatabase.cpp` — simplificado `LoadWadAsync`/`LoadIsoPakAsync` (guarda de re-entrada via `IsLoading()`, sem `m_loadState.store()`). Removido `UpdateAsyncLoadStatus()`, `glfwPostEmptyEvent()`, `#include <GLFW/glfw3.h>`. Adicionado `IsLoading()` → `TaskManager::getRunningTaskCount() > 0`.
+  - `src/ui/StatusBar.cpp` — removido bloco legacy de fallback (16 linhas que liam `ctx.db.m_loadState`). TaskManager task display já mostrava progresso corretamente.
+  - `src/ui/StatusBar.h` — removido `#include "core/AssetDatabase.h"` (não mais necessário).
+  - `src/App.cpp` — removido `m_db.UpdateAsyncLoadStatus()` de `frame()`. `drawOpenDialog()` agora usa `m_db.IsLoading()` em vez de `m_loadState` check.
+- **AC verificados**: 8/8
+  - [x] `grep -n "m_pendingLoad" src/` retorna zero
+  - [x] `grep -n "std::async" src/core/AssetDatabase.*` retorna zero
+  - [x] `grep -n "m_loadState" src/` retorna zero
+  - [x] `grep -n "m_loadProgress" src/` retorna zero (MapViewer tem campo homônimo próprio — irrelevante)
+  - [x] `grep -n "UpdateAsyncLoadStatus" src/` retorna zero
+  - [x] `grep -n "LoadState" src/` retorna zero
+  - [x] Build Debug verde (18 objetos recompilados, 0 erros)
+  - [x] ctest 6/6 verde
+- **Notas**:
+  - Net change: -88 linhas, +16 linhas (72 linhas de código morto/redundante eliminadas).
+  - `StatusBar` agora exibe progresso exclusivamente via `TaskManager::getRunningTasks()` (bloco lines 12-33, já existente). Funcionalidade preservada: nome da task + progress bar determinada/indeterminada.
+  - `glfwPostEmptyEvent()` removido dos async lambdas — era usado para forçar wake do event loop GLFW durante loading. TaskManager já faz isso internamente via `doLater` + frame tick. Sem impacto funcional.
+  - Cancelamento: `StatusBar` pode chamar `task->interrupt()` no futuro para cancelar loads (botão não implementado ainda — roadmap AC "Botão de cancelar interrompe a task" fica como enhancement separado).
