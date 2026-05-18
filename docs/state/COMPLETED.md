@@ -282,3 +282,46 @@
   - `Entry.h` includa `WadEntryRoleLegacy.h` (precisa para os campos `role`/`block` em `ParsedEntry`), `schema/AssetNode.h`, `types/TypeId.h`, `types/GameVersion.h`. Sem fwd-decls problemáticos.
   - `Wad.h` includa `Entry.h` (precisa para `ParsedEntry` no `entries` vector). Fwd-decl `GOW::IGameProfile` + `GOW::IFile` (só usados como `shared_ptr`).
   - `WadEntryRoleLegacy.h` é zero-dep — só os enums.
+
+---
+
+## 2026-05-18 — Hotfix — Font crash + macOS app icon
+
+- **Branch**: `refactor/m0-safety-net`
+- **Contexto**: usuário reportou crash + ícone quebrado antes de seguir milestones.
+- **Bug 1 — font assertion**:
+  - Sintoma: `Assertion failed: (font->Flags & ImFontFlags_ImplicitRefSize) == 0 ... Cannot use MergeMode with an explicit reference size when the destination font used an implicit reference size!` (imgui_draw.cpp:3115)
+  - Causa: ImGui 1.92+ rejeita merge quando destination font tem ref size implícito e merged font tem explícito. `SettingsWindow::RebuildFontAtlas` chamava `AddFontDefault()` / `AddFontFromFileTTF(path, size)` sem `ImFontConfig` → implícito. `TitleBar::loadIconFont` faz merge com `cfg.GlyphMinAdvanceX/MaxAdvanceX/Offset` (forçando explícito) → assert.
+  - Fix: `src/ui/SettingsWindow.cpp` agora passa `ImFontConfig{SizePixels=m_fontSize}` em ambos paths.
+  - Complemento: `src/ui/TitleBar.cpp` (já modificado em sessão anterior, incluído no commit) — guard `if (Fonts.Size == 0)` também passa `ImFontConfig{SizePixels=size}` explícito.
+- **Bug 2 — actool icon broken**:
+  - Sintoma: ícone genérico no Dock/Finder mesmo com Xcode instalado.
+  - Causa: bloco actool em `CMakeLists.txt` gated em `Release/RelWithDebInfo` apenas → Debug bundle sem `Assets.car`, mas `Info.plist` referencia `CFBundleIconName=GoWToolkit`. Além disso `xcode-select -p` aponta `/Library/Developer/CommandLineTools`, então `xcrun actool` falha mesmo com Xcode em `/Applications/Xcode.app`.
+  - Fix: roda actool em todos build types. Detecta caminho via `xcrun --find actool` com fallback explícito pra `/Applications/Xcode.app/Contents/Developer/usr/bin/actool` e `/Applications/Xcode-beta.app/...`. Se actool ausente → warning + fallback ícone genérico (não quebra build).
+- **AC verificados**:
+  - [x] App lança sem crash (PID estável 4s+)
+  - [x] `build/GoWToolkit.app/Contents/Resources/Assets.car` presente em Debug
+  - [x] CMake configure log: `Using actool: /Applications/Xcode.app/.../actool`
+  - [x] ctest 6/6 verde sem regressão
+
+---
+
+## 2026-05-18 — M1.T2 — Mover `BoundingBox` para Domain
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereqs**: M1.T1 ✓
+- **Arquivos novos**:
+  - `src/core/domain/BoundingBox.h` — `struct BoundingBox` em `namespace GOW` (POD: `min`/`max` glm::vec3, métodos `Center()`/`Radius()` inline).
+- **Edits**:
+  - `src/rendering/Camera.h` — remove struct def, `#include "core/domain/BoundingBox.h"`
+  - `src/rendering/GpuMesh.h` — `#include "Camera.h"` → `#include "core/domain/BoundingBox.h"` (GpuMesh não precisava de Camera)
+- **AC verificados**: 3/3
+  - [x] `grep -rn "struct BoundingBox" src/` → só `src/core/domain/BoundingBox.h:6`
+  - [x] Build Debug verde, main exe + tests linkam
+  - [x] ctest 6/6 verde
+  - [x] Layer linter sem novas violações (12 estáveis; nenhuma sobre BoundingBox)
+- **Escopo deferido pra M1.T3**:
+  - `src/core/parsers/shared/MeshData.h` ainda inclui `rendering/GpuMesh.h` porque depende de `GpuVertex`. Violação `MeshData.h → GpuMesh.h` permanece — M1.T3 vai mover `GpuVertex` pra `domain/MeshVertex.h`.
+- **Notas**:
+  - `BoundingBox` POD-only — só depende de `<glm/glm.hpp>`. Header zero-fricção pra L0/L1/L2/L4.
+  - `Camera.h` continua em L4 (rendering); domain header dentro de L2; include direction L4→L2 OK.

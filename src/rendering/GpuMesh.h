@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <cstdint>
-#include "Camera.h" // for BoundingBox
+#include "core/domain/BoundingBox.h"
 
 // Forward-declare GL types to avoid pulling glad.h into headers
 using GLuint = unsigned int;
