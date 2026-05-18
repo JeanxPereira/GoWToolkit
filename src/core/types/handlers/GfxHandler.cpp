@@ -19,5 +19,4 @@ public:
 
 } // namespace
 
-REGISTER_TYPE(GOW1, GfxHandler);
 REGISTER_TYPE(GOW2, GfxHandler);

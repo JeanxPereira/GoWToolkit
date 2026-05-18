@@ -471,9 +471,7 @@ std::unique_ptr<MeshData> GOW2MeshParser::Parse(IFile& file, uint32_t offset, ui
     uint32_t mdlCommentStart;
     std::memcpy(&mdlCommentStart, &allData[4], 4);
 
-    // Always use GOW2 format: 0x18-byte header, partsCount as uint16 at offset 8.
-    // (GOW1 meshes use 0x50-byte header and uint32 partsCount — handled by a separate parser.)
-    GameVersion version = GameVersion::GOW2;
+    // GOW2 mesh layout: 0x18-byte header, partsCount as uint16 at offset 8.
     uint32_t partsCount = 0;
     {
         uint16_t pc16;
@@ -483,7 +481,7 @@ std::unique_ptr<MeshData> GOW2MeshParser::Parse(IFile& file, uint32_t offset, ui
     LOG_INFO("[GOW2MeshParser] mesh magic=0x%08X parts=%u mdlCommentStart=0x%X", magic, partsCount, mdlCommentStart);
 
     auto meshData = std::make_unique<MeshData>();
-    uint32_t meshHeaderSize = (version == GameVersion::GOW1) ? 0x50 : 0x18;
+    constexpr uint32_t meshHeaderSize = 0x18;
 
     for (uint32_t i = 0; i < partsCount; ++i) {
         uint32_t partOffset;
@@ -512,17 +510,15 @@ std::unique_ptr<MeshData> GOW2MeshParser::Parse(IFile& file, uint32_t offset, ui
             uint32_t groupOffset = partOffset + groupOffsetRelative;
             uint32_t groupSize = groupEndRelative - groupOffsetRelative;
 
-            // Parse Group
+            // Parse Group (GOW2: objectsCount is uint16 at +4, header is 0x8 bytes)
             uint32_t objectsCount = 0;
-            if (version == GameVersion::GOW1) {
-                std::memcpy(&objectsCount, &allData[groupOffset + 4], 4);
-            } else {
+            {
                 uint16_t oc16;
                 std::memcpy(&oc16, &allData[groupOffset + 4], 2);
                 objectsCount = oc16;
             }
 
-            uint32_t groupHeaderSize = (version == GameVersion::GOW1) ? 0xC : 0x8;
+            constexpr uint32_t groupHeaderSize = 0x8;
             
             for (uint32_t k = 0; k < objectsCount; ++k) {
                 uint32_t objOffsetRelative;

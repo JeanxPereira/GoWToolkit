@@ -29,5 +29,4 @@ public:
 
 } // anonymous namespace
 
-REGISTER_TYPE(GOW1, TextureHandler);
 REGISTER_TYPE(GOW2, TextureHandler);

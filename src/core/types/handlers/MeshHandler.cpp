@@ -42,7 +42,5 @@ public:
 
 } // anonymous namespace
 
-REGISTER_TYPE(GOW1, MeshHandler);
 REGISTER_TYPE(GOW2, MeshHandler);
-REGISTER_TYPE(GOW1, GmdlHandler);
 REGISTER_TYPE(GOW2, GmdlHandler);

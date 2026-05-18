@@ -22,7 +22,6 @@ public:
     
 private:
     void RegisterSchemas();
-    bool LoadFromArchiveGOW1(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad);
     bool LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
                               IFile* tocFile, OpenWad& outWad);
 

@@ -57,30 +57,3 @@ REGISTER_TAG(GOW2, 3,  GroupEndHandler);
 REGISTER_TAG(GOW2, 21, HeaderStartHandler);
 REGISTER_TAG(GOW2, 19, HeaderPopHandler);
 
-// ── Same structural tags for GOW1 ──
-// Use separate static bools to avoid name collisions
-static bool _reg_GOW1_EntityCount = [] {
-    GOW::TypeRegistry::Get().RegisterByTag(GOW::GameVersion::GOW1, 0,
-        std::make_unique<EntityCountHandler>());
-    return true;
-}();
-static bool _reg_GOW1_GroupStart = [] {
-    GOW::TypeRegistry::Get().RegisterByTag(GOW::GameVersion::GOW1, 2,
-        std::make_unique<GroupStartHandler>());
-    return true;
-}();
-static bool _reg_GOW1_GroupEnd = [] {
-    GOW::TypeRegistry::Get().RegisterByTag(GOW::GameVersion::GOW1, 3,
-        std::make_unique<GroupEndHandler>());
-    return true;
-}();
-static bool _reg_GOW1_HeaderStart = [] {
-    GOW::TypeRegistry::Get().RegisterByTag(GOW::GameVersion::GOW1, 21,
-        std::make_unique<HeaderStartHandler>());
-    return true;
-}();
-static bool _reg_GOW1_HeaderPop = [] {
-    GOW::TypeRegistry::Get().RegisterByTag(GOW::GameVersion::GOW1, 19,
-        std::make_unique<HeaderPopHandler>());
-    return true;
-}();

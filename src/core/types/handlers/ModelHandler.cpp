@@ -209,5 +209,4 @@ public:
 
 } // anonymous namespace
 
-REGISTER_TYPE(GOW1, ModelHandler);
 REGISTER_TYPE(GOW2, ModelHandler);

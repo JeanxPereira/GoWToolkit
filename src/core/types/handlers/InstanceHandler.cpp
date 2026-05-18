@@ -71,14 +71,6 @@ public:
 
         // 2. Find the Object/Model this instance references.
         //
-        // Two strategies depending on game version:
-        //
-        // GOW1 (magic 0x00020001, size 0x5C):
-        //   The Instance binary data contains the Object name at [0x04:0x1C].
-        //   The Object is a SIBLING in the WAD tree, found by name lookup.
-        //   See: god_of_war_browser/pack/wad/inst/gameobject.go:59
-        //     objNode := wrsrc.Wad.GetNodeByName(inst.Object, wrsrc.Node.Id-1, false)
-        //
         // GOW2 (magic 0x00030001, size 0x68):
         //   The Object is the first child (SubGroupNodes[0]).
         //   See: god_of_war_browser/pack/wad/inst/gow2.go:56
@@ -86,24 +78,8 @@ public:
 
         const ParsedEntry* objEntry = nullptr;
 
-        // ── GOW1 path: resolve Object by name ──────────────────────────
-        if (!instData->objectName.empty()) {
-            LOG_INFO("[InstanceHandler] GOW1 path: resolving object '%s' for instance '%s'",
-                     instData->objectName.c_str(), entry.name.c_str());
-
-            // Try Object type first, then fall back to any matching entry
-            objEntry = FindEntryByNameAndType(wad.entries, instData->objectName, GOW::TypeId::Object);
-            if (!objEntry) {
-                objEntry = FindEntryByName(wad.entries, instData->objectName);
-            }
-            if (!objEntry) {
-                LOG_WARN("[InstanceHandler] GOW1: Could not find object '%s' for instance '%s'",
-                         instData->objectName.c_str(), entry.name.c_str());
-                return nullptr;
-            }
-        }
         // ── GOW2 path: find child Object/Model ─────────────────────────
-        else {
+        {
             const ParsedEntry* sourceEntry = &entry;
 
             // If this instance is a zero-sized reference (no children),
@@ -214,4 +190,3 @@ public:
 } // anonymous namespace
 
 REGISTER_TYPE(GOW2, InstanceHandler);
-REGISTER_TYPE(GOW1, InstanceHandler);

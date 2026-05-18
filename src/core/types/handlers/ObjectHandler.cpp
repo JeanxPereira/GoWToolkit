@@ -270,34 +270,6 @@ public:
     }
 };
 
-class ObjectHandlerGOW1 : public GOW::ITypeHandler {
-public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::Object; }
-    const char*  GetName()  const override { return "Object"; }
-    uint32_t     GetMagic() const override { return 0x00040001; }
-    const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
-    Color4f      GetColor() const override { return {0.55f, 0.9f, 1.0f, 1.0f}; }
-
-    std::unique_ptr<GOW::SceneData> BuildSceneData(const ParsedEntry& entry, OpenWad& wad) override {
-        uint32_t actualMagic = 0;
-        if (wad.fileSource) {
-            wad.fileSource->Seek(entry.offset, SEEK_SET);
-            wad.fileSource->Read(&actualMagic, 4);
-        }
-        return BuildSceneFromObjectEntry(entry, wad, actualMagic);
-    }
-
-    std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
-        auto scene = BuildSceneData(entry, wad);
-        auto vp = std::make_shared<GOW::Viewport3D>(entry.name);
-        if (scene && !scene->IsEmpty()) {
-            vp->LoadScene(std::move(scene));
-        }
-        return vp;
-    }
-};
-
 } // anonymous namespace
 
 REGISTER_TYPE(GOW2, ObjectHandlerGOW2);
-REGISTER_TYPE(GOW1, ObjectHandlerGOW1);

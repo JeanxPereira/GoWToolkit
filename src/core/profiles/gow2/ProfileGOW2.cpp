@@ -270,60 +270,6 @@ static void assignSchemaType(ParsedEntry& entry) {
     }
 }
 
-// ── GOW1 TOC parser ────────────────────────────────────────────────────────
-// Format: sequence of 24-byte entries, no header, terminated by a null first byte
-//   [0:12]  filename (null-padded)
-//   [12:16] pak index (uint32 LE) — 0 = PART1.PAK, 1 = PART2.PAK, …
-//   [16:20] file size in bytes (uint32 LE)
-//   [20:24] sector offset within the PAK (uint32 LE, multiply by 2048)
-#pragma pack(push, 1)
-struct RawTocEntryGOW1 {
-    char     name[12];
-    uint32_t pakIndex;
-    uint32_t size;
-    uint32_t sectorOffset;
-};
-#pragma pack(pop)
-
-bool ProfileGOW2::LoadFromArchiveGOW1(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad) {
-    auto tocFile = vfs->OpenFile("/GODOFWAR.TOC");
-    if (!tocFile || !tocFile->IsValid()) return false;
-
-    outWad.filename = "God of War (ISO)";
-
-    auto pakExists = [&](const std::string& name) -> bool {
-        return vfs->Exists("/" + name) || vfs->Exists(name);
-    };
-    std::set<std::string> warnedMissingPaks;
-
-    while (true) {
-        RawTocEntryGOW1 raw{};
-        if (tocFile->Read(&raw, sizeof(raw)) != sizeof(raw)) break;
-        if (raw.name[0] == '\0') break;  // null terminator = end of list
-
-        std::string pakName = "PART" + std::to_string(raw.pakIndex + 1) + ".PAK";
-
-        if (!pakExists(pakName)) {
-            if (warnedMissingPaks.insert(pakName).second)
-                LOG_WARN("[GOW1] '%s' not found in ISO — skipping its entries. "
-                         "(Dual-layer ISOs may need both layers merged.)", pakName.c_str());
-            continue;
-        }
-
-        ParsedEntry entry;
-        entry.name = std::string(raw.name, strnlen(raw.name, 12));
-        entry.size   = raw.size;
-        entry.offset = (int64_t)raw.sectorOffset * 2048;
-        entry.wadName = pakName;
-        entry.hash = std::hash<std::string>{}(entry.name);
-        assignSchemaType(entry);
-        outWad.entries.push_back(std::move(entry));
-    }
-
-    LOG_INFO("[GOW1] TOC parsed: %zu files.", outWad.entries.size());
-    return !outWad.entries.empty();
-}
-
 // ── GOW2 TOC parser ────────────────────────────────────────────────────────
 // Format: uint32 fileCount, then fileCount×36-byte entries, then offset array
 //   [0:24]  filename (null-padded)
@@ -396,12 +342,12 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
     return !outWad.entries.empty();
 }
 
-// ── LoadFromArchive — auto-detect GOW1 vs GOW2 ────────────────────────────
+// ── LoadFromArchive ───────────────────────────────────────────────────────
 bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad) {
     // Try GOW2.TOC first (some builds use this name)
     auto tocFile = vfs->OpenFile("/GOW2.TOC");
 
-    // Fall back to GODOFWAR.TOC (used by both GOW1 and GOW2)
+    // Fall back to GODOFWAR.TOC (default GOW2 layout)
     if (!tocFile || !tocFile->IsValid())
         tocFile = vfs->OpenFile("/GODOFWAR.TOC");
 
@@ -410,10 +356,8 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenW
         return false;
     }
 
-    // Auto-detect format:
-    //   GOW2: first 4 bytes = file count (small integer, e.g. 5000),
-    //         and count * 36 + 4 <= file size
-    //   GOW1: first bytes are the start of a filename (ASCII, large when read as uint32)
+    // Sanity-check GOW2 header: first 4 bytes = file count (small integer),
+    // and count * sizeof(RawTocEntryGOW2) + 4 must fit within the file.
     tocFile->Seek(0, SEEK_END);
     int64_t tocSize = tocFile->Tell();
     tocFile->Seek(0, SEEK_SET);
@@ -425,13 +369,15 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenW
     bool isGOW2 = (possibleCount > 0 && possibleCount < 200000) &&
                   ((int64_t)(possibleCount * sizeof(RawTocEntryGOW2) + 4) <= tocSize);
 
-    if (isGOW2) {
-        LOG_INFO("[GOW] Detected GOW2 TOC format (%u entries).", possibleCount);
-        return LoadFromArchiveGOW2(vfs, tocFile.get(), outWad);
-    } else {
-        LOG_INFO("[GOW] Detected GOW1 TOC format.");
-        return LoadFromArchiveGOW1(vfs, outWad);
+    if (!isGOW2) {
+        LOG_ERR("[GOW] TOC header does not look like GOW2 (count=%u, size=%lld). "
+                "GOW1 ISOs are not supported by this profile.",
+                possibleCount, (long long)tocSize);
+        return false;
     }
+
+    LOG_INFO("[GOW] Detected GOW2 TOC format (%u entries).", possibleCount);
+    return LoadFromArchiveGOW2(vfs, tocFile.get(), outWad);
 }
 
 } // namespace GOW

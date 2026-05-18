@@ -21,16 +21,7 @@
 
 // Bridge: converts TypeId to legacy schema string for UI display.
 inline std::string TypeIdToSchemaString(GOW::GameVersion ver, GOW::TypeId id) {
-    if (ver == GOW::GameVersion::GOW1) {
-        switch (id) {
-            case GOW::TypeId::Model:    return "GOW1_MDL";
-            case GOW::TypeId::Mesh:     return "GOW1_MESH";
-            case GOW::TypeId::Material: return "GOW1_MAT";
-            case GOW::TypeId::Texture:  return "GOW1_TXR";
-            case GOW::TypeId::Animation:return "GOW1_ANM";
-            default: break;
-        }
-    } else if (ver == GOW::GameVersion::GOW2) {
+    if (ver == GOW::GameVersion::GOW2) {
         switch (id) {
             case GOW::TypeId::Instance: return "GOW2_SERVER_INSTANCE";
             case GOW::TypeId::Object:   return "GOW2_OBJ";

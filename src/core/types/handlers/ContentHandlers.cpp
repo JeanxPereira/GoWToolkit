@@ -96,27 +96,6 @@ public:
   }
 };
 
-// ── Sound (GOW1 SBLK) ── magic 0x00000018
-class SoundHandlerGOW1 : public GOW::ITypeHandler {
-public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::Sound; }
-  const char *GetName() const override { return "Sound Bank"; }
-  uint32_t GetMagic() const override { return 0x00000018; }
-  const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_2_FILL; }
-  Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; }
-
-  std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
-    if (!wad.fileSource)
-      return nullptr;
-    auto bankData = GOW::GOW2SoundParser::Parse(entry, wad.fileSource);
-    if (bankData && !bankData->sounds.empty())
-      return std::make_shared<GOW::SoundPlayer>(entry.name,
-                                                std::move(bankData));
-    return nullptr;
-  }
-};
-
 // ── Collision ── magic 0x00000011 (COLLISION_MAGIC)
 class CollisionHandler : public GOW::ITypeHandler {
 public:
@@ -124,15 +103,6 @@ public:
   const char *GetName() const override { return "Collision"; }
   uint32_t GetMagic() const override { return 0x00000011; }
   Color4f GetColor() const override { return {0.7f, 0.7f, 0.7f, 1.0f}; }
-};
-
-// ── Flipbook (GOW1) ── magic 0x00000021
-class FlipbookHandlerGOW1 : public GOW::ITypeHandler {
-public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::Flipbook; }
-  const char *GetName() const override { return "Flipbook"; }
-  uint32_t GetMagic() const override { return 0x00000021; }
-  Color4f GetColor() const override { return {1.0f, 0.6f, 0.9f, 1.0f}; }
 };
 
 // ── Flipbook (GOW2) ── magic 0x0000001B
@@ -358,17 +328,6 @@ public:
 };
 
 } // anonymous namespace
-
-// GOW1 registrations (magic-based, WAD internal types)
-REGISTER_TYPE(GOW1, AnimationHandler);
-REGISTER_TYPE(GOW1, ScriptHandler);
-REGISTER_TYPE(GOW1, LightHandler);
-REGISTER_TYPE(GOW1, SoundHandlerGOW1);
-REGISTER_TYPE(GOW1, CollisionHandler);
-REGISTER_TYPE(GOW1, FlipbookHandlerGOW1);
-REGISTER_TYPE(GOW1, ChunkHandler);
-
-REGISTER_TYPE(GOW1, ShaderGroupHandler);
 
 // GOW2 registrations (magic-based, WAD internal types)
 REGISTER_TYPE(GOW2, AnimationHandler);

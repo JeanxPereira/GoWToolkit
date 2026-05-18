@@ -83,6 +83,5 @@ public:
 
 } // anonymous namespace
 
-REGISTER_TYPE(GOW1, MaterialHandler);
 REGISTER_TYPE(GOW2, MaterialHandler);
 

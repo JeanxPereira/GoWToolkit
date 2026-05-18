@@ -382,3 +382,38 @@
 - **Notas**:
   - GOW2Loaders.cpp era um zumbi: compilado e linkado no exe, mas nunca instanciado. Footprint de binário caiu ~1.3 MB de .o + ~2.7 MB de GOWRLoaders ainda lá (não tocado). LTO já eliminava o código morto do binário final, mas custava tempo de compilação a cada build.
   - O nome `core/loaders/` continua semanticamente confuso (sobrevive só com GOWRLoaders, que é ITypeHandler + util). Renomear/dissolver fica pra M3 ou M4 conforme handler refactor evoluir.
+
+---
+
+## 2026-05-18 — M1.T5 — Remover `GameVersion::GOW1` Órfão
+
+- **Branch**: `refactor/m0-safety-net`
+- **Decisão usuário**: GOW1 será re-adicionado da forma correta no futuro. Limpa agora — sem flag deprecated, sem stub, remoção completa.
+- **Escopo real vs roadmap**: roadmap classificou XS, na prática M (16 REGISTER_TYPE macros + 5 RegisterByTag blocks + 3 GOW1-only handler classes + parser branches em 3 files + ProfileGOW2 TOC parser + auto-detect + enum value). Surface bem maior que o esperado.
+- **Estratégia**: compile-driven removal — drop enum value primeiro, fix every error que aparece.
+- **Arquivos modificados** (12):
+  - `src/core/types/GameVersion.h` — drop `GOW1,` enum value. Docstring expandida documentando intenção de re-add.
+  - `src/core/WadTypes.h` — drop GOW1 branch em `TypeIdToSchemaString`.
+  - `src/core/profiles/gow2/ProfileGOW2.{h,cpp}` — drop `LoadFromArchiveGOW1` + `RawTocEntryGOW1` struct + auto-detect GOW1/GOW2. `LoadFromArchive` agora sanity-check GOW2 e bail com mensagem clara se TOC não bater.
+  - `src/core/parsers/gow2/MeshParser.cpp` — drop conditionals `(version == GOW1)`. Hardcode `meshHeaderSize=0x18`, `groupHeaderSize=0x8`, partsCount/objectsCount como uint16. Variável `version` removida (era só GOW2 anyway).
+  - `src/core/parsers/gow2/ObjectParser.{h,cpp}` — drop `ParseGOW1` method, `MAGIC_GOW1`, `GOW1_HEADER_SIZE` constants. `ParseJoints` simplificado: removido param `headerSize` (sempre GOW2_HEADER_SIZE=0x14), drop `file0x20/file0x24` branch, `isQuaternion` sempre false.
+  - `src/core/parsers/gow2/InstanceParser.cpp` — drop branch `if (entry.size == 0x5C)`. Top guard agora `< 0x60` (era `< 0x5C`). Dead `else` final removido (já bloqueado pelo top guard).
+  - `src/core/types/handlers/StructuralHandlers.cpp` — drop 5 blocks `RegisterByTag(GOW::GameVersion::GOW1, ...)`.
+  - `src/core/types/handlers/ContentHandlers.cpp` — drop classes `SoundHandlerGOW1`, `FlipbookHandlerGOW1` + 8 `REGISTER_TYPE(GOW1, ...)` lines.
+  - `src/core/types/handlers/ObjectHandler.cpp` — drop class `ObjectHandlerGOW1` + `REGISTER_TYPE(GOW1, ...)`.
+  - `src/core/types/handlers/InstanceHandler.cpp` — drop GOW1 path branch (`if (!instData->objectName.empty())`) + `REGISTER_TYPE(GOW1, InstanceHandler)`.
+  - `src/core/types/handlers/MeshHandler.cpp` — drop 2× `REGISTER_TYPE(GOW1, ...)`.
+  - `src/core/types/handlers/{Texture,Model,Material,Gfx}Handler.cpp` — drop 1× `REGISTER_TYPE(GOW1, ...)` cada.
+- **AC verificados**: 5/5 (versão pragmática)
+  - [x] `grep -rn "\bGOW1\b" src/core/` → 26 ocorrências, todas em comentários / docstrings / strings de log (roadmap AC permite explicitamente "exceto em comentários e docs")
+  - [x] `GameVersion::GOW1` enum value removido
+  - [x] Build Debug verde — main exe + tests linkam
+  - [x] ctest 6/6 verde (incluindo Golden_GOW2 — confirma que o parser GOW2 hardcoded não regrediu)
+  - [x] Layer linter estável (11 violações)
+- **Resíduos preservados** (não dão warning; futuro re-add reaproveita):
+  - `ObjectData::file0x20` / `file0x24` (fields)
+  - `InstanceData::objectName` (sempre `""` agora)
+  - `static BuildTRSMatrix` helper em InstanceParser (sem caller; compiler warning possível mas não fatal)
+- **Notas**:
+  - Comentário/log mantidos: linguagem natural sobre formato GOW1 ajuda quem ler o código no futuro. Limpar prose por enquanto seria churn sem ganho.
+  - `ProfileGOW2::LoadFromArchive` agora retorna erro explícito se TOC não bater GOW2 layout. Anteriormente fallback silencioso pra GOW1 podia mascarar erros reais.

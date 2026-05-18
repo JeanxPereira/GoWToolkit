@@ -17,9 +17,7 @@ namespace GOW {
 
 // Constants matching god_of_war_browser/pack/wad/obj
 static const uint32_t DATA_HEADER_SIZE = 0x30;
-static const uint32_t GOW1_HEADER_SIZE = 0x2C;
 static const uint32_t GOW2_HEADER_SIZE = 0x14;
-static const uint32_t MAGIC_GOW1       = 0x00040001;
 static const uint32_t MAGIC_GOW2       = 0x00010001;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -65,16 +63,12 @@ static glm::ivec4 ReadIVec4(const uint8_t* buf) {
     return v;
 }
 
-// ── Joint parsing (shared between GOW1/GOW2, only header offset differs) ─
+// ── Joint parsing (GOW2 layout) ──────────────────────────────────────────
 
-static bool ParseJoints(
-    const uint8_t* data, uint32_t size,
-    uint32_t headerSize,    // 0x2C for GOW1, 0x14 for GOW2
-    ObjectData& obj)
-{
-    // Joint count
-    uint32_t jointCountOffset = (headerSize == GOW1_HEADER_SIZE) ? 0x1C : 0x04;
-    uint32_t jointCount = ReadU32(data + jointCountOffset);
+static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
+    constexpr uint32_t headerSize = GOW2_HEADER_SIZE;
+
+    uint32_t jointCount = ReadU32(data + 0x04);
 
     if (jointCount == 0 || jointCount > 1024) {
         LOG_WARN("[ObjectParser] Suspicious joint count: %u", jointCount);
@@ -82,18 +76,11 @@ static bool ParseJoints(
     }
 
     // Data offset (where the matrix data block starts)
-    uint32_t dataOffsetOffset = (headerSize == GOW1_HEADER_SIZE) ? 0x28 : 0x10;
-    uint32_t dataOffset = ReadU32(data + dataOffsetOffset);
+    uint32_t dataOffset = ReadU32(data + 0x10);
 
     if (dataOffset + DATA_HEADER_SIZE > size) {
         LOG_ERR("[ObjectParser] Data offset 0x%X exceeds buffer size %u", dataOffset, size);
         return false;
-    }
-
-    // File0x20 / File0x24 (GOW1 only — GOW2 doesn't have these at the same place)
-    if (headerSize == GOW1_HEADER_SIZE) {
-        obj.file0x20 = ReadU32(data + 0x20);
-        obj.file0x24 = ReadU32(data + 0x24);
     }
 
     // ── Parse joint entries ──────────────────────────────────────────────
@@ -126,9 +113,7 @@ static bool ParseJoints(
         j.isSkinned   = (flags & 0x80) != 0;
         j.isExternal  = (flags & 0x08) != 0;
         // GOW2 obj_gow2.go NEVER sets IsQuaterion — always false (uses Euler).
-        // GOW1 obj.go sets IsQuaterion = flags & 0x8000.
-        // Using headerSize to distinguish the game version.
-        j.isQuaternion = (headerSize == GOW1_HEADER_SIZE) ? ((flags & 0x8000) != 0) : false;
+        j.isQuaternion = false;
         j.invId       = invId;
 
         if (j.isSkinned) {
@@ -243,8 +228,6 @@ std::unique_ptr<ObjectData> GOW2ObjectParser::Parse(
 
     if (magic == MAGIC_GOW2) {
         return ParseGOW2(data, size);
-    } else if (magic == MAGIC_GOW1) {
-        return ParseGOW1(data, size);
     }
 
     LOG_ERR("[ObjectParser] Unknown magic: 0x%08X", magic);
@@ -255,30 +238,13 @@ std::unique_ptr<ObjectData> GOW2ObjectParser::ParseGOW2(const uint8_t* data, uin
     if (size < GOW2_HEADER_SIZE) return nullptr;
 
     auto obj = std::make_unique<ObjectData>();
-    if (!ParseJoints(data, size, GOW2_HEADER_SIZE, *obj)) {
+    if (!ParseJoints(data, size, *obj)) {
         return nullptr;
     }
 
     FillJoints(*obj);
 
     LOG_INFO("[ObjectParser] GOW2: Parsed %zu joints, %zu skinned",
-             obj->joints.size(),
-             std::count_if(obj->joints.begin(), obj->joints.end(),
-                           [](const Joint& j) { return j.isSkinned; }));
-    return obj;
-}
-
-std::unique_ptr<ObjectData> GOW2ObjectParser::ParseGOW1(const uint8_t* data, uint32_t size) {
-    if (size < GOW1_HEADER_SIZE) return nullptr;
-
-    auto obj = std::make_unique<ObjectData>();
-    if (!ParseJoints(data, size, GOW1_HEADER_SIZE, *obj)) {
-        return nullptr;
-    }
-
-    FillJoints(*obj);
-
-    LOG_INFO("[ObjectParser] GOW1: Parsed %zu joints, %zu skinned",
              obj->joints.size(),
              std::count_if(obj->joints.begin(), obj->joints.end(),
                            [](const Joint& j) { return j.isSkinned; }));

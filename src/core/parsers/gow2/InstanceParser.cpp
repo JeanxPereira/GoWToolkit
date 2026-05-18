@@ -76,7 +76,7 @@ static bool IsSkyInstance(const std::string& name) {
 // ── Parser ─────────────────────────────────────────────────────────────────
 
 std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const ParsedEntry& entry, std::shared_ptr<IFile> parentFile) {
-    if (!parentFile || entry.size < 0x5C) return nullptr;
+    if (!parentFile || entry.size < 0x60) return nullptr;
 
     auto data = std::make_shared<InstanceData>();
 
@@ -88,44 +88,6 @@ std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const ParsedEntry& entry
     // Sky detection from entry name
     data->isSky = IsSkyInstance(entry.name);
 
-    // ── GOW1 Instance (size 0x5C) ──────────────────────────────────────
-    // Layout (from god_of_war_browser/pack/wad/inst/gameobject.go):
-    //   [0x00:0x04] magic (0x00020001)
-    //   [0x04:0x1C] Object name (24 bytes, null-terminated)
-    //   [0x1C:0x1E] Id  (uint16)
-    //   [0x1E:0x20] Params (uint16)
-    //   [0x20:0x30] Position1 (Vec4) — translation XYZ, W unused
-    //   [0x30:0x40] Rotation  (Vec4) — euler XYZ (radians), W = uniform scale
-    //   [0x40:0x50] Position2 (Vec4) — world center (not used for rendering)
-    //   [0x50:0x5C] Unk (3 × uint32)
-    if (entry.size == 0x5C) {
-        char nameBuf[24] = {0};
-        std::memcpy(nameBuf, &buf[0x4], 24);
-        data->objectName = std::string(nameBuf, strnlen(nameBuf, 24));
-
-        std::memcpy(&data->id, &buf[0x1C], 2);
-        std::memcpy(&data->params, &buf[0x1E], 2);
-
-        // Extract Position1 (translation)
-        float tx = ReadF32(&buf[0x20]);
-        float ty = ReadF32(&buf[0x24]);
-        float tz = ReadF32(&buf[0x28]);
-
-        // Extract Rotation (euler radians XYZ) and Scale (W component)
-        float rx = ReadF32(&buf[0x30]);
-        float ry = ReadF32(&buf[0x34]);
-        float rz = ReadF32(&buf[0x38]);
-        float scale = ReadF32(&buf[0x3C]);
-
-        // Handle zero/invalid scale
-        if (scale == 0.0f) scale = 1.0f;
-
-        BuildTRSMatrix(data->transformMatrix, tx, ty, tz, rx, ry, rz, scale);
-
-        LOG_INFO("[InstanceParser] GOW1 instance '%s': obj='%s' pos=(%.2f,%.2f,%.2f) rot=(%.3f,%.3f,%.3f) scale=%.3f",
-                 entry.name.c_str(), data->objectName.c_str(),
-                 tx, ty, tz, rx, ry, rz, scale);
-    }
     // ── GOW2 Instance (size 0x68) ──────────────────────────────────────
     // Layout (from god_of_war_browser/pack/wad/inst/gow2.go):
     //   [0x00:0x04] magic (0x00030001)
@@ -137,7 +99,7 @@ std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const ParsedEntry& entry
     //   [0x40:0x50] UnkVec3 (Vec4) — orientation col 2
     //   [0x50:0x5C] Position (Vec3) — 12 bytes
     //   [0x5C:0x68] Unk (3 × uint32)
-    else if (entry.size >= 0x60) {
+    {
         data->objectName = ""; // GOW2: resolved via child tree
 
         std::memcpy(&data->id, &buf[0x1C], 2);
@@ -179,9 +141,6 @@ std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const ParsedEntry& entry
                  entry.name.c_str(),
                  data->transformMatrix[12], data->transformMatrix[13], data->transformMatrix[14],
                  data->isSky);
-    } else {
-        LOG_WARN("[InstanceParser] Unknown instance size %u for '%s'", entry.size, entry.name.c_str());
-        return nullptr;
     }
 
     return data;
