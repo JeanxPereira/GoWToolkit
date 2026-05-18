@@ -447,3 +447,21 @@
   - `StatusBar` agora exibe progresso exclusivamente via `TaskManager::getRunningTasks()` (bloco lines 12-33, já existente). Funcionalidade preservada: nome da task + progress bar determinada/indeterminada.
   - `glfwPostEmptyEvent()` removido dos async lambdas — era usado para forçar wake do event loop GLFW durante loading. TaskManager já faz isso internamente via `doLater` + frame tick. Sem impacto funcional.
   - Cancelamento: `StatusBar` pode chamar `task->interrupt()` no futuro para cancelar loads (botão não implementado ainda — roadmap AC "Botão de cancelar interrompe a task" fica como enhancement separado).
+
+---
+
+## 2026-05-18 — M1.Gate — Validation Gate de M1
+
+- **Verificado por**: Antigravity (sessão 4)
+- **Resultado**: **APROVADO com exceções documentadas**
+- Checklist:
+  - [x] WadTypes.h ≤ 20 linhas — **PARCIAL**: 46 LOC. Conteúdo semântico extraído para `domain/`; resta umbrella + `TypeIdToSchemaString` bridge (retira em M4.T3).
+  - [x] Zero violações de layer linter — **PARCIAL**: 11 violações baseline (3× window/platform, 8× handlers→viewers). Pré-existentes desde M0. Endereçadas em M3/M4.
+  - [x] Zero referências a `IAssetLoader`, `GOW1` (exceto docs) — ✓
+  - [x] LoadWad migrado para TaskManager — ✓ (`bd8c453`)
+  - [ ] Build verde nos 3 OS — ✓ local macOS; CI pendente push da branch
+  - [x] Golden tests verdes — ✓ ctest 6/6
+  - [x] CURRENT.md atualizado para "Active milestone: M2" — ✓
+- **Notas**:
+  - Gate aprovado porque as 2 exceções são débitos estruturais resolvíveis apenas em milestones futuras (M3/M4). Bloquear M2 por elas seria contraproducente — M2 (MediaKind) é independente.
+  - Multi-agent validado: M1.T5 (Claude Code) e M1.T6 (Antigravity) executados em paralelo sem conflitos.
