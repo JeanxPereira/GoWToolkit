@@ -657,8 +657,8 @@ ParsedEntry WadNodeBuilder::ToNode(const RawEntry& r, const std::string& wadFile
     e.schemaType  = r.schemaType;
     e.wadName     = wadFilename;
     e.role        = r.role;
-    e.block       = r.block;
     e.typeId      = RoleToTypeId(r.role);
+    e.kind        = KindOf(e.typeId);
     e.displayName = r.displayName;
     return e;
 }
@@ -675,9 +675,9 @@ ParsedEntry WadNodeBuilder::MakeFolder(
     f.role       = role;
     f.block      = block;
     f.wadName    = m_wadFilename;
-    f.size       = 0;
     f.offset     = 0;
     f.typeId     = RoleToTypeId(role);
+    f.kind       = KindOf(f.typeId);
     return f;
 }
 

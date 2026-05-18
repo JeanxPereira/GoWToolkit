@@ -204,6 +204,8 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
             nameToDefinition[entry.name] = { entry.typeId, entry.offset, entry.size };
         }
 
+        entry.kind = KindOf(entry.typeId);
+
         // ── Add node to tree ──
         std::vector<ParsedEntry>* currentLevel = stack.back();
         currentLevel->push_back(std::move(entry));
@@ -235,6 +237,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
                     n.offset = it->second.offset;
                     n.size   = it->second.size;
                     n.schemaType = TypeIdToSchemaString(GameVersion::GOW2, n.typeId);
+                    n.kind = KindOf(n.typeId);
                 }
             }
             resolveUnknowns(n.children);
@@ -268,6 +271,7 @@ static void assignSchemaType(ParsedEntry& entry) {
     } else {
         entry.schemaType = "UNKNOWN";
     }
+    entry.kind = KindOf(entry.typeId);
 }
 
 // ── GOW2 TOC parser ────────────────────────────────────────────────────────

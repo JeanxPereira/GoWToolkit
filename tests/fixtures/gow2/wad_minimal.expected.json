@@ -9,6 +9,7 @@
       "size": 8,
       "offset": 32,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0xb810491bbb5b66de"
     },
     {
@@ -18,6 +19,7 @@
       "size": 56,
       "offset": 112,
       "childCount": 6,
+      "kind": "Raw Data",
       "payloadHash": "0xabf9d191e6e735a8"
     },
     {
@@ -27,6 +29,7 @@
       "size": 48,
       "offset": 240,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x5560dddb5b88aeeb"
     },
     {
@@ -36,6 +39,7 @@
       "size": 48,
       "offset": 384,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0xb98e3b14107534fc"
     },
     {
@@ -45,6 +49,7 @@
       "size": 48,
       "offset": 528,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x704b725f52543bd5"
     },
     {
@@ -54,6 +59,7 @@
       "size": 48,
       "offset": 672,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x5216cd75eb1e54ba"
     },
     {
@@ -63,6 +69,7 @@
       "size": 48,
       "offset": 816,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0xbf11b41fb084da8c"
     },
     {
@@ -72,6 +79,7 @@
       "size": 52,
       "offset": 960,
       "childCount": 12,
+      "kind": "Raw Data",
       "payloadHash": "0x1f0e8d664364622a"
     },
     {
@@ -81,6 +89,7 @@
       "size": 48,
       "offset": 1088,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x0f66ca6c1f6242b3"
     },
     {
@@ -90,6 +99,7 @@
       "size": 48,
       "offset": 1232,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0xcad4a243e1ef55a5"
     },
     {
@@ -99,6 +109,7 @@
       "size": 48,
       "offset": 1376,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x5f0870de951dd64c"
     },
     {
@@ -108,6 +119,7 @@
       "size": 48,
       "offset": 1520,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x3205d2ee7ee92bfb"
     },
     {
@@ -117,6 +129,7 @@
       "size": 48,
       "offset": 1664,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x684d85563cef07e3"
     },
     {
@@ -126,6 +139,7 @@
       "size": 48,
       "offset": 1808,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x7fc7ee2c972879a9"
     },
     {
@@ -135,6 +149,7 @@
       "size": 48,
       "offset": 1952,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x4ce1fade1864ca00"
     },
     {
@@ -144,6 +159,7 @@
       "size": 48,
       "offset": 2096,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x13791bd790ae58a5"
     },
     {
@@ -153,6 +169,7 @@
       "size": 48,
       "offset": 2240,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x1156292dee14fe5d"
     },
     {
@@ -162,6 +179,7 @@
       "size": 48,
       "offset": 2384,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x2ea13568a29ac061"
     },
     {
@@ -171,6 +189,7 @@
       "size": 48,
       "offset": 2528,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0xc118c5a43acf8532"
     },
     {
@@ -180,6 +199,7 @@
       "size": 48,
       "offset": 2672,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0xe66c66705e699565"
     },
     {
@@ -189,6 +209,7 @@
       "size": 41472,
       "offset": 2944,
       "childCount": 1,
+      "kind": "Unknown",
       "payloadHash": "0x4e2aacdf41859672"
     },
     {
@@ -198,6 +219,7 @@
       "size": 0,
       "offset": 44448,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0x0000000000000000"
     },
     {
@@ -207,6 +229,7 @@
       "size": 5120,
       "offset": 44544,
       "childCount": 1,
+      "kind": "Unknown",
       "payloadHash": "0x2ccb2071d9d3189e"
     },
     {
@@ -216,6 +239,7 @@
       "size": 0,
       "offset": 49696,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0x0000000000000000"
     },
     {
@@ -225,6 +249,7 @@
       "size": 61568,
       "offset": 49760,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0x3ef115d2f7c71928"
     },
     {
@@ -234,6 +259,7 @@
       "size": 65560,
       "offset": 111360,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0x0e2f4a11d3c50892"
     },
     {
@@ -243,6 +269,7 @@
       "size": 1048,
       "offset": 176960,
       "childCount": 0,
+      "kind": "Raw Data",
       "payloadHash": "0x2f52602c8a013cd8"
     },
     {
@@ -252,6 +279,7 @@
       "size": 88,
       "offset": 178048,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0x43227325995fe7b9"
     },
     {
@@ -261,6 +289,7 @@
       "size": 120,
       "offset": 178208,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0x8ddbe7ba89c42052"
     },
     {
@@ -270,6 +299,7 @@
       "size": 120,
       "offset": 178208,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0x8ddbe7ba89c42052"
     },
     {
@@ -279,6 +309,7 @@
       "size": 87168,
       "offset": 178400,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0xaf838d4a715db53f"
     },
     {
@@ -288,6 +319,7 @@
       "size": 88,
       "offset": 265632,
       "childCount": 2,
+      "kind": "Unknown",
       "payloadHash": "0x7aa77a2403161e9b"
     },
     {
@@ -297,6 +329,7 @@
       "size": 68,
       "offset": 265824,
       "childCount": 0,
+      "kind": "Unknown",
       "payloadHash": "0x735e66693bae2627"
     }
   ]

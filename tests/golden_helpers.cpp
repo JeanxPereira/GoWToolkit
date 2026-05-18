@@ -57,6 +57,7 @@ void FlattenEntry(const ParsedEntry& entry,
     e["size"]        = entry.size;
     e["offset"]      = entry.offset;
     e["childCount"]  = static_cast<uint64_t>(entry.children.size());
+    e["kind"]        = std::string(GOW::Name(entry.kind));
     if (source && entry.size > 0) {
         e["payloadHash"] = ToHex64(HashEntryPayload(*source, entry.offset, entry.size));
     } else {
@@ -127,7 +128,7 @@ std::string DiffSnapshots(const ordered_json& actual, const ordered_json& expect
     size_t pairCount = std::min(aEntries.size(), eEntries.size());
 
     static constexpr const char* kFields[] = {
-        "name", "typeId", "schemaType", "size", "offset", "childCount", "payloadHash"
+        "name", "typeId", "schemaType", "size", "offset", "childCount", "kind", "payloadHash"
     };
 
     for (size_t i = 0; i < pairCount; ++i) {

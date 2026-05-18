@@ -496,3 +496,19 @@
 - **AC verificados**:
   - [x] `ParsedEntry::kind` existe e default = `Unknown`.
   - [x] Build verde.
+
+---
+
+## 2026-05-18 — M2.T3 e M2.T4 — `ProfileGOW2` e `ProfileGOWR` populam `kind`
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Agora que a árvore de parses entende o conceito de `MediaKind`, precisamos popular o campo ao construir os nodes de árvore das WADs, tanto em GOW2 como GOWR.
+- **Arquivos modificados**:
+  - `src/core/profiles/gow2/ProfileGOW2.cpp` — Adicionado `entry.kind = KindOf(entry.typeId)` durante os passes de parsing e fallback.
+  - `src/core/profiles/gowr/WadNodeBuilder.cpp` — Adicionado `kind` nas rotinas auxiliares `MakeFolder` e `ToNode`.
+  - `tests/golden_helpers.cpp` — Serialização dos test-fixtures atualizada para dump de `kind`.
+  - Arquivos JSON Golden (Atualizados usando o helper de atualização).
+- **AC verificados**:
+  - [x] Golden snapshots possuem o campo `kind` validado.
+  - [x] Testes ctest validados.

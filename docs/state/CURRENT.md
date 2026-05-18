@@ -7,18 +7,17 @@
 M2 — Camada MediaKind
 
 ## Task em progresso
-nenhuma — M2.T1 e M2.T2 fechadas.
+nenhuma — M2.T3 e M2.T4 fechadas.
 
 ## Próxima task no pipeline
-M2.T3 — Refatorar `AssetDatabase` para preencher `kind`.
+M2.T5 — `ViewerRegistry::ByKind()` paralelo ao legado.
 
 ## Blockers
 nenhum
 
 ## Notas para o próximo agente
-- **M2.T1 (MediaKind)**: Implementado `MediaKind` enum e `KindOf()` constexpr mapping. Ícones mapeados usando SFSymbols. Testes no `mediakind_test.cpp`.
-- **M2.T2 (ParsedEntry::kind)**: Adicionado o campo `kind` no `ParsedEntry`.
-- O build passou (foi necessário adicionar `MediaKind.cpp` em `PARSER_MIN_SOURCES` no `CMakeLists.txt`).
+- **M2.T3/T4 (ParsedEntry::kind populating)**: Adicionado nas rotinas do `ProfileGOW2` e `WadNodeBuilder` (GOWR) a inicialização do campo `kind`. Testes golden atualizados localmente.
+- O build passou limpo. Pode prosseguir para a integração do `ViewerRegistry`.
 
 ## Progresso M1 (fechada)
 - T1 ✓ `6454eac`
@@ -32,4 +31,6 @@ nenhum
 ## Progresso M2
 - T1 ✓ (Antigravity)
 - T2 ✓ (Antigravity)
-- T3..T5 + Gate pendentes
+- T3 ✓ (Antigravity)
+- T4 ✓ (Antigravity)
+- T5 + Gate pendentes
