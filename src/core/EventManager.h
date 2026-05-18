@@ -12,7 +12,9 @@
 #include <string_view>
 #include <memory>
 #include <cstdint>
-#include <cstdio>
+#include <typeinfo>
+
+#include "Logger.h"
 
 // ── Event definition macros ────────────────────────────────────────────────
 // Usage:
@@ -99,7 +101,7 @@ namespace GOW {
                 try {
                     m_func(std::forward<decltype(params)>(params)...);
                 } catch (const std::exception &e) {
-                    fprintf(stderr, "[EventManager] Exception in event handler: %s\n", e.what());
+                    GOW_LOG_ERROR("eventmanager", "Exception in event handler: {}", e.what());
                     throw;
                 }
             }
@@ -134,7 +136,8 @@ namespace GOW {
             std::lock_guard lock(getEventMutex());
 
             if (isAlreadyRegistered(token, E::Id)) {
-                fprintf(stderr, "[EventManager] Token %p already registered for this event\n", token);
+                GOW_LOG_WARN("eventmanager", "Token {} already registered for this event",
+                             static_cast<const void*>(token));
                 return;
             }
             getTokenStore().insert({ token, subscribe<E>(std::move(function)) });
@@ -166,7 +169,7 @@ namespace GOW {
 
             #if defined(DEBUG) || defined(_DEBUG)
                 if constexpr (E::ShouldLog)
-                    fprintf(stderr, "[EventManager] Event posted: '%s'\n", typeid(E).name());
+                    GOW_LOG_DEBUG("eventmanager", "Event posted: '{}'", typeid(E).name());
             #endif
         }
 

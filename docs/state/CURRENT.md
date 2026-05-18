@@ -7,44 +7,33 @@
 M0 — Safety Net
 
 ## Task em progresso
-nenhuma — M0.T4 fechada, próxima é M0.T5
+nenhuma — M0.T5 fechada, próxima é M0.T6
 
 ## Próxima task no pipeline
-M0.T5 — Structured Logger
-- **Prereqs satisfeitos**: M0.T1 ✓
-- Reescrita de `src/core/Logger.{h,cpp}` com fmtlib, levels, sinks
-- Vai conflitar com versão atual de Logger.cpp (já no parser-min). Precisa atualizar incidência em EventManager.h (AC explícito).
+M0.T6 — clang-format + EditorConfig + CI workflow
+- **Prereqs**: nenhum (paraleliza com M0.T1–T5)
+- Arquivos: `.clang-format`, `.editorconfig`, `.github/workflows/ci.yml`, `.github/pull_request_template.md`
 
 ## Blockers
 nenhum
 
 ## Notas para o próximo agente
-- `Metrics.h` é leaf — pode ser dropado em qualquer TU sem deps de projeto. Includes: `<chrono>, <cstdint>, <map>, <mutex>, <string>`.
-- API de Metrics aceita `uint32_t typeId` (D0006); caller faz `static_cast<uint32_t>(GOW::TypeId::...)`.
-- `Metrics::Enable(false)` é default; hot path disabled custa ~8 ns Debug, < 1 ns Release esperado (D0007).
-- `Metrics.cpp` está no `gowtoolkit_parser_min` (CMakeLists.txt PARSER_MIN_SOURCES). Adicionar Logger refactor (M0.T5) idem.
-- M0.T5 vai trazer fmtlib via FetchContent — verificar `CMAKE_POLICY_VERSION_MINIMUM` workaround se precisar (mesmo padrão do doctest).
-- AC M0.T5: substituir `fprintf(stderr, ...)` em `src/core/EventManager.h` (escopo limitado). NÃO refatorar Logger em todos call sites — só o EventManager.
-- Roadmap completo em `docs/ROADMAP_IMPLEMENTATION.md` §M0.T5.
+- Toolchain: Apple Clang 21.0.0 (Xcode 26). std::format funciona; fmtlib quebra em FMT_STRING consteval — ver D0008.
+- Logger pipeline: `GOW_LOG_*` (categorizado) e `LOG_*` (legacy) AMBOS funnel pelos mesmos sinks. UI lê via `GOW::Logger::Get().GetEntries()`.
+- `Log::SetMinLevel(Level)` filtra runtime. Default: Info. Trace e Debug filtrados por default.
+- `Log::AddSink(fn)` returna `SinkToken`; `Log::RemoveSink(token)` desinstala. Default: nenhum sink (apenas in-memory ring sempre ligado).
+- `Log::InstallStderrSink()` e `Log::InstallRotatingFileSink(path, max, rotations)` são opt-in installers. Não chamados em main.cpp ainda — main exe agora SILENCIA stderr para logs (UI mostra tudo via StatusBar). Próximo agente pode adicionar `Log::InstallStderrSink()` em `App::App()` se quiser eco.
+- M0.T6: precisa adicionar `.clang-format`. Style: ver `src/core/Logger.h` (existing patterns: 4-space indent, brace style já presente). Definir nas decisions se decisão sobre style ambíguo.
+- M0.T6 CI workflow precisa rodar ctest no Linux runner. `pkg-config libavformat-dev libavcodec-dev libswscale-dev libswresample-dev libavutil-dev` necessário (CMakeLists.txt:154).
+- Roadmap completo em `docs/ROADMAP_IMPLEMENTATION.md` §M0.T6.
 
 ## Arquivos tocados nesta sessão (acumulado)
-### M0.T1
-- `CMakeLists.txt` (doctest + CTest)
-- `tests/{CMakeLists.txt, main.cpp, sanity_test.cpp}`
-
-### M0.T2
-- `tools/make_test_fixtures.py`
-- `tests/fixtures/{gow2,gowr}/wad_minimal.wad`
-- `tests/fixtures/README.md`
-- `.gitattributes`
-
-### M0.T3
-- `CMakeLists.txt` (gowtoolkit_parser_min lib, nlohmann/json, Golden_* ctest entries)
-- `tests/{CMakeLists.txt, test_stubs.cpp, golden_helpers.{h,cpp}, golden_gow2.cpp, golden_gowr.cpp}`
-- `tests/fixtures/{gow2,gowr}/wad_minimal.expected.json`
-- `tools/regenerate_goldens.sh`
-
-### M0.T4
-- `src/core/Metrics.{h,cpp}` (NEW)
-- `tests/metrics_test.cpp` (NEW)
-- `CMakeLists.txt` (Metrics.cpp em PARSER_MIN_SOURCES, Metrics ctest entry)
+### M0.T1: doctest scaffold
+### M0.T2: WAD fixtures + truncator
+### M0.T3: golden runner + parser-min lib + nlohmann/json
+### M0.T4: Metrics opt-in
+### M0.T5
+- `src/core/Logger.{h,cpp}` (rewrite — Log namespace, sinks, std::format-based)
+- `src/core/EventManager.h` (3 fprintf → GOW_LOG_*)
+- `tests/logger_test.cpp` (NEW — 6 TEST_CASEs)
+- `CMakeLists.txt` (Logger ctest entry)

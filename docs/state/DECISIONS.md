@@ -88,3 +88,44 @@ Motivação: 5 ns é instable em Debug e em hardware lento (CI). 500 ns trava re
 Refs:
 - `tests/metrics_test.cpp` — `TEST_CASE("[Metrics] RecordParseTime is cheap when disabled")`
 - Benchmark output: `[Metrics] disabled RecordParseTime cost ~8 ns/call` (Debug build)
+
+---
+
+## D0008 — 2026-05-18 — Logger usa `std::format`, não `fmtlib`
+
+Decisão: `GOW::Log::Log` aceita `std::format_string<Args...>` em vez de `fmt::format_string<Args...>` como o roadmap M0.T5 step 1 sugere. Sem dependência externa nova.
+
+Motivação: Apple Clang 21.0.0 (toolchain atual) regride no path `consteval` de `fmt::basic_format_string::basic_format_string<FMT_COMPILE_STRING, 0>` quando fmt está em modo header-only ou compilado. Erros são internos a `format-inl.h` (não código do projeto). Testes:
+- fmt 10.2.1 + static lib: ❌ consteval fail em `os.cc`, `format-inl.h`
+- fmt 11.0.2 + static lib: ❌ mesmo problema
+- fmt 11.0.2 + header-only + `FMT_USE_CONSTEVAL=0`: ❌ FMT_STRING internal ainda dispara consteval
+- `std::format` libc++ embarcado no toolchain: ✓ funciona
+
+`std::format` cobre 100% do uso planejado (format string positional `"{}"`, levels, sinks). API alignment: drop-in syntax. Custo zero em deps.
+
+Trade-off: `std::format` requer C++20 libc++ (`std::format` GA em 16+). Já é requisito do projeto. Se mais tarde precisarmos de features que std::format não tem (named args, custom formatters mais ricos), reavaliamos fmt.
+
+Refs:
+- `src/core/Logger.h` — `template<...> void Log(Level, sv, std::format_string<Args...>, Args&&...)`
+- `tests/logger_test.cpp` — confirma `"[INFO][test] hello 42"` literal AC
+- `clang++ --version` → `Apple clang version 21.0.0 (clang-2100.1.1.101)`
+
+---
+
+## D0009 — 2026-05-18 — Manter `Logger` facade legacy + macros `LOG_*`
+
+Decisão: novo `GOW::Log` namespace coexiste com `GOW::Logger` antigo e os macros `LOG_DEBUG/INFO/WARN/ERR`. Migração de call sites é **gradual**, não big-bang.
+
+Motivação: existem ~250 call sites de `LOG_*` espalhados. Rewriting all em M0.T5 violaria escopo (AC: "Substituir `fprintf(stderr, ...)` em EventManager.h **apenas**"). Solução:
+
+- `Logger::Log()` (printf-style) → formata buffer → chama `Log::LogString()` com category=""
+- Ambos funnel pelos mesmos sinks
+- Sink in-memory sempre presente, alimenta `Logger::GetEntries()` para `StatusBar` UI
+- `LOG_*` macros mantidos como aliases printf-style sem categoria
+- `GOW_LOG_*` macros são o caminho preferido pra código novo (com categoria)
+
+Trade-off: API surface dupla. Aceito porque migration paths são separadas. Plano: tasks futuras podem migrar arquivo-a-arquivo para `GOW_LOG_*` sem coordenação.
+
+Refs:
+- `src/core/Logger.h` — legacy `Logger` class + new `Log` namespace lado a lado
+- `tests/logger_test.cpp` — `TEST_CASE("[Logger] Legacy LOG_INFO funnels through the new pipeline")`

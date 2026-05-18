@@ -129,3 +129,41 @@
   - Disable não wipa, Reset wipa
   - 4 threads × 5000 records concorrentes — contadores batem (20.000 hits "shared" + 5.000 us em cada parseTimes[t])
   - Disabled-path microbench (1M iters) registra custo + assert < 500 ns/call
+
+---
+
+## 2026-05-18 — M0.T5 — Structured Logger
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereqs satisfeitos**: M0.T1 ✓
+- **Decisões registradas**: D0008 (std::format em vez de fmtlib), D0009 (manter Logger legacy + LOG_* macros + GOW_LOG_* novos coexistindo)
+- **Arquivos**:
+  - `src/core/Logger.h` (rewrite — Log namespace + legacy facade)
+  - `src/core/Logger.cpp` (rewrite — sinks, in-memory ring, rotating file, ToLegacyLevel mapping)
+  - `src/core/EventManager.h` (3 fprintf → GOW_LOG_* com category "eventmanager")
+  - `tests/logger_test.cpp` (NEW — 6 TEST_CASEs)
+- **CMake**:
+  - Tentado fmtlib 10.2.1, 11.0.2 (static + header-only) — Apple Clang 21 regride em FMT_STRING consteval. Abandonado, usado `std::format` (D0008).
+  - Novo ctest entry: `Logger`
+- **AC verificados**: 5/5
+  - [x] `GOW_LOG_INFO("test", "hello {}", 42)` produz `[INFO][test] hello 42` (literal AC via `Log::FormatLine` test)
+  - [x] `grep -rn "fprintf(stderr" src/core/EventManager.h` → 0
+  - [x] `ctest -R Logger` passa 1/1
+  - [x] Sinks removíveis (token via AddSink → RemoveSink test verifica detach)
+  - [x] Log level mínimo configurável runtime via `SetMinLevel`
+- **API surface**:
+  - `GOW::Log::Level` { Trace, Debug, Info, Warn, Error }
+  - `GOW::Log::SetMinLevel/GetMinLevel`
+  - `GOW::Log::AddSink(SinkFn) → SinkToken`, `RemoveSink(token)`, `ClearSinks()`
+  - `GOW::Log::InstallStderrSink()`, `InstallRotatingFileSink(path, 5MB, 3)`
+  - `GOW::Log::Log<Args...>(Level, sv category, std::format_string, args...)`
+  - Macros: `GOW_LOG_TRACE/DEBUG/INFO/WARN/ERROR(cat, "fmt", args...)`
+  - Legacy: `GOW::Logger::Get().{Log,GetEntries,Clear}`, `LOG_DEBUG/INFO/WARN/ERR("printf %s", arg)`
+- **Tests**:
+  - FormatLine canonical shape (3 levels)
+  - GOW_LOG_INFO sink fan-out + canonical assert
+  - SetMinLevel runtime threshold (5 levels filtering + dynamic adjust)
+  - AddSink/RemoveSink with token (2 sinks attach/detach)
+  - Legacy LOG_INFO routes through new pipeline
+  - Memory ring (Logger::GetEntries) populated by GOW_LOG_* + Clear works
+- **Main exe**: builda Debug clean. Sem regressões.

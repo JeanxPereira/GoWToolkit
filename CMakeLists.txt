@@ -379,4 +379,6 @@ if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*GOWR*")
     add_test(NAME Metrics
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Metrics*")
+    add_test(NAME Logger
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Logger*")
 endif()
