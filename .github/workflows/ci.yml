@@ -52,6 +52,33 @@ jobs:
           done
           echo "clang-format violations: ${violations} file(s)"
 
+  # ════════════════════════════════════════════════════════════════════
+  # Layers — verifies #include hierarchy against tools/layers.yaml.
+  #
+  # Warning-only today. Promote to strict (exit non-zero on any
+  # violation) in M2 once `BoundingBox` etc. have moved out of
+  # rendering/. The list of currently-known violations is captured in
+  # the M0.T8 entry of COMPLETED.md.
+  # ════════════════════════════════════════════════════════════════════
+  lint-layers:
+    name: Lint (layers)
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PyYAML
+        run: pip install pyyaml==6.0.1
+
+      - name: Run layer linter (warning-only)
+        run: python3 tools/check_layers.py --format=github
+
   build:
     strategy:
       fail-fast: false

@@ -1,0 +1,52 @@
+# Layered architecture descriptor.
+#
+# Each layer enumerates path prefixes (directories or specific files,
+# relative to repo root) whose members live in that layer. A given
+# file is classified by the longest-matching prefix.
+#
+# `rules` lists ordering constraints. A rule like
+# `L2 must not include L4` means: any `#include` from a file
+# classified into `L2` is forbidden from resolving to a file
+# classified into `L4`. A rule with a range (`L1..L4`) expands to all
+# layers in that closed range.
+#
+# Driven by `tools/check_layers.py`; CI wires `lint:layers` as a
+# warning-only job until M2 promotes it to a hard failure.
+layers:
+  L0_infra:
+    - src/core/vfs
+    - src/window/platform
+    - src/core/PathUtils
+    - src/core/Logger
+    - src/core/Metrics
+    - src/core/Threading
+  L1_profiles:
+    - src/core/profiles
+    - src/core/parsers
+  L2_domain:
+    - src/core/types
+    - src/core/schema
+    - src/core/WadTypes.h
+    - src/core/parsers/shared
+  L3_appsvc:
+    - src/core/EventManager.h
+    - src/core/Events.h
+    - src/core/TaskManager
+    - src/core/AssetDatabase
+    - src/core/ToolkitApi
+    - src/core/AppConfig
+    - src/core/RecentFiles
+    - src/core/ProfileManager
+  L4_present:
+    - src/ui
+    - src/rendering
+    - src/window
+    - src/App
+    - src/main.cpp
+    - src/cli
+
+# Ordering constraints. Order matters semantically (L0 < L1 < L2 < L3 < L4).
+rules:
+  - L2 must not include L4
+  - L1 must not include L4
+  - L0 must not include L1..L4

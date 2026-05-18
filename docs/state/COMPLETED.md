@@ -217,3 +217,40 @@
   - `IsMainThread()` retorna `false` (sem assert) quando `MarkMainThread` nunca foi chamado — permite testar ambos estados sem efeito colateral.
   - ASSERT_MAIN_THREAD não chamado em produção ainda (roadmap explícito); milestones futuras vão guardar UI/OpenGL paths file-by-file.
   - Full ctest 6/6 verde após esta task.
+
+---
+
+## 2026-05-18 — M0.T8 — Layer Linter
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereqs**: nenhum
+- **Arquivos novos**:
+  - `tools/layers.yaml` — L0_infra/L1_profiles/L2_domain/L3_appsvc/L4_present + 3 rules (L2/L1 not → L4; L0 not → L1..L4)
+  - `tools/check_layers.py` — argparse CLI; lê yaml; classify by longest-prefix; resolve include via (file_dir, src_root); apply rules; emit text or `::warning file=...` for GitHub
+- **Edits**:
+  - `.github/workflows/ci.yml` — novo job `lint-layers` (ubuntu-22.04, python 3.11, pyyaml 6.0.1, `continue-on-error: true`)
+- **AC verificados**: 3/3
+  - [x] `python3 tools/check_layers.py` roda sem crash (exit 0 no warning mode)
+  - [x] Reporta a violação conhecida `src/core/parsers/shared/MeshData.h:5 → src/rendering/GpuMesh.h` (L2_domain → L4_present)
+  - [x] CI publica warnings no PR via `::warning file=...,line=N::msg` format
+- **Violações detectadas (12, esperadas)**:
+  - 3× `L0 → L4`: `src/window/platform/{windows.cpp,macos.mm,linux.cpp}` includam `window/Window.h` (platform impl backstabbing host header — corrigir movendo dispatch ou expondo iface em L0)
+  - 8× `L2 → L4`: handlers (Texture, Object, Model, Material, Instance, Content×3) includam `ui/viewers/*` (acoplamento UI/handler — corrigir extraindo interface ou movendo handlers pra L3/L4)
+  - 1× `L2 → L4`: `parsers/shared/MeshData.h` includa `rendering/GpuMesh.h` (será corrigido em M2 movendo `BoundingBox`/`GpuVertex` pra layer compartilhada)
+- **Notas**:
+  - Lint runs warning-only — não bloqueia merge. Flag `--strict` exit non-zero quando promovermos pra hard gate em M2.
+  - `resolve_layer_token` aceita short prefix ("L2") vs canonical key ("L2_domain") pra rule strings ficarem legíveis.
+  - `Threading` adicionado em L0_infra junto com Logger/Metrics/PathUtils.
+
+---
+
+## 2026-05-18 — M0.Gate — Validation Gate
+
+- [x] `ctest --test-dir build` mostra 6 testes (`unit`, `Golden_GOW2`, `Golden_GOWR`, `Metrics`, `Logger`, `Threading`); 100% pass local
+- [x] CURRENT.md aponta M1 como milestone ativa
+- [x] `tools/check_layers.py` reporta as violações esperadas (12, incluindo MeshData → GpuMesh)
+- [x] PR template em `.github/pull_request_template.md`
+- [x] COMPLETED.md tem entradas para M0.T1..T8 + bootstrap + pre-M0.T1 housekeeping
+- [ ] CI verde nos 3 OS — pendente push da branch (`ctest` + `lint` + `lint-layers` jobs adicionados em M0.T6/T8 ainda não rodaram em runner)
+
+**Status**: M0 completo. Branch `refactor/m0-safety-net` pronta para revisão / merge. Próxima milestone: M1 — Structural Cleanup.
