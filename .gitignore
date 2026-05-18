@@ -81,3 +81,7 @@ build_*.txt
 
 # Third-party generated
 third_party/ffmpeg/
+
+# Local scratch / one-off dev artifacts
+debug_proto.py
+test_patch.patch
