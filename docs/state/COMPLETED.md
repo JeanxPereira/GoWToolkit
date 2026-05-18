@@ -546,3 +546,18 @@
   - [x] User pode esconder tudo exceto imagens.
   - [x] Filtro respeita hierarquia (folders permanecem abertos se possuírem arquivos correspondentes).
   - [x] A persistência foi pulada por ser opcional e não demandar modificações de esquema serializado nesta etapa.
+
+---
+
+## 2026-05-18 — M2.Gate — Validação final do milestone M2
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: A Milestone 2 (MediaKind Abstraction) foi completada com todas as tasks entregues. Validação das propriedades estabelecidas no Roadmap.
+- **AC verificados**:
+  - [x] `MediaKind` adotado por ambos profiles (GOW2 e GOWR populam `ParsedEntry::kind`).
+  - [x] `OpenByKind` funcional e testado isoladamente.
+  - [x] UI Filter na tree implementado no `WadBrowser`.
+  - [x] Goldens test regenerados e diff limpo confirmando estrutura semântica nova.
+  - [x] Build + tests verdes.
+  - [x] Documentação (`CURRENT.md` e `ROADMAP_IMPLEMENTATION.md`) refletem fechamento.

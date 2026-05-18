@@ -4,34 +4,23 @@
 **Sessão #**: 4
 
 ## Milestone ativa
-M2 — Camada MediaKind
+M3 — Facade + Events Wire-Up
 
 ## Task em progresso
-nenhuma — M2.T6 fechada.
+nenhuma — M2 fechada, iniciando M3.
 
 ## Próxima task no pipeline
-M2.Gate — Validação final do milestone M2.
+M3.T1 — Expandir `ToolkitApi` para expor facade de Load/Close WAD e PAK.
 
 ## Blockers
 nenhum
 
 ## Notas para o próximo agente
-- **M2.T6 (Filter por MediaKind)**: Implementado no WadBrowser. Usando um ComboBox indexado para filtrar entre MediaKinds definidos, checando hierarquia de pastas.
+- **M2 Completa**: As tasks de MediaKind, OpenByKind e Filter Tree foram todas entregues. O Gate M2 foi aprovado com testes e goldens atualizados.
+- Vamos iniciar a M3 com a premissa de matar o `AppContext` em favor de uma API baseada em eventos via `ToolkitApi`.
 
-## Progresso M1 (fechada)
-- T1 ✓ `6454eac`
-- T2 ✓ `260c42a`
-- T3 ✓ `8b0e7f2`
-- T4 ✓ `044875d`
-- T5 ✓ `70725bf` (Claude Code)
-- T6 ✓ `bd8c453` (Antigravity)
-- Gate ✓ `parcial — aprovado com exceções`
+## Progresso M1 e M2 (fechadas)
+Todas as tasks concluídas (T1-T6, Gate). M1 e M2 estão prontas.
 
-## Progresso M2
-- T1 ✓ (Antigravity)
-- T2 ✓ (Antigravity)
-- T3 ✓ (Antigravity)
-- T4 ✓ (Antigravity)
-- T5 ✓ (Antigravity)
-- T6 ✓ (Antigravity)
-- Gate pendente
+## Progresso M3
+- T1..T3 + Gate pendentes

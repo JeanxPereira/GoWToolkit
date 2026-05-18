@@ -826,12 +826,12 @@ Idem M2.T3 para GOWR.
 
 ### M2.Gate
 
-- [ ] `MediaKind` adotado por ambos profiles
-- [ ] `OpenByKind` funcional
-- [ ] Filter na tree
-- [ ] Goldens regenerados com `kind`
-- [ ] Build + tests verdes
-- [ ] `CURRENT.md` atualizado
+- [x] `MediaKind` adotado por ambos profiles
+- [x] `OpenByKind` funcional
+- [x] Filter na tree
+- [x] Goldens regenerados com `kind`
+- [x] Build + tests verdes
+- [x] `CURRENT.md` atualizado
 
 ---
 
