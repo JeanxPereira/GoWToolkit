@@ -47,3 +47,26 @@
 - **Notas**:
   - doctest v2.4.11 upstream usa `cmake_minimum_required(<3.5)`, incompatível com CMake 4.x. Workaround: `set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)` ao redor do `FetchContent_MakeAvailable(doctest)`. Remover quando upstream subir floor.
   - `add_test` precisa de `$<TARGET_FILE:gowtoolkit_tests>` (não apenas nome do target) pra ctest resolver path do exe quando build incremental ainda não materializou.
+
+---
+
+## 2026-05-18 — M0.T2 — Golden Test Fixtures (mínimos)
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereq satisfeito**: M0.T1 ✓
+- **Decisão resolvida**: D0003 — fixtures vêm de truncamento de WADs comerciais (ver `DECISIONS.md`).
+- **Arquivos novos**:
+  - `tools/make_test_fixtures.py` (gerador determinístico)
+  - `tests/fixtures/gow2/wad_minimal.wad` (265,936 bytes, truncated tag-aware do `R_BOAR00.WAD`)
+  - `tests/fixtures/gowr/wad_minimal.wad` (538,410 bytes, cópia íntegra do `r_athena00.wad`)
+  - `tests/fixtures/README.md`
+  - `.gitattributes`
+- **AC verificados**: 5/5
+  - [x] `tests/fixtures/gow2/wad_minimal.wad` existe, < 1 MB (265 KB, abaixo do target 500 KB também)
+  - [x] `tests/fixtures/gowr/wad_minimal.wad` existe, < 1 MB (538 KB)
+  - [x] `tests/fixtures/README.md` documenta origem + SHA256
+  - [x] `.gitattributes` marca `*.wad` (e variantes) como binárias
+  - [x] `.gitignore` não esconde fixtures — versionadas
+- **Notas**:
+  - GOW2 truncado em boundary 16-byte-aligned do primeiro tag estrutural (`GROUP_END` ou `HEADER_START`) ≥ 256 KB. Validado: primeiros 8 tags do fixture batem com os do source (HEADER_START `WAD_R_Boar00`, GroupStart, SERVER_INST `WAD_R_Boar00`, ...).
+  - GOWR copiado inteiro porque `blockBitSet` flush algorithm impede truncamento naive (offsets seriam invalidados). Source `r_athena00.wad` é per-character WAD, já pequeno.

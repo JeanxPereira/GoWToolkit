@@ -1,0 +1,13 @@
+# Treat all WAD asset files as opaque binaries.
+*.wad   binary
+*.WAD   binary
+
+# Other proprietary game-asset extensions (kept for future fixtures).
+*.vpk   binary
+*.vp1   binary
+*.vag   binary
+*.pak   binary
+*.pss   binary
+*.psw   binary
+*.tga   binary
+*.tex   binary
