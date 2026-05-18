@@ -512,3 +512,22 @@
 - **AC verificados**:
   - [x] Golden snapshots possuem o campo `kind` validado.
   - [x] Testes ctest validados.
+
+---
+
+## 2026-05-18 — M2.T5 — `ViewerRegistry::ByKind()` paralelo ao legado
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Como ponte migratória para a UI agnóstica (M3), introduzimos a leitura primária pelo `OpenByKind` usando um fallback para os Handlers legados temporariamente.
+- **Arquivos modificados/criados**:
+  - `src/ui/ViewerRegistry.h` e `src/ui/ViewerRegistry.cpp` — Adicionados métodos novos e map de factories.
+  - `src/ui/WadBrowser.cpp` — Alterado para tentar `OpenByKind` antes de `Open`.
+  - `src/ui/PakBrowser.cpp` — Alterado para tentar `OpenByKind` antes de `Open`.
+  - `tests/viewer_registry_test.cpp` (Novo) — Teste de sanidade do OpenByKind com entradas Unknown/Image.
+  - `CMakeLists.txt` (root) — Adicionado `ViewerRegistry.cpp` ao `PARSER_MIN_SOURCES` para viabilizar testes desacoplados da UI.
+- **AC verificados**:
+  - [x] Para asset com `kind == Image`, `OpenByKind` retorna Viewer válido (delegando ao `TextureHandler` por ora).
+  - [x] Para asset com `kind == Unknown`, retorna `nullptr` e triggera o fallback.
+  - [x] Build + tests verdes.
+  - [x] WadBrowser/PakBrowser atualizados para preferir `OpenByKind`.

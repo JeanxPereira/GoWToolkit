@@ -230,7 +230,13 @@ void WadBrowser::draw(AppContext &ctx) {
         if (ImGui::IsItemHovered() &&
             ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
           if (wad.fileSource) {
-            auto viewer = ctx.viewerRegistry.Open(entry, wad);
+            std::shared_ptr<IDocumentContent> viewer;
+            if (entry.kind != GOW::MediaKind::Unknown) {
+              viewer = ctx.viewerRegistry.OpenByKind(entry, wad);
+            }
+            if (!viewer) {
+              viewer = ctx.viewerRegistry.Open(entry, wad);
+            }
             if (viewer)
               ctx.documentWindow.AddTab(viewer);
           }
@@ -257,7 +263,13 @@ void WadBrowser::draw(AppContext &ctx) {
                                            entry.schemaType)) {
             auto title = std::string(ICON_SF_FOLDER_FILL) + "  Open";
             if (ImGui::MenuItem(title.c_str())) {
-              auto viewer = ctx.viewerRegistry.Open(entry, wad);
+              std::shared_ptr<IDocumentContent> viewer;
+              if (entry.kind != GOW::MediaKind::Unknown) {
+                viewer = ctx.viewerRegistry.OpenByKind(entry, wad);
+              }
+              if (!viewer) {
+                viewer = ctx.viewerRegistry.Open(entry, wad);
+              }
               if (viewer)
                 ctx.documentWindow.AddTab(viewer);
             }
@@ -278,7 +290,13 @@ void WadBrowser::draw(AppContext &ctx) {
               if (ImGui::MenuItem(menuLabel)) {
                 for (const auto &c : entry.children) {
                   if (c.schemaType == "GOW2_TXR") {
-                    auto viewer = ctx.viewerRegistry.Open(c, wad);
+                    std::shared_ptr<IDocumentContent> viewer;
+                    if (c.kind != GOW::MediaKind::Unknown) {
+                      viewer = ctx.viewerRegistry.OpenByKind(c, wad);
+                    }
+                    if (!viewer) {
+                      viewer = ctx.viewerRegistry.Open(c, wad);
+                    }
                     if (viewer)
                       ctx.documentWindow.AddTab(viewer);
                   }

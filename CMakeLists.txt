@@ -228,6 +228,7 @@ set(PARSER_MIN_SOURCES
     src/core/vfs/IsoFile.cpp
     src/core/vfs/IsoFileSystem.cpp
     src/core/vfs/OsFile.cpp
+    src/ui/ViewerRegistry.cpp
 )
 
 add_library(gowtoolkit_parser_min STATIC ${PARSER_MIN_SOURCES})

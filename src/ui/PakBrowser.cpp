@@ -137,6 +137,8 @@ void PakBrowser::draw(AppContext &ctx) {
               std::shared_ptr<GOW::IDocumentContent> viewer;
               if (handler)
                 viewer = handler->CreateViewer(fileEntry, tempWad);
+              if (!viewer && fileEntry.kind != GOW::MediaKind::Unknown)
+                viewer = ctx.viewerRegistry.OpenByKind(fileEntry, tempWad);
               if (!viewer)
                 viewer = ctx.viewerRegistry.Open(fileEntry, tempWad);
               if (viewer)

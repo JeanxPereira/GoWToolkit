@@ -7,17 +7,17 @@
 M2 — Camada MediaKind
 
 ## Task em progresso
-nenhuma — M2.T3 e M2.T4 fechadas.
+nenhuma — M2.T5 fechada.
 
 ## Próxima task no pipeline
-M2.T5 — `ViewerRegistry::ByKind()` paralelo ao legado.
+M2.T6 — Filter na tree por MediaKind (UI).
 
 ## Blockers
 nenhum
 
 ## Notas para o próximo agente
-- **M2.T3/T4 (ParsedEntry::kind populating)**: Adicionado nas rotinas do `ProfileGOW2` e `WadNodeBuilder` (GOWR) a inicialização do campo `kind`. Testes golden atualizados localmente.
-- O build passou limpo. Pode prosseguir para a integração do `ViewerRegistry`.
+- **M2.T5 (`ViewerRegistry::OpenByKind`)**: Implementado. Para evitar quebrar as coisas antes da M3, as factories de MediaKind temporariamente invocam o handler antigo de fallback caso ele exista. Tanto o `WadBrowser` quanto o `PakBrowser` foram atualizados para tentar `OpenByKind` primeiro se `kind != Unknown`.
+- Unit tests pass.
 
 ## Progresso M1 (fechada)
 - T1 ✓ `6454eac`
@@ -33,4 +33,5 @@ nenhum
 - T2 ✓ (Antigravity)
 - T3 ✓ (Antigravity)
 - T4 ✓ (Antigravity)
-- T5 + Gate pendentes
+- T5 ✓ (Antigravity)
+- T6 + Gate pendentes
