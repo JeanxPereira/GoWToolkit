@@ -111,8 +111,6 @@ void App::frame() {
   GOW::TaskManager::runDeferredCalls();
   GOW::TaskManager::collectGarbage();
 
-  // Process any resolved async loadings (legacy — will be removed when fully migrated)
-  m_db.UpdateAsyncLoadStatus();
 
   // Per-frame tick event for animations, progress bars, etc.
   EventFrameTick::post();
@@ -223,8 +221,7 @@ void App::setupDockLayout(ImGuiID dockspace_id) {
 
 void App::drawOpenDialog() {
   if (m_showOpenDialog) {
-    if (m_db.m_loadState.load() == AssetDatabase::LoadState::LoadingWad ||
-        m_db.m_loadState.load() == AssetDatabase::LoadState::LoadingIsoPak) {
+    if (m_db.IsLoading()) {
       // Do not open if already loading
       m_showOpenDialog = false;
     } else {

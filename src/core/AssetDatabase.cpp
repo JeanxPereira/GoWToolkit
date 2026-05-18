@@ -6,9 +6,6 @@
 #include "core/TaskManager.h"
 #include "core/Events.h"
 #include "types/TypeRegistry.h"
-#include <GLFW/glfw3.h> // For glfwPostEmptyEvent
-#include <thread>
-#include <chrono>
 
 // ── LoadPakFromIso ─────────────────────────────────────────────────────────
 // Abre ISO, detecta profile, extrai TOC → paks[]
@@ -209,97 +206,58 @@ bool AssetDatabase::EnsureNodeData(ParsedEntry* e, OpenWad& parentWad) {
     return false;
 }
 
-// ── Asynchronous Loading ───────────────────────────────────────────────────
+// ── Asynchronous Loading (via TaskManager) ─────────────────────────────────
 
 void AssetDatabase::LoadWadAsync(const fs::path& path, const std::string& gameHint) {
-    if (m_loadState.load() == LoadState::LoadingWad || m_loadState.load() == LoadState::LoadingIsoPak) {
+    if (IsLoading()) {
         LOG_WARN("[AssetDatabase] A load operation is already in progress.");
         return;
     }
-    
-    m_loadState.store(LoadState::LoadingWad);
-    m_loadMessage = "Loading WAD: " + path.filename().string();
-    m_loadProgress.store(0.0f);
 
     GOW::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path, gameHint](GOW::Task& task) {
-        // Initial UI tick
         task.update(5);
-        glfwPostEmptyEvent();
 
         bool success = LoadWad(path, gameHint);
 
         task.update(90);
-        glfwPostEmptyEvent();
 
-        // Switch to main thread for state update and event emission
+        // Switch to main thread for event emission
         GOW::TaskManager::doLater([this, success]() {
-            if (success) {
-                m_loadState.store(LoadState::Ready);
-                if (!wads.empty())
-                    EventWadOpened::post(&wads.back());
-            } else {
-                m_loadState.store(LoadState::Error);
-            }
+            if (success && !wads.empty())
+                EventWadOpened::post(&wads.back());
         });
 
         task.update(100);
-        glfwPostEmptyEvent();
     });
 }
 
 void AssetDatabase::LoadIsoPakAsync(const fs::path& path) {
-     if (m_loadState.load() == LoadState::LoadingWad || m_loadState.load() == LoadState::LoadingIsoPak) {
+    if (IsLoading()) {
         LOG_WARN("[AssetDatabase] A load operation is already in progress.");
         return;
     }
 
-    m_loadState.store(LoadState::LoadingIsoPak);
-    m_loadMessage = "Loading ISO & PAK: " + path.filename().string();
-    m_loadProgress.store(0.0f);
-
     GOW::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path](GOW::Task& task) {
         task.update(10);
-        glfwPostEmptyEvent();
 
         bool isoSuccess = LoadIso(path);
         task.update(40);
-        glfwPostEmptyEvent();
 
         if (isoSuccess) {
             bool pakSuccess = LoadPakFromIso(path);
             task.update(90);
-            glfwPostEmptyEvent();
 
             GOW::TaskManager::doLater([this, pakSuccess]() {
-                if (pakSuccess) {
-                    m_loadState.store(LoadState::Ready);
-                    if (!paks.empty())
-                        EventPakOpened::post(&paks.back());
-                } else {
-                    m_loadState.store(LoadState::Error);
-                }
-            });
-        } else {
-            GOW::TaskManager::doLater([this]() {
-                m_loadState.store(LoadState::Error);
+                if (pakSuccess && !paks.empty())
+                    EventPakOpened::post(&paks.back());
             });
         }
 
         task.update(100);
-        glfwPostEmptyEvent();
     });
 }
 
-void AssetDatabase::UpdateAsyncLoadStatus() {
-    // Legacy: check future state (for any remaining std::async callers)
-    auto state = m_loadState.load();
-    if (state == LoadState::None) return;
-
-    if (m_pendingLoad.valid()) {
-        auto status = m_pendingLoad.wait_for(std::chrono::milliseconds(0));
-        if (status == std::future_status::ready) {
-            m_pendingLoad.get();
-        }
-    }
+bool AssetDatabase::IsLoading() const {
+    return GOW::TaskManager::getRunningTaskCount() > 0;
 }
 

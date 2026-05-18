@@ -1,5 +1,4 @@
 #pragma once
-#include "core/AssetDatabase.h"
 #include "ui/IPanel.h"
 
 class StatusBar : public IPanel {

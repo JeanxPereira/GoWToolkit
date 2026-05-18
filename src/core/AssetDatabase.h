@@ -3,8 +3,6 @@
 #include <vector>
 #include <memory>
 #include <filesystem>
-#include <future>
-#include <atomic>
 #include "interfaces/IGameProfile.h"
 #include "ProfileManager.h"
 #include "schema/NodeInstance.h"
@@ -42,27 +40,19 @@ public:
     bool LoadIso(const fs::path& path);
     void CloseIso(size_t idx);
 
-    // ── Asynchronous Loading ──
-    enum class LoadState { None, LoadingWad, LoadingIsoPak, Ready, Error };
-    
-    // Non-blocking wrapper for LoadWad (updates state and invokes std::async)
+    // ── Asynchronous Loading (via TaskManager) ──
+
+    // Non-blocking wrapper for LoadWad (creates a TaskManager task)
     void LoadWadAsync(const fs::path& path, const std::string& gameHint = "");
     // Non-blocking wrapper for LoadIso + LoadPakFromIso
     void LoadIsoPakAsync(const fs::path& path);
 
-    // Check loop to be called in `App::frame`
-    void UpdateAsyncLoadStatus();
-
-    std::atomic<float> m_loadProgress{0.0f};
-    std::atomic<LoadState> m_loadState{LoadState::None};
-    std::string m_loadMessage = "";
+    // Returns true if any foreground load task is currently running.
+    bool IsLoading() const;
 
     // ── Data ──
     std::vector<OpenWad> paks;  // TOC entries (arquivos dentro de ISOs/PAKs)
     std::vector<OpenWad> wads;  // WAD internals (tags parseadas de um .WAD)
     std::vector<std::shared_ptr<GOW::IsoFileSystem>> isos;
-
-private:
-    std::future<void> m_pendingLoad;
 };
 

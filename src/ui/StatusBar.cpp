@@ -32,22 +32,6 @@ void StatusBar::draw(AppContext& ctx) {
         }
     }
 
-    // ── Legacy AssetDatabase progress (while migration is in progress) ──
-    if (!hasVisibleTasks) {
-        auto loadState = ctx.db.m_loadState.load();
-        if (loadState == AssetDatabase::LoadState::LoadingWad || 
-            loadState == AssetDatabase::LoadState::LoadingIsoPak) {
-            ImGui::TextUnformatted(ctx.db.m_loadMessage.c_str());
-            ImGui::SameLine();
-            
-            float progress = ctx.db.m_loadProgress.load();
-            if (progress == 0.0f) progress = (float)ImGui::GetTime() * 0.5f; 
-            float displayProgress = std::fmod(progress, 1.0f);
-            
-            ImGui::ProgressBar(displayProgress, ImVec2(-1.0f, 0.0f), "");
-            hasVisibleTasks = true;
-        }
-    }
 
     // ── Background tasks indicator ──────────────────────────────────
     size_t bgCount = GOW::TaskManager::getRunningBackgroundTaskCount();
