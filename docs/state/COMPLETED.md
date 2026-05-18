@@ -254,3 +254,31 @@
 - [ ] CI verde nos 3 OS — pendente push da branch (`ctest` + `lint` + `lint-layers` jobs adicionados em M0.T6/T8 ainda não rodaram em runner)
 
 **Status**: M0 completo. Branch `refactor/m0-safety-net` pronta para revisão / merge. Próxima milestone: M1 — Structural Cleanup.
+
+---
+
+## 2026-05-18 — M1.T1 — Quebrar `WadTypes.h` (strangler-fig)
+
+- **Branch**: `refactor/m0-safety-net` (continua — split de branch fica para depois do PR)
+- **Prereqs**: M0.Gate ✓
+- **Arquivos novos**:
+  - `src/core/domain/Entry.h` — `WadAssetName` + `ParsedEntry` (escopo global, ainda; campos `GOW::TypeId`, `GOW::AssetNode` qualificados)
+  - `src/core/domain/Wad.h` — `OpenWad` (escopo global; forward-decl `GOW::IGameProfile`, `GOW::IFile`)
+  - `src/core/domain/WadEntryRoleLegacy.h` — `WadEntryRole` + `WadBlock` (escopo global, transitório — sai em M4)
+- **Edits**:
+  - `src/core/WadTypes.h` — rewrite como umbrella que `#include` cada um dos 3 domain headers. `TypeIdToSchemaString` permanece inline aqui (sai em M4)
+  - `tools/layers.yaml` — adiciona `src/core/domain` à lista L2_domain
+- **AC verificados**:
+  - [x] Todos 19 call sites de `#include "...WadTypes.h"` continuam funcionais (build clean)
+  - [x] ctest 6/6 verde (unit, Golden_GOW2/GOWR, Metrics, Logger, Threading)
+  - [x] Main exe Debug builda sem regressão
+  - [x] `tools/check_layers.py` mostra 12 violações estáveis (sem novas, sem perdidas)
+- **Estratégia (strangler-fig)**:
+  - WadTypes.h NÃO foi deletado nem teve API quebrada. Apenas o conteúdo foi extraído para 3 headers menores. Umbrella mantém retrocompatibilidade.
+  - Próximas tasks (M1.T2+, M4) vão migrar call sites *file-by-file* para incluir o domain header específico (`#include "core/domain/Entry.h"` em vez do umbrella). Quando todos migrarem, WadTypes.h pode ser apagado.
+- **Trade-off**:
+  - Mantido escopo global das structs/enums apesar de melhor seria namespace `GOW::`. Decidido NÃO mexer pra não tocar 250+ call sites em uma task de "split header". Move pra milestone separada (M4 candidato).
+- **Notas**:
+  - `Entry.h` includa `WadEntryRoleLegacy.h` (precisa para os campos `role`/`block` em `ParsedEntry`), `schema/AssetNode.h`, `types/TypeId.h`, `types/GameVersion.h`. Sem fwd-decls problemáticos.
+  - `Wad.h` includa `Entry.h` (precisa para `ParsedEntry` no `entries` vector). Fwd-decl `GOW::IGameProfile` + `GOW::IFile` (só usados como `shared_ptr`).
+  - `WadEntryRoleLegacy.h` é zero-dep — só os enums.

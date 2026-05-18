@@ -26,6 +26,7 @@ layers:
   L2_domain:
     - src/core/types
     - src/core/schema
+    - src/core/domain
     - src/core/WadTypes.h
     - src/core/parsers/shared
   L3_appsvc:
