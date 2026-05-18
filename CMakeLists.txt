@@ -215,6 +215,7 @@ endif()
 set(PARSER_MIN_SOURCES
     src/core/Logger.cpp
     src/core/Metrics.cpp
+    src/core/Threading.cpp
     src/core/WadAssetName.cpp
     src/core/profiles/gow2/ProfileGOW2.cpp
     src/core/profiles/gow2/formats/MDL.cpp
@@ -381,4 +382,6 @@ if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Metrics*")
     add_test(NAME Logger
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Logger*")
+    add_test(NAME Threading
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Threading*")
 endif()

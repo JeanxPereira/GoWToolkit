@@ -193,3 +193,27 @@
   - Job `build`: matrix existente (Linux x64, macOS arm64+x64, Windows x64). Adicionado step `ctest` após `Build` step, com branch single/multi-config
 - **PR template**:
   - Summary (1–3 bullets), Linked task (roadmap §), Acceptance criteria (tickable), Test plan (concrete), Risk/Rollback, State files checklist
+
+---
+
+## 2026-05-18 — M0.T7 — ASSERT_MAIN_THREAD macro
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereqs**: nenhum
+- **Arquivos novos**:
+  - `src/core/Threading.h` (MarkMainThread / IsMainThread / ASSERT_MAIN_THREAD macro)
+  - `src/core/Threading.cpp` (release-acquire atomic flag + std::thread::id)
+  - `tests/threading_test.cpp` (3 TEST_CASEs)
+- **Edits**:
+  - `src/main.cpp`: includa `core/Threading.h`, chama `MarkMainThread()` antes de qualquer thread spawn
+  - `CMakeLists.txt`: Threading.cpp em PARSER_MIN_SOURCES, novo ctest entry `Threading`
+- **AC verificados**: 4/4
+  - [x] `IsMainThread()` retorna `true` na main thread (test: MarkMainThread + assert)
+  - [x] `IsMainThread()` retorna `false` em `std::thread` filho (test: worker captura via atomic, joina, assert false)
+  - [x] Macro vira no-op em `-DNDEBUG` (test ramifica por #ifdef NDEBUG: roda macro em worker thread sem MarkMainThread — não aborta em release)
+  - [x] `ctest -R Threading` passa 1/1
+- **Notas**:
+  - State sync via `std::atomic<bool> g_marked` (release) + `std::thread::id g_mainId`; consumers fazem acquire-load do flag antes de comparar id.
+  - `IsMainThread()` retorna `false` (sem assert) quando `MarkMainThread` nunca foi chamado — permite testar ambos estados sem efeito colateral.
+  - ASSERT_MAIN_THREAD não chamado em produção ainda (roadmap explícito); milestones futuras vão guardar UI/OpenGL paths file-by-file.
+  - Full ctest 6/6 verde após esta task.

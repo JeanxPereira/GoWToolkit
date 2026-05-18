@@ -2,6 +2,7 @@
 #include "core/ProfileManager.h"
 #include "core/profiles/gow2/ProfileGOW2.h"
 #include "core/profiles/gowr/ProfileGOWR.h"
+#include "core/Threading.h"
 #include "cli/CliApp.h"
 
 #ifdef _WIN32
@@ -16,6 +17,9 @@ static void registerProfiles() {
 }
 
 int main(int argc, char** argv) {
+    // Record the main thread before anything else spawns workers.
+    GOW::Threading::MarkMainThread();
+
     registerProfiles();
 
     if (argc > 1) {
