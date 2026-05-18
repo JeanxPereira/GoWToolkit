@@ -7,28 +7,33 @@
 M1 — Structural Cleanup
 
 ## Task em progresso
-nenhuma — M1.T3 fechada, próxima é M1.T4
+nenhuma — M1.T4 fechada, próxima é M1.T5
 
 ## Próxima task no pipeline
-M1.T4 — Remover `IAssetLoader` Morto-Vivo. Esforço S, risco low. Sem prereqs.
+M1.T5 — Limpar `GameVersion::GOW1` Órfão. Esforço XS, risco low. Sem prereqs.
 
 ## Blockers
 nenhum
 
 ## Notas para o próximo agente
-- M1.T3 entregue: `GpuVertex` movido para `src/core/domain/MeshVertex.h`. `MeshData.h` includa só headers de domain agora. `GpuMesh.h` mantém o struct apenas via include.
-- Forward-decl `class GpuMesh;` adicionada a `core/parsers/gowr/MeshParser.h` — função `ParseMeshDefn` declara `shared_ptr<GpuMesh>` mas não desreferencia (parâmetro `outMeshes` é `/*unused*/` no .cpp).
-- Comentário em `SceneNode.h` reescrito de "ready for rendering" → "ready to render" pra satisfazer AC literal (`grep -n "rendering" SceneNode.h` = 0).
-- Decisão D0010: nome `GpuVertex` mantido (vs rename pra `Vertex` sugerido no roadmap). Justificativa em `DECISIONS.md`.
-- Layer linter caiu de 12 → 11 violações (sem `parsers/shared/MeshData.h → rendering/GpuMesh.h`).
+- M1.T4 entregue: deletado `IAssetLoader.h`, `GOW2Loaders.h`, `GOW2Loaders.cpp` (todos confirmados dead).
+- `GOWRLoaders.{h,cpp}` PRESERVADO (não é IAssetLoader-derived; contém `ITypeHandler` impls + `GetTexIndex()` consumido por `ProfileGOWR.cpp:15`). Roadmap listava sua deleção como condicional ("se confirmado dead").
+- CMakeLists não precisou de edit — `file(GLOB_RECURSE SOURCES src/*.cpp)` re-picka automaticamente.
+- Layer linter estável em 11 violações.
 - ctest 6/6 verde.
 
-## Arquivos tocados nesta sessão
+## Progresso M1
+- T1 ✓ commit `6454eac`
+- T2 ✓ commit `260c42a`
+- T3 ✓ commit `8b0e7f2`
+- T4 ✓ (commit pendente nesta sessão)
+- T5, T6, Gate restantes
+
+## Arquivos tocados nesta sessão (cumulativo)
 - Hotfix font + actool: commit `fdeaed7`
 - M1.T2 BoundingBox → domain: commit `260c42a`
-- M1.T3:
-  - `src/core/domain/MeshVertex.h` (NEW)
-  - `src/core/parsers/shared/MeshData.h` (drops rendering include, adds 2 domain includes)
-  - `src/rendering/GpuMesh.h` (drops struct def, adds domain include)
-  - `src/core/parsers/gowr/MeshParser.h` (adds fwd-decl `class GpuMesh;`)
-  - `src/core/parsers/shared/SceneNode.h` (comment reword to pass AC grep)
+- M1.T3 MeshData decouple: commit `8b0e7f2`
+- M1.T4 IAssetLoader+GOW2Loaders dead-code purge:
+  - DELETED `src/core/loaders/IAssetLoader.h`
+  - DELETED `src/core/loaders/GOW2Loaders.h`
+  - DELETED `src/core/loaders/GOW2Loaders.cpp`

@@ -354,3 +354,31 @@
   - Forward-decl funciona porque shared_ptr<T> aceita T incompleto para fwd declaration (size, ctor, comparison, std::shared_ptr<T> dest sem reset/Release). `MeshParser.cpp` também não desreferencia o param (marcado `/*outMeshes*/`).
   - Nome `MeshVertex.h` (não `GpuVertex.h`) reflete conteúdo neutro de layer; nome do struct continua `GpuVertex` (D0010).
   - `glVertexAttribPointer` setup em `rendering/GpuMesh.cpp` depende de `offsetof(GpuVertex, ...)` + `sizeof(GpuVertex)`. Layout do struct é contrato GPU — comentário adicionado em `MeshVertex.h` proibindo reordenação sem update do attr table.
+
+---
+
+## 2026-05-18 — M1.T4 — Remover `IAssetLoader` Morto-Vivo
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereqs**: nenhum
+- **Investigação**:
+  - `IAssetLoader.h`: interface abstrata, único consumer era `GOW2Loaders.h` (todas as 8 subclasses). Nenhum site instancia ou chama `IAssetLoader::load`.
+  - `GOW2Loaders.{h,cpp}`: 8 loaders (Model/Mesh/Texture/Material/Sound/Vag/Vpk/Pss) inheriting `IAssetLoader`. Compilavam (puxados pelo `GLOB_RECURSE`) mas nenhum site externo construía instâncias. Dead.
+  - `GOWRLoaders.{h,cpp}`: **NÃO é dead** — apesar do nome, contém `ITypeHandler` impls (GOWRMeshDefnHandler, GOWRSkinnedMeshHandler, GOWRModelInstanceHandler, GOWRTextureHandler, GOWRRigHandler, GOWRShaderHandler) + função `GetTexIndex()` consumida por `src/core/profiles/gowr/ProfileGOWR.cpp:15`. Preservado.
+- **Arquivos deletados**:
+  - `src/core/loaders/IAssetLoader.h`
+  - `src/core/loaders/GOW2Loaders.h`
+  - `src/core/loaders/GOW2Loaders.cpp`
+- **Arquivos preservados (apesar do roadmap listá-los como condicionais)**:
+  - `src/core/loaders/GOWRLoaders.h`
+  - `src/core/loaders/GOWRLoaders.cpp`
+- **CMakeLists**: zero edits necessários. `file(GLOB_RECURSE SOURCES src/*.cpp)` re-picka automaticamente sem os arquivos deletados.
+- **AC verificados**: 4/4
+  - [x] `find src -name "IAssetLoader.h"` retorna vazio
+  - [x] `grep -rn "IAssetLoader" src/` retorna zero
+  - [x] Build Debug verde
+  - [x] ctest 6/6 verde (golden tests inclusos)
+- **Layer linter**: 11 violações estáveis (sem mudança — `GOW2Loaders.cpp` tinha includes de `ui/viewers/*` mas não estava na lista atual de 11; deve ter sido excluído por algum filtro do linter).
+- **Notas**:
+  - GOW2Loaders.cpp era um zumbi: compilado e linkado no exe, mas nunca instanciado. Footprint de binário caiu ~1.3 MB de .o + ~2.7 MB de GOWRLoaders ainda lá (não tocado). LTO já eliminava o código morto do binário final, mas custava tempo de compilação a cada build.
+  - O nome `core/loaders/` continua semanticamente confuso (sobrevive só com GOWRLoaders, que é ITypeHandler + util). Renomear/dissolver fica pra M3 ou M4 conforme handler refactor evoluir.
