@@ -129,3 +129,22 @@ Trade-off: API surface dupla. Aceito porque migration paths são separadas. Plan
 Refs:
 - `src/core/Logger.h` — legacy `Logger` class + new `Log` namespace lado a lado
 - `tests/logger_test.cpp` — `TEST_CASE("[Logger] Legacy LOG_INFO funnels through the new pipeline")`
+
+---
+
+## D0010 — 2026-05-18 — Manter nome `GpuVertex` em `core/domain/MeshVertex.h`
+
+Decisão: o struct CPU-side movido pra `src/core/domain/MeshVertex.h` continua chamado `GpuVertex`. O roadmap M1.T3 sugeria renomear para `Vertex` (com alias legacy em `rendering/GpuMesh.h`).
+
+Motivação:
+- ACs de M1.T3 não exigem rename — só decouple de layer (`grep -n "rendering" parsers/shared/*.h` = 0, layer linter sem violação em `parsers/shared/`).
+- `Vertex` é nome genérico demais — risco de colisão futura (ex.: text rendering, debug overlay, UI primitives).
+- Rename atingiria 18 sites (`GpuMesh.cpp` glVertexAttribPointer table, 2 parsers, header) + breaking alias deixaria semântica confusa.
+- Header file ficou como `MeshVertex.h` (não `GpuVertex.h`) pra refletir conteúdo neutro de layer; nome do struct permanece `GpuVertex` pra retrocompat com call sites.
+
+Trade-off: nome `GpuVertex` no struct sugere "GPU-side", mas o conteúdo é POD CPU-side (`offsetof` + `sizeof` consumidos por `glVertexAttribPointer`). O nome reflete uso final (upload a GPU), não onde vive. Documentado no comentário do header.
+
+Refs:
+- `src/core/domain/MeshVertex.h`
+- `src/rendering/GpuMesh.{h,cpp}` (consome via `glVertexAttribPointer` + `Upload`)
+- 2 parsers (`gow2/MeshParser.cpp`, `gowr/MeshParser.cpp`)

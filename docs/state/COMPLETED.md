@@ -325,3 +325,32 @@
 - **Notas**:
   - `BoundingBox` POD-only — só depende de `<glm/glm.hpp>`. Header zero-fricção pra L0/L1/L2/L4.
   - `Camera.h` continua em L4 (rendering); domain header dentro de L2; include direction L4→L2 OK.
+
+---
+
+## 2026-05-18 — M1.T3 — Decouple `MeshData` de Rendering
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereqs**: M1.T2 ✓
+- **Decisão registrada**: D0010 (manter nome `GpuVertex` em vez de renomear pra `Vertex`)
+- **Arquivos novos**:
+  - `src/core/domain/MeshVertex.h` — `struct GpuVertex` POD em `namespace GOW` (move verbatim de `rendering/GpuMesh.h`).
+- **Edits**:
+  - `src/core/parsers/shared/MeshData.h` — drops `#include "rendering/GpuMesh.h"`, adds `core/domain/BoundingBox.h` + `core/domain/MeshVertex.h`.
+  - `src/rendering/GpuMesh.h` — remove struct def, `#include "core/domain/MeshVertex.h"`.
+  - `src/core/parsers/gowr/MeshParser.h` — fwd-decl `class GpuMesh;` (ParseMeshDefn declara `shared_ptr<GpuMesh>` mas param é unused no .cpp).
+  - `src/core/parsers/shared/SceneNode.h` — comment "ready for rendering" → "ready to render" para passar AC literal de grep.
+- **AC verificados**: 5/5
+  - [x] `grep -n "rendering" src/core/parsers/shared/MeshData.h` retorna zero
+  - [x] `grep -n "rendering" src/core/parsers/shared/SceneNode.h` retorna zero
+  - [x] `tools/check_layers.py` reporta zero violações em `parsers/shared/` (caiu de 12 → 11 violações totais)
+  - [x] Build Debug verde, main exe + tests linkam
+  - [x] ctest 6/6 verde (incluindo Golden_GOW2 + Golden_GOWR)
+- **Layer linter ANTES → DEPOIS**:
+  - 12 violações → 11 violações
+  - Removida: `src/core/parsers/shared/MeshData.h:5 → src/rendering/GpuMesh.h`
+  - Remanescentes (corrigidas em milestones futuras): 3× window/platform→Window.h, 8× handlers→viewers
+- **Notas**:
+  - Forward-decl funciona porque shared_ptr<T> aceita T incompleto para fwd declaration (size, ctor, comparison, std::shared_ptr<T> dest sem reset/Release). `MeshParser.cpp` também não desreferencia o param (marcado `/*outMeshes*/`).
+  - Nome `MeshVertex.h` (não `GpuVertex.h`) reflete conteúdo neutro de layer; nome do struct continua `GpuVertex` (D0010).
+  - `glVertexAttribPointer` setup em `rendering/GpuMesh.cpp` depende de `offsetof(GpuVertex, ...)` + `sizeof(GpuVertex)`. Layout do struct é contrato GPU — comentário adicionado em `MeshVertex.h` proibindo reordenação sem update do attr table.

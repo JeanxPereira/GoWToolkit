@@ -2,7 +2,8 @@
 #include <vector>
 #include <cstdint>
 #include <string>
-#include "rendering/GpuMesh.h" // For BoundingBox and GpuVertex
+#include "core/domain/BoundingBox.h"
+#include "core/domain/MeshVertex.h"
 
 namespace GOW {
 

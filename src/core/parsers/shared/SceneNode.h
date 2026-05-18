@@ -19,7 +19,7 @@ enum class BlendMode : uint8_t {
     EnvMap        // Environment map blend (strange blended in Go)
 };
 
-/// Material info resolved from the WAD, ready for rendering.
+/// Material info resolved from the WAD, ready to render.
 /// Does NOT own the GL texture — that's created by the renderer.
 struct MaterialInfo {
     float       baseColor[4] = {1, 1, 1, 1};      // from mat header

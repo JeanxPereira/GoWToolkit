@@ -3,22 +3,12 @@
 #include <vector>
 #include <cstdint>
 #include "core/domain/BoundingBox.h"
+#include "core/domain/MeshVertex.h"
 
 // Forward-declare GL types to avoid pulling glad.h into headers
 using GLuint = unsigned int;
 
 namespace GOW {
-
-struct GpuVertex {
-    glm::vec3  position    {0.0f};
-    glm::vec3  normal      {0.0f};
-    glm::vec2  uv          {0.0f};
-    glm::vec4  color       {1.0f};
-    // ── GOWR additions (zero-initialised; GOW2 paths never write these) ─
-    glm::vec2  uv1         {0.0f};
-    glm::vec4  boneWeights {0.0f};
-    glm::uvec4 boneIndices {0u};
-};
 
 class GpuMesh {
 public:

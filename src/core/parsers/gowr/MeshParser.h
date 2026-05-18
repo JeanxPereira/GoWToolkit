@@ -10,6 +10,11 @@
 
 namespace GOW {
 
+// Forward-decl: ParseMeshDefn signature uses shared_ptr<GpuMesh> only as
+// an opaque handle; full def lives in rendering/GpuMesh.h. Avoids pulling
+// the L4 (rendering) header into this L2 (parsers) header.
+class GpuMesh;
+
 class GOWRMeshParser {
 public:
     // ── Public API ────────────────────────────────────────────────────────
