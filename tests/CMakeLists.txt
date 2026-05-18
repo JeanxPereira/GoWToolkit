@@ -11,8 +11,16 @@ target_include_directories(gowtoolkit_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
+# Pass the path to the fixtures directory so tests don't depend on the
+# current working directory at execution time.
+target_compile_definitions(gowtoolkit_tests PRIVATE
+    GOWTOOLKIT_TEST_FIXTURES_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures"
+)
+
 target_link_libraries(gowtoolkit_tests PRIVATE
     doctest::doctest
+    nlohmann_json::nlohmann_json
+    gowtoolkit_parser_min
 )
 
 set_target_properties(gowtoolkit_tests PROPERTIES

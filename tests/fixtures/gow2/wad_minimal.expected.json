@@ -1,0 +1,303 @@
+{
+  "wad": "wad_minimal.wad",
+  "entryCount": 33,
+  "entries": [
+    {
+      "name": "WAD_R_Boar00",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 8,
+      "offset": 32,
+      "childCount": 0,
+      "payloadHash": "0xb810491bbb5b66de"
+    },
+    {
+      "name": "WAD_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 56,
+      "offset": 112,
+      "childCount": 6,
+      "payloadHash": "0xabf9d191e6e735a8"
+    },
+    {
+      "name": "GFXX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 240,
+      "childCount": 0,
+      "payloadHash": "0x5560dddb5b88aeeb"
+    },
+    {
+      "name": "TXRX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 384,
+      "childCount": 0,
+      "payloadHash": "0xb98e3b14107534fc"
+    },
+    {
+      "name": "MATX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 528,
+      "childCount": 0,
+      "payloadHash": "0x704b725f52543bd5"
+    },
+    {
+      "name": "LGTX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 672,
+      "childCount": 0,
+      "payloadHash": "0x5216cd75eb1e54ba"
+    },
+    {
+      "name": "FLPX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 816,
+      "childCount": 0,
+      "payloadHash": "0xbf11b41fb084da8c"
+    },
+    {
+      "name": "CXT_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 52,
+      "offset": 960,
+      "childCount": 12,
+      "payloadHash": "0x1f0e8d664364622a"
+    },
+    {
+      "name": "ANMX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 1088,
+      "childCount": 0,
+      "payloadHash": "0x0f66ca6c1f6242b3"
+    },
+    {
+      "name": "SCRX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 1232,
+      "childCount": 0,
+      "payloadHash": "0xcad4a243e1ef55a5"
+    },
+    {
+      "name": "BHVX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 1376,
+      "childCount": 0,
+      "payloadHash": "0x5f0870de951dd64c"
+    },
+    {
+      "name": "MDLX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 1520,
+      "childCount": 0,
+      "payloadHash": "0x3205d2ee7ee92bfb"
+    },
+    {
+      "name": "PRTX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 1664,
+      "childCount": 0,
+      "payloadHash": "0x684d85563cef07e3"
+    },
+    {
+      "name": "CAMX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 1808,
+      "childCount": 0,
+      "payloadHash": "0x7fc7ee2c972879a9"
+    },
+    {
+      "name": "EEPR_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 1952,
+      "childCount": 0,
+      "payloadHash": "0x4ce1fade1864ca00"
+    },
+    {
+      "name": "SNDX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 2096,
+      "childCount": 0,
+      "payloadHash": "0x13791bd790ae58a5"
+    },
+    {
+      "name": "COLX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 2240,
+      "childCount": 0,
+      "payloadHash": "0x1156292dee14fe5d"
+    },
+    {
+      "name": "SHGX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 2384,
+      "childCount": 0,
+      "payloadHash": "0x2ea13568a29ac061"
+    },
+    {
+      "name": "FX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 2528,
+      "childCount": 0,
+      "payloadHash": "0xc118c5a43acf8532"
+    },
+    {
+      "name": "WYPX_R_Boar00",
+      "typeId": "Chunk",
+      "schemaType": "GOW2_CHUNK",
+      "size": 48,
+      "offset": 2672,
+      "childCount": 0,
+      "payloadHash": "0xe66c66705e699565"
+    },
+    {
+      "name": "ANM_hero_Boar00",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 41472,
+      "offset": 2944,
+      "childCount": 1,
+      "payloadHash": "0x4e2aacdf41859672"
+    },
+    {
+      "name": "ANM_hero",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 0,
+      "offset": 44448,
+      "childCount": 0,
+      "payloadHash": "0x0000000000000000"
+    },
+    {
+      "name": "ANM_camera_Boar00",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 5120,
+      "offset": 44544,
+      "childCount": 1,
+      "payloadHash": "0x2ccb2071d9d3189e"
+    },
+    {
+      "name": "ANM_camera",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 0,
+      "offset": 49696,
+      "childCount": 0,
+      "payloadHash": "0x0000000000000000"
+    },
+    {
+      "name": "SBP_BOAR",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 61568,
+      "offset": 49760,
+      "childCount": 0,
+      "payloadHash": "0x3ef115d2f7c71928"
+    },
+    {
+      "name": "GFX_boar00",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 65560,
+      "offset": 111360,
+      "childCount": 0,
+      "payloadHash": "0x0e2f4a11d3c50892"
+    },
+    {
+      "name": "PAL_boar00",
+      "typeId": "Palette",
+      "schemaType": "GOW2_PAL",
+      "size": 1048,
+      "offset": 176960,
+      "childCount": 0,
+      "payloadHash": "0x2f52602c8a013cd8"
+    },
+    {
+      "name": "TXR_boar:file7",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 88,
+      "offset": 178048,
+      "childCount": 0,
+      "payloadHash": "0x43227325995fe7b9"
+    },
+    {
+      "name": "MAT_boar:lambert7",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 120,
+      "offset": 178208,
+      "childCount": 0,
+      "payloadHash": "0x8ddbe7ba89c42052"
+    },
+    {
+      "name": "MAT_boar:lambert7",
+      "typeId": "Unknown",
+      "schemaType": "",
+      "size": 120,
+      "offset": 178208,
+      "childCount": 0,
+      "payloadHash": "0x8ddbe7ba89c42052"
+    },
+    {
+      "name": "ANM_boar00",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 87168,
+      "offset": 178400,
+      "childCount": 0,
+      "payloadHash": "0xaf838d4a715db53f"
+    },
+    {
+      "name": "MDL_boar00",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 88,
+      "offset": 265632,
+      "childCount": 2,
+      "payloadHash": "0x7aa77a2403161e9b"
+    },
+    {
+      "name": "SCP_JOPelvis1",
+      "typeId": "Unknown",
+      "schemaType": "GOW2_UNKNOWN",
+      "size": 68,
+      "offset": 265824,
+      "childCount": 0,
+      "payloadHash": "0x735e66693bae2627"
+    }
+  ]
+}

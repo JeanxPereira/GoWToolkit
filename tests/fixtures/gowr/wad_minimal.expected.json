@@ -1,0 +1,915 @@
+{
+  "wad": "wad_minimal.wad",
+  "entryCount": 101,
+  "entries": [
+    {
+      "name": "Assets",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_BLOCK_ASSETS",
+      "size": 0,
+      "offset": 0,
+      "childCount": 70,
+      "payloadHash": "0x0000000000000000"
+    },
+    {
+      "name": "Manifest",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_BLOCK_MANIFEST",
+      "size": 0,
+      "offset": 0,
+      "childCount": 29,
+      "payloadHash": "0x0000000000000000"
+    },
+    {
+      "name": "WAD_R_Athena00",
+      "typeId": "WAD Identity",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 8,
+      "offset": 16480,
+      "childCount": 0,
+      "payloadHash": "0xaf769f5fa65a4acb"
+    },
+    {
+      "name": "WAD_R_Athena00",
+      "typeId": "WAD Identity",
+      "schemaType": "GOWR_UNKNOWN_3",
+      "size": 1400,
+      "offset": 16488,
+      "childCount": 0,
+      "payloadHash": "0xe7482ae2ad7f1845"
+    },
+    {
+      "name": "TXRX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 17888,
+      "childCount": 0,
+      "payloadHash": "0xd759dea671f22532"
+    },
+    {
+      "name": "WPTX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 17912,
+      "childCount": 0,
+      "payloadHash": "0x3c00b226af3fc86b"
+    },
+    {
+      "name": "DLGX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 17936,
+      "childCount": 0,
+      "payloadHash": "0x59f28c9a552bcd6d"
+    },
+    {
+      "name": "BTRX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 17960,
+      "childCount": 0,
+      "payloadHash": "0x03288c617923566c"
+    },
+    {
+      "name": "CXT_R_Athena00",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 156,
+      "offset": 17984,
+      "childCount": 0,
+      "payloadHash": "0x835a5e37a146122d"
+    },
+    {
+      "name": "ANMX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18144,
+      "childCount": 0,
+      "payloadHash": "0x6ae4d53e18c4be70"
+    },
+    {
+      "name": "LGTX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18168,
+      "childCount": 0,
+      "payloadHash": "0xd61a8e8eb3dab5a0"
+    },
+    {
+      "name": "SCRX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18192,
+      "childCount": 0,
+      "payloadHash": "0x8c1fdb6ff6a42edd"
+    },
+    {
+      "name": "BHVX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18216,
+      "childCount": 0,
+      "payloadHash": "0x00ca29e348753287"
+    },
+    {
+      "name": "MDLX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18240,
+      "childCount": 0,
+      "payloadHash": "0x7079163f8c183ca9"
+    },
+    {
+      "name": "MATX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18264,
+      "childCount": 0,
+      "payloadHash": "0xb1083fcb13980b36"
+    },
+    {
+      "name": "PRTX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18288,
+      "childCount": 0,
+      "payloadHash": "0xae3b225463d6168c"
+    },
+    {
+      "name": "CAMX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18312,
+      "childCount": 0,
+      "payloadHash": "0xfa378b4b52e272d5"
+    },
+    {
+      "name": "COLX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18336,
+      "childCount": 0,
+      "payloadHash": "0x3155a9ff0387c318"
+    },
+    {
+      "name": "FX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18360,
+      "childCount": 0,
+      "payloadHash": "0xae351b2961cbbb54"
+    },
+    {
+      "name": "ENTX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18384,
+      "childCount": 0,
+      "payloadHash": "0x2cab8def87ac4d51"
+    },
+    {
+      "name": "PHYX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18408,
+      "childCount": 0,
+      "payloadHash": "0x375eb81744c5d33e"
+    },
+    {
+      "name": "DCLX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18432,
+      "childCount": 0,
+      "payloadHash": "0x4169b3ff348d7388"
+    },
+    {
+      "name": "WWIX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18456,
+      "childCount": 0,
+      "payloadHash": "0x4e85a67bf6647fb1"
+    },
+    {
+      "name": "WNDX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 40,
+      "offset": 18480,
+      "childCount": 0,
+      "payloadHash": "0xb86f90ff1c59d4c0"
+    },
+    {
+      "name": "PCAX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18520,
+      "childCount": 0,
+      "payloadHash": "0x61cec4ab41702c4b"
+    },
+    {
+      "name": "CMRX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18544,
+      "childCount": 0,
+      "payloadHash": "0x8374dac708dd5460"
+    },
+    {
+      "name": "LUA_R_Athena00",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18568,
+      "childCount": 0,
+      "payloadHash": "0xb8eedde060b63777"
+    },
+    {
+      "name": "INTX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18592,
+      "childCount": 0,
+      "payloadHash": "0x91060633d87c855f"
+    },
+    {
+      "name": "LSCX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18616,
+      "childCount": 0,
+      "payloadHash": "0xc9ca80d67afbd88b"
+    },
+    {
+      "name": "GMO_R_Athena00",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18640,
+      "childCount": 0,
+      "payloadHash": "0x736d4ee1d8941de7"
+    },
+    {
+      "name": "GPSX_R_Athena00",
+      "typeId": "Shared WAD Ref",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 24,
+      "offset": 18664,
+      "childCount": 0,
+      "payloadHash": "0x77b55d1c37020fe8"
+    },
+    {
+      "name": "0xF6A985B87C5D1005",
+      "typeId": "Shader",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 1216,
+      "offset": 18688,
+      "childCount": 0,
+      "payloadHash": "0xe115cbc3a880cc96"
+    },
+    {
+      "name": "WAD_R_Athena00",
+      "typeId": "WAD Identity",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 0,
+      "offset": 18688,
+      "childCount": 0,
+      "payloadHash": "0x0000000000000000"
+    },
+    {
+      "name": "main",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 3678,
+      "offset": 19904,
+      "childCount": 0,
+      "payloadHash": "0x3af083c9e4294234"
+    },
+    {
+      "name": "wad_r_athena00",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 0,
+      "offset": 19904,
+      "childCount": 0,
+      "payloadHash": "0x0000000000000000"
+    },
+    {
+      "name": "wad_r_athena00",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 0,
+      "offset": 19904,
+      "childCount": 0,
+      "payloadHash": "0x0000000000000000"
+    },
+    {
+      "name": "TX_athena10_teethtongue_gen_0h_0F2F627165F0B9A7",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 2304,
+      "offset": 23582,
+      "childCount": 0,
+      "payloadHash": "0x17ca477afe469755"
+    },
+    {
+      "name": "TX_athena10_teethtongue_gen_0d_4A65394966A23464",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 2304,
+      "offset": 25886,
+      "childCount": 0,
+      "payloadHash": "0xa5d4246beff70c12"
+    },
+    {
+      "name": "TX_test_checkerboard_gen_0d_9F2C32EDDFF7F9F7",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 8448,
+      "offset": 28190,
+      "childCount": 0,
+      "payloadHash": "0x4fc381f478a89de8"
+    },
+    {
+      "name": "TX_cloudtile_DCB6E128A9BEF8A5",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 8448,
+      "offset": 36638,
+      "childCount": 0,
+      "payloadHash": "0xe486cbb451855ebe"
+    },
+    {
+      "name": "TX_athena10_teethtongue_gen_0n_9F7A3D32DEC8B633",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 8448,
+      "offset": 45086,
+      "childCount": 0,
+      "payloadHash": "0x017a16a050077d8e"
+    },
+    {
+      "name": "TX_athena10_teethtongue_gen_0ao_90B58DAEAC86A8AA",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 8448,
+      "offset": 53534,
+      "childCount": 0,
+      "payloadHash": "0x8434843247e64616"
+    },
+    {
+      "name": "TX_athena10_head_gen_0n_A30A022F72E5D13E",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 8448,
+      "offset": 61982,
+      "childCount": 0,
+      "payloadHash": "0xd8ef1fa942f8bd3d"
+    },
+    {
+      "name": "depth_vs_10000207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 13904,
+      "offset": 70430,
+      "childCount": 0,
+      "payloadHash": "0x6cf4729789ca36c3"
+    },
+    {
+      "name": "depth_vs_10000217",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 15248,
+      "offset": 84334,
+      "childCount": 0,
+      "payloadHash": "0xb460b0d366be25ff"
+    },
+    {
+      "name": "depth_vs_10001207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 13944,
+      "offset": 99582,
+      "childCount": 0,
+      "payloadHash": "0x49e0c8033e185861"
+    },
+    {
+      "name": "depth_vs_10001217",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 15632,
+      "offset": 113534,
+      "childCount": 0,
+      "payloadHash": "0xd97d2e7be8d0a2ca"
+    },
+    {
+      "name": "depth_vs_10010207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 11464,
+      "offset": 129166,
+      "childCount": 0,
+      "payloadHash": "0x33482d276ba08137"
+    },
+    {
+      "name": "depth_vs_10011207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 12848,
+      "offset": 140638,
+      "childCount": 0,
+      "payloadHash": "0x68b4765afebbbdee"
+    },
+    {
+      "name": "depvl_vs_10000207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 14968,
+      "offset": 153486,
+      "childCount": 0,
+      "payloadHash": "0xccee064f6a041874"
+    },
+    {
+      "name": "depvl_vs_10000217",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 19232,
+      "offset": 168462,
+      "childCount": 0,
+      "payloadHash": "0x2d7a199f3bd4af31"
+    },
+    {
+      "name": "depvl_vs_10001207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 14992,
+      "offset": 187694,
+      "childCount": 0,
+      "payloadHash": "0x110f8d6789c5fc7c"
+    },
+    {
+      "name": "depvl_vs_10001217",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 19408,
+      "offset": 202686,
+      "childCount": 0,
+      "payloadHash": "0x492f1278ba6137b2"
+    },
+    {
+      "name": "depvl_vs_10010207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 12144,
+      "offset": 222094,
+      "childCount": 0,
+      "payloadHash": "0x36490ff83e4f7934"
+    },
+    {
+      "name": "depvl_vs_10011207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 13536,
+      "offset": 234238,
+      "childCount": 0,
+      "payloadHash": "0x741ff10f6fca363d"
+    },
+    {
+      "name": "opaque_vs_10000207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 15320,
+      "offset": 247774,
+      "childCount": 0,
+      "payloadHash": "0x94a2a5a4ab846cb3"
+    },
+    {
+      "name": "opaque_vs_10000217",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 19696,
+      "offset": 263102,
+      "childCount": 0,
+      "payloadHash": "0x03c0b434cf915e3a"
+    },
+    {
+      "name": "opaque_vs_10001207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 15360,
+      "offset": 282798,
+      "childCount": 0,
+      "payloadHash": "0xfd259cdf12bd23f7"
+    },
+    {
+      "name": "opaque_vs_10001217",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 19908,
+      "offset": 298158,
+      "childCount": 0,
+      "payloadHash": "0xad9086b107cbaef8"
+    },
+    {
+      "name": "opaque_vs_10010207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 13624,
+      "offset": 318078,
+      "childCount": 0,
+      "payloadHash": "0x7b16168d1cea8678"
+    },
+    {
+      "name": "opaque_vs_10011207",
+      "typeId": "Vertex Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 13928,
+      "offset": 331710,
+      "childCount": 0,
+      "payloadHash": "0x85df71e85b836ffd"
+    },
+    {
+      "name": "14ef18dd481d00dc_ps_10000207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 10524,
+      "offset": 345646,
+      "childCount": 0,
+      "payloadHash": "0xd4799c958c3904ee"
+    },
+    {
+      "name": "14ef18dd481d00dc_ps_10000207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 11536,
+      "offset": 356174,
+      "childCount": 0,
+      "payloadHash": "0x1554cf2332ff6a13"
+    },
+    {
+      "name": "14ef18dd481d00dc_ps_10000207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 15840,
+      "offset": 367710,
+      "childCount": 0,
+      "payloadHash": "0xa39c3614ba523808"
+    },
+    {
+      "name": "de674f96622453eb_ps_10000207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 10556,
+      "offset": 383550,
+      "childCount": 0,
+      "payloadHash": "0x64cc38347f7068fe"
+    },
+    {
+      "name": "de674f96622453eb_ps_10001207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 10832,
+      "offset": 394110,
+      "childCount": 0,
+      "payloadHash": "0x17fe32960ce52cf0"
+    },
+    {
+      "name": "de674f96622453eb_ps_10000207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 11564,
+      "offset": 404942,
+      "childCount": 0,
+      "payloadHash": "0x401e1745752a0ad2"
+    },
+    {
+      "name": "de674f96622453eb_ps_10001207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 11856,
+      "offset": 416510,
+      "childCount": 0,
+      "payloadHash": "0x4d4083c1fc4efee5"
+    },
+    {
+      "name": "de674f96622453eb_ps_10000207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 15844,
+      "offset": 428366,
+      "childCount": 0,
+      "payloadHash": "0x509d352f492c387a"
+    },
+    {
+      "name": "de674f96622453eb_ps_10001207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 15844,
+      "offset": 444222,
+      "childCount": 0,
+      "payloadHash": "0xa94737268f0c1a35"
+    },
+    {
+      "name": "dee24f0f7562f93b_ps_10000207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 10524,
+      "offset": 460078,
+      "childCount": 0,
+      "payloadHash": "0x32d4b819ab2749db"
+    },
+    {
+      "name": "dee24f0f7562f93b_ps_10001207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 10804,
+      "offset": 470606,
+      "childCount": 0,
+      "payloadHash": "0xdebfaa91941b645f"
+    },
+    {
+      "name": "dee24f0f7562f93b_ps_10000207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 11536,
+      "offset": 481422,
+      "childCount": 0,
+      "payloadHash": "0x018a25ddc5c6aa77"
+    },
+    {
+      "name": "dee24f0f7562f93b_ps_10001207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 11824,
+      "offset": 492958,
+      "childCount": 0,
+      "payloadHash": "0x68985a4c743435b0"
+    },
+    {
+      "name": "dee24f0f7562f93b_ps_10000207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 16588,
+      "offset": 504782,
+      "childCount": 0,
+      "payloadHash": "0x1ae3fa25a2379675"
+    },
+    {
+      "name": "dee24f0f7562f93b_ps_10001207",
+      "typeId": "Pixel Shader",
+      "schemaType": "GOWR_UNKNOWN_33",
+      "size": 16588,
+      "offset": 521374,
+      "childCount": 0,
+      "payloadHash": "0xb61a61264be83450"
+    },
+    {
+      "name": "TX_athena10_teethtongue_gen_0h_0F2F627165F0B9A7",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_UNKNOWN_2",
+      "size": 148,
+      "offset": 539414,
+      "childCount": 0,
+      "payloadHash": "0xdd72e2c9469daa9c"
+    },
+    {
+      "name": "autopad",
+      "typeId": "Sentinel",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 1206,
+      "offset": 539562,
+      "childCount": 0,
+      "payloadHash": "0x87ebca754c096441"
+    },
+    {
+      "name": "MAT_14EF18DD481D00DC",
+      "typeId": "Material",
+      "schemaType": "GOWR_UNKNOWN_28",
+      "size": 640,
+      "offset": 540770,
+      "childCount": 0,
+      "payloadHash": "0xd3aef5d6a8c44308"
+    },
+    {
+      "name": "MAT_DE674F96622453EB",
+      "typeId": "Material",
+      "schemaType": "GOWR_UNKNOWN_28",
+      "size": 688,
+      "offset": 541410,
+      "childCount": 0,
+      "payloadHash": "0x3a7d3fd60c43d220"
+    },
+    {
+      "name": "MAT_DEE24F0F7562F93B",
+      "typeId": "Material",
+      "schemaType": "GOWR_UNKNOWN_28",
+      "size": 688,
+      "offset": 542098,
+      "childCount": 0,
+      "payloadHash": "0x189fe7d46c853e2b"
+    },
+    {
+      "name": "MESH_athena10_0",
+      "typeId": "Mesh Definition",
+      "schemaType": "GOWR_MESH_DEFN",
+      "size": 21848,
+      "offset": 542786,
+      "childCount": 0,
+      "payloadHash": "0x7fd05105ee424aaa"
+    },
+    {
+      "name": "MG_athena10_0",
+      "typeId": "Mesh Definition",
+      "schemaType": "GOWR_MG_DEFN_ALT",
+      "size": 7196,
+      "offset": 564642,
+      "childCount": 0,
+      "payloadHash": "0x2b76469cd652c9f6"
+    },
+    {
+      "name": "SEMW_SNDAthena00",
+      "typeId": "Sound Emitter",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 616,
+      "offset": 571922,
+      "childCount": 0,
+      "payloadHash": "0x01618ebf629c43cb"
+    },
+    {
+      "name": "SEMW_SNDMouth",
+      "typeId": "Sound Emitter",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 664,
+      "offset": 572626,
+      "childCount": 0,
+      "payloadHash": "0xcfd05bd45e0b834a"
+    },
+    {
+      "name": "goProtoathena10",
+      "typeId": "GO Proto",
+      "schemaType": "GOWR_GOPROTO_RIG",
+      "size": 50992,
+      "offset": 573298,
+      "childCount": 0,
+      "payloadHash": "0xe4647742e3e41b6c"
+    },
+    {
+      "name": "goathena10_overrideInst",
+      "typeId": "GO Override",
+      "schemaType": "GOWR_GOPROTO_RIG",
+      "size": 304,
+      "offset": 624290,
+      "childCount": 0,
+      "payloadHash": "0x413931407f444f71"
+    },
+    {
+      "name": "goathena10",
+      "typeId": "GO Instance",
+      "schemaType": "GOWR_GOPROTO_RIG",
+      "size": 160,
+      "offset": 624594,
+      "childCount": 0,
+      "payloadHash": "0x8bbfd541df520ac5"
+    },
+    {
+      "name": "TX_athena10_head_gen_0d_7FC07B6CBBB0E64D",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 2304,
+      "offset": 624754,
+      "childCount": 0,
+      "payloadHash": "0x0cd69643ad3ba8d4"
+    },
+    {
+      "name": "TX_athena10_body_gen_0d_B9A035976FA13B7B",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 2304,
+      "offset": 627058,
+      "childCount": 0,
+      "payloadHash": "0xc12ffec97f5e8e2d"
+    },
+    {
+      "name": "MG_athena10_0_gpu",
+      "typeId": "Mesh GPU",
+      "schemaType": "GOWR_MG_GPU_BUFF",
+      "size": 261888,
+      "offset": 629362,
+      "childCount": 0,
+      "payloadHash": "0x5ee22196b5e663d1"
+    },
+    {
+      "name": "TX_athena10_head_gen_0ao_F2CB90E0CAB6D21C",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 8448,
+      "offset": 891250,
+      "childCount": 0,
+      "payloadHash": "0xee250f11998db494"
+    },
+    {
+      "name": "TX_athena10_body_gen_0n_2FDA9AAD1BF0CED0",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 8448,
+      "offset": 899698,
+      "childCount": 0,
+      "payloadHash": "0x5bcd4da6f428b114"
+    },
+    {
+      "name": "TX_athena10_body_gen_0ao_9985D3DA785A2086",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 8448,
+      "offset": 908146,
+      "childCount": 0,
+      "payloadHash": "0xbe97d713ba808cfa"
+    },
+    {
+      "name": "TX_cloudtile_DCB6E128A9BEF8A5",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 1296,
+      "offset": 917638,
+      "childCount": 0,
+      "payloadHash": "0xda457c008e893f80"
+    },
+    {
+      "name": "TX_cloudtile_DCB6E128A9BEF8A5",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 1828,
+      "offset": 918934,
+      "childCount": 0,
+      "payloadHash": "0x064a3487ff7bdfad"
+    },
+    {
+      "name": "TX_cloudtile_DCB6E128A9BEF8A5",
+      "typeId": "Texture Pair",
+      "schemaType": "GOWR_TEXTURE_PAIR",
+      "size": 2208,
+      "offset": 920774,
+      "childCount": 0,
+      "payloadHash": "0x7d4eb367a6ae6cb4"
+    },
+    {
+      "name": "MAT_DE674F96622453EB",
+      "typeId": "Material",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 232,
+      "offset": 922982,
+      "childCount": 0,
+      "payloadHash": "0xd023f3bc93719d54"
+    },
+    {
+      "name": "MDL_athena10",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_MODEL_INSTANCE",
+      "size": 56,
+      "offset": 923222,
+      "childCount": 0,
+      "payloadHash": "0x6d32b6e062d8050b"
+    },
+    {
+      "name": "MESH_athena10_0",
+      "typeId": "Mesh Definition",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 156,
+      "offset": 923286,
+      "childCount": 0,
+      "payloadHash": "0x8a076231d58b9618"
+    },
+    {
+      "name": "MDL_athena10",
+      "typeId": "Unknown",
+      "schemaType": "GOWR_MESH_MAP",
+      "size": 232,
+      "offset": 923446,
+      "childCount": 0,
+      "payloadHash": "0x4d9672834619963f"
+    }
+  ]
+}

@@ -70,3 +70,36 @@
 - **Notas**:
   - GOW2 truncado em boundary 16-byte-aligned do primeiro tag estrutural (`GROUP_END` ou `HEADER_START`) ≥ 256 KB. Validado: primeiros 8 tags do fixture batem com os do source (HEADER_START `WAD_R_Boar00`, GroupStart, SERVER_INST `WAD_R_Boar00`, ...).
   - GOWR copiado inteiro porque `blockBitSet` flush algorithm impede truncamento naive (offsets seriam invalidados). Source `r_athena00.wad` é per-character WAD, já pequeno.
+
+---
+
+## 2026-05-18 — M0.T3 — SnapshotEntries + Golden Test runner
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereqs satisfeitos**: M0.T1 ✓, M0.T2 ✓
+- **Decisões registradas**: D0004 (parser-min lib), D0005 (xxhash em vez de SHA-1)
+- **Arquivos novos**:
+  - `tests/golden_helpers.{h,cpp}` (SnapshotEntries, LoadGolden, DiffSnapshots, RunGoldenTest, FixturePath, ShouldUpdateGoldens)
+  - `tests/golden_gow2.cpp`, `tests/golden_gowr.cpp`
+  - `tests/test_stubs.cpp` (GetTexIndex stub pra parser-min linkage)
+  - `tests/fixtures/gow2/wad_minimal.expected.json` (33 entries)
+  - `tests/fixtures/gowr/wad_minimal.expected.json` (114 entries → 2 root nodes)
+  - `tools/regenerate_goldens.sh`
+- **CMake**:
+  - Novo target `gowtoolkit_parser_min` (static lib com profiles + WAD plumbing sem UI dep)
+  - Main exe linka parser-min (sources excluídos do GLOB)
+  - nlohmann/json v3.11.3 via FetchContent (test-only)
+  - `Golden_GOW2` + `Golden_GOWR` registrados como ctest entries separadas
+- **AC verificados**: 5/5
+  - [x] `ctest -R Golden` passa em verde (2/2 passed)
+  - [x] Mutação artificial (`WADTAG_SERVER_INST = 99`) faz ctest falhar com diff legível mostrando 18 entries `missing from actual`
+  - [x] `tools/regenerate_goldens.sh` builda + regenera JSON
+  - [x] JSON estável entre runs (SHA256 idêntico após `regenerate` consecutivos)
+  - [x] Runner suporta update via `GOWTOOLKIT_GOLDEN_UPDATE=1` env var
+- **Snapshot schema** (campos por entry, flat + sorted by offset, tie-break por name):
+  `name`, `typeId` (via `GOW::TypeIdName`), `schemaType`, `size`, `offset`, `childCount`, `payloadHash` (xxhash64 de até 64 KB do payload).
+- **Notas**:
+  - Tests linkam contra `gowtoolkit_parser_min` (D0004) — não puxam UI/handlers/loaders.
+  - `XXH_INLINE_ALL` em `golden_helpers.cpp` evita duplo-link com lz4_lib (que já tem xxhash.c).
+  - Children são flattened junto com pais; `childCount` registra fan-out original.
+  - Payload hash limitado a 64 KB pra evitar leituras grandes em entries gigantes — deteção de regressão preservada (mudança em byte 0..64K detecta) sem custo de I/O excessivo.

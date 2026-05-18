@@ -124,6 +124,18 @@ if(GOWTOOLKIT_BUILD_TESTS)
     set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
     FetchContent_MakeAvailable(doctest)
     unset(CMAKE_POLICY_VERSION_MINIMUM CACHE)
+
+    # ── nlohmann/json (header-only, golden-test snapshot I/O) ────────────
+    FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG        v3.11.3
+        GIT_SHALLOW    TRUE
+        UPDATE_DISCONNECTED TRUE
+    )
+    set(JSON_BuildTests OFF CACHE INTERNAL "")
+    set(JSON_Install    OFF CACHE INTERNAL "")
+    FetchContent_MakeAvailable(nlohmann_json)
 endif()
 
 # ── FFmpeg ────────────────────────────────────────────────────────────────
@@ -186,8 +198,47 @@ else()
     target_link_directories(ffmpeg_lib    INTERFACE ${FFMPEG_LIBRARY_DIRS})
 endif()
 
+# ── gowtoolkit_parser_min ────────────────────────────────────────────────
+#
+# Parser-only static library containing just the bits of `src/core/` needed
+# to run `ProfileGOW2::ParseWad` and `ProfileGOWR::ParseWad` end-to-end —
+# headers, file-source abstractions, schema, type registry, profile cores.
+# Excludes:
+#   - `core/loaders/*`         — UI-coupled loader implementations
+#   - `core/types/handlers/*`  — viewer-coupled type handlers
+#   - `core/parsers/*`         — payload sub-parsers (not needed for WAD walk)
+# This keeps the test binary lean and free of the UI dependency graph.
+# Callers that exercise the live parsers (the GUI app, the test harness)
+# link this target. The GUI additionally compiles the excluded sources for
+# their UI/viewer integration; tests provide a small stub for any symbols
+# the profiles reference into those layers (see `tests/test_stubs.cpp`).
+set(PARSER_MIN_SOURCES
+    src/core/Logger.cpp
+    src/core/WadAssetName.cpp
+    src/core/profiles/gow2/ProfileGOW2.cpp
+    src/core/profiles/gow2/formats/MDL.cpp
+    src/core/profiles/gowr/ProfileGOWR.cpp
+    src/core/profiles/gowr/WadNodeBuilder.cpp
+    src/core/schema/NodeInstance.cpp
+    src/core/schema/StructDef.cpp
+    src/core/types/TypeRegistry.cpp
+    src/core/vfs/IsoFile.cpp
+    src/core/vfs/IsoFileSystem.cpp
+    src/core/vfs/OsFile.cpp
+)
+
+add_library(gowtoolkit_parser_min STATIC ${PARSER_MIN_SOURCES})
+target_include_directories(gowtoolkit_parser_min PUBLIC src)
+target_link_libraries(gowtoolkit_parser_min PUBLIC lz4_lib)
+target_compile_features(gowtoolkit_parser_min PUBLIC cxx_std_20)
+
 # ── GoWToolkit ────────────────────────────────────────────────────────────────
 file(GLOB_RECURSE SOURCES src/*.cpp)
+# Strip parser-min sources from the GLOB so the main executable links them
+# from the static library instead of compiling duplicates.
+foreach(_psrc IN LISTS PARSER_MIN_SOURCES)
+    list(REMOVE_ITEM SOURCES "${CMAKE_SOURCE_DIR}/${_psrc}")
+endforeach()
 
 if(APPLE)
     file(GLOB_RECURSE OBJC_SOURCES src/*.mm src/*.m)
@@ -261,6 +312,7 @@ target_compile_definitions(GoWToolkit PRIVATE
 # Platform libs
 if(WIN32)
     target_link_libraries(GoWToolkit PRIVATE
+        gowtoolkit_parser_min
         imgui_lib implot_lib glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
         opengl32 comdlg32 dwmapi
     )
@@ -269,6 +321,7 @@ if(WIN32)
     )
 elseif(APPLE)
     target_link_libraries(GoWToolkit PRIVATE
+        gowtoolkit_parser_min
         imgui_lib implot_lib glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
         "-framework OpenGL"
         "-framework AudioToolbox"
@@ -279,6 +332,7 @@ elseif(APPLE)
     )
 else()
     target_link_libraries(GoWToolkit PRIVATE
+        gowtoolkit_parser_min
         imgui_lib implot_lib glfw glad lz4_lib miniaudio ffmpeg_lib GL dl pthread m
     )
 endif()
@@ -316,4 +370,10 @@ endif()
 if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
     add_subdirectory(tests)
     add_test(NAME unit COMMAND $<TARGET_FILE:gowtoolkit_tests>)
+    # Individual entries so `ctest -R Golden` filters cleanly. The full
+    # suite is still reachable via `ctest -R unit` or no filter at all.
+    add_test(NAME Golden_GOW2
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*GOW2*")
+    add_test(NAME Golden_GOWR
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*GOWR*")
 endif()

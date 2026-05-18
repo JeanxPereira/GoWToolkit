@@ -39,3 +39,30 @@ Origens dos sources (não-versionadas):
 - GOWR: `r_athena00.wad` da árvore `exec/wad/pc_le/` do GoWR PC.
 
 SHA-256 dos fixtures registrados em `tests/fixtures/README.md`. Regeneração: `python3 tools/make_test_fixtures.py --gow2 <path> --gowr <path>`.
+
+---
+
+## D0004 — 2026-05-18 — Extração de `gowtoolkit_parser_min` static lib
+
+Decisão: criar `gowtoolkit_parser_min` como static library separada em `src/core/` containing apenas profiles + WAD plumbing (Logger, WadAssetName, schema, types, vfs, profiles/*). UI/handlers/loaders/parsers content-side ficam fora — só o main exe os compila.
+
+Motivação: M0.T3 precisa rodar `ProfileGOW2::ParseWad` e `ProfileGOWR::ParseWad` do test binary sem arrastar a UI (ImGui, GLFW, viewers). A camada atual `src/core/{loaders,types/handlers}/*` viola layering ao includar `ui/viewers/*` — bug separado endereçado em M0.T8 (layer linter). Pra desbloquear M0.T3 sem fazer aquele refator inteiro, extraio só o que parser precisa.
+
+Trade-off escolhido: lib pequena, foco cirúrgico, sem mudar produção da UI. Custo: lista hardcoded de sources no `CMakeLists.txt` (12 arquivos). Adicionar parser novo em `src/core/profiles/` requer atualizar `PARSER_MIN_SOURCES`.
+
+Símbolo `GetTexIndex()` (declarado em GOWRLoaders.h, definido em GOWRLoaders.cpp que **não** entra no parser-min) é stubado em `tests/test_stubs.cpp`. Production exe segue usando a implementação real.
+
+Refs:
+- `CMakeLists.txt` (bloco `gowtoolkit_parser_min`)
+- `tests/test_stubs.cpp`
+- M0.T8 (layer linter) eventualmente formalizará a regra "core não pode includar ui".
+
+---
+
+## D0005 — 2026-05-18 — Hash do snapshot é xxhash64, não SHA-1
+
+Decisão: `SnapshotEntries` usa `XXH64` (do `xxhash.h` já vendored via `lz4_lib`) em vez de SHA-1 como o roadmap M0.T3 originalmente sugeriu.
+
+Motivação: xxhash já está linkado (lz4 carrega xxhash internamente), zero deps extra; é determinístico cross-platform; muito mais rápido. Não precisamos de propriedades criptográficas — só estabilidade pra regression detection.
+
+Trade-off: divergência do roadmap em 1 detalhe. Sem custo prático — qualquer hash determinístico cumpriria a função.
