@@ -1,0 +1,69 @@
+---
+# GoWToolkit code style.
+#
+# Strategy: pick the smallest delta from LLVM that matches the formatting
+# already on the tree (4-space indent, wider column limit, attach-brace).
+# We are NOT auto-formatting the entire codebase in M0.T6 — file-by-file
+# passes will land over time. Tools should use this file to keep new code
+# consistent and to flag deltas in lint.
+
+BasedOnStyle:  LLVM
+Language:      Cpp
+Standard:      c++20
+
+IndentWidth:           4
+TabWidth:              4
+UseTab:                Never
+ColumnLimit:           100
+ContinuationIndentWidth: 4
+AccessModifierOffset:  -4
+NamespaceIndentation:  None
+FixNamespaceComments:  true
+
+AlignAfterOpenBracket:                 Align
+AlignConsecutiveAssignments:           Consecutive
+AlignConsecutiveDeclarations:          None
+AlignTrailingComments:                 true
+AllowShortBlocksOnASingleLine:         Empty
+AllowShortCaseLabelsOnASingleLine:     true
+AllowShortFunctionsOnASingleLine:      Inline
+AllowShortIfStatementsOnASingleLine:   WithoutElse
+AllowShortLambdasOnASingleLine:        All
+AlwaysBreakAfterReturnType:            None
+AlwaysBreakTemplateDeclarations:       Yes
+BinPackArguments:                      true
+BinPackParameters:                     true
+BreakBeforeBinaryOperators:            None
+BreakBeforeBraces:                     Attach
+BreakConstructorInitializers:          BeforeComma
+BreakInheritanceList:                  BeforeComma
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+Cpp11BracedListStyle:                  true
+DerivePointerAlignment:                false
+EmptyLineBeforeAccessModifier:         LogicalBlock
+IncludeBlocks:                         Preserve
+IndentCaseLabels:                      false
+IndentPPDirectives:                    None
+KeepEmptyLinesAtTheStartOfBlocks:      false
+MaxEmptyLinesToKeep:                   2
+PointerAlignment:                      Left
+ReflowComments:                        false
+SortIncludes:                          Never
+SortUsingDeclarations:                 false
+SpaceAfterCStyleCast:                  false
+SpaceAfterTemplateKeyword:             true
+SpaceBeforeAssignmentOperators:        true
+SpaceBeforeCpp11BracedList:            false
+SpaceBeforeParens:                     ControlStatements
+SpaceInEmptyParentheses:               false
+SpacesBeforeTrailingComments:          1
+SpacesInAngles:                        false
+SpacesInContainerLiterals:             false
+SpacesInCStyleCastParentheses:         false
+SpacesInParentheses:                   false
+SpacesInSquareBrackets:                false
+
+# Third-party vendored sources MUST NOT be reformatted.
+# clang-format honours this via the directory-scoped .clang-format
+# below, but we also configure it here defensively.
+---

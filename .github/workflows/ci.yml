@@ -8,6 +8,50 @@ on:
     branches: [main]
 
 jobs:
+  # ════════════════════════════════════════════════════════════════════
+  # Lint — clang-format dry-run over the project tree.
+  #
+  # Currently runs as a *warning*: the codebase has not been fully
+  # auto-formatted yet (file-by-file rollout is planned). The job
+  # never fails the workflow today, but the violations are surfaced in
+  # the run log so we can shrink them over time. Flip the final step
+  # to `--Werror` once the tree is clean.
+  # ════════════════════════════════════════════════════════════════════
+  lint:
+    name: Lint (clang-format)
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-format
+
+      - name: Report clang-format version
+        run: clang-format --version
+
+      - name: Dry-run format check (warning-only)
+        run: |
+          set +e
+          mapfile -d '' files < <(find src tests \
+            -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -print0)
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "No source files to lint."
+            exit 0
+          fi
+          # Track violations but do not fail the workflow yet.
+          violations=0
+          for f in "${files[@]}"; do
+            if ! clang-format --dry-run -Werror "$f" 2>/dev/null; then
+              violations=$((violations + 1))
+              echo "::warning file=${f}::clang-format violations"
+            fi
+          done
+          echo "clang-format violations: ${violations} file(s)"
+
   build:
     strategy:
       fail-fast: false
@@ -109,6 +153,20 @@ jobs:
       # ── Build ────────────────────────────────────────────────────────
       - name: Build
         run: ${{ matrix.build_cmd }}
+
+      # ── Tests ────────────────────────────────────────────────────────
+      # Runs the full ctest suite (unit + Golden_GOW2 + Golden_GOWR +
+      # Metrics + Logger). A regression in any parser is caught here:
+      # the golden tests fail with a field-level diff. Multi-config
+      # generators (Windows / Visual Studio) need an explicit
+      # configuration flag.
+      - name: Run tests (single-config)
+        if: runner.os != 'Windows'
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Run tests (multi-config)
+        if: runner.os == 'Windows'
+        run: ctest --test-dir build --output-on-failure -C Release
 
       # ── Package Artifact (Unix) ─────────────────────────────
       - name: Package artifact (Unix)

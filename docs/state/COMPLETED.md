@@ -167,3 +167,29 @@
   - Legacy LOG_INFO routes through new pipeline
   - Memory ring (Logger::GetEntries) populated by GOW_LOG_* + Clear works
 - **Main exe**: builda Debug clean. Sem regressões.
+
+---
+
+## 2026-05-18 — M0.T6 — clang-format + EditorConfig + CI workflow
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereqs**: nenhum (paralelizável)
+- **Arquivos**:
+  - `.clang-format` (NEW — LLVM base, 4-space, 100-col, attach brace; padrão escolhido pra delta mínimo do tree atual)
+  - `third_party/.clang-format` (NEW — `DisableFormat: true` pra vendored sources)
+  - `.editorconfig` (NEW — LF, trim trailing, 4-space; 2-space para md/yaml/json; tab para Makefile)
+  - `.github/workflows/ci.yml` (add ctest step per OS + lint job clang-format dry-run warning-only)
+  - `.github/pull_request_template.md` (NEW — summary, linked task, ACs, test plan, risk/rollback, state files)
+- **AC verificados**: 4/4
+  - [x] `clang-format --dry-run -Werror src/main.cpp` passa (exit 0) com o `.clang-format` adotado — sem rodar formatter no arquivo
+  - [x] CI roda em cada PR (workflow já estava habilitado pra `pull_request` em `main`)
+  - [x] CI roda `ctest --output-on-failure` em Linux/macOS/Windows; golden test falhando bloqueia o build
+  - [x] PR template aparece em `gh pr create` (location padrão `.github/pull_request_template.md`)
+- **Estratégia de format**:
+  - **Não** auto-formatar codebase inteiro nesta task (causaria churn massivo + perda de blame). Lint job warning-only. Format incremental por PR.
+  - Sample broader test: src/core/Logger.h tem aligned-decl spaces (manual padding) que clang-format remove — esperado, ficará pra próximo format pass.
+- **CI estrutura**:
+  - Job `lint`: ubuntu-22.04, `clang-format --dry-run -Werror`, `continue-on-error: true`, emite `::warning file=...` annotations
+  - Job `build`: matrix existente (Linux x64, macOS arm64+x64, Windows x64). Adicionado step `ctest` após `Build` step, com branch single/multi-config
+- **PR template**:
+  - Summary (1–3 bullets), Linked task (roadmap §), Acceptance criteria (tickable), Test plan (concrete), Risk/Rollback, State files checklist
