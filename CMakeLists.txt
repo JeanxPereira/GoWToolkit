@@ -264,15 +264,41 @@ if(APPLE)
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/dist/macos/Info.plist.in"
     )
 
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    # ── Compile .icon → Assets.car via actool ────────────────────────────
+    # actool ships with full Xcode, not Command Line Tools. If the active
+    # developer dir (`xcode-select -p`) points at CLT, `xcrun actool` fails
+    # even when Xcode.app is installed. Find Xcode.app explicitly and use
+    # its actool directly to avoid that dependency.
+    set(_actool_path "")
+    execute_process(
+        COMMAND xcrun --find actool
+        RESULT_VARIABLE _xcrun_result
+        OUTPUT_VARIABLE _xcrun_actool
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(_xcrun_result EQUAL 0 AND EXISTS "${_xcrun_actool}")
+        set(_actool_path "${_xcrun_actool}")
+    else()
+        foreach(_xcode_app
+            "/Applications/Xcode.app"
+            "/Applications/Xcode-beta.app")
+            set(_candidate "${_xcode_app}/Contents/Developer/usr/bin/actool")
+            if(EXISTS "${_candidate}")
+                set(_actool_path "${_candidate}")
+                break()
+            endif()
+        endforeach()
+    endif()
 
-        # ── Compile .icon → Assets.car via actool ────────────────────────
+    if(_actool_path)
+        message(STATUS "Using actool: ${_actool_path}")
         set(ICON_SOURCE "${CMAKE_SOURCE_DIR}/dist/macos/GoWToolkit.icon")
         set(ASSETS_CAR  "${CMAKE_CURRENT_BINARY_DIR}/Assets.car")
 
         add_custom_command(
             OUTPUT "${ASSETS_CAR}"
-            COMMAND xcrun actool
+            COMMAND "${_actool_path}"
                 "${ICON_SOURCE}"
                 --compile "${CMAKE_CURRENT_BINARY_DIR}"
                 --app-icon "GoWToolkit"
@@ -292,6 +318,11 @@ if(APPLE)
                 "$<TARGET_BUNDLE_CONTENT_DIR:GoWToolkit>/Resources/Assets.car"
             COMMENT "Copying Assets.car into bundle"
         )
+    else()
+        message(WARNING
+            "actool not found (requires full Xcode). App will use a generic "
+            "Dock icon. Install Xcode and run: "
+            "sudo xcode-select -s /Applications/Xcode.app")
     endif()
 
 else()

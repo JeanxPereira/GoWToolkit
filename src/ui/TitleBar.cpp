@@ -56,9 +56,17 @@ static ImFont *s_iconFont = nullptr;
 void loadIconFont(const char *ttfPath, float size) {
   ImGuiIO &io = ImGui::GetIO();
 
-  // Garante que existe pelo menos uma font antes do MergeMode
-  if (io.Fonts->Fonts.Size == 0)
-    io.Fonts->AddFontDefault();
+  // ImGui 1.92+ rejects MergeMode when the destination font has an
+  // implicit reference size and the merged font has an explicit one
+  // (table at imgui_draw.cpp:3111). The merged icon font here needs an
+  // explicit size because we set GlyphMinAdvanceX / GlyphOffset on it,
+  // so the destination must be explicit too — install AddFontDefault
+  // with an explicit SizePixels.
+  if (io.Fonts->Fonts.Size == 0) {
+    ImFontConfig defaultCfg;
+    defaultCfg.SizePixels = size; // explicit ref size
+    io.Fonts->AddFontDefault(&defaultCfg);
+  }
 
   // SFSymbols.ttf has glyphs in two ranges: U+0100..U+0C5F and U+F000..U+FFFF
   static const ImWchar ranges[] = {

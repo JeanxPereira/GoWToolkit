@@ -112,12 +112,21 @@ void SettingsWindow::RebuildFontAtlas() {
   ImGuiIO &io = ImGui::GetIO();
   io.Fonts->Clear();
   const FontEntry &fe = m_fonts[m_fontSelected];
-  if (fe.path.empty())
-    io.Fonts->AddFontDefault();
-  else {
-    ImFont *f = io.Fonts->AddFontFromFileTTF(fe.path.c_str(), m_fontSize);
+
+  // ImGui 1.92+: destination font must use explicit reference size so the
+  // merged icon font (TitleBar::loadIconFont) can also be explicit. Otherwise
+  // AddFont asserts: "Cannot use MergeMode with an explicit reference size
+  // when the destination font used an implicit reference size!"
+  ImFontConfig baseCfg;
+  baseCfg.SizePixels = m_fontSize;
+
+  if (fe.path.empty()) {
+    io.Fonts->AddFontDefault(&baseCfg);
+  } else {
+    ImFont *f =
+        io.Fonts->AddFontFromFileTTF(fe.path.c_str(), m_fontSize, &baseCfg);
     if (!f)
-      io.Fonts->AddFontDefault();
+      io.Fonts->AddFontDefault(&baseCfg);
   }
 
   // TitleBar::loadIconFont(PathUtils::resolvePath("third_party/fonts/codicons.ttf").c_str(),
