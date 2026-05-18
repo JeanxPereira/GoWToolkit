@@ -66,6 +66,10 @@ enum class WadEntryRole {
     ShaderContainer,    // 0xHASH entries
     ShaderVertex,       // name_vs_FLAGS or HASH_vs_FLAGS
     ShaderPixel,        // HASH_ps_FLAGS
+    ShaderHull,         // HASH_hs_FLAGS
+    ShaderDomain,       // HASH_ds_FLAGS
+    ShaderCompute,      // HASH_cs_FLAGS
+    ShaderLibrary,      // HASH_ls_FLAGS
 
     // Core Assets
     AnimClip,           // ANM_*
@@ -82,6 +86,7 @@ enum class WadEntryRole {
     GameObjectProto,    // goProto*
     GameObjectInst,     // go*
     GameObjectOverride, // go*_overrideInst
+    SceneBundle,        // Magic 0x5A7ADA7A
 
     // Audio
     SoundEmitter,       // SEMW_*

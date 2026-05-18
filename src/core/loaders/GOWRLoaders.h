@@ -45,6 +45,17 @@ public:
     std::shared_ptr<IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override;
 };
 
+class GOWRShaderHandler : public ITypeHandler {
+public:
+    GOWRShaderHandler(TypeId id) : m_id(id) {}
+    TypeId  GetId()    const override { return m_id; }
+    const char*  GetName()  const override { return "GOWR Shader"; }
+    uint32_t     GetMagic() const override { return 0x00; }
+    std::shared_ptr<IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override;
+private:
+    TypeId m_id;
+};
+
 class TexPackIndex;
 TexPackIndex& GetTexIndex();
 

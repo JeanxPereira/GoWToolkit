@@ -42,6 +42,22 @@ bool GOWRMgParser::Parse(std::shared_ptr<IFile> file,
         uint32_t defOff = 0;
         file->Read(&defOff, 4);
 
+        // ── DIAGNOSTIC: dump the 56 bytes at the head of each mg-def so we
+        // can manually inspect for MAT hashes / hidden flags. Remove once
+        // the mesh→MAT link is identified. (Layout to date: +0x00 parentBone
+        // u16, +0x02 lodCount u8, then 53 unknown bytes before +0x38.)
+        {
+            uint8_t hdr[0x40] = {};
+            file->Seek(defOff, SEEK_SET);
+            file->Read(hdr, sizeof(hdr));
+            char hex[0x40 * 3 + 1] = {};
+            for (size_t b = 0; b < sizeof(hdr); ++b) {
+                std::snprintf(hex + b * 3, 4, "%02X ", hdr[b]);
+            }
+            LOG_INFO("[GOWRMgParser] mg-def[%u] @0x%X bytes[0x00..0x3F]: %s",
+                     i, defOff, hex);
+        }
+
         file->Seek(defOff, SEEK_SET);
         uint16_t parentBone = 0;
         file->Read(&parentBone, 2);

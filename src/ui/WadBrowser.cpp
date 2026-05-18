@@ -14,6 +14,81 @@
 #include <string>
 #include <fstream>
 
+// ── GOWR visibility filter ────────────────────────────────────────────────
+// Returns true if a GOWR entry with the given role/schema should appear in
+// the WAD browser. Two-stage filter:
+//   1. Role gate — hides whole categories (GPU buffers, anim clips, etc.)
+//   2. Schema gate — within a role, hides variant duplicates so the user
+//      sees one canonical entry per visualizable asset.
+// Folders/blocks always show so the tree structure is preserved.
+static bool IsGOWRViewable(WadEntryRole role, const std::string& schemaType) {
+    // ── Schema-level whitelist for MeshDefn role ─────────────────────────
+    // Multiple file types share the MeshDefn role (MESH_, MG_) and produce
+    // schema variants like GOWR_MESH_DEFN, GOWR_MESH_MAP, GOWR_MG_DEFN,
+    // GOWR_MG_DEFN_ALT, GOWR_SKINNED_MESH, etc. Only canonical viewable
+    // schemas are kept; variants/buffers are folded out.
+    if (role == WadEntryRole::MeshDefn) {
+        return schemaType == "GOWR_MESH_DEFN"
+            || schemaType == "GOWR_SKINNED_MESH"
+            || schemaType == "GOWR_RIGID_MESH"
+            || schemaType == "GOWR_SMSH_DEFN";
+    }
+
+    // ── Schema-level filter for GameObject roles (none currently variant) ─
+    // GameObjectProto/Inst/Override each map to a single schema, no filtering
+    // needed at this layer.
+
+    switch (role) {
+        // Viewable content
+        case WadEntryRole::TexturePair:
+        case WadEntryRole::TextureGpu:
+        case WadEntryRole::GameObjectProto:    // goProto* — rigged model viewer
+        case WadEntryRole::GameObjectInst:     // go* — model instance viewer
+        case WadEntryRole::GameObjectOverride: // go*_overrideInst
+
+        // Structural folders (always show so tree isn't broken)
+        case WadEntryRole::ManifestBlock:
+        case WadEntryRole::ShaderBlock:
+        case WadEntryRole::AssetBlock:
+        case WadEntryRole::ParticleBlock:
+        case WadEntryRole::ShaderGroup:
+        case WadEntryRole::FxGroup:
+
+        // Manifest / reference entries
+        case WadEntryRole::WadIdentity:
+        case WadEntryRole::SharedWadRef:
+
+        // Shaders (visible in Shaders block)
+        case WadEntryRole::ShaderContainer:
+        case WadEntryRole::ShaderVertex:
+        case WadEntryRole::ShaderPixel:
+
+        // Particles (visible in Particles block)
+        case WadEntryRole::ParticleEmitter:
+        case WadEntryRole::ParticleSystem:
+
+        // Unknown role = not classified, show it
+        case WadEntryRole::Unknown:
+            return true;
+
+        // Non-viewable: hide from browser
+        case WadEntryRole::MeshGpu:       // MG_*_gpu — internal GPU buffer
+        case WadEntryRole::Model:         // MDL_* — no GOWR viewer
+        case WadEntryRole::Material:      // MAT_* — no viewer
+        case WadEntryRole::MaterialRef:   // MAT ref — no viewer
+        case WadEntryRole::AnimClip:      // ANM_* — no viewer yet
+        case WadEntryRole::SoundEmitter:  // SEMW_* — no viewer yet
+        case WadEntryRole::LodBinding:    // N_N_N — no viewer
+        case WadEntryRole::TextureCpu:    // folded into TexturePair
+        case WadEntryRole::Sentinel:      // autopad/PopHeap
+        case WadEntryRole::ClientGuid:    // DCClientGUID
+            return false;
+
+        default:
+            return true;
+    }
+}
+
 
 void WadBrowser::draw(AppContext &ctx) {
   if (!visible)
@@ -78,7 +153,7 @@ void WadBrowser::draw(AppContext &ctx) {
       // Recursive lambda for rendering tree
       std::function<void(ParsedEntry &, int &)> renderEntryTree;
       renderEntryTree = [&](ParsedEntry &entry, int &idx) {
-        // Filter: check name match
+         // Filter: check name match
         if (hasFilter) {
           std::string nameLower = entry.name;
           for (auto &c : nameLower)
@@ -92,6 +167,15 @@ void WadBrowser::draw(AppContext &ctx) {
                typeLower.find(filterLower) != std::string::npos);
           if (!matchesFilter && entry.children.empty())
             return;
+        }
+
+        // ── GOWR viewability filter ──────────────────────────
+        // Hide entries that don't have a working viewer (GPU buffers,
+        // materials, LOD bindings, anims, etc.) AND schema variants that
+        // duplicate the same underlying asset (MESH_MAP, MG_DEFN_ALT, etc.).
+        // Only applies to GOWR entries (those with a classified role).
+        if (entry.role != WadEntryRole::Unknown && !IsGOWRViewable(entry.role, entry.schemaType)) {
+          return;
         }
 
         ImGui::PushID(idx);

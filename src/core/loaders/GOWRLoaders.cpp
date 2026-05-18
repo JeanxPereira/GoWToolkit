@@ -8,6 +8,7 @@
 #include "core/parsers/gowr/TexPackIndex.h"
 #include "core/parsers/gowr/ProtoParser.h"
 #include "core/parsers/gowr/MgParser.h"
+#include "core/parsers/gowr/ShaderParser.h"
 #include "core/parsers/shared/SceneNode.h"
 #include "ui/viewers/ImageViewer.h"
 #include "core/Logger.h"
@@ -144,7 +145,7 @@ void InvalidateLodIndex() {
 
 // ── GOWR Mesh Handling ─────────────────────────────────────────────────────
 
-static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& entry, OpenWad& wad) {
+static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& entry, OpenWad& wad, bool attachSkeleton) {
     if (!wad.fileSource) return nullptr;
 
     // ── Slice the MESH file ────────────────────────────────────────────
@@ -240,63 +241,140 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
                  mgEntry->name.c_str(), mgEntry->size);
     }
 
-    // ── Find paired goProto* file (skeleton) ───────────────────────────
-    // Naming: MESH_athena10_0 → look for goProtoathena10 (strip MESH_/MG_,
-    // trailing _N, and trailing ---HASH).
-    std::string protoBase = base;
-    // Strip trailing "_<digits>" suffix if present (e.g. "athena10_0" → "athena10")
-    auto usPos = protoBase.find_last_of('_');
-    if (usPos != std::string::npos && usPos + 1 < protoBase.size()) {
-        bool allDigits = true;
-        for (size_t k = usPos + 1; k < protoBase.size(); ++k) {
-            if (!isdigit((unsigned char)protoBase[k])) { allDigits = false; break; }
+    // ── DIAGNOSTIC: locate paired MDL_<base> and dump first 512 bytes plus
+    // a tail sample. Hunting for MAT hash field placement. Remove once link
+    // identified.
+    {
+        std::string mdlBase = base;
+        // Strip trailing "_<digits>" suffix (e.g. "athena10_0" → "athena10")
+        auto usPos = mdlBase.find_last_of('_');
+        if (usPos != std::string::npos && usPos + 1 < mdlBase.size()) {
+            bool allDigits = true;
+            for (size_t k = usPos + 1; k < mdlBase.size(); ++k) {
+                if (!isdigit((unsigned char)mdlBase[k])) { allDigits = false; break; }
+            }
+            if (allDigits) mdlBase = mdlBase.substr(0, usPos);
         }
-        if (allDigits) protoBase = protoBase.substr(0, usPos);
+
+        std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMdl;
+        findMdl = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+            for (const auto& e : entries) {
+                if (e.role == WadEntryRole::Model && e.name.rfind("MDL_", 0) == 0) {
+                    std::string n = e.name.substr(4);
+                    auto d = n.rfind("---");
+                    if (d != std::string::npos) n = n.substr(0, d);
+                    if (n == mdlBase) return &e;
+                }
+                if (!e.children.empty()) {
+                    auto* f = findMdl(e.children);
+                    if (f) return f;
+                }
+            }
+            return nullptr;
+        };
+
+        if (const ParsedEntry* mdlEntry = findMdl(wad.entries)) {
+            const uint32_t dumpSz = std::min<uint32_t>(mdlEntry->size, 512u);
+            std::vector<uint8_t> buf(dumpSz);
+            wad.fileSource->Seek(mdlEntry->offset, 0);
+            wad.fileSource->Read(buf.data(), dumpSz);
+            std::string hex; hex.reserve(dumpSz * 3 + 8);
+            char tmp[4];
+            for (uint32_t b = 0; b < dumpSz; ++b) {
+                std::snprintf(tmp, sizeof(tmp), "%02X ", buf[b]);
+                hex += tmp;
+            }
+            LOG_INFO("[GOWRLoaders] MDL '%s' size=%u first %u bytes: %s",
+                     mdlEntry->name.c_str(), mdlEntry->size, dumpSz, hex.c_str());
+
+            // Also dump last 256 bytes if file is larger than dumpSz
+            if (mdlEntry->size > 512) {
+                const uint32_t tailSz = std::min<uint32_t>(mdlEntry->size - 512, 256u);
+                std::vector<uint8_t> tail(tailSz);
+                wad.fileSource->Seek(mdlEntry->offset + mdlEntry->size - tailSz, 0);
+                wad.fileSource->Read(tail.data(), tailSz);
+                std::string thex; thex.reserve(tailSz * 3 + 8);
+                for (uint32_t b = 0; b < tailSz; ++b) {
+                    std::snprintf(tmp, sizeof(tmp), "%02X ", tail[b]);
+                    thex += tmp;
+                }
+                LOG_INFO("[GOWRLoaders] MDL tail %u bytes: %s", tailSz, thex.c_str());
+            }
+        } else {
+            LOG_INFO("[GOWRLoaders] No MDL_ sibling for '%s' (base='%s')",
+                     entry.name.c_str(), mdlBase.c_str());
+        }
     }
 
+    // ── Find paired goProto* file (skeleton) ───────────────────────────
+    // Skip entirely when the caller asked for a mesh-only view (MESH_ entry).
+    // Rigged viewers (goProto*, go*) pass attachSkeleton=true and resolve the
+    // rig via name pairing below.
     std::shared_ptr<ObjectData> skeleton;
-    std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findProto;
-    findProto = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
-        for (const auto& e : entries) {
-            if (e.role == WadEntryRole::GameObjectProto) {
-                std::string n = e.name;
-                if (n.rfind("goProto", 0) == 0) n = n.substr(7);
-                auto d = n.rfind("---");
-                if (d != std::string::npos) n = n.substr(0, d);
-                if (n == protoBase) return &e;
+    if (attachSkeleton) {
+        // Naming: MESH_athena10_0 → look for goProtoathena10 (strip MESH_/MG_,
+        // trailing _N, and trailing ---HASH).
+        std::string protoBase = base;
+        // Strip trailing "_<digits>" suffix if present (e.g. "athena10_0" → "athena10")
+        auto usPos = protoBase.find_last_of('_');
+        if (usPos != std::string::npos && usPos + 1 < protoBase.size()) {
+            bool allDigits = true;
+            for (size_t k = usPos + 1; k < protoBase.size(); ++k) {
+                if (!isdigit((unsigned char)protoBase[k])) { allDigits = false; break; }
             }
-            if (!e.children.empty()) {
-                auto* f = findProto(e.children);
-                if (f) return f;
-            }
+            if (allDigits) protoBase = protoBase.substr(0, usPos);
         }
-        return nullptr;
-    };
 
-    const ParsedEntry* protoEntry = findProto(wad.entries);
-    if (protoEntry) {
-        auto protoFile = std::make_shared<SliceFile>(
-            wad.fileSource, protoEntry->offset, protoEntry->size);
-        skeleton = GOWRProtoParser::Parse(protoFile);
-        if (skeleton) {
-            LOG_INFO("[GOWRLoaders] Proto rig '%s': %zu bones",
-                     protoEntry->name.c_str(), skeleton->joints.size());
+        std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findProto;
+        findProto = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+            for (const auto& e : entries) {
+                if (e.role == WadEntryRole::GameObjectProto) {
+                    std::string n = e.name;
+                    if (n.rfind("goProto", 0) == 0) n = n.substr(7);
+                    auto d = n.rfind("---");
+                    if (d != std::string::npos) n = n.substr(0, d);
+                    if (n == protoBase) return &e;
+                }
+                if (!e.children.empty()) {
+                    auto* f = findProto(e.children);
+                    if (f) return f;
+                }
+            }
+            return nullptr;
+        };
+
+        const ParsedEntry* protoEntry = findProto(wad.entries);
+        if (protoEntry) {
+            auto protoFile = std::make_shared<SliceFile>(
+                wad.fileSource, protoEntry->offset, protoEntry->size);
+            skeleton = GOWRProtoParser::Parse(protoFile);
+            if (skeleton) {
+                LOG_INFO("[GOWRLoaders] Proto rig '%s': %zu bones",
+                         protoEntry->name.c_str(), skeleton->joints.size());
+            }
+        } else {
+            LOG_INFO("[GOWRLoaders] No goProto sibling for '%s' (base='%s')",
+                     entry.name.c_str(), protoBase.c_str());
         }
-    } else {
-        LOG_INFO("[GOWRLoaders] No goProto sibling for '%s' (base='%s')",
-                 entry.name.c_str(), protoBase.c_str());
     }
 
     // ── Build SceneData and load into viewport ─────────────────────────
     auto vp = std::make_shared<Viewport3D>(entry.name);
 
     if (skeleton) {
-        // ── Rigid skinning per submesh: read MG, assign parentBone, override
-        //    per-vertex bone indices/weights with (1.0, bone0).
+        // ── Skinning resolution (CURRENT: rigid-only fallback) ────────────
+        // GOWR skinned vertex bone-indices are per-submesh LOCAL palette
+        // indices (not global). The palette source — MG file vs MESH submesh
+        // header vs separate VPK — is still unknown. Treating them as global
+        // (identity jointMap) causes catastrophic vertex explosions because
+        // small palette indices map to arbitrary global bones.
+        //
+        // Until the palette is located, force every part to rigid: bind all
+        // verts to the MG parentBone with weight 1. This loses skinning but
+        // keeps the mesh shape stable.
+        // TODO: locate per-submesh bone palette (MG skinList? MESH header?
+        //       VPK chunk?) and wire jointMap[localIdx] = globalIdx.
         if (mgFile) {
-            // We need the MESH-file submesh count to size the parentBone table.
-            // The mesh parser stores parts in the same order as MESH submeshes
-            // it produced; their materialId encodes the original submesh index.
             uint32_t meshSubCount = 0;
             for (const auto& p : data.parts)
                 if (p.materialId + 1 > meshSubCount) meshSubCount = p.materialId + 1;
@@ -336,13 +414,16 @@ std::shared_ptr<AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<IFile> fil
 }
 
 std::shared_ptr<IDocumentContent> GOWRMeshDefnHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
-    return SharedGowrMeshLoad(entry, wad);
+    // MESH_* — render the 3D model without binding to a skeleton.
+    return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/false);
 }
 std::shared_ptr<IDocumentContent> GOWRSkinnedMeshHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
-    return SharedGowrMeshLoad(entry, wad);
+    // GOWR_SKINNED_MESH — attach the rig so bones drive the mesh.
+    return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
 std::shared_ptr<IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
-    return SharedGowrMeshLoad(entry, wad);
+    // go* instance — load with rig.
+    return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
 
 #include <imgui.h>
@@ -499,7 +580,89 @@ std::shared_ptr<IDocumentContent> GOWRTextureHandler::CreateViewer(const ParsedE
 }
 
 std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
-    // Rigs don't have a standalone viewer yet.
+    if (!wad.fileSource) return nullptr;
+
+    // Derive the base name: "goProtofox00" → "fox00"
+    std::string protoBase = entry.name;
+    if (protoBase.rfind("goProto", 0) == 0) protoBase = protoBase.substr(7);
+    auto dashPos = protoBase.rfind("---");
+    if (dashPos != std::string::npos) protoBase = protoBase.substr(0, dashPos);
+
+    // Find the first MESH_<base>* entry in the WAD
+    std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMesh;
+    findMesh = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+        for (const auto& e : entries) {
+            if (e.role == WadEntryRole::MeshDefn &&
+                e.name.rfind("MESH_", 0) == 0)
+            {
+                std::string n = e.name.substr(5); // strip "MESH_"
+                auto d = n.rfind("---");
+                if (d != std::string::npos) n = n.substr(0, d);
+                // Strip trailing "_<digits>" LOD suffix
+                auto us = n.find_last_of('_');
+                if (us != std::string::npos && us + 1 < n.size()) {
+                    bool allDigits = true;
+                    for (size_t k = us + 1; k < n.size(); ++k)
+                        if (!isdigit((unsigned char)n[k])) { allDigits = false; break; }
+                    if (allDigits) n = n.substr(0, us);
+                }
+                if (n == protoBase) return &e;
+            }
+            if (!e.children.empty()) {
+                auto* f = findMesh(e.children);
+                if (f) return f;
+            }
+        }
+        return nullptr;
+    };
+
+    const ParsedEntry* meshEntry = findMesh(wad.entries);
+    if (meshEntry) {
+        LOG_INFO("[GOWRRigHandler] Found MESH '%s' for proto '%s'",
+                 meshEntry->name.c_str(), entry.name.c_str());
+        return SharedGowrMeshLoad(*meshEntry, wad, /*attachSkeleton=*/true);
+    }
+
+    // Fallback: try MG_<base>* (non-gpu) entries
+    std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMg;
+    findMg = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+        for (const auto& e : entries) {
+            if (e.role == WadEntryRole::MeshDefn &&
+                e.name.rfind("MG_", 0) == 0)
+            {
+                std::string n = e.name.substr(3);
+                if (n.size() > 4 && n.substr(n.size() - 4) == "_gpu") {
+                    if (!e.children.empty()) { auto* f = findMg(e.children); if (f) return f; }
+                    continue;
+                }
+                auto d = n.rfind("---");
+                if (d != std::string::npos) n = n.substr(0, d);
+                auto us = n.find_last_of('_');
+                if (us != std::string::npos && us + 1 < n.size()) {
+                    bool allDigits = true;
+                    for (size_t k = us + 1; k < n.size(); ++k)
+                        if (!isdigit((unsigned char)n[k])) { allDigits = false; break; }
+                    if (allDigits) n = n.substr(0, us);
+                }
+                if (n == protoBase) return &e;
+            }
+            if (!e.children.empty()) {
+                auto* f = findMg(e.children);
+                if (f) return f;
+            }
+        }
+        return nullptr;
+    };
+
+    const ParsedEntry* mgEntry = findMg(wad.entries);
+    if (mgEntry) {
+        LOG_INFO("[GOWRRigHandler] Found MG '%s' for proto '%s' (fallback)",
+                 mgEntry->name.c_str(), entry.name.c_str());
+        return SharedGowrMeshLoad(*mgEntry, wad, /*attachSkeleton=*/true);
+    }
+
+    LOG_WARN("[GOWRRigHandler] No MESH/MG found for proto '%s' (base='%s')",
+             entry.name.c_str(), protoBase.c_str());
     return nullptr;
 }
 
@@ -508,5 +671,228 @@ REGISTER_FILE_TYPE(GOWRSkinnedMeshHandler);
 REGISTER_FILE_TYPE(GOWRModelInstanceHandler);
 REGISTER_FILE_TYPE(GOWRTextureHandler);
 REGISTER_FILE_TYPE(GOWRRigHandler);
+
+// ── GOWR Shader Viewer ────────────────────────────────────────────────────
+
+class GOWRShaderViewer : public IDocumentContent {
+public:
+    GOWRShaderViewer(const std::string& name, std::unique_ptr<GOWRShaderData> data)
+        : m_name(name), m_data(std::move(data)) {}
+
+    std::string GetName() const override { return "Shader: " + m_name; }
+
+    void Draw() override {
+        if (!m_data) {
+            ImGui::TextDisabled("Failed to parse shader");
+            return;
+        }
+
+        // ── GOW Header ─────────────────────────────────────────────────
+        ImGui::SeparatorText("GOW Shader Header");
+        if (ImGui::BeginTable("##gowhdr", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Field",  ImGuiTableColumnFlags_WidthFixed, 140);
+            ImGui::TableSetupColumn("Value",  ImGuiTableColumnFlags_WidthStretch);
+
+            Row("Stage",    "%s (%s)", m_data->stageTag.c_str(), m_data->StageName());
+            Row("Version",  "%u.%u",  m_data->formatVersion, m_data->subVersion);
+            Row("DXBC Size","%u bytes (%.1f KB)", m_data->dxbcSize, m_data->dxbcSize / 1024.0f);
+            Row("PSO Flags","0x%08X", m_data->psoFlags);
+            Row("Variant",  "0x%08X", m_data->variantId);
+
+            ImGui::EndTable();
+        }
+
+        if (!m_data->hasDxbc) {
+            ImGui::TextColored(ImVec4(1,0.5f,0.5f,1), "No valid DXBC container found.");
+            return;
+        }
+
+        // ── Debug path (ILDN) ──────────────────────────────────────────
+        if (!m_data->debugPath.empty()) {
+            ImGui::Spacing();
+            ImGui::SeparatorText("Build Path (ILDN)");
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.8f, 1.0f, 1.0f));
+            ImGui::TextWrapped("%s", m_data->debugPath.c_str());
+            ImGui::PopStyleColor();
+            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1))
+                ImGui::SetClipboardText(m_data->debugPath.c_str());
+        }
+
+        // ── DXIL Info ──────────────────────────────────────────────────
+        if (m_data->dxil.valid) {
+            ImGui::Spacing();
+            ImGui::SeparatorText("DXIL Payload");
+            if (ImGui::BeginTable("##dxil", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
+                ImGui::TableSetupColumn("Field",  ImGuiTableColumnFlags_WidthFixed, 140);
+                ImGui::TableSetupColumn("Value",  ImGuiTableColumnFlags_WidthStretch);
+                Row("Shader Model", "%u.%u", m_data->dxil.majorVersion, m_data->dxil.minorVersion);
+                Row("Bitcode Size", "%u bytes", m_data->dxil.bitcodeSize);
+                ImGui::EndTable();
+            }
+        }
+
+        // ── Chunks ─────────────────────────────────────────────────────
+        ImGui::Spacing();
+        ImGui::SeparatorText("DXBC Chunks");
+        if (ImGui::BeginTable("##chunks", 3,
+                ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg |
+                ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_Sortable))
+        {
+            ImGui::TableSetupColumn("FourCC",  ImGuiTableColumnFlags_WidthFixed,  60);
+            ImGui::TableSetupColumn("Offset",  ImGuiTableColumnFlags_WidthFixed,  80);
+            ImGui::TableSetupColumn("Size",    ImGuiTableColumnFlags_WidthFixed, 100);
+            ImGui::TableHeadersRow();
+
+            for (const auto& c : m_data->chunks) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "%s", c.tag);
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("0x%04X", c.offset);
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%u", c.size);
+            }
+            ImGui::EndTable();
+        }
+
+        // ── Input Signature ────────────────────────────────────────────
+        DrawSignature("Input Signature (ISG1)", m_data->inputs);
+
+        // ── Output Signature ───────────────────────────────────────────
+        DrawSignature("Output Signature (OSG1)", m_data->outputs);
+
+        // ── Patch Signature ────────────────────────────────────────────
+        if (!m_data->patch.empty()) {
+            DrawSignature("Patch Signature (PSG1)", m_data->patch);
+        }
+
+        // ── Statistics ─────────────────────────────────────────────────
+        if (m_data->stats.valid) {
+            ImGui::Spacing();
+            ImGui::SeparatorText("Statistics (STAT)");
+            if (ImGui::BeginTable("##stats", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
+                ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed, 160);
+                ImGui::TableSetupColumn("Value",  ImGuiTableColumnFlags_WidthStretch);
+                Row("Instructions",    "%u", m_data->stats.instructionCount);
+                Row("Temp Registers",  "%u", m_data->stats.tempRegisterCount);
+                Row("Float Ops",       "%u", m_data->stats.floatOps);
+                Row("Int Ops",         "%u", m_data->stats.intOps);
+                Row("UInt Ops",        "%u", m_data->stats.uintOps);
+                Row("Texture Ops",     "%u", m_data->stats.textureOps);
+                ImGui::EndTable();
+            }
+        }
+
+        // ── Shader Hash ────────────────────────────────────────────────
+        if (m_data->hasHash) {
+            ImGui::Spacing();
+            ImGui::SeparatorText("Shader Hash");
+            char hashStr[41] = {};
+            for (int i = 0; i < 16; i++)
+                snprintf(hashStr + i * 2, 3, "%02x", m_data->shaderHash[i]);
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.5f, 1.0f), "%s", hashStr);
+            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1))
+                ImGui::SetClipboardText(hashStr);
+        }
+    }
+
+private:
+    std::string m_name;
+    std::unique_ptr<GOWRShaderData> m_data;
+
+    template<typename... Args>
+    void Row(const char* key, const char* fmt, Args... args) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextDisabled("%s", key);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text(fmt, args...);
+    }
+
+    void DrawSignature(const char* title, const std::vector<SignatureElement>& sig) {
+        if (sig.empty()) return;
+        ImGui::Spacing();
+        ImGui::SeparatorText(title);
+        if (ImGui::BeginTable("##sig", 5,
+                ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg |
+                ImGuiTableFlags_BordersInnerH))
+        {
+            ImGui::TableSetupColumn("Semantic",   ImGuiTableColumnFlags_WidthFixed, 180);
+            ImGui::TableSetupColumn("Index",      ImGuiTableColumnFlags_WidthFixed,  50);
+            ImGui::TableSetupColumn("Type",       ImGuiTableColumnFlags_WidthFixed,  60);
+            ImGui::TableSetupColumn("Register",   ImGuiTableColumnFlags_WidthFixed,  60);
+            ImGui::TableSetupColumn("Mask",       ImGuiTableColumnFlags_WidthFixed,  60);
+            ImGui::TableHeadersRow();
+
+            for (const auto& e : sig) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                if (e.systemValueType != 0) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f), "%s",
+                                       GOWRShaderData::SystemValueName(e.systemValueType));
+                } else {
+                    ImGui::Text("%s", e.semanticName.c_str());
+                }
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%u", e.semanticIndex);
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%s", GOWRShaderData::ComponentTypeName(e.componentType));
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("r%u", e.registerIndex);
+                ImGui::TableSetColumnIndex(4);
+                std::string mask = GOWRShaderData::MaskString(e.mask);
+                ImGui::Text("%s", mask.c_str());
+            }
+            ImGui::EndTable();
+        }
+    }
+};
+
+std::shared_ptr<IDocumentContent> GOWRShaderHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
+    if (!wad.fileSource || entry.size == 0) return nullptr;
+
+    auto file = std::make_shared<SliceFile>(wad.fileSource, entry.offset, entry.size);
+    auto data = GOWRShaderParse(file);
+    if (!data) return nullptr;
+
+    return std::make_shared<GOWRShaderViewer>(entry.name, std::move(data));
+}
+
+// Register shader handlers for all shader TypeIds
+static bool _reg_shader_vs = [] {
+    ::GOW::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderVertex));
+    return true;
+}();
+static bool _reg_shader_ps = [] {
+    ::GOW::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderPixel));
+    return true;
+}();
+static bool _reg_shader_ct = [] {
+    ::GOW::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderContainer));
+    return true;
+}();
+static bool _reg_shader_hs = [] {
+    ::GOW::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderHull));
+    return true;
+}();
+static bool _reg_shader_ds = [] {
+    ::GOW::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderDomain));
+    return true;
+}();
+static bool _reg_shader_cs = [] {
+    ::GOW::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderCompute));
+    return true;
+}();
+static bool _reg_shader_ls = [] {
+    ::GOW::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderLibrary));
+    return true;
+}();
 
 } // namespace GOW

@@ -73,6 +73,10 @@ void WadNodeBuilder::Pass1_Classify() {
                 if (e.role != WadEntryRole::ShaderContainer &&
                     e.role != WadEntryRole::ShaderVertex    &&
                     e.role != WadEntryRole::ShaderPixel     &&
+                    e.role != WadEntryRole::ShaderHull      &&
+                    e.role != WadEntryRole::ShaderDomain    &&
+                    e.role != WadEntryRole::ShaderCompute   &&
+                    e.role != WadEntryRole::ShaderLibrary   &&
                     e.role != WadEntryRole::Sentinel)
                 {
                     // Check whether we jump straight to Particles (unlikely, but safe)
@@ -140,6 +144,14 @@ WadEntryRole WadNodeBuilder::ClassifyByName(const std::string& name, uint32_t si
         return WadEntryRole::ShaderVertex;
     if (name.find("_ps_") != std::string::npos)
         return WadEntryRole::ShaderPixel;
+    if (name.find("_hs_") != std::string::npos)
+        return WadEntryRole::ShaderHull;
+    if (name.find("_ds_") != std::string::npos)
+        return WadEntryRole::ShaderDomain;
+    if (name.find("_cs_") != std::string::npos)
+        return WadEntryRole::ShaderCompute;
+    if (name.find("_ls_") != std::string::npos)
+        return WadEntryRole::ShaderLibrary;
 
     // Named vertex shaders without hash prefix
     if (name.rfind("depth_vs",  0) == 0 ||
@@ -292,12 +304,24 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
             "[Vertex Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
         ParsedEntry psFolder = MakeFolder(
             "[Pixel Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+        ParsedEntry hsFolder = MakeFolder(
+            "[Hull Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+        ParsedEntry dsFolder = MakeFolder(
+            "[Domain Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+        ParsedEntry csFolder = MakeFolder(
+            "[Compute Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+        ParsedEntry lsFolder = MakeFolder(
+            "[Library Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
         ParsedEntry containerFolder = MakeFolder(
             "[Containers]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
 
-        // Group VS by prefix before _vs_; PS by prefix before _ps_
+        // Group VS by prefix before _vs_; PS by prefix before _ps_, etc
         std::map<std::string, ParsedEntry> vsGroups;
         std::map<std::string, ParsedEntry> psGroups;
+        std::map<std::string, ParsedEntry> hsGroups;
+        std::map<std::string, ParsedEntry> dsGroups;
+        std::map<std::string, ParsedEntry> csGroups;
+        std::map<std::string, ParsedEntry> lsGroups;
 
         for (auto& e : m_entries) {
             if (e.block != WadBlock::Shaders || e.consumed) continue;
@@ -323,6 +347,34 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
                                                   WadEntryRole::ShaderGroup);
                 psGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
 
+            } else if (e.role == WadEntryRole::ShaderHull) {
+                auto pos    = e.name.find("_hs_");
+                std::string prefix = (pos != std::string::npos) ? e.name.substr(0, pos) : e.name;
+                if (hsGroups.find(prefix) == hsGroups.end())
+                    hsGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+                hsGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
+
+            } else if (e.role == WadEntryRole::ShaderDomain) {
+                auto pos    = e.name.find("_ds_");
+                std::string prefix = (pos != std::string::npos) ? e.name.substr(0, pos) : e.name;
+                if (dsGroups.find(prefix) == dsGroups.end())
+                    dsGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+                dsGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
+
+            } else if (e.role == WadEntryRole::ShaderCompute) {
+                auto pos    = e.name.find("_cs_");
+                std::string prefix = (pos != std::string::npos) ? e.name.substr(0, pos) : e.name;
+                if (csGroups.find(prefix) == csGroups.end())
+                    csGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+                csGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
+
+            } else if (e.role == WadEntryRole::ShaderLibrary) {
+                auto pos    = e.name.find("_ls_");
+                std::string prefix = (pos != std::string::npos) ? e.name.substr(0, pos) : e.name;
+                if (lsGroups.find(prefix) == lsGroups.end())
+                    lsGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+                lsGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
+
             } else if (e.role == WadEntryRole::ShaderContainer) {
                 containerFolder.children.push_back(ToNode(e, m_wadFilename));
             }
@@ -344,9 +396,17 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
 
         flushGroups(vsGroups, vsFolder);
         flushGroups(psGroups, psFolder);
+        flushGroups(hsGroups, hsFolder);
+        flushGroups(dsGroups, dsFolder);
+        flushGroups(csGroups, csFolder);
+        flushGroups(lsGroups, lsFolder);
 
         if (!vsFolder.children.empty())        shadersFolder.children.push_back(std::move(vsFolder));
         if (!psFolder.children.empty())        shadersFolder.children.push_back(std::move(psFolder));
+        if (!hsFolder.children.empty())        shadersFolder.children.push_back(std::move(hsFolder));
+        if (!dsFolder.children.empty())        shadersFolder.children.push_back(std::move(dsFolder));
+        if (!csFolder.children.empty())        shadersFolder.children.push_back(std::move(csFolder));
+        if (!lsFolder.children.empty())        shadersFolder.children.push_back(std::move(lsFolder));
         if (!containerFolder.children.empty()) shadersFolder.children.push_back(std::move(containerFolder));
 
         if (!shadersFolder.children.empty())
@@ -477,18 +537,24 @@ void WadNodeBuilder::Pass4_Finalize(OpenWad& outWad) {
         if (blockNode.role == WadEntryRole::ManifestBlock)
             continue;
 
-        // ── Shaders: sort VS groups alphabetically ─────────────────────
+        // ── Shaders: sort groups alphabetically ─────────────────────
         if (blockNode.role == WadEntryRole::ShaderBlock) {
             for (auto& subFolder : blockNode.children) {
-                if (subFolder.name == "[Vertex Shaders]") {
+                if (subFolder.name == "[Vertex Shaders]" ||
+                    subFolder.name == "[Pixel Shaders]" ||
+                    subFolder.name == "[Hull Shaders]" ||
+                    subFolder.name == "[Domain Shaders]" ||
+                    subFolder.name == "[Compute Shaders]" ||
+                    subFolder.name == "[Library Shaders]")
+                {
                     std::sort(subFolder.children.begin(), subFolder.children.end(),
                         [](const ParsedEntry& a, const ParsedEntry& b) {
                             return a.name < b.name;
                         });
-                    // Sort variants within each VS group by FLAGS suffix
-                    for (auto& vsGroup : subFolder.children) {
-                        if (!vsGroup.children.empty()) {
-                            std::sort(vsGroup.children.begin(), vsGroup.children.end(),
+                    // Sort variants within each group by FLAGS suffix
+                    for (auto& shaderGroup : subFolder.children) {
+                        if (!shaderGroup.children.empty()) {
+                            std::sort(shaderGroup.children.begin(), shaderGroup.children.end(),
                                 [](const ParsedEntry& a, const ParsedEntry& b) {
                                     return a.name < b.name;
                                 });
@@ -556,6 +622,10 @@ static TypeId RoleToTypeId(WadEntryRole role) {
         case WadEntryRole::ShaderContainer: return TypeId::ShaderContainer;
         case WadEntryRole::ShaderVertex: return TypeId::ShaderVertex;
         case WadEntryRole::ShaderPixel: return TypeId::ShaderPixel;
+        case WadEntryRole::ShaderHull: return TypeId::ShaderHull;
+        case WadEntryRole::ShaderDomain: return TypeId::ShaderDomain;
+        case WadEntryRole::ShaderCompute: return TypeId::ShaderCompute;
+        case WadEntryRole::ShaderLibrary: return TypeId::ShaderLibrary;
         case WadEntryRole::MeshGpu: return TypeId::MeshGpu;
         case WadEntryRole::MeshDefn: return TypeId::MeshDefn;
         case WadEntryRole::GameObjectProto: return TypeId::GameObjectProto;

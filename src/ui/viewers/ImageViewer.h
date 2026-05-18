@@ -27,9 +27,13 @@ private:
     float  m_zoomTarget = 1.0f;
     ImVec2 m_pan{0, 0};
     ImVec2 m_panTarget{0, 0};
-    bool   m_panInitialized = false;
+    bool   m_initialFitDone = false;
 
     void UploadToGPU();
+    // Unified zoom helper: drive zoom toward newZoom while keeping the screen
+    // point anchorScreen invariant (panTarget adjusts so the same image-local
+    // point stays under that screen position once the lerp finishes).
+    void ZoomToAnchored(float newZoom, ImVec2 anchorScreen);
 };
 
 } // namespace GOW

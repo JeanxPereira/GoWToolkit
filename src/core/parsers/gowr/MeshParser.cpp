@@ -54,6 +54,20 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<IFile>& f,
                                        uint32_t base,
                                        SubmeshHeader& h)
 {
+    // ── DIAGNOSTIC: dump first 0x90 bytes of submesh header so we can hunt
+    // for MAT hash field placement. Remove once mesh→MAT link is identified.
+    {
+        uint8_t hdr[0x90] = {};
+        f->Seek(base, SEEK_SET);
+        f->Read(hdr, sizeof(hdr));
+        char hex[0x90 * 3 + 1] = {};
+        for (size_t b = 0; b < sizeof(hdr); ++b) {
+            std::snprintf(hex + b * 3, 4, "%02X ", hdr[b]);
+        }
+        LOG_INFO("[GOWRMeshParser] submesh @0x%X bytes[0x00..0x8F]: %s", base, hex);
+    }
+
+
     f->Seek(base + 0x10, SEEK_SET);
     f->Read(&h.extent, 12);
 
@@ -137,10 +151,24 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<IFile>& gpu,
     const uint32_t N = hdr.vertCount;
     part.vertices.resize(N);
 
-    // Initialise all skin data to zero (neutral: weight=0, index=0)
+    // Detect rigid: submesh has no BoneIdx (semantic 9) / BoneWgt (semantic 10).
+    // Rigid verts are authored in joint-local space — bind them to local-palette
+    // slot 0 with full weight so the shader transforms by jointMap[0] only.
+    bool hasBoneSemantic = false;
+    for (const auto& c : comps) {
+        if (c.semantic == Semantic::BoneIdx || c.semantic == Semantic::BoneWgt) {
+            hasBoneSemantic = true;
+            break;
+        }
+    }
+    part.isRigid = !hasBoneSemantic;
+
+    const glm::vec4  defaultW = part.isRigid ? glm::vec4(1.0f, 0.0f, 0.0f, 0.0f)
+                                             : glm::vec4(0.0f);
+    const glm::uvec4 defaultI = glm::uvec4(0u);
     for (auto& v : part.vertices) {
-        v.boneWeights = glm::vec4(0.0f);
-        v.boneIndices = glm::uvec4(0u);
+        v.boneWeights = defaultW;
+        v.boneIndices = defaultI;
     }
 
     for (const auto& c : comps) {
@@ -254,12 +282,40 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<IFile>& gpu,
                 break;
 
             // ── Bone indices ─────────────────────────────────────────────
-            // Two sub-formats observed in the Ragnarök log:
-            //   fmt=4 (Uint8):  4 × uint8  bone indices  (GoW 2018 style)
-            //   fmt=8 (Uint16): 4 × uint16 bone indices  (Ragnarök, wider skeleton)
-            // C# code: num49 == 4 → 4B uint8 / num49 == 8 → 4B uint16
+            // C# ref (GoWRknk.cs:707-805): the BoneIdx element's compCount
+            // selects the encoding mode (`num46` in C#):
+            //   compCount=1, fmt=Uint8 / Uint16: 4 × raw indices (4-influence)
+            //   compCount=2, fmt=Uint16:         7 × u16 + 1 u16 pad (7-influence)
+            //   compCount=3, fmt=R10G10B10:      4 × u32 holding 10 × 11-bit
+            //                                    bone indices (10-influence)
+            // We only store the first 4 in v.boneIndices regardless.
             case Semantic::BoneIdx:
-                if (c.format == AttrFormat::Uint8) {
+                if (c.compCount >= 3) {
+                    // 10-influence — 11-bit packed across 4 uint32s
+                    uint32_t u0, u1, u2, u3;
+                    gpu->Read(&u0, 4);
+                    gpu->Read(&u1, 4);
+                    gpu->Read(&u2, 4);
+                    gpu->Read(&u3, 4);
+                    uint32_t idx0 = u0 >> 21;
+                    uint32_t idx1 = (u0 >> 10) & 0x7FF;
+                    uint32_t low10 = (u0 & 0x3FF) << 1;
+                    uint32_t idx2 = (u1 >> 31) | low10;
+                    uint32_t idx3 = (u1 >> 20) & 0x7FF;
+                    v.boneIndices = glm::uvec4(idx0, idx1, idx2, idx3);
+                } else if (c.compCount == 2) {
+                    // 7-influence — 8 u16 (7 indices + 1 pad), keep first 4
+                    uint16_t b0, b1, b2, b3, b4, b5, b6, padb;
+                    gpu->Read(&b0, 2);
+                    gpu->Read(&b1, 2);
+                    gpu->Read(&b2, 2);
+                    gpu->Read(&b3, 2);
+                    gpu->Read(&b4, 2);
+                    gpu->Read(&b5, 2);
+                    gpu->Read(&b6, 2);
+                    gpu->Read(&padb, 2);
+                    v.boneIndices = glm::uvec4(b0, b1, b2, b3);
+                } else if (c.format == AttrFormat::Uint8) {
                     uint8_t b0, b1, b2, b3;
                     gpu->Read(&b0, 1);
                     gpu->Read(&b1, 1);

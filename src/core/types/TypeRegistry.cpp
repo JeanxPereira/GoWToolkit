@@ -140,6 +140,10 @@ const char* TypeIdName(TypeId id) {
         case TypeId::ShaderContainer: return "Shader";
         case TypeId::ShaderVertex:   return "Vertex Shader";
         case TypeId::ShaderPixel:    return "Pixel Shader";
+        case TypeId::ShaderHull:     return "Hull Shader";
+        case TypeId::ShaderDomain:   return "Domain Shader";
+        case TypeId::ShaderCompute:  return "Compute Shader";
+        case TypeId::ShaderLibrary:  return "Library Shader";
         case TypeId::MeshGpu:        return "Mesh GPU";
         case TypeId::MeshDefn:       return "Mesh Definition";
         case TypeId::GameObjectProto: return "GO Proto";
