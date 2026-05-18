@@ -1,24 +1,45 @@
-# GOWR Skeleton / Rig — Analysis & Fix Plan
+# GOWR Skeleton / Rig — Format Specification
 
-> **Scope**: God of War Ragnarök **PC** (Steam/EGS build). PS4/PS5 structures may differ — endianness, alignment and bone-index packing may have variants. Marked as `TODO PS4/PS5` where applicable.
->
-> **Status**: reverse analysis complete. Implementation pending.
+> **Scope**: God of War Ragnarök **PC** (Steam/EGS build).
+> **Status**: Reverse analysis complete.
 >
 > **Sources**:
-> - Ghidra decompilation of `GoWR.exe` (PC) via `ghidra-mcp`
-> - C# ref: `/Users/jeanxpereira/CodingProjects/GoWRknk/GoWRknk/GoWRknk.cs`
-> - C++ ref: `/Users/jeanxpereira/CodingProjects/GOWTool/src/Rig.cpp`
-> - Current code: `src/core/parsers/gowr/ProtoParser.cpp`, `MeshParser.cpp`, `MgParser.cpp`, `core/loaders/GOWRLoaders.cpp`, `rendering/SceneRenderer.cpp`
+> - Ghidra decompilation of `GoWR.exe` (PC)
+> - Cross-referenced with PC memory dumps.
 
----
+## 2. Architecture & Hierarchy
 
-## 1. Symptom
+```mermaid
+graph TD
+    Proto[Proto File] --> Header[16-byte Header]
+    Proto --> ParentTable[Parent Table - 8 bytes per bone]
+    Proto --> TableA[Table A - Local Transform - mat4 column-major]
+    Proto --> TableB[Table B - Skinning Base - mat4 column-major]
+    
+    Skeleton[Runtime Skeleton] --> AllocA[Copy Table A]
+    Skeleton --> AllocB[Copy Table B]
+    Skeleton --> GPUPalette[Triple-buffered GPU mat3x4 Palette]
+    
+    AnimCompose[Anim Compose Pipeline] --> ReadB[Read Table B]
+    ReadB --> Mul[Multiply with Anim Override]
+    Mul --> WriteGPU[Write row-major mat3x4 to GPUPalette]
+```
 
-GOWR models (skinned + rigid) render with deformed mesh — collapsed submeshes, incorrectly rotated bones, parts "exploding" from the origin. Behavior nicknamed "broken bones."
-
-## 2. Proto file layout (goProto*)
+## 3. Proto file layout (goProto*)
 
 Confirmed by triangulation between Ghidra (`FUN_1406ecc20` constructor + `FUN_1406ed6b0` memcpy), GoWRknk.cs, and GOWTool/Rig.cpp.
+
+| Offset | Size | Type | Name | Description |
+|--------|------|------|------|-------------|
+| 0x00   | 16   | u8[] | Header| Content unused by parser |
+| 0x10   | 2    | u16  | BoneCount| Number of bones |
+| 0x14   | 4    | s32  | Unused| Padding / Unknown |
+| 0x18   | 8*N  | ParentEntry| ParentTable | 3x int16 (skip) + int16 parent idx |
+| +8N    | 8*N  | pad  | Padding 1 | - |
+| +16N   | 16*N | pad  | Padding 2 | - |
+| +32N   | 88   | block| FixedHeader| `int64 + 4x int32 + 64B` = 88B (`0x58`) |
+| +32N+0x70| 64*N | mat4 | Table A | Local transforms (column-major) |
+| +96N+0x70| 64*N | mat4 | Table B | Skinning Base (column-major) |
 
 ```
 +0x00..0x10     header (16B, content unused by parser)
@@ -61,30 +82,30 @@ Determined via `FUN_1406ed6b0` (init copy) + `FUN_140469640` (anim compose):
 
 **Critical**: Table B is **NOT an IBM**. The runtime uses Table B directly as the skinning matrix (only with `anim_override × Table_B[i]` if an override is present). Our current interpretation (`worldMat = inverse(ibm)`) is **wrong** — do not invert.
 
-## 3. Runtime skeleton struct layout
+## 4. Runtime skeleton struct layout
 
 Extracted from `FUN_1406ecc20` (constructor) + `FUN_140737a20` (validators) + `FUN_140469640` (consumer).
 
 ```
 GameObject @ +0x1b0  → Skeleton*
-
-Skeleton struct:
-  +0x40..0x60    [4× ptr]    GPU bone-buffer triple-buffer slots
-  +0x58          ptr → proto data + 0x18 (parent table)
-  +0x60          ptr → proto data + 32N + 32 (anim_override header)
-                                 +4 = count; +8 = rel offset
-  +0x70          ptr → proto data + (N-1)*8 + 0x20
-  +0x78          ptr → bone-buffer reuse handle
-  +0x88          ptr → animSkeleton (game object that drives this)
-  +0x90          ptr → runtime mat buffer (N × 128 bytes, ALLOCATED at runtime)
-  +0x98          ptr → m_boneBuffer (GPU skinning palette, ALLOCATED at runtime)
-  +0xa0          ptr → bone visibility/dirty bitmask
-  +0xa8          int32 boneCount (duplicate)
-  +0xba          uint16 boneCount (canonical)
-  +0xbc          uint16 flags (bit 0x80 = use GPU palette / animated)
-  +0xbe          byte  (3 if flag 0x80, else 0)
-  +0xbf          byte  atomic dirty flag
 ```
+
+| Offset | Size | Type | Name | Description |
+|--------|------|------|------|-------------|
+| 0x40   | 32   | ptr[4]| GPU Slots| GPU bone-buffer triple-buffer slots |
+| 0x58   | 8    | ptr  | ParentTable| ptr → proto data + 0x18 |
+| 0x60   | 8    | ptr  | AnimOverride| ptr → proto data + 32N + 32 |
+| 0x70   | 8    | ptr  | ProtoData | ptr → proto data + (N-1)*8 + 0x20 |
+| 0x78   | 8    | ptr  | ReuseHandle| bone-buffer reuse handle |
+| 0x88   | 8    | ptr  | AnimSkeleton| game object that drives this |
+| 0x90   | 8    | ptr  | MatBuffer | Runtime mat buffer (N × 128 bytes) |
+| 0x98   | 8    | ptr  | m_boneBuffer| GPU skinning palette (ALLOCATED) |
+| 0xA0   | 8    | ptr  | Bitmask   | bone visibility/dirty bitmask |
+| 0xA8   | 4    | int32| BoneCount | duplicate |
+| 0xBA   | 2    | u16  | BoneCount | canonical |
+| 0xBC   | 2    | u16  | Flags     | bit 0x80 = use GPU palette |
+| 0xBE   | 1    | u8   | AnimFlag  | 3 if flag 0x80, else 0 |
+| 0xBF   | 1    | u8   | DirtyFlag | atomic dirty flag |
 
 ### Buffer @ skel[+0x90]
 
@@ -136,148 +157,7 @@ for (i = 0; i < N; ++i) {
 - No explicit hierarchical compose here — composition done at another stage OR Table B is already pre-composed world-rest
 - No transposition between source and dest — both row-major
 
-## 5. Bugs in current code
-
-### BUG #1 — Wrong palette format (mat4 + unnecessary IBM mul)
-
-**File**: `src/rendering/SceneRenderer.cpp:403`
-```cpp
-m_jointPalette[i]  = j.renderMat * j.bindToJointMat;
-```
-
-**Problem**:
-1. Multiplication by `bindToJointMat` (IBM) — does not happen in the game's runtime
-2. Shader uniform typed as `mat4` — runtime uses `mat3x4` row-major affine
-
-**Fix**:
-```cpp
-m_jointPalette[i] = j.renderMat;     // no IBM
-```
-Shader: keep `mat4` but with bottom row hardcoded `[0,0,0,1]`, OR switch to `mat3x4` for an exact match.
-
-### BUG #2 — Erroneous inversion of Table B in ProtoParser
-
-**File**: `src/core/parsers/gowr/ProtoParser.cpp:142-150`
-
-**Current problem**:
-```cpp
-bool ibmIdentity = (a00 > 0.999f && a11 > 0.999f && a22 > 0.999f && ...);
-glm::mat4 worldMat = ibmIdentity ? composedWorld[j] : glm::inverse(ibm);
-glm::mat4 bindToJoint = ibmIdentity ? glm::inverse(composedWorld[j]) : ibm;
-```
-
-Treats Table B as an IBM and inverts it. **Wrong** — Ghidra confirms Table B is used directly.
-
-**Fix**:
-```cpp
-glm::mat4 worldMat = mat_from_table_B;        // no inversion
-obj->joints[j].renderMat = worldMat;
-obj->joints[j].bindToJointMat = glm::mat4(1); // IBM not used in GOWR
-```
-
-### BUG #3 — MG per-submesh skin palette not read
-
-**File**: `src/core/parsers/gowr/MgParser.cpp`
-
-`GoWRknk.cs:298-328` shows that each submesh has a local bone palette:
-```
-per mg-def @ defOff:
-  +0x00  uint16  parentBone
-  +0x02  uint8   lodCount
-  +0x38  uint32[lodCount]                       → skin list offsets
-  per skin list @ skinOff:
-    +0x00  uint32  skinBoneCount (N)
-    +0x04  4 bytes pad
-    +0x08  6 bytes pad
-    +0x0E  uint16[N]  globalBoneIdx
-```
-
-Skinned vertices use LOCAL indices (0..N-1) into the submesh palette. Without the remap → wrong bones applied.
-
-**Fix**: extend `GOWRMgParser::Parse` to return `{parentBone, skinPalette[]}` per submesh.
-
-### BUG #4 — 11-bit packed bone-idx (modes 6 and 10 influences) not supported
-
-**File**: `src/core/parsers/gowr/MeshParser.cpp:261-276`
-
-Only reads `Uint8` or `Uint16` raw. The C# reference has 3 modes via `num46`:
-
-| num46 | Influences | Bone-idx encoding |
-|---|---|---|
-| 1 | 4 | 4× u16 or 4× u8 raw ✓ (covered) |
-| 2 | 7 | 7× u16 + 1× u16 pad — **missing** |
-| 3 | 10 | 11-bit packed spanning 3+ uint32s — **missing** |
-
-10-influence decoding (direct port from `GoWRknk.cs:707-730`):
-```cpp
-uint32_t u;
-u = read_u32();
-idx[0] = u >> 21;
-idx[1] = (u >> 10) & 0x7FF;
-uint32_t low10 = (u & 0x3FF) << 1;
-u = read_u32();
-idx[2] = (u >> 31) | low10;
-idx[3] = (u >> 20) & 0x7FF;
-idx[4] = (u >> 9) & 0x7FF;
-uint32_t low9 = (u & 0x1FF) << 2;
-u = read_u32();
-idx[5] = (u >> 30) | low9;
-idx[6] = (u >> 19) & 0x7FF;
-idx[7] = (u >> 8) & 0x7FF;
-uint32_t low8 = (u & 0xFF) << 3;
-u = read_u32();
-idx[8] = (u >> 29) | low8;
-idx[9] = (u >> 18) & 0x7FF;
-```
-
-Without this → models with >4 weights/vert (Kratos, Atreus, main NPCs) will have broken skinning.
-
-### BUG #5 — Rigid vs Skinned detection is external and destructive
-
-**File**: `src/core/loaders/GOWRLoaders.cpp:311-314`
-```cpp
-for (auto& v : p.vertices) {
-    v.boneIndices = glm::uvec4(0, 0, 0, 0);
-    v.boneWeights = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
-}
-```
-
-Always forces rigid mode. Destroys legitimate skinning data.
-
-**Fix**: `MeshParser::ReadVertices` detects the presence of semantic 9/10 → sets `MeshPart::isRigid`. GOWRLoaders only forces (1,0,0,0) if `isRigid == true`.
-
-### BUG #6 — BuildLocalTRS uses Q.14 Euler for GOWR
-
-**File**: `src/rendering/SceneRenderer.cpp:249-318`
-
-Reconstructs local TRS from `vectors4/5/6` (GOW2 Q.14 format). The GOWR ProtoParser only populates `vectors4` (translation); `vectors5/6` remain zero/identity. During animation → identity rotations → mesh collapses.
-
-**Fix**: for GOWR, animation consumes a 64B mat4 per bone (`animBoneData` format). Add a path that accepts mat4 directly, or populate `matrixes1` in `ProtoParser` and use Matrixes1 in the compose step.
-
-### BUG #7 — Default rigid weights are zeroed out
-
-**File**: `src/core/parsers/gowr/MeshParser.cpp:141-144`
-```cpp
-v.boneWeights = glm::vec4(0.0f);
-v.boneIndices = glm::uvec4(0u);
-```
-
-When a submesh is rigid (no semantic 9/10), all vertices get `weight=0` → shader applies no skinning → vertex ends up in the wrong space.
-
-**Fix**: detect `hasBoneSemantic` while reading components; if false, initialize with `weight=(1,0,0,0), idx=(0,0,0,0)` (idx 0 maps via jointMap to the parentBone).
-
-## 6. Implementation order
-
-By decreasing visual impact:
-
-1. **BUG #2** (IBM inversion) — trivial fix in `ProtoParser.cpp`, corrects bone orientation in rest pose
-2. **BUG #1** (palette × IBM) — remove mul in `SceneRenderer::ComputeJointPalette`
-3. **BUG #5 + #7** (rigid detection + default weights) — `MeshParser::ReadVertices` + `GOWRLoaders`
-4. **BUG #3** (MG skin palette) — extend `MgParser` + use in `GOWRLoaders`
-5. **BUG #4** (11-bit packing) — add paths in `MeshParser::ReadVertices` for num46 == 2 / 3
-6. **BUG #6** (anim format) — add GOWR path in `AnimationPlayer`/`SceneRenderer`
-
-## 7. Ghidra reference functions (PC build)
+## 5. Ghidra reference functions (PC build)
 
 | Symbol | Address | Function |
 |---|---|---|
@@ -290,27 +170,3 @@ By decreasing visual impact:
 | `FUN_14062cc10` | `0x14062cc10` | GameObject anim orchestrator (calls ed6b0 + 469640) |
 | `FUN_14061fe80` | `0x14061fe80` | GameObject ctor (creates skeleton via 6ecc20) |
 | `FUN_140737a20` | `0x140737a20` | SetJointDirection (validates skel + boneCount) |
-
-## 8. Expected differences on PS4/PS5
-
-> **Unconfirmed** — analysis done only on the PC build. Hypotheses to investigate when a console build is available:
-
-- **GNF/GNF2 vs DXGI**: texture/render-target packing differs, but skeleton/proto is likely identical.
-- **Endianness**: PS4/PS5 are little-endian like PC, no reordering expected.
-- **Bone-idx packing**: the 11-bit heuristic may have slightly different encoding (PS5 wave64 SIMD vs PC RDNA2 wave32). Check the first bytes of the skin block on a PS4 build first.
-- **mat3x4 vs mat4 GPU palette**: AMD GCN/RDNA layouts may align differently. PC confirmed mat3x4 row-major.
-- **animSkeleton overlay** (`skel[+0x60]` anim_override): the header format (+4 count, +8 rel offset) may change between versions.
-
-## 9. Validation
-
-No test suite. Manual validation via UI:
-- Kratos GOWR (skinned, 10-inf) → renders in bind pose without distortion
-- Atreus (skinned, 4-6 inf) → bind pose OK
-- Static prop (rigid, MG single parentBone) → correct position in rest pose
-- Mixed prop with cloth (hair, clothing) → submeshes aligned
-
-Recommended diagnostic logging in `MeshParser::ReadVertices` + `GOWRLoaders::SharedGowrMeshLoad`:
-```
-[smIdx]: rigid=%d  num46=%d  jointMap.size=%zu  vert[0].idx=(%u,%u,%u,%u)  weight=(%.2f,%.2f,%.2f,%.2f)
-```
-Cross-reference with equivalent logs from GoWRknk.exe running the same file.

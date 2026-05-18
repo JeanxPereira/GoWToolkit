@@ -1,19 +1,8 @@
-# God of War Ragnarök — Shader & Scene File Format Reference
+# Shader Format Specification (GoWR PC)
 
-> Reverse-engineered from `sva_frg300_main.wad` (PC/Steam build, DirectX 12).  
-> All findings are based on static binary analysis of real game assets.
+## Overview
 
----
-
-## Table of Contents
-
-1. [Shader Files (VS / PS / HS / DS / CS)](#1-shader-files)
-   - [GOW Custom Header](#11-gow-custom-header-28-bytes)
-   - [DXBC Container](#12-dxbc-container)
-   - [DXIL Chunk](#13-dxil-chunk)
-   - [Chunk Reference](#14-chunk-reference)
-   - [Naming Convention](#15-naming-convention)
-   - [Known Shader Types](#16-known-shader-types)
+Shader files contain GPU programs compiled for DirectX 12. They follow a two-layer structure: a **GOW-specific 28-byte header** prepended to a completely standard **DXBC (DirectX Bytecode) container**.
 2. [Real Shader Analysis](#2-real-shader-analysis)
    - [depth_vs — Depth Pre-Pass](#21-depth_vs--depth-pre-pass-vertex-shader)
    - [opaque_vs_ls — Opaque Geometry](#22-opaque_vs_ls--opaque-geometry-vertex-shader)
@@ -27,35 +16,39 @@
 
 ---
 
-## 1. Shader Files
+## Architecture & Hierarchy
 
-Shader files contain GPU programs compiled for DirectX 12. They follow a two-layer structure: a **GOW-specific 28-byte header** prepended to a completely standard **DXBC (DirectX Bytecode) container**.
+```mermaid
+graph TD
+    ShaderFile[Shader File] --> GOWHeader[28-byte GOW Custom Header]
+    ShaderFile --> DXBC[DXBC Container]
+    
+    DXBC --> DXBCHeader[32-byte DXBC Header]
+    DXBC --> Chunks[Chunk Array]
+    
+    Chunks --> ISG1[ISG1 Chunk - Input Signature]
+    Chunks --> OSG1[OSG1 Chunk - Output Signature]
+    Chunks --> STAT[STAT Chunk - Statistics]
+    Chunks --> DXIL[DXIL Chunk - Shader Code]
+    
+    DXIL --> LLVM[LLVM Bitcode]
+```
 
 ### 1.1 GOW Custom Header (28 bytes)
 
 Every shader file begins with this proprietary header before the standard DXBC magic:
 
-```
-Offset  Size  Type      Description
-------  ----  --------  -------------------------------------------
-0x00    2     uint16    Format version. Always 0x000A (10).
-0x02    2     uint16    Sub-version. Always 0x0001.
-0x04    8     uint8[]   Zero padding.
-0x0C    4     uint32    DXBC payload size in bytes (equals TotalSize
-                        field inside the DXBC header).
-0x10    4     uint32    PSO flags / compilation flags bitmask.
-0x14    2     char[2]   Null-terminated ASCII shader stage tag:
-                          "vs" = Vertex Shader
-                          "ps" = Pixel Shader
-                          "hs" = Hull Shader
-                          "ds" = Domain Shader
-                          "cs" = Compute Shader
-                          "ls" = Library Shader
-0x16    2     uint8[]   Padding / alignment.
-0x18    4     uint32    Permutation / variant ID. Relates to the
-                        PSO flags bitmask in the filename suffix.
-0x1C    →     DXBC      Standard DXBC container starts here.
-```
+| Offset | Size | Type | Name | Description |
+|--------|------|------|------|-------------|
+| 0x00   | 2    | u16  | FormatVersion | Always `0x000A` (10) |
+| 0x02   | 2    | u16  | SubVersion    | Always `0x0001` |
+| 0x04   | 8    | pad  | Padding       | Zero padding |
+| 0x0C   | 4    | u32  | DXBCPayloadSize | Bytes (equals TotalSize in DXBC header) |
+| 0x10   | 4    | u32  | PSOFlags      | PSO flags / compilation flags bitmask |
+| 0x14   | 2    | str  | StageTag      | `vs`, `ps`, `hs`, `ds`, `cs`, `ls` |
+| 0x16   | 2    | pad  | Padding       | Alignment padding |
+| 0x18   | 4    | u32  | VariantID     | Permutation ID (relates to filename suffix) |
+| 0x1C   | -    | DXBC | DXBC_Start    | Standard DXBC container begins |
 
 **Example (hex dump of `depth_vs_00000206`):**
 
@@ -76,26 +69,22 @@ To skip the GOW header and reach standard DXBC, simply seek to **offset 0x1C**.
 
 Starting at offset `0x1C`, the remainder of the file is a standard DXBC container as defined by Microsoft. Its layout:
 
-```
-Offset  Size  Type      Description
-------  ----  --------  -------------------------------------------
-+0x00   4     char[4]   Magic: "DXBC" (0x43425844)
-+0x04   16    uint8[]   MD5 hash of the container contents.
-+0x14   4     uint32    Version. Always 1.
-+0x18   4     uint32    TotalSize — total container size in bytes.
-+0x1C   4     uint32    ChunkCount — number of chunks.
-+0x20   4×N   uint32[]  Array of chunk offsets (relative to DXBC start).
-```
+| Offset | Size | Type | Name | Description |
+|--------|------|------|------|-------------|
+| +0x00  | 4    | char[4]| Magic | `"DXBC"` (`0x43425844`) |
+| +0x04  | 16   | u8[]   | MD5Hash | MD5 hash of container contents |
+| +0x14  | 4    | u32    | Version | Always 1 |
+| +0x18  | 4    | u32    | TotalSize | Total container size |
+| +0x1C  | 4    | u32    | ChunkCount | Number of chunks |
+| +0x20  | 4*N  | u32[]  | ChunkOffsets | Relative to DXBC start |
 
 Each chunk follows this structure:
 
-```
-Offset  Size  Type      Description
-------  ----  --------  -------------------------------------------
-+0x00   4     char[4]   FourCC tag (e.g. "DXIL", "ISG1", "STAT").
-+0x04   4     uint32    ChunkSize — data size, not including this header.
-+0x08   N     uint8[]   Chunk data.
-```
+| Offset | Size | Type | Name | Description |
+|--------|------|------|------|-------------|
+| +0x00  | 4    | char[4]| FourCC | Tag (e.g. `DXIL`, `ISG1`) |
+| +0x04  | 4    | u32    | ChunkSize | Data size (excluding header) |
+| +0x08  | N    | u8[]   | ChunkData | Chunk payload |
 
 ---
 
@@ -103,16 +92,14 @@ Offset  Size  Type      Description
 
 The `DXIL` chunk contains the actual shader program as **LLVM bitcode** wrapped in a small sub-header:
 
-```
-Offset  Size  Type      Description
-------  ----  --------  -------------------------------------------
-+0x00   4     char[4]   Inner magic: "DXIL" (confirms DXIL vs DXBC).
-+0x04   1     uint8     Major version (shader model major).
-+0x05   1     uint8     Minor version (shader model minor).
-+0x06   2     uint16    Offset to LLVM bitcode within this chunk.
-+0x08   4     uint32    Size of the LLVM bitcode in bytes.
-+0x0C   →     uint8[]   LLVM bitcode (starts with magic 0xBC0DC5).
-```
+| Offset | Size | Type | Name | Description |
+|--------|------|------|------|-------------|
+| +0x00  | 4    | char[4]| InnerMagic | `"DXIL"` (confirms DXIL vs DXBC) |
+| +0x04  | 1    | u8     | MajorVersion| Shader model major |
+| +0x05  | 1    | u8     | MinorVersion| Shader model minor |
+| +0x06  | 2    | u16    | BitcodeOffset| Offset to LLVM bitcode within chunk |
+| +0x08  | 4    | u32    | BitcodeSize | Size of LLVM bitcode in bytes |
+| +0x0C  | N    | u8[]   | LLVMPayload | LLVM bitcode (starts with `0xBC0DC5`) |
 
 To disassemble the LLVM bitcode, extract bytes from `+0x0C` onward and pass them to `dxc -dumpbin` or any LLVM bitcode reader.
 

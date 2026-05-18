@@ -1,41 +1,29 @@
-# God of War Engine — MAT_ Material System
-## Reverse Engineering Analysis
+# Material Format Specification (GoWR PC)
 
-> **Engine:** Santa Monica Studio proprietary engine (God of War 2018 / Ragnarök)  
-> **Analysis tools:** Ghidra (decompilation), binary inspection  
-> **Platform:** Windows x64 executable  
-> **File format version:** `0x0A` (little-endian)
-
----
-
-## Table of Contents
-
-1. [Overview](#1-overview)
-2. [Naming Convention and Hash Identity](#2-naming-convention-and-hash-identity)
-3. [Binary File Format](#3-binary-file-format)
-4. [Material Group File (`_2` suffix)](#4-material-group-file-_2-suffix)
-5. [Analyzed Functions](#5-analyzed-functions)
-   - [FUN_140a441d0 — Material Name Registration](#fun_140a441d0--material-name-registration)
-   - [FUN_140a442c0 — Material Name Registration (Override)](#fun_140a442c0--material-name-registration-override)
-   - [FUN_140b2f150 — Material Lookup by Name](#fun_140b2f150--material-lookup-by-name)
-   - [FUN_140548100 — WAD Context Hash Lookup](#fun_140548100--wad-context-hash-lookup)
-   - [FUN_1406e6a60 — Get Anim Client from Shared Instance](#fun_1406e6a60--get-anim-client-from-shared-instance)
-6. [Inferred Data Structures](#6-inferred-data-structures)
-7. [Hash Algorithm](#7-hash-algorithm)
-8. [WAD Group System](#8-wad-group-system)
-9. [Runtime Resolution Pipeline](#9-runtime-resolution-pipeline)
-10. [Material Variant Analysis](#10-material-variant-analysis)
-11. [Key Observations](#11-key-observations)
-
----
-
-## 1. Overview
+## Overview
 
 The `MAT_` prefix identifies **material asset files** in the Santa Monica Studio engine. A material in this context is the full rendering description of a surface: it bundles together a shader program reference (via a 128-bit GUID), up to 10 typed shader parameters (texture references, constant vectors, and scalar values), GPU sampler descriptors, and LOD fade configuration.
 
-Files are named after a 64-bit hash of the original material string — for example, `MAT_14EF18DD481D00DC`. The original string name is not stored inside the file; the hash itself is the canonical identifier, written at offset `0x10` in the header and mirrored in the filename.
-
 A companion file with a `_2` suffix (e.g., `MAT_DE674F96622453EB_2`) acts as a **material group index** that lists multiple `MAT_` files belonging to the same logical material, typically different LOD levels or quality tiers.
+
+## 1.5 Architecture & Hierarchy
+
+```mermaid
+graph TD
+    MAT[MAT_ File] --> Header[192-byte Header]
+    MAT --> OffsetTable[48-byte Offset Table]
+    
+    OffsetTable --> ShaderSec[Shader Section]
+    ShaderSec --> ShaderGUID[16-byte Shader GUID]
+    ShaderSec --> Params[Param Entries - 24 bytes each]
+    Params --> TextureGUID[128-bit Texture GUID]
+    
+    OffsetTable --> TexSlot[Texture Slot Table]
+    TexSlot --> GPUSlot[GPU Sampler Binding]
+    
+    OffsetTable --> RenderStates[Render States]
+    RenderStates --> SamplerState[Anisotropy/Filter Flags]
+```
 
 ---
 
@@ -67,20 +55,18 @@ All `MAT_` files share a fixed layout consisting of six sections. Section bounda
 
 ### 3.1 Header (`0x00 – 0xBF`, 192 bytes)
 
-```
-Offset  Size  Field
-──────────────────────────────────────────────────────────
-0x00    4     version        = 0x0000000A (10)
-0x04    4     padding        = 0
-0x08    4     padding        = 0
-0x0C    4     flags          = 0x10000007
-0x10    8     self_hash      64-bit hash ≡ filename suffix
-0x18    8     padding        = 0
-0x20    8     group_hash     64-bit texture set group affinity
-0x28    4     extra          = 0x00DE272B (observed)
-0x2C    1     extra_byte     = 0x21 (33)
-0x2D    ...   (zeroed to 0xBF)
-```
+| Offset | Size | Type | Name | Description |
+|--------|------|------|------|-------------|
+| 0x00   | 4    | u32  | version | `0x0000000A` (10) |
+| 0x04   | 4    | pad  | padding | 0 |
+| 0x08   | 4    | pad  | padding | 0 |
+| 0x0C   | 4    | u32  | flags   | `0x10000007` |
+| 0x10   | 8    | u64  | self_hash | 64-bit djb2 hash ≡ filename suffix |
+| 0x18   | 8    | pad  | padding | 0 |
+| 0x20   | 8    | u64  | group_hash | 64-bit texture set group affinity |
+| 0x28   | 4    | u32  | extra   | `0x00DE272B` (observed) |
+| 0x2C   | 1    | u8   | extra_byte | `0x21` (33) |
+| 0x2D   | 147  | pad  | zeros   | (zeroed to 0xBF) |
 
 **`self_hash`** is the djb2-variant hash of `"MAT_<name>"`. It is identical to the filename suffix and serves as the canonical runtime identifier. This is the value that `FUN_140b2f150` computes from a name string and then passes to `FUN_140548100` for lookup.
 
@@ -90,23 +76,21 @@ Offset  Size  Field
 
 ### 3.2 Offset Table (`0xC0 – 0xEF`, 48 bytes)
 
-```
-Offset  Size  Field
-────────────────────────────────────────────────────────────
-0xC0    4     off_shader_section    always 0x00F0
-0xC4    4     off_texture_table
-0xC8    4     off_render_states
-0xCC    4     (mirrors off_render_states — empty section A)
-0xD0    4     (mirrors off_render_states — empty section B)
-0xD4    4     off_trailing_data
-0xD8    4     trailing_data_size    always 0x30 (48)
-0xDC    4     padding               = 0
-0xE0    2     num_shader_params     includes scalar terminator
-0xE2    2     num_textures
-0xE4    4     padding               = 0
-0xE8    4     num_render_states
-0xEC    4     padding               = 0
-```
+| Offset | Size | Type | Name | Description |
+|--------|------|------|------|-------------|
+| 0xC0   | 4    | u32  | off_shader_section | always 0x00F0 |
+| 0xC4   | 4    | u32  | off_texture_table | - |
+| 0xC8   | 4    | u32  | off_render_states | - |
+| 0xCC   | 4    | u32  | (empty A) | mirrors off_render_states |
+| 0xD0   | 4    | u32  | (empty B) | mirrors off_render_states |
+| 0xD4   | 4    | u32  | off_trailing_data | - |
+| 0xD8   | 4    | u32  | trailing_data_size| always 0x30 (48) |
+| 0xDC   | 4    | pad  | padding | 0 |
+| 0xE0   | 2    | u16  | num_shader_params | includes scalar terminator |
+| 0xE2   | 2    | u16  | num_textures | - |
+| 0xE4   | 4    | pad  | padding | 0 |
+| 0xE8   | 4    | u32  | num_render_states | - |
+| 0xEC   | 4    | pad  | padding | 0 |
 
 Offsets `0xCC` and `0xD0` always equal `0xC8`, confirming those two optional sections are unused in the observed files.
 
