@@ -3,6 +3,7 @@ project(GoWToolkit CXX C)
 set(CMAKE_CXX_STANDARD 20)
 
 include(FetchContent)
+include(CTest)
 
 # ── ImGui (docking branch) ─────────────────────────────────────────────────
 FetchContent_Declare(
@@ -103,6 +104,27 @@ add_library(implot_lib STATIC
 )
 target_include_directories(implot_lib PUBLIC third_party/implot)
 target_link_libraries(implot_lib PUBLIC imgui_lib)
+
+# ── doctest (unit-test framework, dev-only) ──────────────────────────────
+option(GOWTOOLKIT_BUILD_TESTS "Build the GoWToolkit unit test suite" ON)
+
+if(GOWTOOLKIT_BUILD_TESTS)
+    FetchContent_Declare(
+        doctest
+        GIT_REPOSITORY https://github.com/doctest/doctest.git
+        GIT_TAG        v2.4.11
+        GIT_SHALLOW    TRUE
+        UPDATE_DISCONNECTED TRUE
+    )
+    set(DOCTEST_WITH_TESTS    OFF CACHE BOOL "" FORCE)
+    set(DOCTEST_WITH_MAIN_IN_STATIC_LIB OFF CACHE BOOL "" FORCE)
+    # doctest v2.4.11 ships a pre-CMake-3.5 cmake_minimum_required; bypass the
+    # hard error that CMake 4.x raises for that. Remove once doctest publishes
+    # a release with the floor bumped.
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
+    FetchContent_MakeAvailable(doctest)
+    unset(CMAKE_POLICY_VERSION_MINIMUM CACHE)
+endif()
 
 # ── FFmpeg ────────────────────────────────────────────────────────────────
 #
@@ -288,4 +310,10 @@ if(WIN32 AND FFMPEG_DLLS)
             "$<TARGET_FILE_DIR:GoWToolkit>"
         COMMENT "Copying FFmpeg DLLs to output directory"
     )
+endif()
+
+# ── Tests ─────────────────────────────────────────────────────────────────
+if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
+    add_subdirectory(tests)
+    add_test(NAME unit COMMAND $<TARGET_FILE:gowtoolkit_tests>)
 endif()
