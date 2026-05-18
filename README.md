@@ -1,5 +1,6 @@
 <p align="center">
-  <h1 align="center">GoW Toolkit</h1>
+  <img src=".github/AppIcon.png" alt="AppIcon" width="256" height="256">
+  <h1 align="center">God Of War Toolkit</h1>
   <p align="center">
     <strong>Cross-platform toolkit for browsing, inspecting, and extracting God of War game assets</strong>
   </p>
@@ -8,7 +9,7 @@
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Platform">
     <img src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus" alt="C++20">
     <img src="https://img.shields.io/badge/cmake-3.20%2B-064F8C?logo=cmake" alt="CMake">
-    <img src="https://img.shields.io/github/stars/JeanxPereira/GoWToolkit?style=flat" alt="Stars">
+    <!-- <img src="https://img.shields.io/github/stars/JeanxPereira/GoWToolkit?style=flat" alt="Stars"> -->
   </p>
 </p>
 
