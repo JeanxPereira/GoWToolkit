@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include "core/domain/MediaKind.h"
 #include "core/domain/WadEntryRoleLegacy.h"
 #include "core/schema/AssetNode.h"
 #include "core/types/GameVersion.h"
@@ -94,5 +95,6 @@ struct ParsedEntry {
     // Semantic classification — set by WadNodeBuilder
     WadEntryRole  role        = WadEntryRole::Unknown;
     WadBlock      block       = WadBlock::Unknown;
+    GOW::MediaKind kind       = GOW::MediaKind::Unknown;
     std::string   displayName;   // human-friendly name (falls back to name if empty)
 };

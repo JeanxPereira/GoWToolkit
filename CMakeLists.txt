@@ -224,6 +224,7 @@ set(PARSER_MIN_SOURCES
     src/core/schema/NodeInstance.cpp
     src/core/schema/StructDef.cpp
     src/core/types/TypeRegistry.cpp
+    src/core/domain/MediaKind.cpp
     src/core/vfs/IsoFile.cpp
     src/core/vfs/IsoFileSystem.cpp
     src/core/vfs/OsFile.cpp

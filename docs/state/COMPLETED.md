@@ -465,3 +465,34 @@
 - **Notas**:
   - Gate aprovado porque as 2 exceções são débitos estruturais resolvíveis apenas em milestones futuras (M3/M4). Bloquear M2 por elas seria contraproducente — M2 (MediaKind) é independente.
   - Multi-agent validado: M1.T5 (Claude Code) e M1.T6 (Antigravity) executados em paralelo sem conflitos.
+
+---
+
+## 2026-05-18 — M2.T1 — Criar `MediaKind.h` + `KindOf()` constexpr
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Criação da abstração `MediaKind` para tornar a UI independente do jogo e do formato do arquivo. Agrupa `TypeId` em categorias amplas (Image, Mesh, Audio, etc).
+- **Arquivos modificados/criados**:
+  - `src/core/domain/MediaKind.h` (Novo) — enum `MediaKind` e `KindOf(TypeId)`.
+  - `src/core/domain/MediaKind.cpp` (Novo) — `Name()` e `Icon()`.
+  - `tests/mediakind_test.cpp` (Novo) — Testes de cobertura.
+  - `CMakeLists.txt` — Adicionado `src/core/domain/MediaKind.cpp` em `PARSER_MIN_SOURCES`.
+- **AC verificados**:
+  - [x] `KindOf(TypeId::Texture) == MediaKind::Image`
+  - [x] `KindOf(TypeId::VagAudio) == MediaKind::Audio`
+  - [x] Teste de coverage incluído e validado com o CTest.
+  - [x] Função `constexpr` validada com `static_assert` no teste.
+
+---
+
+## 2026-05-18 — M2.T2 — Adicionar campo `kind` em `ParsedEntry`
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Preparar a estrutura base da árvore de WAD para receber o `MediaKind`.
+- **Arquivos modificados**:
+  - `src/core/domain/Entry.h` — Adicionado `GOW::MediaKind kind` em `ParsedEntry`.
+- **AC verificados**:
+  - [x] `ParsedEntry::kind` existe e default = `Unknown`.
+  - [x] Build verde.
