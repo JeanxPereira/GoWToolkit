@@ -214,6 +214,7 @@ endif()
 # the profiles reference into those layers (see `tests/test_stubs.cpp`).
 set(PARSER_MIN_SOURCES
     src/core/Logger.cpp
+    src/core/Metrics.cpp
     src/core/WadAssetName.cpp
     src/core/profiles/gow2/ProfileGOW2.cpp
     src/core/profiles/gow2/formats/MDL.cpp
@@ -376,4 +377,6 @@ if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*GOW2*")
     add_test(NAME Golden_GOWR
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*GOWR*")
+    add_test(NAME Metrics
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Metrics*")
 endif()

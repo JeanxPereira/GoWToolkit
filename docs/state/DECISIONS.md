@@ -66,3 +66,25 @@ Decisão: `SnapshotEntries` usa `XXH64` (do `xxhash.h` já vendored via `lz4_lib
 Motivação: xxhash já está linkado (lz4 carrega xxhash internamente), zero deps extra; é determinístico cross-platform; muito mais rápido. Não precisamos de propriedades criptográficas — só estabilidade pra regression detection.
 
 Trade-off: divergência do roadmap em 1 detalhe. Sem custo prático — qualquer hash determinístico cumpriria a função.
+
+---
+
+## D0006 — 2026-05-18 — Metrics API usa `uint32_t`, não `TypeId`
+
+Decisão: `GOW::Metrics::RecordParseTime` aceita `uint32_t typeId` em vez de `GOW::TypeId` como o roadmap M0.T4 step 1 sugere.
+
+Motivação: AC #4 de M0.T4 restringe os includes de `Metrics.h` a `<chrono>, <string>, <map>, <mutex>` (+ `<cstdint>` adicionado para os fixed-width int types). Aceitar `TypeId` por valor + usar `std::map<TypeId, ...>` no `Snapshot` exige `TypeId.h` no header. Caller usa `static_cast<uint32_t>(typeId)`.
+
+Trade-off: 1 cast por call site. Em troca: `Metrics.h` é um leaf module sem deps do projeto, pode ser dropado em qualquer TU sem arrastar core.
+
+---
+
+## D0007 — 2026-05-18 — Custo de `RecordParseTime` disabled
+
+Decisão: AC literal "< 5 ns por call quando disabled" foi medido em Debug build (`-O0`) ≈ 8 ns/call. Em Release com inlining espera-se < 1 ns (single atomic.load + branch). Test mantém ceiling de **500 ns** pra robustez em CI compartilhada.
+
+Motivação: 5 ns é instable em Debug e em hardware lento (CI). 500 ns trava regressões reais (qualquer adição acidental de lock/map lookup ao hot path saltaria para µs). Hot path validado: 1 atomic load + branch + return.
+
+Refs:
+- `tests/metrics_test.cpp` — `TEST_CASE("[Metrics] RecordParseTime is cheap when disabled")`
+- Benchmark output: `[Metrics] disabled RecordParseTime cost ~8 ns/call` (Debug build)

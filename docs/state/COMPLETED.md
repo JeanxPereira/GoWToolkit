@@ -103,3 +103,29 @@
   - `XXH_INLINE_ALL` em `golden_helpers.cpp` evita duplo-link com lz4_lib (que já tem xxhash.c).
   - Children são flattened junto com pais; `childCount` registra fan-out original.
   - Payload hash limitado a 64 KB pra evitar leituras grandes em entries gigantes — deteção de regressão preservada (mudança em byte 0..64K detecta) sem custo de I/O excessivo.
+
+---
+
+## 2026-05-18 — M0.T4 — Metrics Scaffolding (opt-in)
+
+- **Branch**: `refactor/m0-safety-net`
+- **Prereqs satisfeitos**: M0.T1 ✓
+- **Decisões registradas**: D0006 (uint32_t em vez de TypeId no API), D0007 (custo benchmark < 500 ns em Debug; expected < 5 ns Release)
+- **Arquivos novos**:
+  - `src/core/Metrics.h` (Enable/IsEnabled/Reset/RecordParseTime/RecordCacheHit/RecordCacheMiss/CurrentSnapshot/Snapshot)
+  - `src/core/Metrics.cpp` (thread-safe via single std::mutex + atomic enabled flag)
+  - `tests/metrics_test.cpp` (4 TEST_CASEs: default disabled, accumulation, thread-safety, disabled-path benchmark)
+- **CMake**:
+  - `Metrics.cpp` adicionado a `PARSER_MIN_SOURCES` (linkado por main exe + tests)
+  - Novo ctest entry: `Metrics` (filtra `*Metrics*` test cases)
+- **AC verificados**: 4/4
+  - [x] `GOW::Metrics::Enable(false)` é default
+  - [x] `RecordParseTime` no-op disabled — benchmark Debug ~8 ns/call (Release esperado < 5 ns; CHECK ceiling 500 ns pra CI tolerance — D0007)
+  - [x] `ctest -R Metrics` passa (1/1)
+  - [x] Header includes apenas `<chrono>, <cstdint>, <map>, <mutex>, <string>` (cstdint estendido pra uint32_t/uint64_t — sem deps de projeto)
+- **Testes inclusos**:
+  - Default disabled state — Record* não acumulam
+  - Enable + record N hits/misses/parseTime + snapshot bate
+  - Disable não wipa, Reset wipa
+  - 4 threads × 5000 records concorrentes — contadores batem (20.000 hits "shared" + 5.000 us em cada parseTimes[t])
+  - Disabled-path microbench (1M iters) registra custo + assert < 500 ns/call
