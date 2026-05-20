@@ -1,5 +1,5 @@
 #include "WadStatsView.h"
-#include "ui/AppContext.h"
+
 #include "core/AssetDatabase.h"
 #include "core/Events.h"
 #include "imgui.h"
@@ -8,14 +8,17 @@
 #include <numeric>
 #include <map>
 
-void WadStatsView::computeStats(AppContext& ctx) {
+#include "core/ToolkitApi.h"
+#include "UIHelpers.h"
+
+void WadStatsView::computeStats() {
     m_stats.clear();
 
     std::map<std::string, TypeStat> byType;
 
-    for (auto& wad : ctx.db.wads) {
+    for (auto& wad : GOW::Api::Database().wads) {
         for (auto& entry : wad.entries) {
-            std::string label = entry.schemaType.empty() ? "Unknown" : entry.schemaType;
+            std::string label = TypeName(entry.typeId);
             auto& stat = byType[label];
             stat.label = label;
             stat.count++;
@@ -32,11 +35,11 @@ void WadStatsView::computeStats(AppContext& ctx) {
         return a.count > b.count;
     });
 
-    m_lastWadCount = ctx.db.wads.size();
+    m_lastWadCount = GOW::Api::Database().wads.size();
     m_dirty = false;
 }
 
-void WadStatsView::draw(AppContext& ctx) {
+void WadStatsView::Draw() {
     if (!visible) return;
 
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
@@ -45,15 +48,15 @@ void WadStatsView::draw(AppContext& ctx) {
         return;
     }
 
-    if (ctx.db.wads.empty()) {
+    if (GOW::Api::Database().wads.empty()) {
         ImGui::TextDisabled("No WAD files loaded.");
         ImGui::End();
         return;
     }
 
     // Recompute stats if WADs changed
-    if (m_dirty || ctx.db.wads.size() != m_lastWadCount)
-        computeStats(ctx);
+    if (m_dirty || GOW::Api::Database().wads.size() != m_lastWadCount)
+        computeStats();
 
     // ── Summary Header ──────────────────────────────────────────────────
     uint32_t totalEntries = 0;

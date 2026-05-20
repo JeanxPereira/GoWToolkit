@@ -29,9 +29,9 @@ void MapViewer::Draw() {
     }
 }
 
-void MapViewer::DrawInspector(AppContext& ctx) {
+void MapViewer::DrawInspector() {
     if (m_viewport) {
-        m_viewport->DrawInspector(ctx);
+        m_viewport->DrawInspector();
     }
 }
 

@@ -16,9 +16,8 @@ public:
 
     ViewerRegistry();
 
-    bool CanHandle(GameVersion ver, TypeId typeId, const std::string& schemaType) const;
+    bool CanHandle(TypeId typeId) const;
     std::shared_ptr<IDocumentContent> Open(const ParsedEntry& entry, OpenWad& wad) const;
-    std::shared_ptr<IDocumentContent> OpenByKind(const ParsedEntry& entry, OpenWad& wad) const;
 
 private:
     std::unordered_map<MediaKind, Factory> m_factories;

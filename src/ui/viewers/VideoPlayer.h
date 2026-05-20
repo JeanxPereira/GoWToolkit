@@ -12,6 +12,7 @@ extern "C" {
 
 #include <miniaudio.h>
 #include <atomic>
+#include <chrono>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -139,10 +140,13 @@ private:
     void AudioDecodeThread();
 
     // UI
-    void DrawToolbar();
+    void DrawControlBar();
     void DrawVideo();
-    void DrawInspector(AppContext& ctx) override;
+    void DrawInspector() override;
     void UploadFrame(const FrameData& fd);
+
+    // Thread-safe time helper (replaces ImGui::GetTime() in background threads)
+    static double GetSteadyTimeSec();
 
     static void AudioCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
 
@@ -214,6 +218,10 @@ private:
     double m_lastScrubTime = 0.0;
     int64_t m_currentBytePos = 0; // for slider position
 
+    // Render optimization: avoid redundant GPU uploads when paused
+    bool m_needsRedraw = true;
+    double m_lastDisplayedPts = -1.0;
+
     // Perf tracking
     double m_frameDuration = 1.0 / 30.0;
     double m_lastRenderTime = 0.0;
@@ -230,8 +238,14 @@ private:
     std::string m_audioCodecName = "Unknown";
     int m_videoWidth = 0;
     int m_videoHeight = 0;
+    // Display aspect ratio (W/H). Computed from sample_aspect_ratio * (W/H).
+    // PSW/PSS files signal anamorphic 16:9 via MPEG2 aspect_ratio_information,
+    // which FFmpeg parses into AVCodecParameters::sample_aspect_ratio.
+    double m_displayAspect = 0.0;
+    int m_sarNum = 1;
+    int m_sarDen = 1;
     double m_fps = 0.0;
-    bool m_forceFrameUpdate = false;
+    std::atomic<bool> m_forceFrameUpdate{false};
 };
 
 } // namespace GOW

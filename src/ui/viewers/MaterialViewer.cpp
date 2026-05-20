@@ -1,5 +1,6 @@
 #include "MaterialViewer.h"
 #include "fonts/SFSymbols.h"
+#include "ui/Widgets.h"
 #include <glad/glad.h>
 #include <imgui.h>
 
@@ -163,7 +164,7 @@ void MaterialViewer::Draw() {
         // Make the layer number clickable
         char layerLabel[32];
         snprintf(layerLabel, sizeof(layerLabel), "%zu##layer", i);
-        if (ImGui::Selectable(layerLabel, isSelected,
+        if (GOW::UI::Widgets::Selectable(layerLabel, isSelected,
                               ImGuiSelectableFlags_SpanAllColumns)) {
           m_selectedLayer = (int)i;
         }

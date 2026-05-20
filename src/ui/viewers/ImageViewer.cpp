@@ -1,5 +1,7 @@
 #include "ImageViewer.h"
 #include "fonts/SFSymbols.h"
+#include "core/ThemeManager.h"
+#include "ui/Widgets.h"
 #include <algorithm>
 #include <glad/glad.h>
 #include <imgui.h>
@@ -99,22 +101,21 @@ void ImageViewer::Draw() {
   const float texH = static_cast<float>(m_texture->height);
 
   // ── Toolbar ──────────────────────────────────────────────────────────
-  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.18f, 0.85f));
-  ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                        ImVec4(0.25f, 0.25f, 0.3f, 0.9f));
+  ImGui::PushStyleColor(ImGuiCol_Button, GOW::Theme::ToolbarButton());
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, GOW::Theme::ToolbarButtonHover());
 
   ImGui::TextDisabled("%ux%u", m_texture->width, m_texture->height);
   ImGui::SameLine();
 
   // Defer button actions until we know `avail` (canvas size) — the viewport
   // center anchor needs it. Bool flags carry the intent across.
-  const bool zoomInClicked  = ImGui::SmallButton(ICON_SF_PLUS_MAGNIFYINGGLASS);
+  const bool zoomInClicked  = GOW::UI::Widgets::SmallButton(ICON_SF_PLUS_MAGNIFYINGGLASS);
   ImGui::SameLine();
-  const bool zoomOutClicked = ImGui::SmallButton(ICON_SF_MINUS_MAGNIFYINGGLASS);
+  const bool zoomOutClicked = GOW::UI::Widgets::SmallButton(ICON_SF_MINUS_MAGNIFYINGGLASS);
   ImGui::SameLine();
-  const bool oneToOneClicked = ImGui::SmallButton("1:1");
+  const bool oneToOneClicked = GOW::UI::Widgets::SmallButton("1:1");
   ImGui::SameLine();
-  const bool fitClicked = ImGui::SmallButton("Fit");
+  const bool fitClicked = GOW::UI::Widgets::SmallButton("Fit");
   ImGui::SameLine();
 
   // Alpha toggle — show alpha channel as grayscale

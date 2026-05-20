@@ -16,7 +16,8 @@ public:
 
     std::string GetName() const override { return "Map: " + m_wadName; }
     void Draw() override;
-    void DrawInspector(AppContext& ctx) override;
+    void DrawInspector() override;
+    Viewport3D* GetEmbeddedViewport() override { return m_viewport.get(); }
     
     // Aggregates all CXT_* entries in the WAD into a single combined SceneData
     void LoadMap();

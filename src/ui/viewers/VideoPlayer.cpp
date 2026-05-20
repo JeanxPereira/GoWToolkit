@@ -1,5 +1,7 @@
 #include "ui/viewers/VideoPlayer.h"
 #include "core/Logger.h"
+#include "core/ThemeManager.h"
+#include "ui/Widgets.h"
 #include "fonts/SFSymbols.h"
 #include <algorithm>
 #include <cmath>
@@ -8,6 +10,16 @@
 #include <imgui_internal.h>
 
 namespace GOW {
+
+// ─── Thread-Safe Time ───────────────────────────────────────────────────────
+// Replaces ImGui::GetTime() in background threads to avoid data races on
+// ImGuiContext::Time which is only written by the main (UI) thread.
+static const auto s_steadyEpoch = std::chrono::steady_clock::now();
+
+double VideoPlayer::GetSteadyTimeSec() {
+  auto now = std::chrono::steady_clock::now();
+  return std::chrono::duration<double>(now - s_steadyEpoch).count();
+}
 
 // ─── FFmpeg Custom IO ───────────────────────────────────────────────────────
 static int avioRead(void *opaque, uint8_t *buf, int buf_size) {
@@ -153,6 +165,25 @@ bool VideoPlayer::FinishOpen() {
   m_videoWidth = vStream->codecpar->width;
   m_videoHeight = vStream->codecpar->height;
 
+  // Read MPEG2 aspect_ratio_information via FFmpeg's parsed sample_aspect_ratio.
+  // GoW PSW/PSS are anamorphic 16:9: SAR is non-square, so the texture must be
+  // stretched horizontally on display. If SAR is missing/invalid, fall back to
+  // square pixels (display aspect = width/height).
+  AVRational sar = vStream->codecpar->sample_aspect_ratio;
+  if (sar.num <= 0 || sar.den <= 0) sar = vStream->sample_aspect_ratio;
+  if (sar.num > 0 && sar.den > 0) {
+    m_sarNum = sar.num;
+    m_sarDen = sar.den;
+    m_displayAspect = ((double)sar.num / (double)sar.den) *
+                      ((double)m_videoWidth / (double)m_videoHeight);
+  } else {
+    m_sarNum = 1;
+    m_sarDen = 1;
+    m_displayAspect = (double)m_videoWidth / (double)m_videoHeight;
+  }
+  LOG_INFO("[VideoPlayer] %dx%d SAR=%d:%d DAR=%.3f",
+           m_videoWidth, m_videoHeight, m_sarNum, m_sarDen, m_displayAspect);
+
   m_videoTimeBase = av_q2d(vStream->time_base);
   if (vStream->avg_frame_rate.num > 0) {
     m_frameDuration = av_q2d(av_inv_q(vStream->avg_frame_rate));
@@ -226,8 +257,8 @@ bool VideoPlayer::FinishOpen() {
     ma_device_start(&m_audioDevice);
   }
 
-  // Fallback timer
-  m_videoOnlyStartTime = ImGui::GetTime();
+  // Fallback timer (use steady_clock so it's safe from any thread)
+  m_videoOnlyStartTime = GetSteadyTimeSec();
 
   return true;
 }
@@ -280,11 +311,12 @@ void VideoPlayer::Play() {
   if (m_state == PlayState::Playing)
     return;
   m_state = PlayState::Playing;
+  m_needsRedraw = true;
   if (m_audioInit)
     ma_device_start(&m_audioDevice);
   if (!m_hasAudio) {
-    // Resume video-only clock
-    m_videoOnlyStartTime = ImGui::GetTime() - m_videoOnlyClock;
+    // Resume video-only clock (steady_clock for thread safety)
+    m_videoOnlyStartTime = GetSteadyTimeSec() - m_videoOnlyClock;
   }
 }
 
@@ -309,6 +341,11 @@ void VideoPlayer::SeekByte(int64_t targetByte) {
       m_duration > 0.0 ? ((double)targetByte / m_fileSize) * m_duration : 0.0;
   m_seekReq = true;
   m_forceFrameUpdate = true;
+  m_needsRedraw = true;
+
+  // Update byte position immediately so the slider reflects the new
+  // position without waiting for DemuxThread to demux a packet.
+  m_currentBytePos = targetByte;
 
   // Clear queues to unblock threads quickly
   m_videoPktQueue.clear();
@@ -323,7 +360,10 @@ void VideoPlayer::DemuxThread() {
   while (!m_stopThreads) {
     if (m_seekReq) {
       int64_t pos = m_seekTargetByte.load();
-      av_seek_frame(m_fmtCtx, -1, pos, AVSEEK_FLAG_BYTE);
+      // AVSEEK_FLAG_BACKWARD finds the nearest keyframe *before* the target,
+      // which lets the decoder produce output much faster than landing after
+      // a keyframe and having to wait for the next one.
+      av_seek_frame(m_fmtCtx, -1, pos, AVSEEK_FLAG_BYTE | AVSEEK_FLAG_BACKWARD);
 
       // Flush codecs
       if (m_videoCtx)
@@ -331,16 +371,20 @@ void VideoPlayer::DemuxThread() {
       if (m_audioCtx)
         avcodec_flush_buffers(m_audioCtx);
 
-      // Reset clocks
+      // Reset clocks (use steady_clock — safe from background thread)
       m_audioClock = 0.0;
       m_videoOnlyClock = 0.0;
-      m_videoOnlyStartTime = ImGui::GetTime();
+      m_videoOnlyStartTime = GetSteadyTimeSec();
 
       m_seekReq = false;
       continue;
     }
 
-    if (m_state == PlayState::Stopped) {
+    // Sleep when paused or stopped — no need to demux.
+    // EXCEPTION: if m_forceFrameUpdate is set (seek scrubbing while paused),
+    // we MUST keep demuxing so the decode thread can produce a preview frame.
+    if (m_state == PlayState::Stopped ||
+        (m_state == PlayState::Paused && !m_forceFrameUpdate.load())) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       continue;
     }
@@ -387,6 +431,15 @@ void VideoPlayer::VideoDecodeThread() {
     if (m_seekReq) {
       firstFrameSinceSeek = true;
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      continue;
+    }
+
+    // Sleep when paused — don't decode ahead needlessly.
+    // EXCEPTION: if m_forceFrameUpdate is set and no frames are available,
+    // keep decoding so the UI can display the seek scrub preview.
+    if (m_state == PlayState::Paused &&
+        (m_frameQueue.size() > 0 || !m_forceFrameUpdate.load())) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
       continue;
     }
 
@@ -457,6 +510,12 @@ void VideoPlayer::AudioDecodeThread() {
 
   while (!m_stopThreads) {
     if (m_seekReq || !m_hasAudio) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      continue;
+    }
+
+    // Sleep when paused — audio device is stopped, no point decoding
+    if (m_state == PlayState::Paused) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       continue;
     }
@@ -532,7 +591,9 @@ void VideoPlayer::AudioCallback(ma_device *pDevice, void *pOutput,
     double current = player->m_audioClock.load(std::memory_order_relaxed);
     player->m_audioClock.store(current + clockIncrement,
                                std::memory_order_relaxed);
-    player->m_lastAudioCallbackTime.store(ImGui::GetTime(),
+    // Use steady_clock instead of ImGui::GetTime() — this runs on the audio
+    // thread, not the UI thread, so ImGuiContext::Time would be a data race.
+    player->m_lastAudioCallbackTime.store(GetSteadyTimeSec(),
                                           std::memory_order_relaxed);
     player->m_isStarving.store(false, std::memory_order_relaxed);
   } else {
@@ -570,34 +631,48 @@ void VideoPlayer::UploadFrame(const FrameData &fd) {
 }
 
 void VideoPlayer::DrawVideo() {
-  double now = ImGui::GetTime();
+  // ─── Clock & A/V Sync ──────────────────────────────────────────────────
+  // Only run the sync loop when actually playing. When paused, the clocks
+  // are frozen and we just render the last-uploaded texture — no mutex
+  // contention, no GL uploads, no CPU burn.
 
-  // Update Fallback Clock
-  if (m_state == PlayState::Playing && !m_hasAudio) {
-    m_videoOnlyClock = now - m_videoOnlyStartTime;
-  }
-
-  // Interpolate Master Clock for microsecond smoothness instead of ~11ms audio
-  // chunks
-  double masterClock = 0.0;
-  if (m_hasAudio) {
-    masterClock = m_audioClock.load(std::memory_order_relaxed);
-    if (!m_isStarving.load(std::memory_order_relaxed) &&
-        m_state == PlayState::Playing) {
-      double timeSinceLast =
-          now - m_lastAudioCallbackTime.load(std::memory_order_relaxed);
-      // Protect against clock runaway if callback dies
-      if (timeSinceLast >= 0.0 && timeSinceLast < 0.1) {
-        masterClock += timeSinceLast;
-      }
-    }
-  } else {
-    masterClock = m_videoOnlyClock;
-  }
-  m_currentTime = masterClock + m_seekTimeOffset;
-
-  // A/V Sync Logic
   if (m_state == PlayState::Playing) {
+    // Use GetSteadyTimeSec so the clock source is consistent with the audio
+    // callback (which also writes m_lastAudioCallbackTime via steady_clock).
+    double now = GetSteadyTimeSec();
+
+    // Always update the fallback video-only clock so it's ready to take
+    // over seamlessly if audio starves (e.g. right after a seek).
+    m_videoOnlyClock = now - m_videoOnlyStartTime;
+
+    // Interpolate Master Clock for microsecond smoothness
+    double masterClock = 0.0;
+    if (m_hasAudio) {
+      masterClock = m_audioClock.load(std::memory_order_relaxed);
+      bool starving = m_isStarving.load(std::memory_order_relaxed);
+
+      if (!starving) {
+        // Audio is producing data — use audio clock with interpolation
+        double timeSinceLast =
+            now - m_lastAudioCallbackTime.load(std::memory_order_relaxed);
+        if (timeSinceLast >= 0.0 && timeSinceLast < 0.1) {
+          masterClock += timeSinceLast;
+        }
+        // Keep fallback clock in sync so handoff is seamless
+        m_videoOnlyStartTime = now - masterClock;
+        m_videoOnlyClock = masterClock;
+      } else {
+        // Audio is starving (e.g. right after seek, ring buffer empty).
+        // Fall back to the video-only clock so video doesn't freeze
+        // waiting for the audio pipeline to recover.
+        masterClock = m_videoOnlyClock;
+      }
+    } else {
+      masterClock = m_videoOnlyClock;
+    }
+    m_currentTime = masterClock + m_seekTimeOffset;
+
+    // A/V Sync: pop frames that are due or late
     bool hasDueFrame = false;
     FrameData latestDueFrame;
 
@@ -605,41 +680,48 @@ void VideoPlayer::DrawVideo() {
       double pts = m_frameQueue.front_pts();
       if (pts < 0.0)
         break;
-
-      // If the frame is from the future, stop popping and wait for next ImGui
-      // cycle
-      if (pts > masterClock) {
+      if (pts > masterClock)
         break;
-      }
 
-      // Frame is due or late. Pop it.
       m_frameQueue.pop(latestDueFrame);
       hasDueFrame = true;
     }
 
     if (hasDueFrame) {
       UploadFrame(latestDueFrame);
+      m_lastDisplayedPts = latestDueFrame.pts;
     }
   } else {
-    // Paused/Stopped - just grab one frame if a force-update was requested
-    // (e.g. from seek scrubbing)
-    if (m_forceFrameUpdate && m_frameQueue.size() > 0) {
+    // Paused/Stopped — update m_currentTime from frozen clocks + seek offset
+    // so the slider and time display reflect the correct seek position
+    // (otherwise the slider snaps back to the old position on release).
+    double frozenClock = m_hasAudio
+        ? m_audioClock.load(std::memory_order_relaxed)
+        : m_videoOnlyClock;
+    m_currentTime = frozenClock + m_seekTimeOffset;
+
+    // Process forced frame updates (seek scrubbing while paused)
+    if (m_forceFrameUpdate.load() && m_frameQueue.size() > 0) {
       FrameData fd;
       if (m_frameQueue.pop(fd)) {
         UploadFrame(fd);
+        m_lastDisplayedPts = fd.pts;
         m_forceFrameUpdate = false;
       }
     }
   }
 
-  // Draw ImGui Texture
+  // ─── Render Texture ────────────────────────────────────────────────────
   const ImVec2 avail = ImGui::GetContentRegionAvail();
   if (avail.x > 0 && avail.y > 0 && m_glTexture) {
-    const float aspect = (float)m_texH / (float)m_texW;
-    float drawW = avail.x, drawH = drawW * aspect;
+    const float darWH = m_displayAspect > 0.0
+                            ? (float)m_displayAspect
+                            : ((float)m_texW / (float)m_texH);
+    float drawW = avail.x;
+    float drawH = drawW / darWH;
     if (drawH > avail.y) {
       drawH = avail.y;
-      drawW = drawH / aspect;
+      drawW = drawH * darWH;
     }
 
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail.x - drawW) * 0.5f);
@@ -661,9 +743,7 @@ void VideoPlayer::DrawVideo() {
     ImGui::TextDisabled("%s", msg);
   }
 
-  // Info overlay moved to global Inspector
-
-  // Handle shortcuts if the window is focused/hovered
+  // ─── Keyboard Shortcuts ────────────────────────────────────────────────
   if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered()) {
     if (ImGui::IsKeyPressed(ImGuiKey_Space)) {
       if (m_state == PlayState::Playing)
@@ -690,30 +770,78 @@ void VideoPlayer::DrawVideo() {
   }
 }
 
-void VideoPlayer::DrawToolbar() {
+// ─── Control Bar (Footer) ─────────────────────────────────────────────────
+// Layout:
+//   Row 1: Timeline slider (full width)
+//   Row 2: [Play] [Stop]  00:12 / 01:30         [🔊] [━━━━━━━━]
+//
+void VideoPlayer::DrawControlBar() {
   if (!m_isOpen)
     return;
 
-  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-  ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                        ImVec4(0.25f, 0.25f, 0.30f, 0.90f));
+  // ─── Row 1: Timeline Slider (full width) ──────────────────────────────
+  float filePct =
+      m_fileSize > 0 ? (float)m_currentBytePos / (float)m_fileSize : 0.0f;
+  if (m_duration > 0.0 && m_duration < 1e9) {
+    filePct = (float)(m_currentTime / m_duration);
+  }
+  filePct = std::clamp(filePct, 0.0f, 1.0f);
 
-  if (m_state == PlayState::Playing) {
-    if (ImGui::SmallButton(ICON_SF_PAUSE_FILL " Pause"))
-      Pause();
-  } else {
-    if (ImGui::SmallButton(ICON_SF_PLAY_FILL " Play"))
+  if (m_sliderHeld)
+    filePct = m_sliderPreviewPos;
+
+  ImGui::SetNextItemWidth(-1); // Full width
+  if (ImGui::SliderFloat("##seek", &filePct, 0.0f, 1.0f, "")) {
+    // Handled in IsItemActive
+  }
+
+  if (ImGui::IsItemActive()) {
+    m_sliderHeld = true;
+    m_sliderPreviewPos = filePct;
+
+    // Throttled live-scrub via demux-seek (100ms debounce)
+    double now = ImGui::GetTime();
+    if (now - m_lastScrubTime > 0.1) {
+      SeekByte((int64_t)(filePct * m_fileSize));
+      m_lastScrubTime = now;
+    }
+  }
+  if (ImGui::IsItemDeactivatedAfterEdit()) {
+    m_sliderHeld = false;
+    SeekByte((int64_t)(filePct * m_fileSize));
+    if (m_state == PlayState::Stopped)
       Play();
   }
+
+  // ─── Row 2: Controls ──────────────────────────────────────────────────
+  ImGui::PushStyleColor(ImGuiCol_Button, GOW::Theme::ToolbarButton());
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                        GOW::Theme::ToolbarButtonHover());
+
+  // Play / Pause button (icon only, no text)
+  if (m_state == PlayState::Playing) {
+    if (GOW::UI::Widgets::SmallButton(ICON_SF_PAUSE_FILL "##play_pause"))
+      Pause();
+  } else {
+    if (GOW::UI::Widgets::SmallButton(ICON_SF_PLAY_FILL "##play_pause"))
+      Play();
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip(m_state == PlayState::Playing ? "Pause (Space)"
+                                                    : "Play (Space)");
+
   ImGui::SameLine();
 
+  // Stop button (icon only)
   bool canStop = (m_state != PlayState::Stopped);
   if (!canStop)
     ImGui::BeginDisabled();
-  if (ImGui::SmallButton(ICON_SF_STOP_FILL " Stop"))
+  if (GOW::UI::Widgets::SmallButton(ICON_SF_STOP_FILL "##stop"))
     Stop();
   if (!canStop)
     ImGui::EndDisabled();
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Stop");
 
   ImGui::SameLine();
   ImGui::TextDisabled("|");
@@ -733,7 +861,6 @@ void VideoPlayer::DrawToolbar() {
   };
 
   int curSec = (int)m_currentTime;
-
   if (m_duration > 0.0) {
     int durSec = (int)m_duration;
     ImGui::TextDisabled("%s / %s", formatTime(curSec).c_str(),
@@ -742,21 +869,36 @@ void VideoPlayer::DrawToolbar() {
     ImGui::TextDisabled("%s", formatTime(curSec).c_str());
   }
 
-  ImGui::SameLine();
+  // ─── Right-aligned: Mute + Volume ─────────────────────────────────────
+  // Calculate how much space mute icon + volume slider + spacing need
+  float muteW = ImGui::CalcTextSize(ICON_SF_SPEAKER_WAVE_2_FILL).x +
+                ImGui::GetStyle().FramePadding.x * 2.0f;
+  float volSliderW = 80.0f;
+  float spacing = ImGui::GetStyle().ItemSpacing.x;
+  float rightBlockW = muteW + spacing + volSliderW;
 
-  // Info toggle was migrated natively to global Inspector
-  ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 175.f);
+  float rightEdge = ImGui::GetContentRegionMax().x;
+  float targetX = rightEdge - rightBlockW;
+
+  // Only move if there's enough space (avoid overlap with time display)
+  float currentX = ImGui::GetCursorPosX();
+  if (targetX > currentX + spacing) {
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(targetX);
+  } else {
+    ImGui::SameLine();
+  }
 
   // Mute toggle
-  if (ImGui::SmallButton(m_muted ? ICON_SF_SPEAKER_SLASH_FILL
-                                 : ICON_SF_SPEAKER_WAVE_2_FILL))
+  if (GOW::UI::Widgets::SmallButton(m_muted ? ICON_SF_SPEAKER_SLASH_FILL "##mute"
+                                            : ICON_SF_SPEAKER_WAVE_2_FILL "##mute"))
     m_muted = !m_muted;
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Mute");
 
   // Volume slider
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(80.0f);
+  ImGui::SetNextItemWidth(volSliderW);
   float volPercent = m_volume * 100.0f;
   if (ImGui::SliderFloat("##volume", &volPercent, 0.0f, 150.0f, "%.0f%%")) {
     m_volume = volPercent / 100.0f;
@@ -765,58 +907,16 @@ void VideoPlayer::DrawToolbar() {
     ImGui::SetTooltip("Volume (Up/Down Arrow)");
 
   ImGui::PopStyleColor(2);
-  ImGui::SameLine();
-  ImGui::TextDisabled("|");
-  ImGui::SameLine();
-
-  // ─── Byte-Position Slider ───────────────────────────────────────────────
-  // PSS files sometimes have unknown duration
-  float filePct =
-      m_fileSize > 0 ? (float)m_currentBytePos / (float)m_fileSize : 0.0f;
-  if (m_duration > 0.0) {
-    filePct = m_currentTime / m_duration;
-  }
-
-  if (m_sliderHeld)
-    filePct = m_sliderPreviewPos;
-
-  float rightW =
-      ImGui::CalcTextSize("100%").x + ImGui::GetStyle().ItemSpacing.x * 2.0f;
-  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - rightW);
-
-  if (ImGui::SliderFloat("##seek", &filePct, 0.0f, 1.0f, "")) {
-    // Handled in IsItemActive
-  }
-
-  if (ImGui::IsItemActive()) {
-    m_sliderHeld = true;
-    m_sliderPreviewPos = filePct;
-
-    // Throttled live-scrub via demux-seek
-    double now = ImGui::GetTime();
-    if (now - m_lastScrubTime > 0.1) { // 100ms debounce
-      SeekByte((int64_t)(filePct * m_fileSize));
-      m_lastScrubTime = now;
-    }
-  }
-  if (ImGui::IsItemDeactivatedAfterEdit()) {
-    m_sliderHeld = false;
-    SeekByte((int64_t)(filePct * m_fileSize));
-    if (m_state == PlayState::Stopped)
-      Play();
-  }
-
-  ImGui::SameLine();
-  ImGui::TextDisabled("%3.0f%%", filePct * 100.0f);
 }
 
-void VideoPlayer::DrawInspector(AppContext &ctx) {
+void VideoPlayer::DrawInspector() {
   ImGui::TextWrapped("File: %s", m_name.c_str());
   ImGui::Separator();
 
   if (ImGui::CollapsingHeader("Video Stream", ImGuiTreeNodeFlags_DefaultOpen)) {
     ImGui::Text("Codec: %s", m_videoCodecName.c_str());
-    ImGui::Text("Resolution: %dx%d", m_videoWidth, m_videoHeight);
+    ImGui::Text("Resolution: %dx%d (SAR %d:%d, DAR %.2f)", m_videoWidth,
+                m_videoHeight, m_sarNum, m_sarDen, m_displayAspect);
     ImGui::Text("File FPS: %.2f FPS", m_fps);
     ImGui::Text("App Render: %.1f FPS", ImGui::GetIO().Framerate);
     ImGui::Text("Time Base: %.5f", m_videoTimeBase);
@@ -843,10 +943,29 @@ void VideoPlayer::DrawInspector(AppContext &ctx) {
   }
 }
 
+// ─── Main Draw ──────────────────────────────────────────────────────────────
+// Layout: Video area fills all available space, control bar sits at the bottom.
 void VideoPlayer::Draw() {
-  DrawToolbar();
-  ImGui::Separator();
+  // Reserve space for the control bar at the bottom:
+  //   Row 1 (timeline slider): ~frame height
+  //   Row 2 (buttons + volume): ~frame height
+  //   + spacing + separator
+  const float frameH = ImGui::GetFrameHeight();
+  const float spacing = ImGui::GetStyle().ItemSpacing.y;
+  const float controlBarH = frameH * 2.0f + spacing * 3.0f;
+
+  // Video area: fill everything except what the control bar needs
+  ImVec2 avail = ImGui::GetContentRegionAvail();
+  float videoH = avail.y - controlBarH - spacing;
+  if (videoH < 50.0f)
+    videoH = 50.0f; // minimum video area
+
+  ImGui::BeginChild("##video_area", ImVec2(0, videoH), false);
   DrawVideo();
+  ImGui::EndChild();
+
+  ImGui::Separator();
+  DrawControlBar();
 }
 
 } // namespace GOW

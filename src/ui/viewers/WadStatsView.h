@@ -8,7 +8,7 @@
 /// Displays: asset type distribution, size breakdown, and top entries.
 class WadStatsView : public IPanel {
 public:
-    void draw(AppContext& ctx) override;
+    void Draw() override;
     std::string_view getName() const override { return "WAD Stats"; }
 
 private:
@@ -18,7 +18,7 @@ private:
         uint64_t    totalSize = 0;
     };
 
-    void computeStats(AppContext& ctx);
+    void computeStats();
 
     std::vector<TypeStat> m_stats;
     size_t                m_lastWadCount = 0;

@@ -1,5 +1,7 @@
 #include "SoundPlayer.h"
 #include "core/Logger.h"
+#include "core/ThemeManager.h"
+#include "ui/Widgets.h"
 #include "core/audio/AdpcmDecoder.h"
 #include "fonts/SFSymbols.h"
 #include <algorithm>
@@ -215,17 +217,16 @@ void SoundPlayer::Draw() {
 }
 
 void SoundPlayer::DrawToolbar() {
-  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.18f, 0.85f));
-  ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                        ImVec4(0.25f, 0.25f, 0.3f, 0.9f));
+  ImGui::PushStyleColor(ImGuiCol_Button, GOW::Theme::ToolbarButton());
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, GOW::Theme::ToolbarButtonHover());
 
   bool hasSound = !m_decodedPcm.empty();
 
   if (hasSound && m_state != PlayState::Playing) {
-    if (ImGui::SmallButton(ICON_SF_PLAY_FILL))
+    if (GOW::UI::Widgets::SmallButton(ICON_SF_PLAY_FILL))
       Play();
   } else if (m_state == PlayState::Playing) {
-    if (ImGui::SmallButton(ICON_SF_PAUSE_FILL))
+    if (GOW::UI::Widgets::SmallButton(ICON_SF_PAUSE_FILL))
       Pause();
   } else {
     ImGui::BeginDisabled();
@@ -235,7 +236,7 @@ void SoundPlayer::DrawToolbar() {
 
   ImGui::SameLine();
   if (hasSound && m_state != PlayState::Stopped) {
-    if (ImGui::SmallButton(ICON_SF_STOP_FILL))
+    if (GOW::UI::Widgets::SmallButton(ICON_SF_STOP_FILL))
       Stop();
   } else {
     ImGui::BeginDisabled();
