@@ -201,8 +201,11 @@ bool ProfileGOWR::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
 
     LOG_INFO("[GOWR] Parsed WAD: %u entries → %zu root nodes.",
         header.fileCount, outWad.entries.size());
-        
-    // Kick off background TexPack indexing (GetTexIndex spawns thread internally)
+
+    // Kick off parallel TexPack indexing in the background. The call itself
+    // returns immediately — fan-out happens inside LoadFromGameRoot via
+    // TaskManager. By the time the user clicks a texture, most packs are
+    // already indexed.
     GetTexIndex();
 
     return true;

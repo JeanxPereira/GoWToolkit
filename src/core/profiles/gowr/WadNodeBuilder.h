@@ -42,7 +42,6 @@ private:
         uint16_t     group       = 0;
         uint16_t     type        = 0;
         uint8_t      blockBitSet = 0;
-        std::string  schemaType;
 
         // Derived / builder state
         WadEntryRole role        = WadEntryRole::Unknown;
@@ -83,7 +82,6 @@ private:
     // Build a synthetic virtual folder node (block, shader group, FX group, etc.)
     ParsedEntry MakeFolder(
         const std::string& name,
-        const std::string& schemaType,
         WadEntryRole       role,
         WadBlock           block = WadBlock::Unknown) const;
 

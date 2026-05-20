@@ -149,7 +149,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
         entry.typeId = handler ? handler->GetId() : TypeId::Unknown;
 
         // Set schema string for UI display
-        entry.schemaType = TypeIdToSchemaString(GameVersion::GOW2, entry.typeId);
+
 
         // Fallback type resolution for types not yet in TypeRegistry
         if (entry.typeId == TypeId::Unknown) {
@@ -157,31 +157,35 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
             if (dotPos != std::string::npos) {
                 std::string ext = entry.name.substr(dotPos + 1);
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
-                entry.schemaType = "GOW2_" + ext;
+
                 if      (ext == "WAD") { entry.typeId = TypeId::WadFile; }
                 else if (ext == "VAG") { entry.typeId = TypeId::VagAudio; }
                 else if (ext == "VPK" || ext == "VP1") { entry.typeId = TypeId::VpkVideo; }
                 else if (ext == "PSS") { entry.typeId = TypeId::PssVideo; }
                 else if (ext == "PSW") { entry.typeId = TypeId::PswVideo; }
+                else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
+                         ext == "CSV" || ext == "JSON" || ext == "LOG") {
+                    entry.typeId = TypeId::TextPlain;
+                }
             } else {
                 std::string nameLower = entry.name;
                 std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
                 if (nameLower.find("pal_") == 0) {
                     entry.typeId = TypeId::PalData;
-                    entry.schemaType = "GOW2_PAL";
+
                 } else {
                     if (rawTag.size >= 4) {
                         uint32_t magic;
                         std::memcpy(&magic, payloadMagic, 4);
                         if ((magic & 0x80000000) != 0) {
                             entry.typeId = TypeId::Chunk;
-                            entry.schemaType = "GOW2_CHUNK";
+
                         } else {
-                            entry.schemaType = "GOW2_UNKNOWN";
+
                             LOG_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u magic=0x%08X", entry.name.c_str(), rawTag.size, magic);
                         }
                     } else {
-                        entry.schemaType = "GOW2_UNKNOWN";
+
                         LOG_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u (no magic)", entry.name.c_str(), rawTag.size);
                     }
                 }
@@ -197,7 +201,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
                 entry.typeId  = it->second.typeId;
                 entry.offset  = it->second.offset;
                 entry.size    = it->second.size;
-                entry.schemaType = TypeIdToSchemaString(GameVersion::GOW2, entry.typeId);
+
             }
         } else if (rawTag.size > 0 && !entry.name.empty()) {
             // Cache real definitions for reference resolution above
@@ -236,7 +240,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
                     n.typeId = it->second.typeId;
                     n.offset = it->second.offset;
                     n.size   = it->second.size;
-                    n.schemaType = TypeIdToSchemaString(GameVersion::GOW2, n.typeId);
+
                     n.kind = KindOf(n.typeId);
                 }
             }
@@ -257,19 +261,23 @@ static void assignSchemaType(ParsedEntry& entry) {
         std::string ext = entry.name.substr(dot + 1);
         std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
 
-        if      (ext == "MDL") { entry.typeId = GOW::TypeId::Model;    entry.schemaType = "GOW2_MDL"; }
-        else if (ext == "TXR") { entry.typeId = GOW::TypeId::Texture;  entry.schemaType = "GOW2_TXR"; }
-        else if (ext == "ANM") { entry.typeId = GOW::TypeId::Animation; entry.schemaType = "GOW2_ANM"; }
-        else if (ext == "WAD") { entry.typeId = GOW::TypeId::WadFile;  entry.schemaType = "GOW2_WAD_FILE"; }
-        else if (ext == "VAG") { entry.typeId = GOW::TypeId::VagAudio; entry.schemaType = "GOW2_VAG"; }
+        if      (ext == "MDL") { entry.typeId = GOW::TypeId::Model;    }
+        else if (ext == "TXR") { entry.typeId = GOW::TypeId::Texture;  }
+        else if (ext == "ANM") { entry.typeId = GOW::TypeId::Animation; }
+        else if (ext == "WAD") { entry.typeId = GOW::TypeId::WadFile;  }
+        else if (ext == "VAG") { entry.typeId = GOW::TypeId::VagAudio; }
         else if (ext == "VPK" || ext == "VP1" || ext == "VP2" ||
                  ext == "VP3" || ext == "VP4")
-                              { entry.typeId = GOW::TypeId::VpkVideo; entry.schemaType = "GOW2_VPK"; }
-        else if (ext == "PSS") { entry.typeId = GOW::TypeId::PssVideo; entry.schemaType = "GOW2_PSS"; }
-        else if (ext == "PSW") { entry.typeId = GOW::TypeId::PswVideo; entry.schemaType = "GOW2_PSW"; }
-        else                   { entry.schemaType = "UNKNOWN"; }
-    } else {
-        entry.schemaType = "UNKNOWN";
+                              { entry.typeId = GOW::TypeId::VpkVideo; }
+        else if (ext == "PSS") { entry.typeId = GOW::TypeId::PssVideo; }
+        else if (ext == "PSW") { entry.typeId = GOW::TypeId::PswVideo; }
+        else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
+                 ext == "CSV" || ext == "JSON" || ext == "LOG")
+                              { entry.typeId = GOW::TypeId::TextPlain; }
+
+        if (entry.typeId == GOW::TypeId::Unknown) {
+            // Unhandled extension
+        }
     }
     entry.kind = KindOf(entry.typeId);
 }

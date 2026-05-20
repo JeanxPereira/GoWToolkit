@@ -73,6 +73,7 @@ constexpr MediaKind KindOf(TypeId id) {
 
         // Script
         case TypeId::Script:
+        case TypeId::TextPlain:
             return MediaKind::Script;
 
         // Map / Scene

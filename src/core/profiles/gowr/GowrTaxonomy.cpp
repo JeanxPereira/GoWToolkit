@@ -12,12 +12,13 @@
 //   ""            -> Internal / runtime (DCClientGUID, autopad, PopHeap, ...)
 //
 // Shaders may also appear as bare hex hashes without a prefix:
-//   "a41955a3abdbf109_ps_30000207---2447"
-//   -> base = "a41955a3abdbf109", variant = "ps_30000207", wadIndex = 2447
-
-#include "WadTypes.h"
+#include "core/profiles/gowr/GowrTaxonomy.h"
 #include <charconv>
 #include <array>
+#include <vector>
+
+namespace GOW {
+namespace Gowr {
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -166,3 +167,6 @@ std::string WadAssetName::CanonicalName() const {
     if (!variant.empty()) { out += '_'; out += variant; }
     return out;
 }
+
+} // namespace Gowr
+} // namespace GOW

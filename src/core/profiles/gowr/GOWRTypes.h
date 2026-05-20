@@ -50,8 +50,8 @@ static_assert(sizeof(GOWRFileDesc) == 0x90, "GOWRFileDesc must be 144 bytes");
 static_assert(sizeof(GOWRWadHeader) == 64,  "GOWRWadHeader must be 64 bytes");
 
 // ── Type string mapping ────────────────────────────────────────────────────
-// Maps the 16-bit type field from GOWRFileDesc to a human-readable schema type string.
-// Used by WadNodeBuilder to populate ParsedEntry::schemaType.
+// Maps the 16-bit type field from GOWRFileDesc to a human-readable string.
+// Used for debug logging and display within the GOWR profile.
 
 inline std::string GOWRTypeToString(uint16_t type) {
     switch (type) {

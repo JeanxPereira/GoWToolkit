@@ -231,7 +231,7 @@ set(PARSER_MIN_SOURCES
     src/core/Logger.cpp
     src/core/Metrics.cpp
     src/core/Threading.cpp
-    src/core/WadAssetName.cpp
+    src/core/profiles/gowr/GowrTaxonomy.cpp
     src/core/profiles/gow2/ProfileGOW2.cpp
     src/core/profiles/gow2/formats/MDL.cpp
     src/core/profiles/gowr/ProfileGOWR.cpp

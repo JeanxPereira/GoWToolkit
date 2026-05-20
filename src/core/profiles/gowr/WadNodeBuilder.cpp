@@ -1,4 +1,5 @@
 #include "WadNodeBuilder.h"
+#include "core/profiles/gowr/GowrProfileTag.h"
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -8,6 +9,13 @@
 // See WadNodeBuilder.h for architecture overview.
 
 namespace GOW {
+
+static Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
+    if (auto* t = e.profileTag.As<Gowr::GowrProfileTag>()) {
+        return t->role;
+    }
+    return Gowr::WadEntryRole::Unknown;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Public entry point
@@ -32,7 +40,6 @@ void WadNodeBuilder::Build(
         r.group       = descs[i].group;
         r.type        = descs[i].type;
         r.blockBitSet = descs[i].blockBitSet;
-        r.schemaType  = GOWRTypeToString(descs[i].type);
         m_entries.push_back(std::move(r));
     }
 
@@ -276,7 +283,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
     // ── MANIFEST ──────────────────────────────────────────────────────────
     {
         ParsedEntry manifestFolder = MakeFolder(
-            "Manifest", "GOWR_BLOCK_MANIFEST",
+            "Manifest",
             WadEntryRole::ManifestBlock, WadBlock::Manifest);
 
         for (auto& e : m_entries) {
@@ -297,23 +304,23 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
     // ── SHADERS ───────────────────────────────────────────────────────────
     {
         ParsedEntry shadersFolder = MakeFolder(
-            "Shaders", "GOWR_BLOCK_SHADERS",
+            "Shaders",
             WadEntryRole::ShaderBlock, WadBlock::Shaders);
 
         ParsedEntry vsFolder = MakeFolder(
-            "[Vertex Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+            "[Vertex Shaders]", WadEntryRole::ShaderGroup);
         ParsedEntry psFolder = MakeFolder(
-            "[Pixel Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+            "[Pixel Shaders]", WadEntryRole::ShaderGroup);
         ParsedEntry hsFolder = MakeFolder(
-            "[Hull Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+            "[Hull Shaders]", WadEntryRole::ShaderGroup);
         ParsedEntry dsFolder = MakeFolder(
-            "[Domain Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+            "[Domain Shaders]", WadEntryRole::ShaderGroup);
         ParsedEntry csFolder = MakeFolder(
-            "[Compute Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+            "[Compute Shaders]", WadEntryRole::ShaderGroup);
         ParsedEntry lsFolder = MakeFolder(
-            "[Library Shaders]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+            "[Library Shaders]", WadEntryRole::ShaderGroup);
         ParsedEntry containerFolder = MakeFolder(
-            "[Containers]", "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+            "[Containers]", WadEntryRole::ShaderGroup);
 
         // Group VS by prefix before _vs_; PS by prefix before _ps_, etc
         std::map<std::string, ParsedEntry> vsGroups;
@@ -333,7 +340,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
                                    ? e.name.substr(0, pos)
                                    : e.name;
                 if (vsGroups.find(prefix) == vsGroups.end())
-                    vsGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP",
+                    vsGroups[prefix] = MakeFolder(prefix,
                                                   WadEntryRole::ShaderGroup);
                 vsGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
 
@@ -343,7 +350,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
                                    ? e.name.substr(0, pos)
                                    : e.name;
                 if (psGroups.find(prefix) == psGroups.end())
-                    psGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP",
+                    psGroups[prefix] = MakeFolder(prefix,
                                                   WadEntryRole::ShaderGroup);
                 psGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
 
@@ -351,28 +358,28 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
                 auto pos    = e.name.find("_hs_");
                 std::string prefix = (pos != std::string::npos) ? e.name.substr(0, pos) : e.name;
                 if (hsGroups.find(prefix) == hsGroups.end())
-                    hsGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+                    hsGroups[prefix] = MakeFolder(prefix, WadEntryRole::ShaderGroup);
                 hsGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
 
             } else if (e.role == WadEntryRole::ShaderDomain) {
                 auto pos    = e.name.find("_ds_");
                 std::string prefix = (pos != std::string::npos) ? e.name.substr(0, pos) : e.name;
                 if (dsGroups.find(prefix) == dsGroups.end())
-                    dsGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+                    dsGroups[prefix] = MakeFolder(prefix, WadEntryRole::ShaderGroup);
                 dsGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
 
             } else if (e.role == WadEntryRole::ShaderCompute) {
                 auto pos    = e.name.find("_cs_");
                 std::string prefix = (pos != std::string::npos) ? e.name.substr(0, pos) : e.name;
                 if (csGroups.find(prefix) == csGroups.end())
-                    csGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+                    csGroups[prefix] = MakeFolder(prefix, WadEntryRole::ShaderGroup);
                 csGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
 
             } else if (e.role == WadEntryRole::ShaderLibrary) {
                 auto pos    = e.name.find("_ls_");
                 std::string prefix = (pos != std::string::npos) ? e.name.substr(0, pos) : e.name;
                 if (lsGroups.find(prefix) == lsGroups.end())
-                    lsGroups[prefix] = MakeFolder(prefix, "GOWR_SHADER_GROUP", WadEntryRole::ShaderGroup);
+                    lsGroups[prefix] = MakeFolder(prefix, WadEntryRole::ShaderGroup);
                 lsGroups[prefix].children.push_back(ToNode(e, m_wadFilename));
 
             } else if (e.role == WadEntryRole::ShaderContainer) {
@@ -416,11 +423,11 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
     // ── ASSETS ────────────────────────────────────────────────────────────
     {
         ParsedEntry assetsFolder = MakeFolder(
-            "Assets", "GOWR_BLOCK_ASSETS",
+            "Assets",
             WadEntryRole::AssetBlock, WadBlock::Assets);
 
         ParsedEntry lodFolder = MakeFolder(
-            "[LOD Bindings]", "GOWR_LOD_BINDING_TABLE",
+            "[LOD Bindings]",
             WadEntryRole::LodBinding, WadBlock::Assets);
 
         for (auto& e : m_entries) {
@@ -430,8 +437,11 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
                 // TexturePair flat node — GPU + CPU sub-entries are internal
                 // streaming plumbing with no standalone view, so we hide them.
                 ParsedEntry pairNode = ToNode(e, m_wadFilename);
-                pairNode.role        = WadEntryRole::TexturePair;
-                pairNode.schemaType  = "GOWR_TEXTURE_PAIR";
+                if (auto* t = pairNode.profileTag.As<Gowr::GowrProfileTag>()) {
+                    auto newTag = *t;
+                    newTag.role = WadEntryRole::TexturePair;
+                    pairNode.profileTag = GOW::ProfileTag::Of(newTag);
+                }
                 pairNode.displayName = StripTextureHash(e.name);
                 assetsFolder.children.push_back(std::move(pairNode));
 
@@ -462,7 +472,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
     // belong to that context.
     {
         ParsedEntry particlesFolder = MakeFolder(
-            "Particles", "GOWR_BLOCK_PARTICLES",
+            "Particles",
             WadEntryRole::ParticleBlock, WadBlock::Particles);
 
         // Collect indices of non-consumed Particle block entries in order
@@ -483,7 +493,6 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
 
                 ParsedEntry fxGroup = MakeFolder(
                     ctx.empty() ? ("FX_" + e.name) : ctx,
-                    "GOWR_FX_GROUP",
                     WadEntryRole::FxGroup, WadBlock::Particles);
 
                 for (size_t k = groupStart; k <= pi; ++k)
@@ -534,11 +543,11 @@ void WadNodeBuilder::Pass4_Finalize(OpenWad& outWad) {
     for (auto& blockNode : outWad.entries) {
 
         // ── Manifest: already in order; no sort needed ─────────────────
-        if (blockNode.role == WadEntryRole::ManifestBlock)
+        if (GetRole(blockNode) == WadEntryRole::ManifestBlock)
             continue;
 
         // ── Shaders: sort groups alphabetically ─────────────────────
-        if (blockNode.role == WadEntryRole::ShaderBlock) {
+        if (GetRole(blockNode) == WadEntryRole::ShaderBlock) {
             for (auto& subFolder : blockNode.children) {
                 if (subFolder.name == "[Vertex Shaders]" ||
                     subFolder.name == "[Pixel Shaders]" ||
@@ -566,11 +575,11 @@ void WadNodeBuilder::Pass4_Finalize(OpenWad& outWad) {
         }
 
         // ── Assets: textures → materials → mesh/model → gameobj → audio ─
-        if (blockNode.role == WadEntryRole::AssetBlock) {
+        if (GetRole(blockNode) == WadEntryRole::AssetBlock) {
             std::stable_sort(blockNode.children.begin(), blockNode.children.end(),
                 [](const ParsedEntry& a, const ParsedEntry& b) {
-                    int ka = AssetSortKey(a.role);
-                    int kb = AssetSortKey(b.role);
+                    int ka = AssetSortKey(GetRole(a));
+                    int kb = AssetSortKey(GetRole(b));
                     if (ka != kb) return ka < kb;
                     // Within same category: sort by display name (falling back to name)
                     const std::string& na = a.displayName.empty() ? a.name : a.displayName;
@@ -581,7 +590,7 @@ void WadNodeBuilder::Pass4_Finalize(OpenWad& outWad) {
         }
 
         // ── Particles: FX groups sorted alphabetically ─────────────────
-        if (blockNode.role == WadEntryRole::ParticleBlock) {
+        if (GetRole(blockNode) == WadEntryRole::ParticleBlock) {
             std::sort(blockNode.children.begin(), blockNode.children.end(),
                 [](const ParsedEntry& a, const ParsedEntry& b) {
                     // Folders before singletons
@@ -592,7 +601,7 @@ void WadNodeBuilder::Pass4_Finalize(OpenWad& outWad) {
                 });
             // Within each FxGroup: emitters → systems → material refs → protos → insts
             for (auto& fxGroup : blockNode.children) {
-                if (fxGroup.role == WadEntryRole::FxGroup) {
+                if (GetRole(fxGroup) == WadEntryRole::FxGroup) {
                     std::stable_sort(fxGroup.children.begin(), fxGroup.children.end(),
                         [](const ParsedEntry& a, const ParsedEntry& b) {
                             auto fxKey = [](WadEntryRole r) {
@@ -605,7 +614,7 @@ void WadNodeBuilder::Pass4_Finalize(OpenWad& outWad) {
                                     default:                               return 5;
                                 }
                             };
-                            return fxKey(a.role) < fxKey(b.role);
+                            return fxKey(GetRole(a)) < fxKey(GetRole(b));
                         });
                 }
             }
@@ -654,30 +663,34 @@ ParsedEntry WadNodeBuilder::ToNode(const RawEntry& r, const std::string& wadFile
     e.name        = r.name;
     e.size        = r.size;
     e.offset      = r.offset;
-    e.schemaType  = r.schemaType;
     e.wadName     = wadFilename;
-    e.role        = r.role;
     e.typeId      = RoleToTypeId(r.role);
     e.kind        = KindOf(e.typeId);
     e.displayName = r.displayName;
+    e.profileTag  = GOW::ProfileTag::Of(Gowr::GowrProfileTag{
+        r.role,
+        r.block,
+        GOW::Gowr::WadAssetName::Parse(r.name)
+    });
     return e;
 }
 
 ParsedEntry WadNodeBuilder::MakeFolder(
     const std::string& name,
-    const std::string& schemaType,
     WadEntryRole       role,
     WadBlock           block) const
 {
     ParsedEntry f;
     f.name       = name;
-    f.schemaType = schemaType;
-    f.role       = role;
-    f.block      = block;
+    f.typeId     = RoleToTypeId(role);
     f.wadName    = m_wadFilename;
     f.offset     = 0;
-    f.typeId     = RoleToTypeId(role);
     f.kind       = KindOf(f.typeId);
+    f.profileTag = GOW::ProfileTag::Of(Gowr::GowrProfileTag{
+        role,
+        block,
+        GOW::Gowr::WadAssetName::Parse(name)
+    });
     return f;
 }
 
