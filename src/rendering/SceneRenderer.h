@@ -57,7 +57,7 @@ public:
                            const std::vector<std::unique_ptr<TextureData>>& textures);
 
     /// Render all batches with the specified shading mode
-    void Render(const glm::mat4& view, const glm::mat4& proj, ShadingMode mode);
+    void Render(const glm::mat4& view, const glm::mat4& proj, ShadingMode mode, int viewportW, int viewportH);
 
     /// Render sky batches with rotation-only view matrix, then clear depth.
     /// Call this BEFORE Render() for the main scene.
@@ -129,6 +129,19 @@ private:
     // Animation
     std::shared_ptr<AnimationData>      m_animData;
     std::unique_ptr<AnimationPlayer>    m_animPlayer;
+    // Tracks the player time we've last reflected into m_jointPalette so we
+    // can detect external SetTime/SetFrame calls while paused and rebuild.
+    float                               m_lastAppliedAnimTime = -1.0f;
+
+    // Screen-space outline (Blender-style)
+    GLuint m_maskFbo = 0;
+    GLuint m_maskTex = 0;       // R8 single-channel mask
+    GLuint m_maskDepth = 0;     // depth renderbuffer for mask pass
+    int    m_maskW = 0, m_maskH = 0;
+
+    void EnsureMaskFBO(int w, int h);
+    void RenderOutlineScreenSpace(const glm::mat4& view, const glm::mat4& proj,
+                                  int viewportW, int viewportH);
 };
 
 } // namespace GOW

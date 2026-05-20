@@ -4,6 +4,7 @@
 #include "rendering/GridRenderer.h"
 #include "rendering/SceneRenderer.h"
 #include "rendering/ShaderManager.h"
+#include "rendering/AxisGizmo.h"
 #include "core/parsers/shared/MeshData.h"
 #include "core/parsers/shared/TextureData.h"
 #include "core/parsers/shared/SceneNode.h"
@@ -21,12 +22,21 @@ public:
 
     std::string GetName() const override;
     void Draw() override;
-    void DrawInspector(AppContext& ctx) override;
+    void DrawInspector() override;
+    Viewport3D* GetEmbeddedViewport() override { return this; }
 
     // Load mesh data into the viewport (routes through SceneRenderer)
     void LoadFromMeshData(const MeshData& data, const std::vector<std::unique_ptr<TextureData>>& textures = {});
     void LoadScene(std::unique_ptr<SceneData> scene);
     void ClearScene();
+
+    // Accessors for the CameraPanel (renders camera tuning UI as a dock tab
+    // next to Inspector).
+    Camera&            GetCamera()  { return m_camera; }
+    SceneRenderer*     GetSceneRenderer() const { return m_sceneRenderer.get(); }
+    int                GetFboWidth()  const { return m_fboWidth; }
+    int                GetFboHeight() const { return m_fboHeight; }
+    void               RequestRedraw()       { m_needsRedraw = true; }
 
     // Render settings
     bool showGrid       = true;
@@ -48,11 +58,13 @@ private:
     void ResizeFBO(int width, int height);
     void DrawToolbar(ImVec2 avail, ImVec2 cursorPos);
     void DrawObjectList(ImVec2 avail, ImVec2 cursorPos);
+    void DrawTransportBar();  // bottom strip with anim transport + timeline
     void HandleInput();
 
     std::string m_name;
     Camera m_camera;
     GridRenderer m_grid;
+    AxisGizmo m_axisGizmo;
 
     // Unified scene renderer — all content goes through here
     std::unique_ptr<SceneRenderer> m_sceneRenderer;

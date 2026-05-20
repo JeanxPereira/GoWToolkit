@@ -4,6 +4,12 @@
 #include <glad/glad.h>
 #include <imgui.h>
 #include "core/AppConfig.h"
+#include "core/ThemeManager.h"
+#include "fonts/SFSymbols.h"
+#include "ui/CameraPanel.h"
+#include "ui/Widgets.h"
+#include "ui/AnimationTimeline.h"
+#include "ui/ActiveAnimation.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace GOW {
@@ -13,6 +19,13 @@ Viewport3D::Viewport3D(const std::string& name) : m_name(name) {
 }
 
 Viewport3D::~Viewport3D() {
+    // Tear down active-anim broker if we set ourselves as the publisher;
+    // otherwise downstream panels (Anim Curves / Dopesheet) keep a dangling
+    // pointer into a freed AnimationPlayer.
+    if (m_sceneRenderer &&
+        GOW::UI::GetActiveAnimationPlayer() == m_sceneRenderer->GetAnimPlayer()) {
+        GOW::UI::SetActiveAnimationPlayer(nullptr);
+    }
     ClearScene();
 
     if (m_msaaFbo) glDeleteFramebuffers(1, &m_msaaFbo);
@@ -26,6 +39,10 @@ Viewport3D::~Viewport3D() {
 std::string Viewport3D::GetName() const { return m_name; }
 
 void Viewport3D::ClearScene() {
+    if (m_sceneRenderer &&
+        GOW::UI::GetActiveAnimationPlayer() == m_sceneRenderer->GetAnimPlayer()) {
+        GOW::UI::SetActiveAnimationPlayer(nullptr);
+    }
     m_sceneRenderer.reset();
     m_sceneData.reset();
     m_needsRedraw = true;
@@ -103,7 +120,19 @@ void Viewport3D::Draw() {
     ImVec2 avail = ImGui::GetContentRegionAvail();
     if (avail.x <= 0 || avail.y <= 0) return;
 
-    ResizeFBO((int)avail.x, (int)avail.y);
+    // Reserve a strip at the bottom of the viewport for the animation
+    // transport (only when a clip is loaded). Image render area shrinks
+    // by that height so the bar lives directly under the 3D scene.
+    GOW::AnimationPlayer* transportPlayer =
+        m_sceneRenderer ? m_sceneRenderer->GetAnimPlayer() : nullptr;
+    const bool hasTransport =
+        transportPlayer && transportPlayer->GetCurrentActIndex() >= 0 &&
+        transportPlayer->GetFrameCount() > 0;
+    const float transportHeight = hasTransport ? 86.0f : 0.0f;
+
+    ImVec2 viewSize(avail.x, std::max(50.0f, avail.y - transportHeight));
+
+    ResizeFBO((int)viewSize.x, (int)viewSize.y);
 
     // ── Animation update (every frame, regardless of redraw) ─────────
     float currentTime = (float)ImGui::GetTime();
@@ -111,6 +140,9 @@ void Viewport3D::Draw() {
     m_lastFrameTime = currentTime;
 
     if (m_sceneRenderer && m_sceneRenderer->UpdateAnimation(dt)) {
+        m_needsRedraw = true;
+    }
+    if (m_camera.UpdateAnimation(dt)) {
         m_needsRedraw = true;
     }
 
@@ -165,7 +197,7 @@ void Viewport3D::Draw() {
                 m_sceneRenderer->RenderSky(view, proj, shadingMode);
             }
             
-            m_sceneRenderer->Render(view, proj, shadingMode);
+            m_sceneRenderer->Render(view, proj, shadingMode, m_fboWidth, m_fboHeight);
 
             if (showBones && m_sceneRenderer->HasSkeleton()) {
                 m_sceneRenderer->RenderSkeleton(view, proj);
@@ -180,7 +212,7 @@ void Viewport3D::Draw() {
             glDepthMask(GL_FALSE);
             // Allow grid lines to render if exactly coplanar
             glDepthFunc(GL_LEQUAL);
-            m_grid.Draw(view, proj, gridColor);
+            m_grid.Draw(view, proj, m_camera.GetPosition(), gridColor, 1.0f);
             glDepthFunc(GL_LESS);
             glDepthMask(GL_TRUE);
         }
@@ -197,9 +229,18 @@ void Viewport3D::Draw() {
 
     // ── Display cached texture ────────────────────────��─────────────
     ImVec2 uv0(0, 1), uv1(1, 0); // flip Y for OpenGL
-    ImGui::Image((void*)(intptr_t)m_colorTex, avail, uv0, uv1);
+    ImGui::Image((void*)(intptr_t)m_colorTex, viewSize, uv0, uv1);
 
     m_viewportHovered = ImGui::IsItemHovered();
+    const ImVec2 imageMin = ImGui::GetItemRectMin();
+    const ImVec2 imageMax = ImGui::GetItemRectMax();
+
+    // ── Axis gizmo overlay ──────────────────────────────────────────
+    CameraView snapTarget;
+    if (m_axisGizmo.Draw(m_camera.GetViewRotation(), imageMin, imageMax, snapTarget)) {
+        m_camera.SnapToView(snapTarget);
+        m_needsRedraw = true;
+    }
 
     // ── Input ───────────────────────��───────────────────────────────
     HandleInput();
@@ -208,7 +249,7 @@ void Viewport3D::Draw() {
     ImVec2 cursorPos = ImGui::GetCursorScreenPos();
     DrawToolbar(avail, cursorPos);
 
-    // ── Object list ────────────────────────────��────────────────────
+    // ── Object list ──────────────────────────────────────────────────
     DrawObjectList(avail, cursorPos);
 
     // ── Empty viewport message ─────────────────────────���────────────
@@ -221,6 +262,11 @@ void Viewport3D::Draw() {
         ));
         ImGui::TextDisabled("%s", msg);
     }
+
+    // ── Animation transport bar (only when a clip is loaded) ─────────
+    if (hasTransport) {
+        DrawTransportBar();
+    }
 }
 
 void Viewport3D::HandleInput() {
@@ -228,20 +274,26 @@ void Viewport3D::HandleInput() {
 
     ImGuiIO& io = ImGui::GetIO();
 
+    // Suppress camera mouse handling while the axis gizmo owns the cursor —
+    // otherwise a click-to-snap would also fire an orbit on drag-off.
+    const bool gizmoHot = m_axisGizmo.IsHovered();
+
     // Right-drag: orbit
-    if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) &&
+    if (!gizmoHot &&
+        ImGui::IsMouseDragging(ImGuiMouseButton_Right) &&
         (io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f)) {
         m_camera.ProcessMouseDrag(io.MouseDelta.x, io.MouseDelta.y);
         m_needsRedraw = true;
     }
     // Middle-drag: pan
-    if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle) &&
+    if (!gizmoHot &&
+        ImGui::IsMouseDragging(ImGuiMouseButton_Middle) &&
         (io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f)) {
         m_camera.ProcessMousePan(io.MouseDelta.x, io.MouseDelta.y);
         m_needsRedraw = true;
     }
     // Scroll: zoom
-    if (io.MouseWheel != 0.0f) {
+    if (!gizmoHot && io.MouseWheel != 0.0f) {
         m_camera.ProcessScroll(io.MouseWheel);
         m_needsRedraw = true;
     }
@@ -280,70 +332,111 @@ void Viewport3D::HandleInput() {
 void Viewport3D::DrawToolbar(ImVec2 avail, ImVec2 cursorPos) {
     ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + 4, cursorPos.y - avail.y + 4));
 
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.18f, 0.85f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.25f, 0.3f, 0.9f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.35f, 0.35f, 0.4f, 0.95f));
+    ImGui::PushStyleColor(ImGuiCol_Button, GOW::Theme::ToolbarButton());
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, GOW::Theme::ToolbarButtonHover());
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, GOW::Theme::ToolbarButtonActive());
 
-    // Shading mode cycle button
+    namespace W = GOW::UI::Widgets;
+
+    // Shading cycle — icon is the cube; mode goes in the tooltip.
     const char* shadingLabel = nullptr;
     switch (shadingMode) {
-        case ShadingMode::Solid:        shadingLabel = "Solid";     break;
-        case ShadingMode::Matcap:       shadingLabel = "Matcap";    break;
-        case ShadingMode::Textured:     shadingLabel = "Textured";  break;
-        case ShadingMode::Wireframe:    shadingLabel = "Wire";      break;
-        case ShadingMode::TexturedWire: shadingLabel = "Wire (Tex)";break;
+        case ShadingMode::Solid:        shadingLabel = "Solid";      break;
+        case ShadingMode::Matcap:       shadingLabel = "Matcap";     break;
+        case ShadingMode::Textured:     shadingLabel = "Textured";   break;
+        case ShadingMode::Wireframe:    shadingLabel = "Wire";       break;
+        case ShadingMode::TexturedWire: shadingLabel = "Wire (Tex)"; break;
     }
-    if (ImGui::SmallButton(shadingLabel)) {
-        switch (shadingMode) {
-            case ShadingMode::Solid:        shadingMode = ShadingMode::Matcap;       break;
-            case ShadingMode::Matcap:       shadingMode = ShadingMode::Textured;     break;
-            case ShadingMode::Textured:     shadingMode = ShadingMode::Wireframe;    break;
-            case ShadingMode::Wireframe:    shadingMode = ShadingMode::TexturedWire; break;
-            case ShadingMode::TexturedWire: shadingMode = ShadingMode::Solid;        break;
+    char shadingTip[64];
+    snprintf(shadingTip, sizeof(shadingTip), "Shading: %s [Z]", shadingLabel);
+    {
+        W::IconButtonOpts opts;
+        opts.tooltip = shadingTip;
+        if (W::IconButton("vp_shading", ICON_SF_CUBE, opts)) {
+            switch (shadingMode) {
+                case ShadingMode::Solid:        shadingMode = ShadingMode::Matcap;       break;
+                case ShadingMode::Matcap:       shadingMode = ShadingMode::Textured;     break;
+                case ShadingMode::Textured:     shadingMode = ShadingMode::Wireframe;    break;
+                case ShadingMode::Wireframe:    shadingMode = ShadingMode::TexturedWire; break;
+                case ShadingMode::TexturedWire: shadingMode = ShadingMode::Solid;        break;
+            }
+            m_needsRedraw = true;
         }
-        m_needsRedraw = true;
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Shading mode [Z]");
 
     ImGui::SameLine();
-    if (ImGui::SmallButton(showGrid ? "Grid" : "No Grid")) {
-        showGrid = !showGrid;
-        m_needsRedraw = true;
+    {
+        W::IconButtonOpts opts;
+        opts.tooltip  = "Toggle grid [G]";
+        opts.selected = showGrid;
+        if (W::IconButton("vp_grid", ICON_SF_SQUARE_GRID_3X3, opts)) {
+            showGrid = !showGrid;
+            m_needsRedraw = true;
+        }
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Toggle grid [G]");
 
     if (m_sceneRenderer && !m_sceneRenderer->IsEmpty()) {
         ImGui::SameLine();
-        if (ImGui::SmallButton(showObjectList ? "List" : "No List")) {
+        W::IconButtonOpts opts;
+        opts.tooltip  = "Toggle object list";
+        opts.selected = showObjectList;
+        if (W::IconButton("vp_objlist", ICON_SF_LIST_BULLET, opts)) {
             showObjectList = !showObjectList;
         }
     }
 
     ImGui::SameLine();
-    if (ImGui::SmallButton("Focus")) {
-        if (m_sceneRenderer && !m_sceneRenderer->IsEmpty()) {
-            m_camera.FocusOn(m_sceneRenderer->GetBounds());
-        } else {
-            m_camera.Reset();
+    {
+        W::IconButtonOpts opts;
+        opts.tooltip = "Frame all [F]";
+        if (W::IconButton("vp_focus", ICON_SF_VIEWFINDER, opts)) {
+            if (m_sceneRenderer && !m_sceneRenderer->IsEmpty()) {
+                m_camera.FocusOn(m_sceneRenderer->GetBounds());
+            } else {
+                m_camera.Reset();
+            }
+            m_needsRedraw = true;
         }
-        m_needsRedraw = true;
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Frame all [F]");
 
-    // Show Bones toggle
+    ImGui::SameLine();
+    {
+        CameraPanel* panel = CameraPanel::Get();
+        const bool camOpen = panel ? panel->visible : false;
+        W::IconButtonOpts opts;
+        opts.tooltip  = "Camera settings";
+        opts.selected = camOpen;
+        if (W::IconButton("vp_cam", ICON_SF_CAMERA, opts)) {
+            CameraPanel::Toggle();
+            // Surface the dock tab on open so the user sees it without
+            // hunting through tab headers.
+            if (panel && panel->visible) ImGui::SetWindowFocus("Camera");
+        }
+    }
+
+    // Show Bones / Skin toggles
     if (m_sceneRenderer && m_sceneRenderer->HasSkeleton()) {
         ImGui::SameLine();
-        if (ImGui::SmallButton(showBones ? "Bones" : "No Bones")) {
-            showBones = !showBones;
-            m_needsRedraw = true;
+        {
+            W::IconButtonOpts opts;
+            opts.tooltip  = "Toggle bones";
+            opts.selected = showBones;
+            if (W::IconButton("vp_bones", ICON_SF_FIGURE_WALK, opts)) {
+                showBones = !showBones;
+                m_needsRedraw = true;
+            }
         }
         ImGui::SameLine();
-        bool noSkin = m_sceneRenderer->GetDebugDisableSkin();
-        if (ImGui::SmallButton(noSkin ? "[NoSkin]" : "Skin")) {
-            m_sceneRenderer->SetDebugDisableSkin(!noSkin);
-            m_needsRedraw = true;
+        {
+            const bool noSkin = m_sceneRenderer->GetDebugDisableSkin();
+            W::IconButtonOpts opts;
+            opts.tooltip  = "Toggle skinning (debug)";
+            opts.selected = !noSkin;
+            if (W::IconButton("vp_skin", ICON_SF_PERSON, opts)) {
+                m_sceneRenderer->SetDebugDisableSkin(!noSkin);
+                m_needsRedraw = true;
+            }
         }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Toggle skinning (debug)");
     }
 
     // Stats
@@ -371,7 +464,7 @@ void Viewport3D::DrawToolbar(ImVec2 avail, ImVec2 cursorPos) {
     ImGui::PopStyleColor(3);
 }
 
-void Viewport3D::DrawInspector(AppContext& ctx) {
+void Viewport3D::DrawInspector() {
     ImGui::Text("Viewport Settings");
     ImGui::Separator();
 
@@ -385,6 +478,14 @@ void Viewport3D::DrawInspector(AppContext& ctx) {
     if (ImGui::Checkbox("Show Grid", &showGrid)) m_needsRedraw = true;
     if (m_sceneRenderer && m_sceneRenderer->HasSkeleton()) {
         if (ImGui::Checkbox("Show Bones", &showBones)) m_needsRedraw = true;
+    }
+
+    // Publish whichever player this viewport currently owns so cross-cutting
+    // panels (Anim Curves, Dopesheet) can read its playhead.
+    if (m_sceneRenderer) {
+        GOW::UI::SetActiveAnimationPlayer(m_sceneRenderer->GetAnimPlayer());
+    } else {
+        GOW::UI::SetActiveAnimationPlayer(nullptr);
     }
 
     // ── Animation Section ─────────────────────────────────────────────
@@ -438,50 +539,10 @@ void Viewport3D::DrawInspector(AppContext& ctx) {
         }
         ImGui::EndChild();
 
-        // Transport controls
-        bool isPlaying = player && player->IsPlaying();
-
-        if (ImGui::Button(isPlaying ? "Stop" : "Play", ImVec2(60, 0))) {
-            if (isPlaying) {
-                m_sceneRenderer->StopAnimation();
-                m_needsRedraw = true;
-            } else if (player) {
-                // Resume with current group/act
-                int g = player->GetCurrentGroupIndex();
-                int a = player->GetCurrentActIndex();
-                if (g >= 0 && a >= 0) {
-                    m_sceneRenderer->SetAnimation(g, a);
-                    m_needsRedraw = true;
-                }
-            }
-        }
-
-        if (player) {
-            ImGui::SameLine();
-            bool loop = player->IsLooping();
-            if (ImGui::Checkbox("Loop", &loop)) {
-                player->SetLooping(loop);
-            }
-
-            // Timeline slider
-            if (isPlaying || player->GetDuration() > 0.0f) {
-                float t = player->GetTime();
-                float dur = player->GetDuration();
-                if (dur > 0.0f) {
-                    ImGui::SetNextItemWidth(-1);
-                    if (ImGui::SliderFloat("##timeline", &t, 0.0f, dur, "%.2fs / %.2fs")) {
-                        player->SetTime(t);
-                        m_needsRedraw = true;
-                    }
-                }
-            }
-
-            // Current animation name
-            if (isPlaying) {
-                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.6f, 1.0f), "Playing: %s",
-                                 player->GetCurrentActName().c_str());
-            }
-        }
+        // Transport now lives in the bar directly under the viewport.
+        // The inspector keeps just the clip browser so users can pick
+        // an act without leaving their docked panel.
+        ImGui::TextDisabled("Transport controls below viewport ↓");
     }
 
     // ── Mesh Batches ────────────────────────────────────────────────
@@ -628,6 +689,98 @@ void Viewport3D::DrawInspector(AppContext& ctx) {
 
 void Viewport3D::DrawObjectList(ImVec2 avail, ImVec2 cursorPos) {
     // Moved to DrawInspector
+}
+
+void Viewport3D::DrawTransportBar() {
+    if (!m_sceneRenderer) return;
+    GOW::AnimationPlayer* player = m_sceneRenderer->GetAnimPlayer();
+    if (!player || player->GetCurrentActIndex() < 0) return;
+
+    bool  isPlaying   = player->IsPlaying();
+    float dur         = player->GetDuration();
+    int   totalFrames = std::max(1, player->GetFrameCount());
+    int   curFrame    = player->GetCurrentFrame();
+
+    // Tinted background that visually separates the strip from the 3D image.
+    ImVec4 bgCol = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(bgCol.x, bgCol.y, bgCol.z, 0.9f));
+    ImGui::BeginChild("##transport", ImVec2(0, 0), false,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+    // Row 1: transport buttons + speed + loop mode
+    const float btnW = 28.0f;
+    if (ImGui::Button("|<", ImVec2(btnW, 0))) { player->SetFrame(0); m_needsRedraw = true; }
+    ImGui::SameLine();
+    if (ImGui::Button("<",  ImVec2(btnW, 0))) { player->SetFrame(curFrame - 1); m_needsRedraw = true; }
+    ImGui::SameLine();
+    if (ImGui::Button(isPlaying ? "Pause" : "Play", ImVec2(60, 0))) {
+        if (dur > 0.0f) { player->Toggle(); m_needsRedraw = true; }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(">",  ImVec2(btnW, 0))) { player->SetFrame(curFrame + 1); m_needsRedraw = true; }
+    ImGui::SameLine();
+    if (ImGui::Button(">|", ImVec2(btnW, 0))) { player->SetFrame(totalFrames - 1); m_needsRedraw = true; }
+    ImGui::SameLine();
+    if (ImGui::Button("Stop", ImVec2(50, 0))) { m_sceneRenderer->StopAnimation(); m_needsRedraw = true; }
+
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8);
+    ImGui::Text("F %d/%d  %.2fs/%.2fs", curFrame, totalFrames - 1, player->GetTime(), dur);
+
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8);
+    ImGui::PushItemWidth(70);
+    float speed = player->GetSpeed();
+    if (ImGui::DragFloat("##speed", &speed, 0.05f, -4.0f, 4.0f, "%.2fx")) {
+        player->SetSpeed(speed);
+    }
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    const struct { const char* lbl; float val; } presets[] = {
+        {".25", 0.25f}, {".5", 0.5f}, {"1x", 1.0f}, {"2x", 2.0f}, {"-1x", -1.0f},
+    };
+    for (auto& p : presets) {
+        if (ImGui::SmallButton(p.lbl)) player->SetSpeed(p.val);
+        ImGui::SameLine();
+    }
+
+    ImGui::PushItemWidth(90);
+    int loopMode = (int)player->GetLoopMode();
+    const char* loopLabels[] = { "No Loop", "Loop", "PingPong" };
+    if (ImGui::Combo("##loop", &loopMode, loopLabels, IM_ARRAYSIZE(loopLabels))) {
+        player->SetLoopMode((AnimationPlayer::LoopMode)loopMode);
+    }
+    ImGui::PopItemWidth();
+
+    // Keyboard shortcuts: Space/arrows/Home/End. Active while the viewport
+    // window has focus (covers both the image hover and the transport).
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) ||
+        m_viewportHovered) {
+        if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+            if (dur > 0.0f) { player->Toggle(); m_needsRedraw = true; }
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow, true)) {
+            player->SetFrame(player->GetCurrentFrame() - 1); m_needsRedraw = true;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_RightArrow, true)) {
+            player->SetFrame(player->GetCurrentFrame() + 1); m_needsRedraw = true;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Home, false)) {
+            player->SetFrame(0); m_needsRedraw = true;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_End, false)) {
+            player->SetFrame(totalFrames - 1); m_needsRedraw = true;
+        }
+    }
+
+    // Row 2: rich timeline with frame ticks, keyframe markers, scrub
+    if (GOW::UI::DrawAnimationTimeline("anim_timeline", *player)) {
+        m_needsRedraw = true;
+    }
+
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
 }
 
 } // namespace GOW

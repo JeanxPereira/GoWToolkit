@@ -15,52 +15,16 @@ void GridRenderer::Initialize() {
     if (m_initialized) return;
     m_initialized = true;
 
-    struct GridVert { glm::vec3 pos; glm::vec4 color; };
-    std::vector<GridVert> verts;
-
-    const float SPACING = 1000.0f;     // 1000 units between lines
-    const int   HALF_LINES = 100;      // 100 lines each side = extends to ±100000
-    const float EXTENT = HALF_LINES * SPACING;
-    const glm::vec4 gridColor(0.35f, 0.35f, 0.35f, 0.5f);
-    const glm::vec4 xAxisColor(0.8f, 0.2f, 0.2f, 0.8f);
-    const glm::vec4 zAxisColor(0.2f, 0.4f, 0.8f, 0.8f);
-
-    for (int i = -HALF_LINES; i <= HALF_LINES; i++) {
-        float pos = i * SPACING;
-        // Lines parallel to Z (varying X)
-        glm::vec4 col = (i == 0) ? xAxisColor : gridColor;
-        verts.push_back({glm::vec3(pos, 0, -EXTENT), col});
-        verts.push_back({glm::vec3(pos, 0,  EXTENT), col});
-
-        // Lines parallel to X (varying Z)
-        col = (i == 0) ? zAxisColor : gridColor;
-        verts.push_back({glm::vec3(-EXTENT, 0, pos), col});
-        verts.push_back({glm::vec3( EXTENT, 0, pos), col});
-    }
-
-    m_vertexCount = (int)verts.size();
-
+    // We no longer need VBOs because the shader generates a fullscreen triangle 
+    // procedurally using gl_VertexID. We only need an empty VAO to satisfy OpenGL core profile.
     glGenVertexArrays(1, &m_vao);
-    glGenBuffers(1, &m_vbo);
-
-    glBindVertexArray(m_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(GridVert), verts.data(), GL_STATIC_DRAW);
-
-    // position
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GridVert), (void*)0);
-    glEnableVertexAttribArray(0);
-    // color
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(GridVert), (void*)offsetof(GridVert, color));
-    glEnableVertexAttribArray(1);
-
-    glBindVertexArray(0);
+    m_vertexCount = 3;
 }
 
-void GridRenderer::Draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec4& gridColor) {
+void GridRenderer::Draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos, const glm::vec4& gridColor, float gridScale) {
     if (!m_initialized) {
         Initialize();
-        LOG_INFO("[GridRenderer] Initialized: VAO=%u VBO=%u vertexCount=%d", m_vao, m_vbo, m_vertexCount);
+        LOG_INFO("[GridRenderer] Initialized (Fullscreen Triangle): VAO=%u", m_vao);
     }
 
     auto* shader = ShaderManager::Get().GetShader("grid");
@@ -70,15 +34,25 @@ void GridRenderer::Draw(const glm::mat4& view, const glm::mat4& projection, cons
     }
 
     shader->Use();
-    shader->SetMat4("uView", view);
-    shader->SetMat4("uProjection", projection);
+    
+    glm::mat4 viewProj = projection * view;
+    shader->SetMat4("uViewProj", viewProj);
+    shader->SetMat4("uInvViewProj", glm::inverse(viewProj));
+    
     shader->SetVec4("uGridColor", gridColor);
+    shader->SetVec3("uCameraPos", cameraPos);
+    shader->SetFloat("uGridScale", gridScale);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    // Enable depth testing but don't write to depth buffer (so transparent grid blends over background)
+    // Actually, the shader writes to gl_FragDepth so it properly occludes with the 3D models.
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
 
     glBindVertexArray(m_vao);
-    glDrawArrays(GL_LINES, 0, m_vertexCount);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
 
     glDisable(GL_BLEND);

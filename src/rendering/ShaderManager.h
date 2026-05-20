@@ -23,6 +23,7 @@ public:
     void Use() const;
     void SetMat4(const char* name, const glm::mat4& mat) const;
     void SetMat3(const char* name, const glm::mat3& mat) const;
+    void SetVec2(const char* name, const glm::vec2& v) const;
     void SetVec3(const char* name, const glm::vec3& v) const;
     void SetVec4(const char* name, const glm::vec4& v) const;
     void SetFloat(const char* name, float val) const;

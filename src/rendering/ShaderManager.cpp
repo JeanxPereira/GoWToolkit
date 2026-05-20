@@ -18,6 +18,9 @@ void Shader::SetMat4(const char* name, const glm::mat4& mat) const {
 void Shader::SetMat3(const char* name, const glm::mat3& mat) const {
     glUniformMatrix3fv(glGetUniformLocation(id, name), 1, GL_FALSE, glm::value_ptr(mat));
 }
+void Shader::SetVec2(const char* name, const glm::vec2& v) const {
+    glUniform2fv(glGetUniformLocation(id, name), 1, glm::value_ptr(v));
+}
 void Shader::SetVec3(const char* name, const glm::vec3& v) const {
     glUniform3fv(glGetUniformLocation(id, name), 1, glm::value_ptr(v));
 }
@@ -59,6 +62,7 @@ uniform vec2 uLayerOffset;
 out vec3 vWorldPos;
 out vec3 vWorldNormal;
 out vec3 vViewNormal;
+out vec3 vViewPos;
 out vec2 vUV;
 out vec2 vUV1;
 out vec4 vColor;
@@ -106,6 +110,7 @@ void main() {
     vWorldPos    = worldPos.xyz;
     vWorldNormal = normalize(worldNormal);
     vViewNormal  = mat3(uView) * vWorldNormal;
+    vViewPos     = (uView * worldPos).xyz;
 
     vUV  = aUV + uLayerOffset;
     vUV1 = aUV1;
@@ -123,6 +128,7 @@ static const char* SCENE_FRAG = R"(
 in vec3 vWorldPos;
 in vec3 vWorldNormal;
 in vec3 vViewNormal;
+in vec3 vViewPos;
 in vec2 vUV;
 in vec2 vUV1;
 in vec4 vColor;
@@ -163,8 +169,14 @@ void main() {
 
     // ── Matcap Mode ──────────────────────────────────────────────────
     if (uShadingMode == 1) {
-        vec3 vn = normalize(vViewNormal);
-        vec2 matcapUV = vn.xy * 0.5 + 0.5;
+        vec3 N = normalize(vViewNormal);
+        // Blender matcap_uv_compute: perspective-correct orthonormal basis
+        vec3 I = normalize(-vViewPos);  // view-space incident vector (camera→fragment)
+        float a = 1.0 / (1.0 + I.z);
+        float b = -I.x * I.y * a;
+        vec3 b1 = vec3(1.0 - I.x * I.x * a, b, -I.x);
+        vec3 b2 = vec3(b, 1.0 - I.y * I.y * a, -I.y);
+        vec2 matcapUV = vec2(dot(b1, N), dot(b2, N)) * 0.496 + 0.5;
         vec3 mc = texture(uMatcap, matcapUV).rgb;
         FragColor = vec4(mc, 1.0);
         return;
@@ -234,94 +246,216 @@ void main() {
 
 static const char* GRID_VERT = R"(
 #version 330 core
-layout(location=0) in vec3 aPos;
-layout(location=1) in vec4 aColor;
-
-uniform mat4 uView;
-uniform mat4 uProjection;
-
-out vec4 vColor;
-out float vDist;
+out vec2 vUV;
 
 void main() {
-    vec4 worldPos = vec4(aPos, 1.0);
-    vColor = aColor;
-    vDist  = length(aPos.xz);
-    gl_Position = uProjection * uView * worldPos;
+    // Fullscreen triangle
+    vUV = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+    gl_Position = vec4(vUV * 2.0 - 1.0, 0.0, 1.0);
 }
 )";
 
 static const char* GRID_FRAG = R"(
 #version 330 core
-in vec4 vColor;
-in float vDist;
+in vec2 vUV;
 out vec4 FragColor;
 
 uniform vec4 uGridColor;
+uniform vec3 uCameraPos;
+uniform float uGridScale;
+uniform mat4 uViewProj;
+uniform mat4 uInvViewProj;
 
 void main() {
-    float fade = 1.0 - smoothstep(50000.0, 100000.0, vDist);
-    bool isAxis = vColor.a > 0.6; 
-    if (isAxis) {
-        FragColor = vec4(vColor.rgb, vColor.a * fade);
-    } else {
-        FragColor = vec4(uGridColor.rgb, uGridColor.a * fade);
+    vec2 ndc = vUV * 2.0 - 1.0;
+    
+    // Unproject near and far points to get world-space ray
+    vec4 nearPt = uInvViewProj * vec4(ndc, -1.0, 1.0);
+    vec4 farPt  = uInvViewProj * vec4(ndc,  1.0, 1.0);
+    
+    vec3 rayOrigin = nearPt.xyz / nearPt.w;
+    vec3 rayEnd    = farPt.xyz / farPt.w;
+    vec3 rayDir    = normalize(rayEnd - rayOrigin);
+    
+    // Intersect with Y=0 plane
+    if (abs(rayDir.y) < 0.0001) discard;
+    
+    float t = -rayOrigin.y / rayDir.y;
+    if (t < 0.0) discard; // Intersection is behind camera
+    
+    vec3 worldPos = rayOrigin + t * rayDir;
+    
+    // Calculate accurate depth for occlusion
+    vec4 clipPos = uViewProj * vec4(worldPos, 1.0);
+    float ndcZ = clipPos.z / clipPos.w;
+    if (ndcZ < -1.0 || ndcZ > 1.0) discard;
+    gl_FragDepth = ndcZ * 0.5 + 0.5;
+
+    // --- Grid Drawing Math ---
+    vec2 coord = worldPos.xz;
+    vec2 deriv = max(fwidth(coord), vec2(0.00001));
+
+    vec2 gridCoord = coord / uGridScale;
+    vec2 gridDeriv = deriv / uGridScale;
+    vec2 gridDist = abs(fract(gridCoord - 0.5) - 0.5) / gridDeriv;
+    float gridAlpha = 1.0 - min(min(gridDist.x, gridDist.y), 1.0);
+
+    float xAxisAlpha = 1.0 - min(abs(coord.y) / (deriv.y * 1.5), 1.0);
+    float zAxisAlpha = 1.0 - min(abs(coord.x) / (deriv.x * 1.5), 1.0);
+
+    float lodFade = max(0.0, 1.0 - max(gridDeriv.x, gridDeriv.y)); 
+    gridAlpha *= lodFade;
+
+    vec4 color = uGridColor;
+    color.a *= gridAlpha;
+
+    if (xAxisAlpha > 0.0) {
+        color = mix(color, vec4(0.8, 0.2, 0.2, 0.8), xAxisAlpha);
     }
+    if (zAxisAlpha > 0.0) {
+        color = mix(color, vec4(0.2, 0.4, 0.8, 0.8), zAxisAlpha);
+    }
+
+    if (color.a < 0.01) discard;
+
+    float d = length(worldPos - uCameraPos);
+    float fade = 1.0 - smoothstep(0.0, 50000.0, d);
+
+    if (uCameraPos.y < 0.0) {
+        fade *= smoothstep(-10.0, 0.0, uCameraPos.y);
+    }
+
+    color.a *= fade;
+    FragColor = color;
 }
 )";
 
-// ── Outline (backface extrusion with skinning support) ─────────────────
+// ── Outline Mask Shader (renders selected mesh to texture mask) ───────
 
-static const char* OUTLINE_VERT = R"(
+static const char* OUTLINE_MASK_VERT = R"(
 #version 330 core
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNormal;
+layout(location=2) in vec2 aUV;
 layout(location=5) in vec4 aBoneWeights;
 layout(location=6) in uvec4 aBoneIndices;
 
-uniform mat4 uModelTransform;
 uniform mat4 uView;
 uniform mat4 uProjection;
-uniform float uOutlineThickness;
+uniform mat4 uModelTransform;
 uniform mat4 uJoints[150];
 uniform int  uUseJoints;
 
+out vec2 vUV;
+
 void main() {
     vec4 localPos;
-    vec3 localNormal;
-
     if (uUseJoints == 1) {
-        if ((aBoneWeights.x + aBoneWeights.y) > 0.001) {
-            mat4 skin = uJoints[aBoneIndices.x] * aBoneWeights.x
-                      + uJoints[aBoneIndices.y] * aBoneWeights.y;
-            localPos    = skin * vec4(aPos, 1.0);
-            localNormal = mat3(skin) * aNormal;
+        float w0 = aBoneWeights.x;
+        float w1 = aBoneWeights.y;
+        if (w0 > 0.001 && w1 > 0.001) {
+            mat4 skin = uJoints[aBoneIndices.x] * w0
+                      + uJoints[aBoneIndices.y] * w1;
+            localPos = skin * vec4(aPos, 1.0);
+        } else if (w0 > 0.001) {
+            localPos = uJoints[aBoneIndices.x] * vec4(aPos, 1.0);
         } else {
-            localPos    = uJoints[0] * vec4(aPos, 1.0);
-            localNormal = mat3(uJoints[0]) * aNormal;
+            localPos = uJoints[aBoneIndices.y] * vec4(aPos, 1.0);
         }
     } else {
-        localPos    = vec4(aPos, 1.0);
-        localNormal = aNormal;
+        localPos = vec4(aPos, 1.0);
     }
-
-    // Always apply model transform (handles Z-flip)
-    vec4 worldPos   = uModelTransform * localPos;
-    vec3 worldNormal = mat3(uModelTransform) * localNormal;
-
-    // Extrude along world-space normal
-    worldPos.xyz += normalize(worldNormal) * uOutlineThickness;
+    vec4 worldPos = uModelTransform * localPos;
     gl_Position = uProjection * uView * worldPos;
+    vUV = aUV;
 }
 )";
 
-static const char* OUTLINE_FRAG = R"(
+static const char* OUTLINE_MASK_FRAG = R"(
 #version 330 core
-uniform vec4 uOutlineColor;
+in vec2 vUV;
+
+uniform int uUseTexture;
+uniform sampler2D uTexture0;
+
 out vec4 FragColor;
 
 void main() {
-    FragColor = uOutlineColor;
+    // Alpha-test: if the texture has transparency, discard transparent pixels
+    // so the outline follows the actual silhouette (hair, leaves, etc.)
+    if (uUseTexture == 1) {
+        float a = texture(uTexture0, vUV).a;
+        if (a < 0.5) discard;
+    }
+    FragColor = vec4(1.0);  // White mask
+}
+)";
+
+// ── Outline Post-Process Shader (runs fullscreen edge-detection) ──────
+
+static const char* OUTLINE_POST_VERT = R"(
+#version 330 core
+out vec2 vUV;
+void main() {
+    vUV = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+    gl_Position = vec4(vUV * 2.0 - 1.0, 0.0, 1.0);
+}
+)";
+
+static const char* OUTLINE_POST_FRAG = R"(
+#version 330 core
+in vec2 vUV;
+
+uniform sampler2D uMaskTex;
+uniform vec2 uTexelSize;       // 1.0 / viewport size
+uniform vec4 uOutlineColor;    // (1.0, 0.5, 0.0, 1.0) Blender orange
+uniform float uOutlineWidth;   // in pixels, default 1.8
+
+out vec4 FragColor;
+
+void main() {
+    float center = texture(uMaskTex, vUV).r;
+
+    // Sample 4 cardinal neighbors (Blender style: ±X, ±Y)
+    float px = texture(uMaskTex, vUV + vec2( uTexelSize.x, 0.0)).r;
+    float nx = texture(uMaskTex, vUV + vec2(-uTexelSize.x, 0.0)).r;
+    float py = texture(uMaskTex, vUV + vec2(0.0,  uTexelSize.y)).r;
+    float ny = texture(uMaskTex, vUV + vec2(0.0, -uTexelSize.y)).r;
+
+    // For thick outlines (2px), also sample at 2x distance
+    float px2 = texture(uMaskTex, vUV + vec2( 2.0 * uTexelSize.x, 0.0)).r;
+    float nx2 = texture(uMaskTex, vUV + vec2(-2.0 * uTexelSize.x, 0.0)).r;
+    float py2 = texture(uMaskTex, vUV + vec2(0.0,  2.0 * uTexelSize.y)).r;
+    float ny2 = texture(uMaskTex, vUV + vec2(0.0, -2.0 * uTexelSize.y)).r;
+
+    // Edge detection: if center is background but a neighbor is selected (or vice versa)
+    // This creates the outline on BOTH sides of the boundary
+    float neighbors1 = max(max(px, nx), max(py, ny));
+    float neighbors2 = max(max(px2, nx2), max(py2, ny2));
+
+    // Anti-aliased edge weight using smooth interpolation
+    float edge1 = abs(center - neighbors1);
+    float edge2 = abs(center - neighbors2) * 0.5;  // Outer ring is softer
+    float edgeWeight = clamp(edge1 + edge2, 0.0, 1.0);
+
+    if (edgeWeight < 0.01 && center < 0.5) {
+        discard;  // No outline, no fill → skip
+    }
+
+    vec4 color = vec4(0.0);
+
+    // Outline border
+    if (edgeWeight > 0.01) {
+        color = uOutlineColor * edgeWeight;
+    }
+
+    // Interior fill (Blender's selection glow: ~15% alpha fill)
+    if (center > 0.5 && edgeWeight < 0.5) {
+        vec4 fill = vec4(uOutlineColor.rgb, 0.15);
+        color = mix(fill, color, edgeWeight);
+    }
+
+    FragColor = color;
 }
 )";
 
@@ -509,10 +643,15 @@ void ShaderManager::Initialize() {
     gridShader.id = CompileProgram(GRID_VERT, GRID_FRAG);
     m_shaders["grid"] = gridShader;
 
-    // Outline shader (with skinning)
-    Shader outlineShader;
-    outlineShader.id = CompileProgram(OUTLINE_VERT, OUTLINE_FRAG);
-    m_shaders["outline"] = outlineShader;
+    // Outline mask shader (renders selected mesh to texture mask)
+    Shader outlineMaskShader;
+    outlineMaskShader.id = CompileProgram(OUTLINE_MASK_VERT, OUTLINE_MASK_FRAG);
+    m_shaders["outline_mask"] = outlineMaskShader;
+
+    // Outline post-process shader (runs fullscreen edge-detection)
+    Shader outlinePostShader;
+    outlinePostShader.id = CompileProgram(OUTLINE_POST_VERT, OUTLINE_POST_FRAG);
+    m_shaders["outline_post"] = outlinePostShader;
 
     // Background gradient shader
     Shader bgShader;

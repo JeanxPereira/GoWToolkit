@@ -77,7 +77,9 @@ void SceneRenderer::Build(const SceneData& scene) {
         batch.vertexCount = (int)part.vertices.size();
         batch.triangleCount = (int)part.indices.size() / 3;
 
-        // Bounds — computed from transformed positions so FocusOn targets rendered space
+        // Bounds — computed from transformed positions so FocusOn targets
+        // rendered space and the camera's projection slab covers every vertex
+        // (including the sky dome). FocusOn separately handles centering.
         for (const auto& v : part.vertices) {
             glm::vec3 tp = glm::vec3(m_instanceTransform * glm::vec4(v.position, 1.0f));
             boundsMin = glm::min(boundsMin, tp);
@@ -336,9 +338,20 @@ void SceneRenderer::StopAnimation() {
 }
 
 bool SceneRenderer::UpdateAnimation(float dt) {
-    if (!m_animPlayer || !m_animPlayer->IsPlaying()) return false;
+    if (!m_animPlayer) return false;
 
-    bool changed = m_animPlayer->Update(dt);
+    bool changed = false;
+    if (m_animPlayer->IsPlaying()) {
+        changed = m_animPlayer->Update(dt);
+    } else {
+        // Detect external scrubbing (SetTime/SetFrame called from UI while
+        // paused): the player advanced its pose but Update() didn't run, so
+        // refresh the palette manually when its time differs from ours.
+        float t = m_animPlayer->GetTime();
+        if (t != m_lastAppliedAnimTime) {
+            changed = true;
+        }
+    }
     if (changed) {
         // Diagnostic: save pelvis before
         glm::vec4 pelvisBefore(0);
@@ -369,6 +382,7 @@ bool SceneRenderer::UpdateAnimation(float dt) {
                          localRot[2].x, localRot[2].y, localRot[2].z, localRot[2].w);
             }
         }
+        m_lastAppliedAnimTime = m_animPlayer->GetTime();
     }
     return changed;
 }
@@ -381,27 +395,35 @@ void SceneRenderer::ComputeJointPalette() {
     const auto& sk = *m_skeleton;
     size_t N = sk.joints.size();
 
-    // Use precomputed renderMat (= world rest-pose) from FillJoints().
-    // renderMat is built by walking the parent chain with Matrixes1 (the exact
-    // parent-to-joint transform stored in the file):
-    //   renderMat[i] = renderMat[parent] * Matrixes1[i]
+    // Build the idle palette using the same TRS chain (Vectors4/5/6) that
+    // AnimationPlayer::ComputeJointMatrices uses on every frame. JS Animation.js
+    // (AnimationObjectSkelet.recalcMatrices) does this unconditionally:
     //
-    // This matches the Go reference FillJoints() in obj.go.
-    // Previously we used BuildLocalTRS(Vectors4/5/6) which reconstructs the
-    // transform via Euler→Quaternion conversion — this introduced rotation errors
-    // that accumulated down the hierarchy (visible as leg rotation bugs).
+    //     local = mat4.fromRotationTranslationScale(localQ, V4[i], V6[i]);
+    //     treeNode.joints[i].setLocalMatrixWithoutUpdate(local);   // V5 → quat
     //
-    // Skinning palette:
-    //   palette[i] = renderMat[i] * bindToJointMat[i]
-    // For skinned joints: bindToJointMat = Matrixes3[invId] (inverse bind pose)
-    // For non-skinned joints: bindToJointMat = identity
+    // Previously we used Matrixes1 chain (parentToJoint stored in the file)
+    // for idle and TRS for animated. Those produce different world poses for
+    // joints whose Matrixes1 encodes a fixed offset that V4 does not — e.g.
+    // PalDiag log shows idle pelvis trans (0,0,0) vs animated (-5.8,14.4,-30).
+    // The first animated frame snapped every skinned vertex by that delta.
+    // Matrixes3 (the inverse bind pose) was computed against the TRS pose,
+    // so the TRS chain is the canonical one and Matrixes1 is the outlier.
 
     m_jointPalette.resize(N);
     m_jointWorldPos.resize(N);
+
+    std::vector<glm::mat4> globalMats(N, glm::mat4(1.0f));
     for (size_t i = 0; i < N; ++i) {
         const auto& j = sk.joints[i];
-        m_jointPalette[i]  = j.renderMat * j.bindToJointMat;
-        m_jointWorldPos[i] = glm::vec3(j.renderMat[3]);
+        glm::mat4 local = BuildLocalTRS(sk, (int)i);
+        if (j.parent >= 0 && j.parent < (int)N) {
+            globalMats[i] = globalMats[j.parent] * local;
+        } else {
+            globalMats[i] = local;
+        }
+        m_jointPalette[i]  = globalMats[i] * j.bindToJointMat;
+        m_jointWorldPos[i] = glm::vec3(globalMats[i][3]);
     }
 
     // DIAGNOSTIC — log first 3 joints once per scene load
@@ -502,7 +524,7 @@ void SceneRenderer::RenderSky(const glm::mat4& view, const glm::mat4& proj, Shad
     glClear(GL_DEPTH_BUFFER_BIT);
 }
 
-void SceneRenderer::Render(const glm::mat4& view, const glm::mat4& proj, ShadingMode mode) {
+void SceneRenderer::Render(const glm::mat4& view, const glm::mat4& proj, ShadingMode mode, int viewportW, int viewportH) {
     if (m_batches.empty()) return;
 
     auto* shader = ShaderManager::Get().GetShader("scene");
@@ -559,54 +581,8 @@ void SceneRenderer::Render(const glm::mat4& view, const glm::mat4& proj, Shading
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
-    // Pass 3: Highlight outlines
-    auto* outlineShader = ShaderManager::Get().GetShader("outline");
-    if (outlineShader) {
-        bool hasHighlight = false;
-
-        for (const auto& batch : m_batches) {
-            if (batch.isHighlighted && batch.isVisible && batch.gpuMesh) {
-                if (!hasHighlight) {
-                    auto* cfg = AppConfig::Get();
-                    glm::vec4 hlColor = cfg ? glm::vec4(cfg->hlR, cfg->hlG, cfg->hlB, cfg->hlA)
-                                            : glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
-
-                    outlineShader->Use();
-                    outlineShader->SetMat4("uModelTransform", m_instanceTransform);
-                    outlineShader->SetMat4("uView", view);
-                    outlineShader->SetMat4("uProjection", proj);
-                    outlineShader->SetFloat("uOutlineThickness", 0.02f);
-                    outlineShader->SetVec4("uOutlineColor", hlColor);
-
-                    glEnable(GL_DEPTH_TEST);
-                    glDepthMask(GL_FALSE); // don't write depth since it's transparent
-                    
-                    glEnable(GL_BLEND);
-                    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-                    glEnable(GL_CULL_FACE);
-                    glCullFace(GL_FRONT);
-                    hasHighlight = true;
-                }
-
-                bool useJoints = batch.hasSkeleton && m_skeleton && !batch.jointMap.empty();
-                outlineShader->SetInt("uUseJoints", useJoints ? 1 : 0);
-                if (useJoints && !m_jointPalette.empty()) {
-                    auto batchPalette = BuildBatchPalette(batch);
-                    size_t count = std::min<size_t>(batchPalette.size(), 150);
-                    glUniformMatrix4fv(glGetUniformLocation(outlineShader->id, "uJoints[0]"),
-                                       (GLsizei)count, GL_FALSE, glm::value_ptr(batchPalette[0]));
-                }
-
-                batch.gpuMesh->Draw();
-            }
-        }
-
-        if (hasHighlight) {
-            glCullFace(GL_BACK);
-            glDisable(GL_CULL_FACE);
-        }
-    }
+    // Pass 3: Highlight outlines (screen-space)
+    RenderOutlineScreenSpace(view, proj, viewportW, viewportH);
 
     // Pass 4: Cleanup state
     glDepthMask(GL_TRUE);
@@ -801,6 +777,11 @@ void SceneRenderer::RenderSkeleton(const glm::mat4& view, const glm::mat4& proj)
 // ── Clear ───────────────────────────────────────────────────────────────────
 
 void SceneRenderer::Clear() {
+    if (m_maskFbo) { glDeleteFramebuffers(1, &m_maskFbo); m_maskFbo = 0; }
+    if (m_maskTex) { glDeleteTextures(1, &m_maskTex); m_maskTex = 0; }
+    if (m_maskDepth) { glDeleteRenderbuffers(1, &m_maskDepth); m_maskDepth = 0; }
+    m_maskW = m_maskH = 0;
+
     m_batches.clear();
     m_opaqueBatches.clear();
     m_additiveBatches.clear();
@@ -820,6 +801,121 @@ void SceneRenderer::Clear() {
 
     m_animData.reset();
     m_animPlayer.reset();
+}
+
+void SceneRenderer::EnsureMaskFBO(int w, int h) {
+    if (w == m_maskW && h == m_maskH && m_maskFbo != 0) return;
+    m_maskW = w; m_maskH = h;
+
+    if (m_maskFbo) { glDeleteFramebuffers(1, &m_maskFbo); m_maskFbo = 0; }
+    if (m_maskTex) { glDeleteTextures(1, &m_maskTex); m_maskTex = 0; }
+    if (m_maskDepth) { glDeleteRenderbuffers(1, &m_maskDepth); m_maskDepth = 0; }
+
+    glGenFramebuffers(1, &m_maskFbo);
+    glGenTextures(1, &m_maskTex);
+    glGenRenderbuffers(1, &m_maskDepth);
+
+    glBindTexture(GL_TEXTURE_2D, m_maskTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glBindRenderbuffer(GL_RENDERBUFFER, m_maskDepth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_maskFbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_maskTex, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_maskDepth);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void SceneRenderer::RenderOutlineScreenSpace(const glm::mat4& view, const glm::mat4& proj,
+                                             int viewportW, int viewportH) {
+    // Check if any batch is highlighted
+    bool hasHighlight = false;
+    for (const auto& batch : m_batches) {
+        if (batch.isHighlighted && batch.isVisible && batch.gpuMesh) {
+            hasHighlight = true; break;
+        }
+    }
+    if (!hasHighlight) return;
+
+    // --- Pass A: Render highlighted meshes to mask FBO ---
+    EnsureMaskFBO(viewportW, viewportH);
+
+    auto* maskShader = ShaderManager::Get().GetShader("outline_mask");
+    if (!maskShader) return;
+
+    GLint prevFbo;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFbo);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_maskFbo);
+    glViewport(0, 0, viewportW, viewportH);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+
+    maskShader->Use();
+    maskShader->SetMat4("uModelTransform", m_instanceTransform);
+    maskShader->SetMat4("uView", view);
+    maskShader->SetMat4("uProjection", proj);
+
+    for (const auto& batch : m_batches) {
+        if (!batch.isHighlighted || !batch.isVisible || !batch.gpuMesh) continue;
+
+        bool useJoints = batch.hasSkeleton && m_skeleton && !batch.jointMap.empty();
+        maskShader->SetInt("uUseJoints", useJoints ? 1 : 0);
+        if (useJoints && !m_jointPalette.empty()) {
+            auto batchPalette = BuildBatchPalette(batch);
+            size_t count = std::min<size_t>(batchPalette.size(), 150);
+            glUniformMatrix4fv(glGetUniformLocation(maskShader->id, "uJoints[0]"),
+                               (GLsizei)count, GL_FALSE, glm::value_ptr(batchPalette[0]));
+        }
+
+        // Alpha test support
+        maskShader->SetInt("uUseTexture", batch.hasTexture ? 1 : 0);
+        if (batch.hasTexture) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, batch.texture0);
+            maskShader->SetInt("uTexture0", 0);
+        }
+
+        batch.gpuMesh->Draw();
+    }
+
+    // --- Pass B: Post-process outline detection ---
+    glBindFramebuffer(GL_FRAMEBUFFER, prevFbo);
+    glViewport(0, 0, viewportW, viewportH);
+
+    auto* postShader = ShaderManager::Get().GetShader("outline_post");
+    if (!postShader) return;
+
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    postShader->Use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, m_maskTex);
+    postShader->SetInt("uMaskTex", 0);
+    postShader->SetVec2("uTexelSize", glm::vec2(1.0f / viewportW, 1.0f / viewportH));
+
+    auto* cfg = AppConfig::Get();
+    glm::vec4 hlColor = cfg ? glm::vec4(cfg->hlR, cfg->hlG, cfg->hlB, cfg->hlA)
+                            : glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
+    postShader->SetVec4("uOutlineColor", hlColor);
+    postShader->SetFloat("uOutlineWidth", 1.8f);
+
+    GLuint bgVAO = ShaderManager::Get().m_backgroundVAO;
+    glBindVertexArray(bgVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+
+    glEnable(GL_DEPTH_TEST);
 }
 
 } // namespace GOW
