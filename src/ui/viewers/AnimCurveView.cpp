@@ -1,7 +1,9 @@
 #include "AnimCurveView.h"
-#include "ui/AppContext.h"
+
 #include "core/AssetDatabase.h"
 #include "core/Events.h"
+#include "rendering/AnimationPlayer.h"
+#include "ui/ActiveAnimation.h"
 #include "imgui.h"
 #include "implot.h"
 #include <set>
@@ -51,7 +53,7 @@ static void PlotStreamComponent(const GOW::AnimSubstream& stream, int jointId,
     ImPlot::PlotLine(label, xs.data(), ys.data(), (int)samples.size());
 }
 
-void AnimCurveView::draw(AppContext& ctx) {
+void AnimCurveView::Draw() {
     if (!visible) return;
 
     ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
@@ -178,6 +180,24 @@ void AnimCurveView::draw(AppContext& ctx) {
     ImGui::TextDisabled("Duration: %.3fs  |  Joints: %zu  |  Frame Time: %.4fs",
                         act.duration, jointList.size(), stateDescr.frameTime);
 
+    // Cached playhead frame — drawn as a vertical line on each plot so the
+    // user can match what they see in the viewport to where the value lives
+    // on the curve.
+    GOW::AnimationPlayer* activePlayer = GOW::UI::GetActiveAnimationPlayer();
+    double playheadFrame = -1.0;
+    if (activePlayer && activePlayer->GetFrameCount() > 0) {
+        playheadFrame = (double)activePlayer->GetCurrentFrame();
+    }
+
+    auto drawPlayhead = [&](double frame) {
+        if (frame < 0.0) return;
+        // PlotInfLines draws a vertical line at the given X across the plot.
+        // It's the documented ImPlot API for this and stays inside the plot
+        // clipping rect without touching draw-list internals.
+        double xs[1] = { frame };
+        ImPlot::PlotInfLines("##playhead", xs, 1);
+    };
+
     // ── Rotation Plot ───────────────────────────────────────────────────
     int offset = skinState.rotationStream.manager.offset;
 
@@ -190,6 +210,7 @@ void AnimCurveView::draw(AppContext& ctx) {
             PlotStreamComponent(skinState.rotationStream, jointId, 1, "Rot Y", offset);
             PlotStreamComponent(skinState.rotationStream, jointId, 2, "Rot Z", offset);
             PlotStreamComponent(skinState.rotationStream, jointId, 3, "Rot W", offset);
+            drawPlayhead(playheadFrame);
 
             ImPlot::EndPlot();
         }
@@ -205,6 +226,7 @@ void AnimCurveView::draw(AppContext& ctx) {
             PlotStreamComponent(skinState.positionStream, jointId, 0, "Pos X", offset);
             PlotStreamComponent(skinState.positionStream, jointId, 1, "Pos Y", offset);
             PlotStreamComponent(skinState.positionStream, jointId, 2, "Pos Z", offset);
+            drawPlayhead(playheadFrame);
 
             ImPlot::EndPlot();
         }

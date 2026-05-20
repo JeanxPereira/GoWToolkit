@@ -13,7 +13,7 @@ public:
     AnimCurveView();
     ~AnimCurveView();
 
-    void draw(AppContext& ctx) override;
+    void Draw() override;
     std::string_view getName() const override { return "Anim Curves"; }
 
 private:
