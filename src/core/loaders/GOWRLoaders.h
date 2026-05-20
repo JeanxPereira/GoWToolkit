@@ -1,5 +1,6 @@
 #pragma once
 #include "core/types/ITypeHandler.h"
+#include <filesystem>
 
 namespace GOW {
 
@@ -58,5 +59,11 @@ private:
 
 class TexPackIndex;
 TexPackIndex& GetTexIndex();
+
+// Try to auto-detect the GOWR game root from a loaded WAD path and persist it
+// to config.ini next to the executable. Walks up from `wadPath` looking for a
+// dir that contains `exec/wad/pc_le/`. Returns true if config.ini was already
+// present or was written successfully.
+bool EnsureGowrConfigIni(const std::filesystem::path& wadPath);
 
 } // namespace GOW

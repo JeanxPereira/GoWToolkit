@@ -180,7 +180,7 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
                 std::string dump = "";
                 for (int d = 0; d < 24; ++d) {
                     char hex[4];
-                    sprintf(hex, "%02X ", buf[sampleRefOff + d]);
+                    snprintf(hex, sizeof(hex), "%02X ", buf[sampleRefOff + d]);
                     dump += hex;
                 }
 

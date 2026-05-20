@@ -165,13 +165,19 @@ public:
 
         if (scene->IsEmpty()) return nullptr;
 
-        // Detect Sky script
+        // Detect Sky script — flag both scene and individual parts so
+        // SceneRenderer (which reads part.isSky into RenderBatch::isSky) can
+        // route them through the sky pass.
         for (const auto& child : model->children) {
             if (child.typeId == GOW::TypeId::Script && child.size > 0) {
                 std::string target = GOW::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
                 if (target == "SCR_Sky") {
                     scene->isSky = true;
-                    LOG_INFO("[ModelHandler] Detected SCR_Sky in model '%s'", model->name.c_str());
+                    for (auto& p : scene->meshParts) {
+                        p.isSky = true;
+                    }
+                    LOG_INFO("[ModelHandler] Detected SCR_Sky in model '%s' (%zu parts flagged)",
+                             model->name.c_str(), scene->meshParts.size());
                     break;
                 }
             }

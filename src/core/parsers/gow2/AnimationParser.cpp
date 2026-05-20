@@ -151,7 +151,12 @@ static std::vector<int8_t> GetShiftsArray(const AnimStateDescrHeader& descr,
     DataBitMap dbm = GetDataBitMap(descr, stateData);
     std::vector<int8_t> shifts(dbm.pairedElementsCount);
     if (dbm.pairedElementsCount == 1) {
-        shifts[0] = (int8_t)(descr.flagsProbably >> 4);
+        // Arithmetic shift right of signed byte. Go does
+        //   shifts[0] = int8(descr.FlagsProbably) >> 4
+        // which sign-extends the high nibble. C++ must cast to signed FIRST,
+        // otherwise (uint8 >> 4) drops the sign bit and we lose ~65536x on
+        // any state whose flags byte has bit 7 set (e.g. 0xC2 → wanted -4, got 12).
+        shifts[0] = (int8_t)((int8_t)descr.flagsProbably >> 4);
     } else {
         SafeBuf s5Buf = getDataBitMapOffset(descr, stateData).sub(dbm.bitmap.size() * 2 + 4);
         for (int i = 0; i < (int)dbm.pairedElementsCount; ++i) {

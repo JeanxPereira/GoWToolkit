@@ -4,7 +4,7 @@
 namespace GOW {
 
 /// Compile-time identity for every known asset/node type across all GOW games.
-/// Replaces the fragile schemaType strings and WadEntryRole enum.
+/// Canonical type identifiers for WAD assets across all game profiles.
 enum class TypeId : uint32_t {
     Unknown = 0,
 
@@ -38,6 +38,7 @@ enum class TypeId : uint32_t {
     VpkVideo,           // .VPK .VP1-5
     PssVideo,           // .PSS
     PswVideo,           // .PSW
+    TextPlain,          // .TXT .INI .CFG .CSV .JSON .LOG — plain-text family
 
     // ── GOWR-specific (future) ──
     ShaderContainer,

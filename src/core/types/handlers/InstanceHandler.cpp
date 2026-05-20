@@ -138,42 +138,43 @@ public:
             return nullptr;
         }
 
-        // 4. Apply sky flag from instance data
-        if (instData->isSky) {
+        // 4. Sky detection — three sources, any one triggers sky routing:
+        //    a) ObjectHandler/ProcessModel sets part.isSky when SCR_Sky child
+        //       lives on a Model under an Object (matches god_of_war_browser).
+        //    b) ModelHandler sets scene->isSky when SCR_Sky child lives on the
+        //       Model directly (instance child is a Model, not an Object).
+        //    c) InstanceParser sets instData->isSky when the instance name
+        //       contains "sky" (fallback heuristic).
+        // Promote any signal to BOTH scene-level and per-part flags so the
+        // SceneRenderer (batch.isSky = part.isSky) can route via RenderSky.
+        bool partSky = false;
+        for (const auto& part : scene->meshParts) {
+            if (part.isSky) { partSky = true; break; }
+        }
+        if (instData->isSky || partSky || scene->isSky) {
             scene->isSky = true;
             for (auto& part : scene->meshParts) {
                 part.isSky = true;
             }
-            LOG_INFO("[InstanceHandler] Marking scene as sky for instance '%s'", entry.name.c_str());
+            LOG_INFO("[InstanceHandler] Marking scene as sky for instance '%s' (nameMatch=%d, partFlag=%d, sceneFlag=%d)",
+                     entry.name.c_str(), instData->isSky, partSky, scene->isSky);
         }
 
-        // 5. Apply transform
-        // For skinned dynamic models (gohero00), we pass the transform down to the hardware
-        // to avoid destroying bind-pose vertices before the bone skinning takes place.
-        // For static instances (like CXT levels), we MUST pre-multiply the vertices so that
-        // WAD map viewer can merge thousands of statically placed parts into a single SceneData.
-        if (scene->HasSkeleton()) {
-            scene->instanceTransform = glm::make_mat4(instData->transformMatrix);
-        } else {
-            glm::mat4 m = glm::make_mat4(instData->transformMatrix);
-            glm::mat3 m3(m);
-
-            for (auto& part : scene->meshParts) {
-                for (auto& v : part.vertices) {
-                    glm::vec4 pos(v.position[0], v.position[1], v.position[2], 1.0f);
-                    pos = m * pos;
-                    v.position[0] = pos.x;
-                    v.position[1] = pos.y;
-                    v.position[2] = pos.z;
-
-                    glm::vec3 n3(v.normal[0], v.normal[1], v.normal[2]);
-                    n3 = m3 * n3;
-                    v.normal[0] = n3.x;
-                    v.normal[1] = n3.y;
-                    v.normal[2] = n3.z;
-                }
-            }
-        }
+        // 5. Instance transform — GOW2: do NOT apply.
+        //
+        // Reference: god_of_war_browser/web/data/static/js/BrowserWad.js:1365
+        //   if (inst.IsGow2) {
+        //     // instNode.setLocalMatrix(instMat);   ← COMMENTED OUT
+        //   }
+        // Joint world transforms (renderMat from Matrixes1 chain) already place
+        // GOW2 geometry in world space. Applying inst.Position on top double-
+        // counts position, producing wrong placement in CXT map merge and
+        // doubled coordinates in the single-instance viewer.
+        //
+        // We keep instanceTransform on the scene so callers can introspect the
+        // raw matrix if needed (debug/UI), but it is identity for render
+        // purposes — SceneRenderer's flipZ scale still applies as configured.
+        scene->instanceTransform = glm::mat4(1.0f);
 
         return scene;
     }

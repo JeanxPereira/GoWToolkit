@@ -149,35 +149,90 @@ public:
                      child.name.c_str(), instScene->meshParts.size(),
                      instScene->isSky, instScene->HasSkeleton());
 
-            // If this instance has a skeleton (skinned model like a character),
-            // the InstanceHandler stored the world transform in instanceTransform
-            // instead of pre-multiplying vertices. Since the merged scene can only
-            // hold ONE instanceTransform, we must pre-transform the vertices now
-            // and strip the skeleton to convert it to static geometry at the
-            // correct world position.
-            if (instScene->HasSkeleton() && instScene->instanceTransform != glm::mat4(1.0f)) {
-              glm::mat4 m = instScene->instanceTransform;
-              glm::mat3 m3(m);
+            // Bake skeleton joint world-rest pose into vertices, then strip
+            // skeleton so chunk merge can flatten many instances into one
+            // SceneData.
+            //
+            // Critical reference (god_of_war_browser/web/.../BrowserWad.js:1365):
+            //   if (inst.IsGow2) {
+            //     // instNode.setLocalMatrix(instMat);  ← COMMENTED OUT
+            //   }
+            // For GOW2, `inst.Position` is NOT applied to the rendered object —
+            // the joint world transforms (Matrixes1 chain via renderMat) already
+            // place the geometry in world space. Applying instance translation
+            // on top double-counts the position.
+            //
+            // Port of web renderer skinning (SkinnedTextured.vs):
+            //   boneTransform = umJoints[id1] * w + umJoints[id2] * (1 - w)
+            //   pos           = boneTransform * pos
+            // where umJoints[i] = joint.renderMat * joint.bindToJointMat.
+            //
+            // Sky instances: same rule — joint world transform only.
+            {
+              std::vector<glm::mat4> palette;
+              if (instScene->HasSkeleton()) {
+                const auto &joints = instScene->skeleton->joints;
+                palette.resize(joints.size());
+                for (size_t i = 0; i < joints.size(); ++i) {
+                  palette[i] = joints[i].renderMat * joints[i].bindToJointMat;
+                }
+              }
+
               for (auto &part : instScene->meshParts) {
+                std::vector<glm::mat4> batchPalette;
+                if (!palette.empty() && !part.jointMap.empty()) {
+                  batchPalette.resize(part.jointMap.size(), glm::mat4(1.0f));
+                  for (size_t i = 0; i < part.jointMap.size(); ++i) {
+                    uint16_t g = part.jointMap[i];
+                    if (g < palette.size()) {
+                      batchPalette[i] = palette[g];
+                    }
+                  }
+                }
+
                 for (auto &v : part.vertices) {
+                  glm::mat4 boneT(1.0f);
+                  if (!batchPalette.empty()) {
+                    uint32_t i1 = v.boneIndices.x;
+                    uint32_t i2 = v.boneIndices.y;
+                    float w1 = v.boneWeights.x;
+                    float w2 = v.boneWeights.y;
+                    if (w1 == 0.0f && w2 == 0.0f) {
+                      w1 = 1.0f;
+                    }
+                    glm::mat4 M1 = i1 < batchPalette.size() ? batchPalette[i1]
+                                                            : glm::mat4(1.0f);
+                    glm::mat4 M2 = i2 < batchPalette.size() ? batchPalette[i2]
+                                                            : glm::mat4(1.0f);
+                    boneT = M1 * w1 + M2 * w2;
+                  }
+
+                  glm::mat3 M3(boneT);
+
                   glm::vec4 pos(v.position[0], v.position[1], v.position[2], 1.0f);
-                  pos = m * pos;
+                  pos = boneT * pos;
                   v.position[0] = pos.x;
                   v.position[1] = pos.y;
                   v.position[2] = pos.z;
 
                   glm::vec3 n3(v.normal[0], v.normal[1], v.normal[2]);
-                  n3 = m3 * n3;
+                  n3 = M3 * n3;
+                  float nlen = glm::length(n3);
+                  if (nlen > 1e-6f) n3 /= nlen;
                   v.normal[0] = n3.x;
                   v.normal[1] = n3.y;
                   v.normal[2] = n3.z;
+
+                  v.boneIndices = glm::uvec4(0u);
+                  v.boneWeights = glm::vec4(0.0f);
                 }
+                part.jointMap.clear();
               }
-              // Clear skeleton — it's now baked into the vertices
+
               instScene->skeleton.reset();
               instScene->instanceTransform = glm::mat4(1.0f);
-              LOG_INFO("[ChunkHandler] Pre-transformed skinned instance '%s' to world space",
-                       child.name.c_str());
+              LOG_INFO("[ChunkHandler] Baked instance '%s' to world space (isSky=%d)",
+                       child.name.c_str(), instScene->isSky);
             }
 
             // Merge materials
@@ -195,7 +250,11 @@ public:
               mergedScene->meshParts.push_back(std::move(part));
             }
 
-            // (No longer merging isSky at the scene level; mesh parts preserve their own isSky flag)
+            // Propagate sky flag so MapViewer's combined scene can route the
+            // dome through RenderSky.
+            if (instScene->isSky) {
+              mergedScene->isSky = true;
+            }
 
             instanceCount++;
           } else {

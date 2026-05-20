@@ -22,8 +22,17 @@
 #include <fstream>
 #include "../parsers/gowr/Rdna2Detiler.h"
 #include "../parsers/gowr/BcDecoder.h"
+#include "core/profiles/gowr/GowrProfileTag.h"
+#include "core/PathUtils.h"
 
 using GOW::Rdna2::Detile;
+
+static GOW::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
+    if (auto* t = e.profileTag.As<GOW::Gowr::GowrProfileTag>()) {
+        return t->role;
+    }
+    return GOW::Gowr::WadEntryRole::Unknown;
+}
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -87,6 +96,58 @@ static std::filesystem::path ReadGameRootFromConfig() {
         line.erase(0, 1);
 
     return std::filesystem::path(line);
+}
+
+// ── Auto-detect game root from a WAD path ──────────────────────────────────
+//
+// GOWR layout puts WADs under <gameRoot>/exec/wad/pc_le/. We walk up from the
+// WAD's parent dir looking for an ancestor that contains exec/wad/pc_le, so we
+// support both the canonical layout (wad sits in pc_le) and one or two levels
+// deeper (e.g. user keeps wads in a subfolder).
+static std::filesystem::path TryDetectGowrGameRoot(const std::filesystem::path& wadPath) {
+    std::error_code ec;
+    auto p = std::filesystem::weakly_canonical(wadPath, ec);
+    if (ec) p = wadPath;
+    p = p.parent_path();
+
+    for (int hops = 0; hops < 6 && !p.empty(); ++hops) {
+        std::error_code probe;
+        if (std::filesystem::exists(p / "exec" / "wad" / "pc_le", probe)) {
+            return p;
+        }
+        auto parent = p.parent_path();
+        if (parent == p) break; // reached filesystem root
+        p = parent;
+    }
+    return {};
+}
+
+// Returns true ONLY if config.ini was just written (caller should invalidate
+// cached singletons). Returns false if config.ini already existed or detection
+// failed.
+bool EnsureGowrConfigIni(const std::filesystem::path& wadPath) {
+    if (!FindResource("config.ini").empty()) return false;
+
+    auto gameRoot = TryDetectGowrGameRoot(wadPath);
+    if (gameRoot.empty()) {
+        LOG_DEBUG("[GOWRLoaders] Could not auto-detect GOWR game root from: %s",
+                  wadPath.string().c_str());
+        return false;
+    }
+
+    auto target = std::filesystem::path(PathUtils::getExecutableDir()) / "config.ini";
+    std::ofstream out(target, std::ios::trunc);
+    if (!out.is_open()) {
+        LOG_WARN("[GOWRLoaders] Cannot write config.ini at: %s", target.string().c_str());
+        return false;
+    }
+    out << "; GoWToolkit auto-generated. Game root containing exec/wad/pc_le.\n";
+    out << "gameroot=" << gameRoot.string() << "\n";
+    out.close();
+
+    LOG_INFO("[GOWRLoaders] Auto-detected game root '%s' (saved to %s)",
+             gameRoot.string().c_str(), target.string().c_str());
+    return true;
 }
 
 // ── LodPackIndex singleton ─────────────────────────────────────────────────
@@ -166,7 +227,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
     std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findGpu;
     findGpu = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
         for (const auto& e : entries) {
-            if (e.role == WadEntryRole::MeshGpu) {
+            if (GetRole(e) == Gowr::WadEntryRole::MeshGpu) {
                 std::string gpuBase = e.name;
                 if (gpuBase.rfind("MG_", 0) == 0) gpuBase = gpuBase.substr(3);
                 auto d = gpuBase.rfind("---");
@@ -216,7 +277,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
     std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMg;
     findMg = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
         for (const auto& e : entries) {
-            if (e.role == WadEntryRole::MeshDefn &&
+            if (GetRole(e) == Gowr::WadEntryRole::MeshDefn &&
                 e.name.rfind("MG_", 0) == 0)
             {
                 std::string n = e.name.substr(3); // strip "MG_"
@@ -259,7 +320,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
         std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMdl;
         findMdl = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
             for (const auto& e : entries) {
-                if (e.role == WadEntryRole::Model && e.name.rfind("MDL_", 0) == 0) {
+                if (GetRole(e) == Gowr::WadEntryRole::Model && e.name.rfind("MDL_", 0) == 0) {
                     std::string n = e.name.substr(4);
                     auto d = n.rfind("---");
                     if (d != std::string::npos) n = n.substr(0, d);
@@ -328,7 +389,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
         std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findProto;
         findProto = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
             for (const auto& e : entries) {
-                if (e.role == WadEntryRole::GameObjectProto) {
+                if (GetRole(e) == Gowr::WadEntryRole::GameObjectProto) {
                     std::string n = e.name;
                     if (n.rfind("goProto", 0) == 0) n = n.substr(7);
                     auto d = n.rfind("---");
@@ -443,17 +504,27 @@ public:
     void Draw() override {
         auto& texIdx = GetTexIndex();
 
-        if (!texIdx.IsLoaded()) {
-            ImGui::SetCursorPos(ImVec2(ImGui::GetWindowSize().x * 0.5f - 150, ImGui::GetWindowSize().y * 0.5f - 20));
-            ImGui::Text("Loading Texture Index (TOCs) in background...");
-            ImGui::SetCursorPosX(ImGui::GetWindowSize().x * 0.5f - 150);
-            ImGui::ProgressBar(texIdx.GetLoadProgress(), ImVec2(300, 0));
-            return;
-        }
-
+        // Poll-based lookup: try the cache every frame. As background
+        // workers publish more packs, our hash may become available even
+        // while overall indexing is still in progress.
         if (!m_initialized) {
-            m_initialized = true;
-            FirstLoad(texIdx);
+            TexpackEntry probe;
+            if (texIdx.FindTexture(m_hash, probe)) {
+                m_initialized = true;
+                FirstLoad(texIdx);
+            } else if (!texIdx.IsLoading()) {
+                // Indexing finished and the hash is still missing — real fail.
+                m_initialized = true;
+                m_failReason = "hash not in texpack index";
+            } else {
+                // Still indexing — show progress and bail until next frame.
+                ImGui::SetCursorPos(ImVec2(ImGui::GetWindowSize().x * 0.5f - 150,
+                                           ImGui::GetWindowSize().y * 0.5f - 20));
+                ImGui::Text("Indexing texpacks in background (parallel)...");
+                ImGui::SetCursorPosX(ImGui::GetWindowSize().x * 0.5f - 150);
+                ImGui::ProgressBar(texIdx.GetLoadProgress(), ImVec2(300, 0));
+                return;
+            }
         }
 
         if (m_failReason) {
@@ -592,7 +663,7 @@ std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const ParsedEntry
     std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMesh;
     findMesh = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
         for (const auto& e : entries) {
-            if (e.role == WadEntryRole::MeshDefn &&
+            if (GetRole(e) == Gowr::WadEntryRole::MeshDefn &&
                 e.name.rfind("MESH_", 0) == 0)
             {
                 std::string n = e.name.substr(5); // strip "MESH_"
@@ -627,7 +698,7 @@ std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const ParsedEntry
     std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMg;
     findMg = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
         for (const auto& e : entries) {
-            if (e.role == WadEntryRole::MeshDefn &&
+            if (GetRole(e) == Gowr::WadEntryRole::MeshDefn &&
                 e.name.rfind("MG_", 0) == 0)
             {
                 std::string n = e.name.substr(3);

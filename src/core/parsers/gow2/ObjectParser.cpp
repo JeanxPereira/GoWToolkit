@@ -112,8 +112,16 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
         j.id          = static_cast<int16_t>(i);
         j.isSkinned   = (flags & 0x80) != 0;
         j.isExternal  = (flags & 0x08) != 0;
-        // GOW2 obj_gow2.go NEVER sets IsQuaterion — always false (uses Euler).
-        j.isQuaternion = false;
+        // Render code in obj_gow2 reference checks `joint.Flags & 0x8000` per-joint
+        // to pick quaternion vs Euler decoding of vectors5 / animation samples.
+        // Forcing every GOW2 joint into the Euler path turned Q.14 quaternion-looking
+        // values into 100°+ Euler angles, contorting the skeleton mid-anim.
+        j.isQuaternion = (flags & 0x8000) != 0;
+        if (i < 12) {
+            LOG_INFO("[JointFlags] j[%u] flags=0x%08X skinned=%d external=%d quat=%d name='%s'",
+                     i, flags, (int)j.isSkinned, (int)j.isExternal,
+                     (int)j.isQuaternion, j.name.c_str());
+        }
         j.invId       = invId;
 
         if (j.isSkinned) {

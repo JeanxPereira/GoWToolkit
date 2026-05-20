@@ -137,6 +137,7 @@ const char* TypeIdName(TypeId id) {
         case TypeId::VpkVideo:       return "VPK Video";
         case TypeId::PssVideo:       return "PSS Video";
         case TypeId::PswVideo:       return "PSW Video";
+        case TypeId::TextPlain:      return "Text";
         case TypeId::ShaderContainer: return "Shader";
         case TypeId::ShaderVertex:   return "Vertex Shader";
         case TypeId::ShaderPixel:    return "Pixel Shader";
