@@ -164,11 +164,14 @@ add_library(ffmpeg_lib INTERFACE)
 
 if(WIN32)
     # ── Prebuilt Windows (BtbN – GPL shared, x64) ────────────────────
-    # Hash obtido do erro de cmake na primeira execução (BtbN GPL shared 7.1 win64)
+    # BtbN "latest" tag is a rolling pointer — the asset SHA256 changes
+    # whenever upstream rebuilds. Pinning URL_HASH guarantees CI breakage
+    # the moment that happens, so we omit it and rely on TLS for transport
+    # integrity. To pin a specific build, swap the URL to a dated tag
+    # (autobuild-YYYY-MM-DD-HH-MM) and reinstate URL_HASH.
     FetchContent_Declare(
         ffmpeg_prebuilt
         URL      "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip"
-        URL_HASH SHA256=4b40627b89007b0c47338ec4b4da15af03625d84a47e2651cc326859b783eee1
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_DIR ${CMAKE_SOURCE_DIR}/third_party/ffmpeg
     )
@@ -248,7 +251,7 @@ set(PARSER_MIN_SOURCES
 
 add_library(gowtoolkit_parser_min STATIC ${PARSER_MIN_SOURCES})
 target_include_directories(gowtoolkit_parser_min PUBLIC src)
-target_link_libraries(gowtoolkit_parser_min PUBLIC lz4_lib)
+target_link_libraries(gowtoolkit_parser_min PUBLIC lz4_lib glm::glm)
 target_compile_features(gowtoolkit_parser_min PUBLIC cxx_std_20)
 
 # ── GoWToolkit ────────────────────────────────────────────────────────────────
