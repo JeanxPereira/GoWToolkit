@@ -1,20 +1,17 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "ui/SettingsWindow.h"
 #include "core/PathUtils.h"
+#include "core/FontManager.h"
+#include "core/ScaleManager.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "rendering/ShaderManager.h"
-#include "ui/AppContext.h"
-#include "ui/TitleBar.h"
+#include "core/AssetVisibility.h"
+#include "fonts/SFSymbols.h"
+#include "ui/Widgets.h"
+
 #include <algorithm>
 #include <cstring>
-#include "imgui_impl_opengl3.h"
-
-
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
 
 // ── SubWindow helpers (1:1 ImHex ImGuiExt::BeginSubWindow / EndSubWindow) ──
 
@@ -45,129 +42,68 @@ static void EndSubWindow() {
 // ── Init ────────────────────────────────────────────────────────────────────
 
 void SettingsWindow::Init() {
-  PopulateFontList();
+  // Font list is now managed by GOW::Fonts (populated in App::init)
   if (config) {
     m_uiScale = config->uiScale;
     m_fontSize = config->fontSize;
-    for (int i = 0; i < (int)m_fonts.size(); i++) {
-      if (m_fonts[i].path == config->fontPath) {
-        m_fontSelected = i;
-        break;
-      }
-    }
+    m_fontSelected = GOW::Fonts::FindFontIndex(config->fontPath);
+    if (m_fontSelected < 0) m_fontSelected = 0;
   }
-  // Schedule a rebuild for the first frame so it properly applies the loaded config
-  pendingFontRebuild = true;
-}
-
-void SettingsWindow::PopulateFontList() {
-  m_fonts.clear();
-  m_fonts.push_back({"Default (ProggyClean)", "", 13.0f});
-
-#ifdef _WIN32
-  const char *paths[] = {"C:/Windows/Fonts/segoeui.ttf",
-                         "C:/Windows/Fonts/segoeuib.ttf",
-                         "C:/Windows/Fonts/consola.ttf",
-                         "C:/Windows/Fonts/arial.ttf",
-                         "C:/Windows/Fonts/verdana.ttf",
-                         "C:/Windows/Fonts/tahoma.ttf",
-                         "C:/Windows/Fonts/JetBrainsMono-Regular.ttf"};
-  const char *labels[] = {"Segoe UI", "Segoe UI Bold", "Consolas",      "Arial",
-                          "Verdana",  "Tahoma",        "JetBrains Mono"};
-  for (int i = 0; i < 7; i++)
-    if (GetFileAttributesA(paths[i]) != INVALID_FILE_ATTRIBUTES)
-      m_fonts.push_back({labels[i], paths[i], m_fontSize});
-#elif defined(__APPLE__)
-  struct {
-    const char *label;
-    const char *path;
-  } macFonts[] = {
-      {"SF Mono", "/System/Library/Fonts/SFNSMono.ttf"},
-      {"Menlo", "/Library/Fonts/Menlo.ttc"},
-      {"Monaco", "/System/Library/Fonts/Monaco.ttf"},
-      {"Courier New", "/Library/Fonts/Courier New.ttf"},
-      {"Helvetica", "/System/Library/Fonts/Helvetica.ttc"},
-      {"Arial", "/Library/Fonts/Arial.ttf"},
-  };
-  for (const auto &f : macFonts)
-    if (std::filesystem::exists(f.path))
-      m_fonts.push_back({f.label, f.path, m_fontSize});
-#endif
-  // Bundled fonts (cross-platform, resolved relative to executable)
-  struct {
-    const char *label;
-    const char *rel;
-  } bundled[] = {
-      {"SF Mono (bundled)", "third_party/fonts/SF-Mono-Regular.otf"},
-      {"SF Mono (bundled)", "third_party/fonts/SFMono-Regular.otf"},
-  };
-  for (const auto &f : bundled) {
-    auto abs = PathUtils::resolvePath(f.rel);
-    if (std::filesystem::exists(abs))
-      m_fonts.push_back({f.label, abs, m_fontSize});
-  }
-}
-
-void SettingsWindow::RebuildFontAtlas() {
-  ImGuiIO &io = ImGui::GetIO();
-  io.Fonts->Clear();
-  const FontEntry &fe = m_fonts[m_fontSelected];
-
-  // ImGui 1.92+: destination font must use explicit reference size so the
-  // merged icon font (TitleBar::loadIconFont) can also be explicit. Otherwise
-  // AddFont asserts: "Cannot use MergeMode with an explicit reference size
-  // when the destination font used an implicit reference size!"
-  ImFontConfig baseCfg;
-  baseCfg.SizePixels = m_fontSize;
-
-  if (fe.path.empty()) {
-    io.Fonts->AddFontDefault(&baseCfg);
-  } else {
-    ImFont *f =
-        io.Fonts->AddFontFromFileTTF(fe.path.c_str(), m_fontSize, &baseCfg);
-    if (!f)
-      io.Fonts->AddFontDefault(&baseCfg);
-  }
-
-  // TitleBar::loadIconFont(PathUtils::resolvePath("third_party/fonts/codicons.ttf").c_str(),
-  // m_fontSize + 1.0f);
-  TitleBar::loadIconFont(
-      PathUtils::resolvePath("third_party/fonts/SFSymbols.ttf").c_str(),
-      m_fontSize + 1.0f);
-
-  io.Fonts->Build();
-  io.FontGlobalScale = 1.0f; // No global scaling — we use real font pixel size
-  pendingFontRebuild = true;
-
+  // Build the atlas for the first frame with the loaded config
+  GOW::Fonts::BuildAtlas(m_fontSelected, m_fontSize);
+  // Persist back to config in case font index resolved differently
   if (config) {
     config->fontSize = m_fontSize;
-    config->fontPath = fe.path;
+    config->fontPath = GOW::Fonts::GetCurrentFontPath();
   }
-}
-
-void SettingsWindow::ApplyFontChange() { 
-  RebuildFontAtlas();
-  ImGui_ImplOpenGL3_DestroyDeviceObjects();
-  ImGui_ImplOpenGL3_CreateDeviceObjects();
-  pendingFontRebuild = false; 
-}
-
-void SettingsWindow::ApplyScaleClamp() {
-  ImGuiStyle &s = ImGui::GetStyle();
-  s.SeparatorSize = ImMax(s.SeparatorSize, 1.0f);
-  s.ChildBorderSize = ImMax(s.ChildBorderSize, 0.0f);
-  s.PopupBorderSize = ImMax(s.PopupBorderSize, 0.0f);
-  s.FrameBorderSize = ImMax(s.FrameBorderSize, 0.0f);
-  s.WindowBorderSize = ImMax(s.WindowBorderSize, 0.0f);
-  s.TabBorderSize = ImMax(s.TabBorderSize, 0.0f);
 }
 
 // ── Draw (1:1 ImHex ViewSettings::drawContent layout) ───────────────────────
 
-void SettingsWindow::draw(AppContext & /*ctx*/) {
+void SettingsWindow::Draw() {
   if (!visible) {
     m_justOpened = true;
+    // Se a janela for fechada durante uma transição de acento, finaliza na cor de destino
+    if (m_transitioningAccent) {
+      m_transitioningAccent = false;
+      if (config) {
+        config->accentR = m_accentTargetColor.x;
+        config->accentG = m_accentTargetColor.y;
+        config->accentB = m_accentTargetColor.z;
+        config->accentA = m_accentTargetColor.w;
+        GOW::Theme::ApplyTheme(config->getAccent(),
+                               (GOW::Theme::ThemeMode)config->themeMode,
+                               /*animate=*/false);
+      }
+    }
     return;
+  }
+
+  // Processa a transição de cor de acento frame a frame
+  if (m_transitioningAccent && config) {
+    float elapsed = (float)ImGui::GetTime() - m_accentTransitionStart;
+    constexpr float duration = 0.25f; // Duração sincronizada com ThemeManager
+    float t = elapsed / duration;
+    if (t >= 1.0f) {
+      m_transitioningAccent = false;
+      config->accentR = m_accentTargetColor.x;
+      config->accentG = m_accentTargetColor.y;
+      config->accentB = m_accentTargetColor.z;
+      config->accentA = m_accentTargetColor.w;
+      GOW::Theme::ApplyTheme(config->getAccent(),
+                             (GOW::Theme::ThemeMode)config->themeMode,
+                             /*animate=*/false);
+    } else {
+      // Curva cubic ease-out para transição suave
+      float ease = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+      config->accentR = m_accentStartColor.x + (m_accentTargetColor.x - m_accentStartColor.x) * ease;
+      config->accentG = m_accentStartColor.y + (m_accentTargetColor.y - m_accentStartColor.y) * ease;
+      config->accentB = m_accentStartColor.z + (m_accentTargetColor.z - m_accentStartColor.z) * ease;
+      config->accentA = m_accentStartColor.w + (m_accentTargetColor.w - m_accentStartColor.w) * ease;
+      GOW::Theme::ApplyTheme(config->getAccent(),
+                             (GOW::Theme::ThemeMode)config->themeMode,
+                             /*animate=*/false);
+    }
   }
 
   if (m_justOpened) {
@@ -186,8 +122,8 @@ void SettingsWindow::draw(AppContext & /*ctx*/) {
   }
 
   // ── Two-column table: categories | settings (1:1 ImHex) ─────────────
-  static const char *categories[] = {"Interface", "Appearance", "Viewport"};
-  constexpr int categoryCount = 3;
+  static const char *categories[] = {"Interface", "Appearance", "Theme Editor", "Viewport", "Asset Filters"};
+  constexpr int categoryCount = 5;
 
   if (ImGui::BeginTable("Settings", 2,
                         ImGuiTableFlags_BordersInner |
@@ -219,7 +155,13 @@ void SettingsWindow::draw(AppContext & /*ctx*/) {
         DrawAppearanceCategory();
         break;
       case 2:
+        DrawThemeEditorCategory();
+        break;
+      case 3:
         DrawViewportCategory();
+        break;
+      case 4:
+        DrawAssetFiltersCategory();
         break;
       }
     }
@@ -240,7 +182,7 @@ void SettingsWindow::DrawInterfaceCategory() {
   ImGuiStyle &style = ImGui::GetStyle();
 
   static bool showFontDebug = false;
-  if (ImGui::Button("Open SF Symbols Debugger")) {
+  if (GOW::UI::Widgets::Button("Open SF Symbols Debugger")) {
     showFontDebug = true;
   }
   if (showFontDebug) {
@@ -248,7 +190,7 @@ void SettingsWindow::DrawInterfaceCategory() {
   }
   ImGui::Separator();
 
-  // ── Sub: Scaling ────────────────────────────────────────────────────
+  // ── Sub: Scaling (uses ScaleManager for drift-free scaling) ─────────
   if (BeginSubWindow("Scaling")) {
     ImGui::PushItemWidth(
         std::min(ImGui::GetContentRegionAvail().x - 120.0f, 300.0f));
@@ -256,9 +198,9 @@ void SettingsWindow::DrawInterfaceCategory() {
     float uiScale = m_uiScale;
     if (ImGui::SliderFloat("UI Scale", &uiScale, 0.5f, 3.0f, "%.2fx")) {
       if (uiScale != m_uiScale && uiScale > 0.1f) {
-        float ratio = uiScale / m_uiScale;
-        style.ScaleAllSizes(ratio);
-        ApplyScaleClamp();
+        GOW::Scale::SetUserScale(uiScale);
+        GOW::Scale::ApplyStyleScale(uiScale);
+        GOW::Theme::ApplyTheme(config->getAccent()); // reapply colors over reset style
         m_uiScale = uiScale;
         if (config)
           config->uiScale = uiScale;
@@ -274,9 +216,10 @@ void SettingsWindow::DrawInterfaceCategory() {
 
     ImGui::Spacing();
     auto preset = [&](const char *lbl, float t) {
-      if (ImGui::Button(lbl, ImVec2(50, 0))) {
-        style.ScaleAllSizes(t / m_uiScale);
-        ApplyScaleClamp();
+      if (GOW::UI::Widgets::Button(lbl, ImVec2(50, 0))) {
+        GOW::Scale::SetUserScale(t);
+        GOW::Scale::ApplyStyleScale(t);
+        GOW::Theme::ApplyTheme(config->getAccent());
         m_uiScale = t;
         if (config)
           config->uiScale = t;
@@ -300,12 +243,13 @@ void SettingsWindow::DrawInterfaceCategory() {
     ImGui::PushItemWidth(
         std::min(ImGui::GetContentRegionAvail().x - 120.0f, 300.0f));
 
-    // Font family ─────────────────────────────────────────────────
+    // Font family (uses centralized GOW::Fonts) ──────────────────
+    const auto& fonts = GOW::Fonts::GetFontList();
     bool familyChanged = false;
-    if (ImGui::BeginCombo("Family", m_fonts[m_fontSelected].label.c_str())) {
-      for (int i = 0; i < (int)m_fonts.size(); i++) {
+    if (ImGui::BeginCombo("Family", fonts[m_fontSelected].label.c_str())) {
+      for (int i = 0; i < (int)fonts.size(); i++) {
         bool sel = (i == m_fontSelected);
-        if (ImGui::Selectable(m_fonts[i].label.c_str(), sel)) {
+        if (ImGui::Selectable(fonts[i].label.c_str(), sel)) {
           if (i != m_fontSelected) {
             m_fontSelected = i;
             familyChanged = true;
@@ -319,7 +263,7 @@ void SettingsWindow::DrawInterfaceCategory() {
 
     // Font size (+/- input, deferred rebuild) ───────────────────────
     // Disabled for default pixel-perfect font (ProggyClean)
-    bool isPixelPerfect = (m_fontSelected == 0);
+    bool isPixelPerfect = (m_fontSelected < (int)fonts.size() && fonts[m_fontSelected].pixelPerfect);
     ImGui::BeginDisabled(isPixelPerfect);
     {
       if (ImGui::InputFloat("Size", &m_fontSize, 1.0f, 2.0f, "%.0f pt")) {
@@ -330,7 +274,8 @@ void SettingsWindow::DrawInterfaceCategory() {
       // Rebuild when input is deactivated (Enter key or lost focus)
       if (m_fontSizeChanged && ImGui::IsItemDeactivatedAfterEdit()) {
         m_fontSizeChanged = false;
-        pendingFontRebuild = true;
+        GOW::Fonts::BuildAtlas(m_fontSelected, m_fontSize);
+        if (config) { config->fontSize = m_fontSize; config->fontPath = GOW::Fonts::GetCurrentFontPath(); }
       }
     }
     ImGui::EndDisabled();
@@ -345,8 +290,10 @@ void SettingsWindow::DrawInterfaceCategory() {
     }
 
     // Auto-rebuild on family change ───────────────────────────────
-    if (familyChanged)
-      pendingFontRebuild = true;
+    if (familyChanged) {
+      GOW::Fonts::BuildAtlas(m_fontSelected, m_fontSize);
+      if (config) { config->fontSize = m_fontSize; config->fontPath = GOW::Fonts::GetCurrentFontPath(); }
+    }
 
     ImGui::PopItemWidth();
 
@@ -398,46 +345,73 @@ void SettingsWindow::DrawInterfaceCategory() {
 // ── Category: Appearance ────────────────────────────────────────────────────
 
 void SettingsWindow::DrawAppearanceCategory() {
-  // ── Sub: Accent Color ───────────────────────────────────────────────
-  if (BeginSubWindow("Accent Color")) {
+  // ── Sub: Theme Mode ─────────────────────────────────────────────────
+  if (BeginSubWindow("Theme Mode")) {
     if (!config) {
       ImGui::TextDisabled("Config not available.");
     } else {
-      ImVec4 accent(config->accentR, config->accentG, config->accentB,
-                    config->accentA);
-
-      ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoSidePreview |
-                                  ImGuiColorEditFlags_PickerHueWheel |
-                                  ImGuiColorEditFlags_DisplayHex;
-
-      if (ImGui::ColorPicker4("##accent", &accent.x, flags)) {
-        config->accentR = accent.x;
-        config->accentG = accent.y;
-        config->accentB = accent.z;
-        config->accentA = accent.w;
-        config->applyAccent();
+      int mode = (int)config->themeMode;
+      bool changed = false;
+      if (ImGui::RadioButton("Dark",   &mode, 0)) changed = true;
+      ImGui::SameLine();
+      if (ImGui::RadioButton("Light",  &mode, 1)) changed = true;
+      ImGui::SameLine();
+      if (ImGui::RadioButton("System", &mode, 2)) changed = true;
+      // Show the resolved value when System is active.
+      if (config->themeMode == 2) {
+        ImGui::SameLine();
+        const bool isDark = (GOW::Theme::GetEffectiveMode() == GOW::Theme::ThemeMode::Dark);
+        ImGui::TextDisabled("(%s)", isDark ? "Dark" : "Light");
       }
-
-      ImGui::BeginDisabled();
-      ImGui::Indent();
-      ImGui::TextWrapped(
-          "Color used for buttons, sliders, titlebar backdrop and highlights.");
-      ImGui::NewLine();
-      ImGui::Unindent();
-      ImGui::EndDisabled();
+      if (changed) {
+        config->themeMode = (uint8_t)mode;
+        GOW::Theme::ApplyTheme(config->getAccent(),
+                               (GOW::Theme::ThemeMode)config->themeMode,
+                               /*animate=*/true);
+      }
     }
   }
   EndSubWindow();
 
   ImGui::NewLine();
 
-  // ── Sub: Presets ────────────────────────────────────────────────────
-  if (BeginSubWindow("Presets")) {
-    if (config) {
-      struct Preset {
-        const char *name;
-        float r, g, b;
-      };
+  // ── Sub: Accent Color (2-column layout: picker + presets) ──────────
+  if (BeginSubWindow("Accent Color")) {
+    if (!config) {
+      ImGui::TextDisabled("Config not available.");
+    } else if (ImGui::BeginTable("##accentLayout", 2,
+                                 ImGuiTableFlags_SizingStretchProp)) {
+      ImGui::TableSetupColumn("picker",  ImGuiTableColumnFlags_WidthFixed,  240.0f);
+      ImGui::TableSetupColumn("presets", ImGuiTableColumnFlags_WidthStretch);
+
+      // ── Column 0: color wheel ──────────────────────────────────────
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex(0);
+
+      ImVec4 accent(config->accentR, config->accentG, config->accentB,
+                    config->accentA);
+      ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoSidePreview |
+                                  ImGuiColorEditFlags_PickerHueWheel |
+                                  ImGuiColorEditFlags_DisplayHex;
+      ImGui::SetNextItemWidth(220.0f);
+      if (ImGui::ColorPicker4("##accent", &accent.x, flags)) {
+        if (ImGui::IsItemActive()) {
+          m_transitioningAccent = false; // Interrompe a animação apenas em caso de arrasto manual do usuário
+        }
+        config->accentR = accent.x;
+        config->accentG = accent.y;
+        config->accentB = accent.z;
+        config->accentA = accent.w;
+        GOW::Theme::ApplyTheme(config->getAccent(),
+                               (GOW::Theme::ThemeMode)config->themeMode,
+                               /*animate=*/false);
+      }
+
+      // ── Column 1: built-in + custom presets ───────────────────────
+      ImGui::TableSetColumnIndex(1);
+      ImGui::TextDisabled("Presets");
+
+      struct Preset { const char *name; float r, g, b; };
       constexpr Preset presets[] = {
           {"Blue", 0.259f, 0.588f, 0.980f},  {"Purple", 0.502f, 0.200f, 0.900f},
           {"Green", 0.200f, 0.780f, 0.349f}, {"Orange", 0.980f, 0.490f, 0.100f},
@@ -445,28 +419,81 @@ void SettingsWindow::DrawAppearanceCategory() {
           {"Pink", 0.900f, 0.300f, 0.600f},  {"White", 0.850f, 0.850f, 0.850f},
       };
 
-      int col = 0;
-      for (const auto &p : presets) {
+      auto applyAccent = [&](float r, float g, float b) {
+        m_transitioningAccent = true;
+        m_accentStartColor = ImVec4(config->accentR, config->accentG, config->accentB, config->accentA);
+        m_accentTargetColor = ImVec4(r, g, b, 1.0f);
+        m_accentTransitionStart = (float)ImGui::GetTime();
+      };
+
+      // Built-in row(s).
+      for (int i = 0; i < (int)(sizeof(presets) / sizeof(presets[0])); i++) {
+        const auto &p = presets[i];
         ImVec4 c(p.r, p.g, p.b, 1.0f);
-        ImGui::PushID(p.name);
-        ImGui::PushStyleColor(ImGuiCol_Button, c);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                              ImVec4(c.x * 1.1f, c.y * 1.1f, c.z * 1.1f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,
-                              ImVec4(c.x * 0.9f, c.y * 0.9f, c.z * 0.9f, 1.0f));
-        if (ImGui::Button(p.name, ImVec2(90, 28))) {
-          config->accentR = p.r;
-          config->accentG = p.g;
-          config->accentB = p.b;
-          config->accentA = 1.0f;
-          config->applyAccent();
+        ImGui::PushID(i);
+        if (ImGui::ColorButton("##bipreset", c,
+                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder,
+                ImVec2(22, 22))) {
+          applyAccent(p.r, p.g, p.b);
         }
-        ImGui::PopStyleColor(3);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", p.name);
         ImGui::PopID();
-        if (++col % 4 != 0)
-          ImGui::SameLine();
+        if ((i + 1) % 6 != 0) ImGui::SameLine();
       }
+
+      // Custom presets — same grid, smaller batch sizes.
+      if (!config->customPresets.empty()) {
+        ImGui::NewLine();
+        ImGui::TextDisabled("Custom");
+        for (int i = 0; i < (int)config->customPresets.size(); i++) {
+          auto &cp = config->customPresets[i];
+          ImVec4 c(cp.r, cp.g, cp.b, 1.0f);
+          ImGui::PushID(1000 + i);
+          if (ImGui::ColorButton("##cpreset", c,
+                  ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder,
+                  ImVec2(22, 22))) {
+            applyAccent(cp.r, cp.g, cp.b);
+          }
+          if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", cp.name);
+          if (ImGui::BeginPopupContextItem()) {
+            if (ImGui::MenuItem("Delete")) {
+              config->customPresets.erase(config->customPresets.begin() + i);
+              ImGui::EndPopup();
+              ImGui::PopID();
+              break;
+            }
+            ImGui::EndPopup();
+          }
+          ImGui::PopID();
+          if ((i + 1) % 6 != 0) ImGui::SameLine();
+        }
+      }
+
       ImGui::NewLine();
+      // Save-current button — opens a modal for the new preset's name.
+      if (ImGui::Button("+ Save current…")) {
+        ImGui::OpenPopup("##savePreset");
+      }
+      if (ImGui::BeginPopup("##savePreset")) {
+        static char buf[32] = {};
+        ImGui::SetNextItemWidth(160.0f);
+        ImGui::InputTextWithHint("##name", "Preset name", buf, sizeof(buf));
+        ImGui::SameLine();
+        const bool ok = ImGui::Button("Save");
+        if (ok && buf[0] != '\0') {
+          AppConfig::CustomPreset cp{};
+          std::strncpy(cp.name, buf, sizeof(cp.name) - 1);
+          cp.r = config->accentR;
+          cp.g = config->accentG;
+          cp.b = config->accentB;
+          config->customPresets.push_back(cp);
+          buf[0] = '\0';
+          ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+      }
+
+      ImGui::EndTable();
     }
   }
   EndSubWindow();
@@ -512,4 +539,223 @@ void SettingsWindow::DrawViewportCategory() {
     }
   }
   EndSubWindow();
+}
+
+// ── Category: Asset Filters ─────────────────────────────────────────────────
+
+void SettingsWindow::DrawAssetFiltersCategory() {
+    auto& vis = GOW::AssetVisibility::Get();
+
+    if (BeginSubWindow("Filters", ImVec2(0, 0))) {
+        // ── Reset button ─────────────────────────────────────────────────────────
+        if (GOW::UI::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All")) {
+            vis.ResetAllOverrides();
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("(restores default visibility)");
+        ImGui::Separator();
+
+        // ── Per-game-version sections ────────────────────────────────────────────
+        struct GameSection {
+            GOW::GameVersion version;
+            const char*      label;
+        };
+        static const GameSection sections[] = {
+            { GOW::GameVersion::GOW2, "God of War II (PS2)" },
+            { GOW::GameVersion::GOWR, "God of War Ragnarok" },
+        };
+
+        int totalHidden  = 0;
+        int totalVisible = 0;
+
+        for (const auto& section : sections) {
+            auto types = vis.GetFilterableTypes(section.version);
+            if (types.empty()) continue;
+
+            // Separate into hidden-by-default and visible-by-default groups
+            std::vector<GOW::AssetVisibility::TypeVisInfo> hiddenDefaults;
+            std::vector<GOW::AssetVisibility::TypeVisInfo> visibleDefaults;
+
+            for (const auto& t : types) {
+                if (t.defaultVis == GOW::Visibility::Hidden) {
+                    hiddenDefaults.push_back(t);
+                } else {
+                    visibleDefaults.push_back(t);
+                }
+            }
+
+            if (ImGui::TreeNodeEx(section.label, ImGuiTreeNodeFlags_DefaultOpen)) {
+
+                // ── Hidden by Default ────────────────────────────────────────
+                if (!hiddenDefaults.empty()) {
+                    ImGui::TextDisabled("Hidden by default:");
+                    ImGui::Indent(8.0f);
+
+                    for (auto& t : hiddenDefaults) {
+                        ImGui::PushID(static_cast<int>(t.id) +
+                                      static_cast<int>(section.version) * 1000);
+
+                        bool checked = t.currentlyVisible;
+                        if (ImGui::Checkbox(t.name, &checked)) {
+                            vis.SetUserOverride(section.version, t.id, checked);
+                        }
+
+                        // Show override indicator
+                        if (t.hasOverride) {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "*");
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("User override \xe2\x80\x94 click Reset to restore default");
+                            }
+                        }
+
+                        if (t.currentlyVisible) totalVisible++;
+                        else totalHidden++;
+
+                        ImGui::PopID();
+                    }
+                    ImGui::Unindent(8.0f);
+                }
+
+                // ── Visible by Default ───────────────────────────────────────
+                if (!visibleDefaults.empty()) {
+                    ImGui::Spacing();
+                    ImGui::TextDisabled("Visible by default:");
+                    ImGui::Indent(8.0f);
+
+                    for (auto& t : visibleDefaults) {
+                        ImGui::PushID(static_cast<int>(t.id) +
+                                      static_cast<int>(section.version) * 1000 + 500);
+
+                        bool checked = t.currentlyVisible;
+                        if (ImGui::Checkbox(t.name, &checked)) {
+                            vis.SetUserOverride(section.version, t.id, checked);
+                        }
+
+                        if (t.hasOverride) {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "*");
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("User override \xe2\x80\x94 click Reset to restore default");
+                            }
+                        }
+
+                        if (t.currentlyVisible) totalVisible++;
+                        else totalHidden++;
+
+                        ImGui::PopID();
+                    }
+                    ImGui::Unindent(8.0f);
+                }
+
+                ImGui::TreePop();
+            }
+        }
+
+        // ── Footer stats ─────────────────────────────────────────────────────────
+        ImGui::Separator();
+        ImGui::TextDisabled("Hidden: %d types  |  Visible: %d types", totalHidden, totalVisible);
+    }
+    EndSubWindow();
+}
+
+// ── Category: Theme Editor (ImHex-style per-color editor) ───────────────────
+
+void SettingsWindow::DrawThemeEditorCategory() {
+  if (!config) {
+    ImGui::TextDisabled("Config not available.");
+    return;
+  }
+
+  ImGui::TextDisabled(
+      "Edit individual ImGui colors. Hover over a color to see it flash "
+      "in the interface.");
+  ImGui::Separator();
+  ImGui::Spacing();
+
+  auto &style = ImGui::GetStyle();
+  bool anyHovered = false;
+
+  for (const auto &group : GOW::Theme::GetColorGroups()) {
+    if (ImGui::CollapsingHeader(group.groupName)) {
+      for (const auto &entry : group.entries) {
+        // Restore original color if this was the previously flashed item
+        if (m_flashOrigColor.has_value() &&
+            m_flashColorIdx.has_value() &&
+            *m_flashColorIdx == entry.imguiColIdx) {
+          style.Colors[entry.imguiColIdx] = *m_flashOrigColor;
+        }
+
+        ImVec4 color = style.Colors[entry.imguiColIdx];
+
+        // Override indicator
+        if (GOW::Theme::HasOverride(entry.imguiColIdx)) {
+          ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "*");
+          if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Custom override — right-click color to reset");
+          ImGui::SameLine();
+        }
+
+        // Color picker (no input fields, with alpha bar)
+        ImGui::PushID(entry.imguiColIdx);
+        if (ImGui::ColorEdit4(
+                entry.displayName, &color.x,
+                ImGuiColorEditFlags_NoInputs |
+                    ImGuiColorEditFlags_AlphaBar |
+                    ImGuiColorEditFlags_AlphaPreviewHalf)) {
+          // User changed a color → store as override
+          GOW::Theme::SetColorOverride(entry.imguiColIdx, color);
+        }
+
+        // Right-click to reset individual override
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Right) &&
+            GOW::Theme::HasOverride(entry.imguiColIdx)) {
+          GOW::Theme::ClearColorOverride(entry.imguiColIdx);
+          GOW::Theme::ApplyTheme(config->getAccent());
+        }
+
+        // ── Flash highlight on hover (ImHex-style) ──────────────────
+        if (ImGui::IsItemHovered()) {
+          anyHovered = true;
+          if (!m_flashColorIdx.has_value()) {
+            m_flashColorIdx = entry.imguiColIdx;
+            m_flashOrigColor = color;
+          }
+        }
+        ImGui::PopID();
+      }
+    }
+
+    // Apply sinusoidal flash animation for the currently hovered color
+    if (m_flashOrigColor.has_value() && m_flashColorIdx.has_value()) {
+      ImVec4 flashColor = *m_flashOrigColor;
+
+      // Sinusoidal pulse: lerp between dimmed original and bright white
+      const float t =
+          std::min(1.0f, (1.0f + sinf((float)ImGui::GetTime() * 6.0f)) / 2.0f);
+      flashColor.x = flashColor.x * 0.5f + (1.0f - flashColor.x * 0.5f) * t;
+      flashColor.y = flashColor.y * 0.5f + (1.0f - flashColor.y * 0.5f) * t;
+      flashColor.z = flashColor.z * 0.5f;
+      flashColor.w = 1.0f;
+
+      style.Colors[*m_flashColorIdx] = flashColor;
+
+      if (!anyHovered) {
+        // Mouse left the color picker — restore original
+        style.Colors[*m_flashColorIdx] = *m_flashOrigColor;
+        m_flashColorIdx.reset();
+        m_flashOrigColor.reset();
+      }
+    }
+  }
+
+  // ── Reset all button ──────────────────────────────────────────────────
+  ImGui::Spacing();
+  ImGui::Separator();
+  if (GOW::UI::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All Colors")) {
+    GOW::Theme::ClearAllOverrides();
+    GOW::Theme::ApplyTheme(config->getAccent());
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Discard all individual color overrides and revert to accent-derived palette");
 }

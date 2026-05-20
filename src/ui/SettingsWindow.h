@@ -1,31 +1,22 @@
 #pragma once
 #include "imgui.h"
 #include "core/AppConfig.h"
+#include "core/ThemeManager.h"
 #include "ui/IPanel.h"
 #include <string>
 #include <string_view>
 #include <vector>
 #include <filesystem>
 
-struct FontEntry {
-    std::string label;
-    std::string path;
-    float       size;
-    ImFont*     handle = nullptr;
-};
-
 // 1:1 ImHex ViewSettings layout: two-column table with category list on the
 // left and settings on the right, using SubWindow grouping for subcategories.
 class SettingsWindow : public IPanel {
 public:
-    bool pendingFontRebuild = false;
-
     // Reference to shared config — set in App::init
     AppConfig* config = nullptr;
 
     void Init();
-    void ApplyFontChange();
-    void draw(AppContext& ctx) override;
+    void Draw() override;
     std::string_view getName() const override { return "Settings"; }
 
 private:
@@ -39,15 +30,20 @@ private:
     bool  m_fontSizeChanged = false; // deferred rebuild (ImHex pattern)
     bool  m_justOpened    = true;
 
-    std::vector<FontEntry> m_fonts;
-
     // Drawing helpers — one per category
     void DrawInterfaceCategory();
     void DrawAppearanceCategory();
+    void DrawThemeEditorCategory();
     void DrawViewportCategory();
+    void DrawAssetFiltersCategory();
 
-    // Internal
-    void PopulateFontList();
-    void RebuildFontAtlas();
-    void ApplyScaleClamp();
+    // Flash highlight state (ImHex-style per-color hover visualization)
+    std::optional<int>    m_flashColorIdx;
+    std::optional<ImVec4> m_flashOrigColor;
+
+    // Accent color transition animation state
+    bool    m_transitioningAccent = false;
+    ImVec4  m_accentStartColor;
+    ImVec4  m_accentTargetColor;
+    float   m_accentTransitionStart = 0.0f;
 };

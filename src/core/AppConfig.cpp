@@ -1,4 +1,5 @@
 #include "core/AppConfig.h"
+#include "core/AssetVisibility.h"
 #include "imgui.h"
 #include <fstream>
 #include <string>
@@ -33,6 +34,22 @@ struct ConfigBinaryData {
 
     uint32_t imguiStateSize;
     char fontPath[256];
+
+    // V8 additions — camera projection settings
+    float camFov;
+    float camNearPlane;
+    float camFarPlane;
+    bool  camAutoNear;
+    bool  camAutoFar;
+    float camManualNear;
+    float camManualFar;
+    float camNearDistanceScale;
+    float camFarMargin;
+    float camNearFarRatioMax;
+    bool  camPanelVisible;
+
+    // V10 additions — theme mode (Dark/Light)
+    uint8_t themeMode;
 };
 #pragma pack(pop)
 
@@ -95,10 +112,51 @@ AppConfig AppConfig::load(const std::string& path) {
                 cfg.fontPath = safeStr;
             }
 
+            if (data.version >= 8) {
+                cfg.camFov               = data.camFov;
+                cfg.camNearPlane         = data.camNearPlane;
+                cfg.camFarPlane          = data.camFarPlane;
+                cfg.camAutoNear          = data.camAutoNear;
+                cfg.camAutoFar           = data.camAutoFar;
+                cfg.camManualNear        = data.camManualNear;
+                cfg.camManualFar         = data.camManualFar;
+                cfg.camNearDistanceScale = data.camNearDistanceScale;
+                cfg.camFarMargin         = data.camFarMargin;
+                cfg.camNearFarRatioMax   = data.camNearFarRatioMax;
+                cfg.camPanelVisible      = data.camPanelVisible;
+            }
+
             if (data.imguiStateSize > 0) {
                 // Read embedded imgui config
                 cfg.imguiIniState.resize(data.imguiStateSize);
                 f.read(&cfg.imguiIniState[0], data.imguiStateSize);
+            }
+
+            // V9: Asset visibility overrides (after ImGui state blob)
+            if (data.version >= 9) {
+                uint32_t overrideCount = 0;
+                if (f.read(reinterpret_cast<char*>(&overrideCount), 4) && overrideCount > 0 && overrideCount < 1024) {
+                    std::vector<GOW::AssetVisibility::SerializedOverride> overrides(overrideCount);
+                    f.read(reinterpret_cast<char*>(overrides.data()),
+                           overrideCount * sizeof(GOW::AssetVisibility::SerializedOverride));
+                    GOW::AssetVisibility::Get().ImportOverrides(overrides);
+                }
+            }
+
+            // V10: Theme mode (Dark/Light)
+            if (data.version >= 10) {
+                cfg.themeMode = data.themeMode;
+            }
+
+            // V11: Custom accent presets (tail blob after visibility overrides)
+            if (data.version >= 11) {
+                uint32_t presetCount = 0;
+                if (f.read(reinterpret_cast<char*>(&presetCount), 4) &&
+                    presetCount > 0 && presetCount < 256) {
+                    cfg.customPresets.resize(presetCount);
+                    f.read(reinterpret_cast<char*>(cfg.customPresets.data()),
+                           presetCount * sizeof(AppConfig::CustomPreset));
+                }
             }
         }
     }
@@ -112,7 +170,7 @@ void AppConfig::save(const std::string& path) const {
 
     ConfigBinaryData data;
     data.magic[0] = 'G'; data.magic[1] = 'T'; data.magic[2] = 'K'; data.magic[3] = 'C';
-    data.version = 7;
+    data.version = 11;
     data.windowX = windowX;
     data.windowY = windowY;
     data.windowW = windowW;
@@ -136,8 +194,22 @@ void AppConfig::save(const std::string& path) const {
     data.gridR  = gridR;  data.gridG  = gridG;  data.gridB  = gridB;  data.gridA = gridA;
     data.hlR    = hlR;    data.hlG    = hlG;    data.hlB    = hlB;    data.hlA   = hlA;
 
+    data.camFov               = camFov;
+    data.camNearPlane         = camNearPlane;
+    data.camFarPlane          = camFarPlane;
+    data.camAutoNear          = camAutoNear;
+    data.camAutoFar           = camAutoFar;
+    data.camManualNear        = camManualNear;
+    data.camManualFar         = camManualFar;
+    data.camNearDistanceScale = camNearDistanceScale;
+    data.camFarMargin         = camFarMargin;
+    data.camNearFarRatioMax   = camNearFarRatioMax;
+    data.camPanelVisible      = camPanelVisible;
+
+    data.themeMode = themeMode;
+
     data.imguiStateSize = (uint32_t)imguiIniState.size();
-    
+
     std::strncpy(data.fontPath, fontPath.c_str(), 255);
     data.fontPath[255] = '\0';
 
@@ -146,58 +218,22 @@ void AppConfig::save(const std::string& path) const {
     if (data.imguiStateSize > 0) {
         f.write(imguiIniState.c_str(), data.imguiStateSize);
     }
+
+    // V9: Asset visibility overrides
+    auto overrides = GOW::AssetVisibility::Get().ExportOverrides();
+    uint32_t overrideCount = (uint32_t)overrides.size();
+    f.write(reinterpret_cast<const char*>(&overrideCount), 4);
+    if (overrideCount > 0) {
+        f.write(reinterpret_cast<const char*>(overrides.data()),
+                overrideCount * sizeof(GOW::AssetVisibility::SerializedOverride));
+    }
+
+    // V11: Custom accent presets
+    uint32_t presetCount = (uint32_t)customPresets.size();
+    f.write(reinterpret_cast<const char*>(&presetCount), 4);
+    if (presetCount > 0) {
+        f.write(reinterpret_cast<const char*>(customPresets.data()),
+                presetCount * sizeof(AppConfig::CustomPreset));
+    }
 }
 
-// ── applyAccent ────────────────────────────────────────────────────────────
-// Gera paleta de cores derivadas do accent para toda a UI
-void AppConfig::applyAccent() const {
-    ImGuiStyle& s = ImGui::GetStyle();
-    ImVec4 accent(accentR, accentG, accentB, accentA);
-
-    // Cores derivadas do accent
-    auto dim    = [](ImVec4 c, float f) { return ImVec4(c.x*f, c.y*f, c.z*f, c.w); };
-    auto alpha  = [](ImVec4 c, float a) { return ImVec4(c.x, c.y, c.z, a); };
-
-    s.Colors[ImGuiCol_ButtonActive]        = accent;
-    s.Colors[ImGuiCol_ButtonHovered]       = dim(accent, 0.85f);
-    s.Colors[ImGuiCol_Button]              = alpha(accent, 0.40f);
-
-    s.Colors[ImGuiCol_CheckMark]           = accent;
-    s.Colors[ImGuiCol_SliderGrab]          = dim(accent, 0.9f);
-    s.Colors[ImGuiCol_SliderGrabActive]    = accent;
-
-    s.Colors[ImGuiCol_HeaderHovered]       = alpha(accent, 0.45f);
-    s.Colors[ImGuiCol_HeaderActive]        = alpha(accent, 0.65f);
-    s.Colors[ImGuiCol_Header]              = alpha(accent, 0.30f);
-
-    s.Colors[ImGuiCol_SeparatorHovered]    = alpha(accent, 0.70f);
-    s.Colors[ImGuiCol_SeparatorActive]     = accent;
-
-    s.Colors[ImGuiCol_ResizeGrip]          = alpha(accent, 0.30f);
-    s.Colors[ImGuiCol_ResizeGripHovered]   = alpha(accent, 0.65f);
-    s.Colors[ImGuiCol_ResizeGripActive]    = alpha(accent, 0.95f);
-
-    s.Colors[ImGuiCol_FrameBg]             = alpha(accent, 0.20f);
-    s.Colors[ImGuiCol_FrameBgHovered]      = alpha(accent, 0.40f);
-    s.Colors[ImGuiCol_FrameBgActive]       = alpha(accent, 0.60f);
-    
-    s.Colors[ImGuiCol_TextSelectedBg]      = alpha(accent, 0.40f);
-
-    s.Colors[ImGuiCol_TabSelected]         = dim(accent, 0.80f);
-    s.Colors[ImGuiCol_TabHovered]          = alpha(accent, 0.70f);
-    s.Colors[ImGuiCol_Tab]                 = alpha(accent, 0.30f);
-    s.Colors[ImGuiCol_TabUnfocused]        = alpha(accent, 0.20f);
-    s.Colors[ImGuiCol_TabUnfocusedActive]  = alpha(accent, 0.50f);
-
-    s.Colors[ImGuiCol_Separator]           = alpha(accent, 0.40f);
-    s.Colors[ImGuiCol_TitleBgActive]       = alpha(accent, 0.30f);
-
-    s.Colors[ImGuiCol_NavHighlight]        = accent;
-
-    // ScrollbarGrab é usado como hover dos botões da titlebar
-    s.Colors[ImGuiCol_ScrollbarGrabActive]  = accent;
-    s.Colors[ImGuiCol_ScrollbarGrabHovered] = alpha(accent, 0.70f);
-
-    // Modal dim: dark transparent overlay (not white)
-    s.Colors[ImGuiCol_ModalWindowDimBg]    = ImVec4(0.0f, 0.0f, 0.0f, 0.50f);
-}
