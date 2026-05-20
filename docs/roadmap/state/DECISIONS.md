@@ -148,3 +148,27 @@ Refs:
 - `src/core/domain/MeshVertex.h`
 - `src/rendering/GpuMesh.{h,cpp}` (consome via `glVertexAttribPointer` + `Upload`)
 - 2 parsers (`gow2/MeshParser.cpp`, `gowr/MeshParser.cpp`)
+
+---
+
+## D0011 — 2026-05-18 — Tab policy: multi-tab (no auto-close on selection)
+
+Decisão: manter política **multi-tab** — selecionar um entry diferente NÃO fecha o viewer anterior. Viewers são abertos explicitamente (double-click ou context menu "Open") e persistem até o user fechar manualmente.
+
+Alternativa rejeitada: "single preview tab" — selecionar entry auto-abreria um preview que se fecha ao selecionar outro. Rejeitado porque:
+- Mudaria UX significativamente (users esperam single-click = select, não open)
+- Viewers pesados (Viewport3D, MapViewer) levariam tempo pra recriar a cada click
+- Context menu "Open" e "View All Textures" abrem múltiplos tabs intencionalmente
+
+Comportamento adotado:
+- **Single click**: `Api::SetSelected(entry, wad)` → posta `EventAssetSelected` → Inspector atualiza, InfoTab atualiza
+- **Double click**: abre viewer via `Api::Documents().AddTab(viewer)` — persiste como tab independente
+- **Context menu "Open"**: idem double-click
+- **MapViewer button**: abre tab explícita
+- **EventAllClosed**: fecha todos tabs (via DocumentWindow subscriber)
+
+DocumentWindow subscreve `EventAssetSelected` para tracking (futuro: highlight tab do asset selecionado), mas NÃO auto-abre viewer.
+
+Refs:
+- M3.T2 AC4: "Selecionar entry diferente fecha viewer anterior se a política for 'single tab' (decidir + documentar)"
+- `src/ui/viewers/DocumentWindow.cpp` — subscriber de EventAssetSelected

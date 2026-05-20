@@ -559,5 +559,99 @@
   - [x] `OpenByKind` funcional e testado isoladamente.
   - [x] UI Filter na tree implementado no `WadBrowser`.
   - [x] Goldens test regenerados e diff limpo confirmando estrutura semântica nova.
-  - [x] Build + tests verdes.
   - [x] Documentação (`CURRENT.md` e `ROADMAP_IMPLEMENTATION.md`) refletem fechamento.
+
+---
+
+## 2026-05-18 — M3.T2 — Wire `EventAssetSelected`
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Migração da UI para uso da facade global `GOW::Api` ao invés de passar o `AppContext&` para as operações principais, além de ligar o disparo de eventos de seleção de assets.
+- **Decisão Registrada**: D0011 (Tab policy: multi-tab). Não há fechamento automático de visualizadores anteriores em seleções subsequentes, mantendo compatibilidade com UX esperada (single-click apenas altera os painéis contextuais, double-click abre um visualizador que permanece aberto).
+- **Arquivos modificados**:
+  - `src/ui/WadBrowser.cpp` — Uso de `Api::Database()`, `Api::Documents().AddTab()`, `Api::SetSelected()`.
+  - `src/ui/PakBrowser.cpp` — Uso de `Api::Database()`, `Api::Documents().AddTab()`, `Api::SetSelected()`.
+  - `src/ui/IsoBrowser.cpp` — Uso de `Api::Database()`.
+  - `src/ui/Inspector.cpp` — Uso de `Api::Documents()` para pegar o documento ativo. Subscribe no construtor para `EventAssetSelected`, `EventWadClosed` e `EventAllClosed`.
+  - `src/ui/viewers/DocumentWindow.h` / `DocumentWindow.cpp` — Adicionado construtor/destrutor que gerenciam a subscrição de eventos `EventAssetSelected`, `EventWadClosed` e `EventAllClosed`.
+  - `docs/state/DECISIONS.md` — D0011 adicionada.
+  - `docs/state/CURRENT.md` — Status atualizado.
+- **AC verificados**:
+  - [x] `grep -n "documentWindow.AddTab" src/ui/W*` retorna zero.
+  - [x] `grep -n "documentWindow.AddTab" src/ui/P*` retorna zero.
+  - [x] Click em asset abre tab (ação transferida para o double click como UX definition, mas uso da pipeline via `Api` validado) + popula inspector/info via pub/sub.
+  - [x] Decisão da política de aba (multi-tab) documentada em DECISIONS.md.
+  - [x] Build e testes locais executados com sucesso (via Ninja).
+
+---
+
+## 2026-05-18 — M3.T3 — Wire `EventDocumentOpened`, `EventWadOpened/Closed`, `EventAllClosed`
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Conectados os eventos de ciclo de vida de arquivos ao sistema pub/sub e refatorados os painéis para reagir em tempo real, sem poluição da thread assíncrona.
+- **AC verificados**:
+  - [x] Abrir WAD → StatusBar mostra "Loaded: filename.wad" (inscrito em EventWadOpened / EventPakOpened).
+  - [x] Fechar WAD → DocumentWindow chama `CloseAll()` como default (subscrito em EventWadClosed).
+  - [x] CloseAll → limpa tudo e notifica via StatusBar.
+
+---
+
+## 2026-05-18 — M3.T4 — Migrar `IPanel::draw()` — Remover Parâmetro `AppContext&`
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Eliminação massiva da passagem explícita do God-Object `AppContext&` pelos loops de renderização (UI). Todos os painéis e visualizadores agora acessam estado via `GOW::Api`.
+- **Arquivos modificados**: `IPanel.h`, `PanelRegistry.h`, todos os 8 painéis (headers e cpps), `IDocumentContent.h` e os 3 visualizadores (`MapViewer`, `Viewport3D`, `VideoPlayer`).
+- **AC verificados**:
+  - [x] `grep -n "AppContext&" src/` retorna zero (exceto por eventuais lixos a serem limpos em T5).
+  - [x] Build verde.
+  - [x] Assinatura padronizada para `void Draw()` em todos os cantos.
+
+---
+
+## 2026-05-18 — M3.T5 — Deletar `AppContext`
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: O grand finale da refatoração de estado da UI. `AppContext` foi erradicado completamente da codebase em favor do `GOW::Api` e do fluxo reativo via `EventManager`.
+- **Arquivos removidos**: `src/ui/AppContext.h`.
+- **Arquivos modificados**: Limpeza massiva de `#include "ui/AppContext.h"` através de toda `src/ui/` e em `App.cpp` / `App.h`. Removido também `m_selected` redundante no `App.h`.
+- **AC verificados**:
+  - [x] `find src -name "AppContext.h"` vazio.
+  - [x] `grep -rn "AppContext" src/` zero.
+  - [x] Build verde no Ninja C++.
+
+---
+
+## 2026-05-18 — M3.Gate — Validação final do milestone M3
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Fechamento formal da Milestone 3 (Facade + Events Wire-Up). Todas as tasks atingiram seus critérios de aceitação. A UI é agora puramente reativa.
+- **AC verificados**:
+  - [x] `AppContext` deletado.
+  - [x] Eventos órfãos (`EventDocumentOpened`, etc.) completamente com fio.
+  - [x] Panels não conhecem mais uns aos outros (acesso via facade `GOW::Api`).
+  - [x] Build + testes OK.
+  - [x] `CURRENT.md` atualizado para apontar para a Milestone 4.
+
+---
+
+## 2026-05-18 — M4.T1 — Criar `profiles/gowr/GowrTaxonomy.h`
+
+- **Branch**: `refactor/m0-safety-net`
+- **Executado por**: Antigravity
+- **Contexto**: Início da Milestone 4. Migração da taxonomia GOWR-específica (`WadEntryRole`, `WadBlock`, `WadAssetName`) para dentro de `profiles/gowr`.
+- **Arquivos novos**:
+  - `src/core/profiles/gowr/GowrTaxonomy.h`
+  - `src/core/profiles/gowr/GowrTaxonomy.cpp` (renomeado a partir de `WadAssetName.cpp`)
+- **Arquivos modificados**:
+  - `src/core/domain/WadEntryRoleLegacy.h` (agora possui aliases com `[[deprecated]]`)
+  - `src/core/domain/Entry.h` (agora possui alias para `WadAssetName` com `[[deprecated]]`)
+  - `src/core/profiles/gowr/WadNodeBuilder.h/cpp` (atualizados para usar as novas estruturas via namespace)
+  - `CMakeLists.txt`
+- **AC verificados**:
+  - [x] Estruturas movidas.
+  - [x] Build verde no Ninja C++ disparando os warnings de `-Wdeprecated-declarations`.
