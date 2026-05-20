@@ -105,6 +105,21 @@ add_library(implot_lib STATIC
 target_include_directories(implot_lib PUBLIC third_party/implot)
 target_link_libraries(implot_lib PUBLIC imgui_lib)
 
+# ── ImGuiColorTextEdit (Goossens fork — submodule) ───────────────────────
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/third_party/imgui_color_text_edit/TextEditor.cpp")
+    message(FATAL_ERROR
+        "third_party/imgui_color_text_edit is empty. "
+        "Run: git submodule update --init --recursive")
+endif()
+add_library(imgui_color_text_edit STATIC
+    third_party/imgui_color_text_edit/TextEditor.cpp
+)
+target_include_directories(imgui_color_text_edit PUBLIC
+    third_party/imgui_color_text_edit
+)
+target_link_libraries(imgui_color_text_edit PUBLIC imgui_lib)
+target_compile_features(imgui_color_text_edit PUBLIC cxx_std_17)
+
 # ── doctest (unit-test framework, dev-only) ──────────────────────────────
 option(GOWTOOLKIT_BUILD_TESTS "Build the GoWToolkit unit test suite" ON)
 
@@ -348,7 +363,7 @@ target_compile_definitions(GoWToolkit PRIVATE
 if(WIN32)
     target_link_libraries(GoWToolkit PRIVATE
         gowtoolkit_parser_min
-        imgui_lib implot_lib glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
+        imgui_lib implot_lib imgui_color_text_edit glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
         opengl32 comdlg32 dwmapi
     )
     set_target_properties(GoWToolkit PROPERTIES
@@ -357,7 +372,7 @@ if(WIN32)
 elseif(APPLE)
     target_link_libraries(GoWToolkit PRIVATE
         gowtoolkit_parser_min
-        imgui_lib implot_lib glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
+        imgui_lib implot_lib imgui_color_text_edit glfw glad glm::glm lz4_lib miniaudio ffmpeg_lib
         "-framework OpenGL"
         "-framework AudioToolbox"
         "-framework CoreAudio"
@@ -368,7 +383,7 @@ elseif(APPLE)
 else()
     target_link_libraries(GoWToolkit PRIVATE
         gowtoolkit_parser_min
-        imgui_lib implot_lib glfw glad lz4_lib miniaudio ffmpeg_lib GL dl pthread m
+        imgui_lib implot_lib imgui_color_text_edit glfw glad lz4_lib miniaudio ffmpeg_lib GL dl pthread m
     )
 endif()
 
