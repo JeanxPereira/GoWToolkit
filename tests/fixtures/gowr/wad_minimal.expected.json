@@ -29,7 +29,7 @@
       "size": 8,
       "offset": 16480,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xaf769f5fa65a4acb"
     },
     {
@@ -39,7 +39,7 @@
       "size": 1400,
       "offset": 16488,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xe7482ae2ad7f1845"
     },
     {
@@ -49,7 +49,7 @@
       "size": 24,
       "offset": 17888,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xd759dea671f22532"
     },
     {
@@ -59,7 +59,7 @@
       "size": 24,
       "offset": 17912,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x3c00b226af3fc86b"
     },
     {
@@ -69,7 +69,7 @@
       "size": 24,
       "offset": 17936,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x59f28c9a552bcd6d"
     },
     {
@@ -79,7 +79,7 @@
       "size": 24,
       "offset": 17960,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x03288c617923566c"
     },
     {
@@ -99,7 +99,7 @@
       "size": 24,
       "offset": 18144,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x6ae4d53e18c4be70"
     },
     {
@@ -109,7 +109,7 @@
       "size": 24,
       "offset": 18168,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xd61a8e8eb3dab5a0"
     },
     {
@@ -119,7 +119,7 @@
       "size": 24,
       "offset": 18192,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x8c1fdb6ff6a42edd"
     },
     {
@@ -129,7 +129,7 @@
       "size": 24,
       "offset": 18216,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x00ca29e348753287"
     },
     {
@@ -139,7 +139,7 @@
       "size": 24,
       "offset": 18240,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x7079163f8c183ca9"
     },
     {
@@ -149,7 +149,7 @@
       "size": 24,
       "offset": 18264,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xb1083fcb13980b36"
     },
     {
@@ -159,7 +159,7 @@
       "size": 24,
       "offset": 18288,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xae3b225463d6168c"
     },
     {
@@ -169,7 +169,7 @@
       "size": 24,
       "offset": 18312,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xfa378b4b52e272d5"
     },
     {
@@ -179,7 +179,7 @@
       "size": 24,
       "offset": 18336,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x3155a9ff0387c318"
     },
     {
@@ -189,7 +189,7 @@
       "size": 24,
       "offset": 18360,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xae351b2961cbbb54"
     },
     {
@@ -199,7 +199,7 @@
       "size": 24,
       "offset": 18384,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x2cab8def87ac4d51"
     },
     {
@@ -209,7 +209,7 @@
       "size": 24,
       "offset": 18408,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x375eb81744c5d33e"
     },
     {
@@ -219,7 +219,7 @@
       "size": 24,
       "offset": 18432,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x4169b3ff348d7388"
     },
     {
@@ -229,7 +229,7 @@
       "size": 24,
       "offset": 18456,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x4e85a67bf6647fb1"
     },
     {
@@ -239,7 +239,7 @@
       "size": 40,
       "offset": 18480,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xb86f90ff1c59d4c0"
     },
     {
@@ -249,7 +249,7 @@
       "size": 24,
       "offset": 18520,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x61cec4ab41702c4b"
     },
     {
@@ -259,7 +259,7 @@
       "size": 24,
       "offset": 18544,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x8374dac708dd5460"
     },
     {
@@ -279,7 +279,7 @@
       "size": 24,
       "offset": 18592,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x91060633d87c855f"
     },
     {
@@ -289,7 +289,7 @@
       "size": 24,
       "offset": 18616,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0xc9ca80d67afbd88b"
     },
     {
@@ -309,7 +309,7 @@
       "size": 24,
       "offset": 18664,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x77b55d1c37020fe8"
     },
     {
@@ -319,7 +319,7 @@
       "size": 1216,
       "offset": 18688,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xe115cbc3a880cc96"
     },
     {
@@ -329,7 +329,7 @@
       "size": 0,
       "offset": 18688,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Container",
       "payloadHash": "0x0000000000000000"
     },
     {
@@ -369,7 +369,7 @@
       "size": 2304,
       "offset": 23582,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0x17ca477afe469755"
     },
     {
@@ -379,7 +379,7 @@
       "size": 2304,
       "offset": 25886,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0xa5d4246beff70c12"
     },
     {
@@ -389,7 +389,7 @@
       "size": 8448,
       "offset": 28190,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0x4fc381f478a89de8"
     },
     {
@@ -399,7 +399,7 @@
       "size": 8448,
       "offset": 36638,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0xe486cbb451855ebe"
     },
     {
@@ -409,7 +409,7 @@
       "size": 8448,
       "offset": 45086,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0x017a16a050077d8e"
     },
     {
@@ -419,7 +419,7 @@
       "size": 8448,
       "offset": 53534,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0x8434843247e64616"
     },
     {
@@ -429,7 +429,7 @@
       "size": 8448,
       "offset": 61982,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0xd8ef1fa942f8bd3d"
     },
     {
@@ -439,7 +439,7 @@
       "size": 13904,
       "offset": 70430,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x6cf4729789ca36c3"
     },
     {
@@ -449,7 +449,7 @@
       "size": 15248,
       "offset": 84334,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xb460b0d366be25ff"
     },
     {
@@ -459,7 +459,7 @@
       "size": 13944,
       "offset": 99582,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x49e0c8033e185861"
     },
     {
@@ -469,7 +469,7 @@
       "size": 15632,
       "offset": 113534,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xd97d2e7be8d0a2ca"
     },
     {
@@ -479,7 +479,7 @@
       "size": 11464,
       "offset": 129166,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x33482d276ba08137"
     },
     {
@@ -489,7 +489,7 @@
       "size": 12848,
       "offset": 140638,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x68b4765afebbbdee"
     },
     {
@@ -499,7 +499,7 @@
       "size": 14968,
       "offset": 153486,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xccee064f6a041874"
     },
     {
@@ -509,7 +509,7 @@
       "size": 19232,
       "offset": 168462,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x2d7a199f3bd4af31"
     },
     {
@@ -519,7 +519,7 @@
       "size": 14992,
       "offset": 187694,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x110f8d6789c5fc7c"
     },
     {
@@ -529,7 +529,7 @@
       "size": 19408,
       "offset": 202686,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x492f1278ba6137b2"
     },
     {
@@ -539,7 +539,7 @@
       "size": 12144,
       "offset": 222094,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x36490ff83e4f7934"
     },
     {
@@ -549,7 +549,7 @@
       "size": 13536,
       "offset": 234238,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x741ff10f6fca363d"
     },
     {
@@ -559,7 +559,7 @@
       "size": 15320,
       "offset": 247774,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x94a2a5a4ab846cb3"
     },
     {
@@ -569,7 +569,7 @@
       "size": 19696,
       "offset": 263102,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x03c0b434cf915e3a"
     },
     {
@@ -579,7 +579,7 @@
       "size": 15360,
       "offset": 282798,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xfd259cdf12bd23f7"
     },
     {
@@ -589,7 +589,7 @@
       "size": 19908,
       "offset": 298158,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xad9086b107cbaef8"
     },
     {
@@ -599,7 +599,7 @@
       "size": 13624,
       "offset": 318078,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x7b16168d1cea8678"
     },
     {
@@ -609,7 +609,7 @@
       "size": 13928,
       "offset": 331710,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x85df71e85b836ffd"
     },
     {
@@ -619,7 +619,7 @@
       "size": 10524,
       "offset": 345646,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xd4799c958c3904ee"
     },
     {
@@ -629,7 +629,7 @@
       "size": 11536,
       "offset": 356174,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x1554cf2332ff6a13"
     },
     {
@@ -639,7 +639,7 @@
       "size": 15840,
       "offset": 367710,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xa39c3614ba523808"
     },
     {
@@ -649,7 +649,7 @@
       "size": 10556,
       "offset": 383550,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x64cc38347f7068fe"
     },
     {
@@ -659,7 +659,7 @@
       "size": 10832,
       "offset": 394110,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x17fe32960ce52cf0"
     },
     {
@@ -669,7 +669,7 @@
       "size": 11564,
       "offset": 404942,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x401e1745752a0ad2"
     },
     {
@@ -679,7 +679,7 @@
       "size": 11856,
       "offset": 416510,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x4d4083c1fc4efee5"
     },
     {
@@ -689,7 +689,7 @@
       "size": 15844,
       "offset": 428366,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x509d352f492c387a"
     },
     {
@@ -699,7 +699,7 @@
       "size": 15844,
       "offset": 444222,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xa94737268f0c1a35"
     },
     {
@@ -709,7 +709,7 @@
       "size": 10524,
       "offset": 460078,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x32d4b819ab2749db"
     },
     {
@@ -719,7 +719,7 @@
       "size": 10804,
       "offset": 470606,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xdebfaa91941b645f"
     },
     {
@@ -729,7 +729,7 @@
       "size": 11536,
       "offset": 481422,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x018a25ddc5c6aa77"
     },
     {
@@ -739,7 +739,7 @@
       "size": 11824,
       "offset": 492958,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x68985a4c743435b0"
     },
     {
@@ -749,7 +749,7 @@
       "size": 16588,
       "offset": 504782,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0x1ae3fa25a2379675"
     },
     {
@@ -759,7 +759,7 @@
       "size": 16588,
       "offset": 521374,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Shader",
       "payloadHash": "0xb61a61264be83450"
     },
     {
@@ -769,7 +769,7 @@
       "size": 148,
       "offset": 539414,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0xdd72e2c9469daa9c"
     },
     {
@@ -789,7 +789,7 @@
       "size": 640,
       "offset": 540770,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Material",
       "payloadHash": "0xd3aef5d6a8c44308"
     },
     {
@@ -799,7 +799,7 @@
       "size": 688,
       "offset": 541410,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Material",
       "payloadHash": "0x3a7d3fd60c43d220"
     },
     {
@@ -809,7 +809,7 @@
       "size": 688,
       "offset": 542098,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Material",
       "payloadHash": "0x189fe7d46c853e2b"
     },
     {
@@ -819,7 +819,7 @@
       "size": 21848,
       "offset": 542786,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Mesh",
       "payloadHash": "0x7fd05105ee424aaa"
     },
     {
@@ -829,7 +829,7 @@
       "size": 7196,
       "offset": 564642,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Mesh",
       "payloadHash": "0x2b76469cd652c9f6"
     },
     {
@@ -839,7 +839,7 @@
       "size": 616,
       "offset": 571922,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Audio",
       "payloadHash": "0x01618ebf629c43cb"
     },
     {
@@ -849,7 +849,7 @@
       "size": 664,
       "offset": 572626,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Audio",
       "payloadHash": "0xcfd05bd45e0b834a"
     },
     {
@@ -859,7 +859,7 @@
       "size": 50992,
       "offset": 573298,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Skeleton",
       "payloadHash": "0xe4647742e3e41b6c"
     },
     {
@@ -869,7 +869,7 @@
       "size": 304,
       "offset": 624290,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Skeleton",
       "payloadHash": "0x413931407f444f71"
     },
     {
@@ -879,7 +879,7 @@
       "size": 160,
       "offset": 624594,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Skeleton",
       "payloadHash": "0x8bbfd541df520ac5"
     },
     {
@@ -889,7 +889,7 @@
       "size": 2304,
       "offset": 624754,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0x0cd69643ad3ba8d4"
     },
     {
@@ -899,7 +899,7 @@
       "size": 2304,
       "offset": 627058,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0xc12ffec97f5e8e2d"
     },
     {
@@ -909,7 +909,7 @@
       "size": 261888,
       "offset": 629362,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Mesh",
       "payloadHash": "0x5ee22196b5e663d1"
     },
     {
@@ -919,7 +919,7 @@
       "size": 8448,
       "offset": 891250,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0xee250f11998db494"
     },
     {
@@ -929,7 +929,7 @@
       "size": 8448,
       "offset": 899698,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0x5bcd4da6f428b114"
     },
     {
@@ -939,7 +939,7 @@
       "size": 8448,
       "offset": 908146,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0xbe97d713ba808cfa"
     },
     {
@@ -949,7 +949,7 @@
       "size": 1296,
       "offset": 917638,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0xda457c008e893f80"
     },
     {
@@ -959,7 +959,7 @@
       "size": 1828,
       "offset": 918934,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0x064a3487ff7bdfad"
     },
     {
@@ -969,7 +969,7 @@
       "size": 2208,
       "offset": 920774,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Image",
       "payloadHash": "0x7d4eb367a6ae6cb4"
     },
     {
@@ -979,7 +979,7 @@
       "size": 232,
       "offset": 922982,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Material",
       "payloadHash": "0xd023f3bc93719d54"
     },
     {
@@ -999,7 +999,7 @@
       "size": 156,
       "offset": 923286,
       "childCount": 0,
-      "kind": "Unknown",
+      "kind": "Mesh",
       "payloadHash": "0x8a076231d58b9618"
     },
     {

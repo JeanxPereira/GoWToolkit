@@ -7,6 +7,11 @@
 #include "core/Events.h"
 #include "types/TypeRegistry.h"
 
+namespace GOW {
+    bool EnsureGowrConfigIni(const std::filesystem::path& wadPath);
+    void InvalidateLodIndex();
+}
+
 // ── LoadPakFromIso ─────────────────────────────────────────────────────────
 // Abre ISO, detecta profile, extrai TOC → paks[]
 bool AssetDatabase::LoadPakFromIso(const fs::path& isoPath) {
@@ -25,6 +30,9 @@ bool AssetDatabase::LoadPakFromIso(const fs::path& isoPath) {
 
     if (profile->LoadFromArchive(vfs, pak)) {
         paks.push_back(std::move(pak));
+        GOW::TaskManager::doLater([this]() {
+            if (!paks.empty()) EventPakOpened::post(&paks.back());
+        });
         return true;
     }
     return false;
@@ -83,6 +91,9 @@ bool AssetDatabase::LoadWadFromPakEntry(ParsedEntry* e, OpenWad& parentPak) {
     if (profile->ParseWad(slice, result)) {
         LOG_INFO("[AssetDatabase] Parsed WAD '%s': %zu tags", e->name.c_str(), result.entries.size());
         wads.push_back(std::move(result));
+        GOW::TaskManager::doLater([this]() {
+            if (!wads.empty()) EventWadOpened::post(&wads.back());
+        });
         return true;
     }
 
@@ -138,6 +149,16 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     }
     if (!profile) return false;
 
+    // For GOWR, ensure config.ini exists BEFORE ParseWad so the eager
+    // GetTexIndex() call inside ProfileGOWR::ParseWad picks up the game root.
+    // If we just wrote a fresh config, also invalidate any cached index that
+    // was created earlier in this process without it.
+    if (profile->GetName().find("Ragnarok") != std::string::npos) {
+        if (GOW::EnsureGowrConfigIni(path)) {
+            GOW::InvalidateLodIndex();
+        }
+    }
+
     OpenWad wad;
     wad.filename = path.filename().string();
     wad.fullPath = path.string();
@@ -145,11 +166,14 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
 
     auto file = std::make_shared<GOW::OsFile>(path.string());
     if (!file->IsValid()) return false;
-    
+
     wad.fileSource = file;
 
     if (profile->ParseWad(file, wad)) {
         wads.push_back(std::move(wad));
+        GOW::TaskManager::doLater([this]() {
+            if (!wads.empty()) EventWadOpened::post(&wads.back());
+        });
         return true;
     }
 
@@ -157,8 +181,10 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
 }
 
 void AssetDatabase::CloseWad(size_t idx) {
-    if (idx < wads.size())
+    if (idx < wads.size()) {
+        EventWadClosed::post(idx);
         wads.erase(wads.begin() + idx);
+    }
 }
 
 void AssetDatabase::CloseAll() {
@@ -221,11 +247,7 @@ void AssetDatabase::LoadWadAsync(const fs::path& path, const std::string& gameHi
 
         task.update(90);
 
-        // Switch to main thread for event emission
-        GOW::TaskManager::doLater([this, success]() {
-            if (success && !wads.empty())
-                EventWadOpened::post(&wads.back());
-        });
+        // Event emission is now handled internally by LoadWad via doLater
 
         task.update(100);
     });
@@ -247,10 +269,7 @@ void AssetDatabase::LoadIsoPakAsync(const fs::path& path) {
             bool pakSuccess = LoadPakFromIso(path);
             task.update(90);
 
-            GOW::TaskManager::doLater([this, pakSuccess]() {
-                if (pakSuccess && !paks.empty())
-                    EventPakOpened::post(&paks.back());
-            });
+            // Event emission is now handled internally by LoadPakFromIso via doLater
         }
 
         task.update(100);

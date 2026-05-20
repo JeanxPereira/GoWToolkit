@@ -1,11 +1,39 @@
 #include "ui/StatusBar.h"
-#include "ui/AppContext.h"
+
 #include "core/Logger.h"
 #include "core/AssetDatabase.h"
 #include "core/TaskManager.h"
+#include "core/Events.h"
+#include "core/WadTypes.h"
 #include "imgui.h"
 
-void StatusBar::draw(AppContext& ctx) {
+StatusBar::StatusBar() {
+    EventWadOpened::subscribe(this, [this](OpenWad* wad) {
+        if (wad) {
+            std::string msg = "Loaded: " + wad->filename;
+            SetMessage(msg.c_str());
+        }
+    });
+
+    EventPakOpened::subscribe(this, [this](OpenWad* pak) {
+        if (pak) {
+            std::string msg = "Loaded PAK: " + pak->filename;
+            SetMessage(msg.c_str());
+        }
+    });
+
+    EventAllClosed::subscribe(this, [this]() {
+        SetMessage("All files closed.");
+    });
+}
+
+StatusBar::~StatusBar() {
+    EventWadOpened::unsubscribe(this);
+    EventPakOpened::unsubscribe(this);
+    EventAllClosed::unsubscribe(this);
+}
+
+void StatusBar::Draw() {
     if (!visible) return;
     ImGui::Begin("Log", &visible);
 

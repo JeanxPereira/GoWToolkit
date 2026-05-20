@@ -1,12 +1,13 @@
 #include "ui/IsoBrowser.h"
-#include "ui/AppContext.h"
+#include "core/ToolkitApi.h"
 #include "fonts/SFSymbols.h"
 #include "core/vfs/IsoFileSystem.h"
 #include "UIHelpers.h"
+#include "ui/Widgets.h"
 #include "imgui.h"
 #include <filesystem>
 
-void IsoBrowser::draw(AppContext& ctx) {
+void IsoBrowser::Draw() {
     if (!visible) return;
 
     ImGui::Begin("ISO Browser", &visible);
@@ -15,35 +16,50 @@ void IsoBrowser::draw(AppContext& ctx) {
     ImGui::InputTextWithHint("##iso_filter", "Filter...", m_filter, sizeof(m_filter));
     ImGui::Separator();
 
-    auto& db = ctx.db;
+    auto& db = GOW::Api::Database();
 
     for (size_t i = 0; i < db.isos.size(); i++) {
         auto& iso = db.isos[i];
 
         std::string filename = std::filesystem::path(iso->GetPath()).filename().string();
 
+        ImGui::PushID((int)i);
+
         bool open = ImGui::TreeNodeEx(filename.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
 
-        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 16);
-        if (ImGui::SmallButton(ICON_SF_XMARK)) {
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight());
+        GOW::UI::Widgets::IconButtonOpts closeOpts;
+        closeOpts.tooltip = "Close ISO";
+        if (GOW::UI::Widgets::IconButton("iso_close", ICON_SF_XMARK, closeOpts)) {
             db.CloseIso(i);
             if (open) ImGui::TreePop();
+            ImGui::PopID();
             continue;
         }
 
-        if (!open) continue;
+        if (!open) {
+            ImGui::PopID();
+            continue;
+        }
 
+        const ImVec4 neutralColor = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+
+        int rowIdx = 0;
         for (const auto& [path, entry] : iso->GetEntries()) {
             if (entry.name.empty() || entry.name == "." || entry.name == "..") continue;
 
             if (m_filter[0] && !MatchesFilter(entry.name, m_filter))
                 continue;
 
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
+            const char* icon = entry.isDirectory ? ICON_SF_FOLDER_FILL : ICON_SF_DOCUMENT;
 
-            const char* icon = entry.isDirectory ? (const char*)u8"\uea83" : (const char*)u8"\uea7b";
+            ImGuiTreeNodeFlags flags =
+                ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                ImGuiTreeNodeFlags_SpanFullWidth;
 
-            ImGui::TreeNodeEx((std::string(icon) + " " + path).c_str(), flags);
+            char rowId[24];
+            snprintf(rowId, sizeof(rowId), "%d", rowIdx++);
+            GOW::UI::Widgets::ColoredTreeNode(rowId, path.c_str(), icon, neutralColor, flags, false);
 
             if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
@@ -56,10 +72,9 @@ void IsoBrowser::draw(AppContext& ctx) {
                 db.LoadWad(iso->GetPath());
                 ImGui::SetWindowFocus("PAK Browser");
             }
-
-            ImGui::TreePop();
         }
         ImGui::TreePop();
+        ImGui::PopID();
     }
 
     ImGui::End();

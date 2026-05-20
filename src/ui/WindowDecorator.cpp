@@ -4,10 +4,8 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
-void WindowDecorator::init(GLFWwindow* window, const char* codiconTtfPath) {
-    if (codiconTtfPath)
-        TitleBar::loadIconFont(codiconTtfPath, 14.0f);
-
+void WindowDecorator::init(GLFWwindow* window, const char* /*unused*/) {
+    // Icon font is now managed centrally by GOW::Fonts::BuildAtlas()
     NativeWindow::setup(window, borderless);
 }
 

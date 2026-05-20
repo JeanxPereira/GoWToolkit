@@ -1,47 +1,20 @@
 #include "ui/Inspector.h"
-#include "ui/AppContext.h"
 #include "UIHelpers.h"
+#include "core/ToolkitApi.h"
+#include "core/profiles/gowr/GowrProfileTag.h"
+#include "fonts/SFSymbols.h"
 #include "imgui.h"
+
 #include "ui/viewers/DocumentWindow.h"
 #include "ui/viewers/IDocumentContent.h"
-#include "core/Events.h"
 
-Inspector::Inspector() {
-    EventAssetSelected::subscribe(this, [this](ParsedEntry* entry, OpenWad* wad) {
-        m_selectedEntry = entry;
-        m_selectedWad = wad;
-    });
-
-    EventWadClosed::subscribe(this, [this](size_t /* wadIdx */) {
-        m_selectedEntry = nullptr;
-        m_selectedWad = nullptr;
-    });
-
-    EventAllClosed::subscribe(this, [this]() {
-        m_selectedEntry = nullptr;
-        m_selectedWad = nullptr;
-    });
-}
-
-Inspector::~Inspector() {
-    EventAssetSelected::unsubscribe(this);
-    EventWadClosed::unsubscribe(this);
-    EventAllClosed::unsubscribe(this);
-}
-
-void Inspector::draw(AppContext& ctx) {
+void Inspector::Draw() {
     if (!visible) return;
 
     ImGui::Begin("Inspector", &visible);
 
-    if (ctx.documentWindow.HasActiveDocument()) {
-        auto doc = ctx.documentWindow.GetActiveDocument();
-        doc->DrawInspector(ctx);
-        ImGui::End();
-        return;
-    }
-
-    ParsedEntry* entry = m_selectedEntry;
+    // Use the global selection state
+    ParsedEntry* entry = GOW::Api::GetSelected();
 
     if (!entry) {
         ImGui::TextDisabled("No entry selected");
@@ -49,44 +22,60 @@ void Inspector::draw(AppContext& ctx) {
         return;
     }
 
-    // Header with type + name
-    ImGui::TextColored(ColorForType(GOW::GameVersion::GOW2, entry->typeId, entry->schemaType),
-        "[%s]", TypeName(GOW::GameVersion::GOW2, entry->typeId, entry->schemaType));
-    ImGui::SameLine();
-    ImGui::TextUnformatted(entry->name.c_str());
-    ImGui::Separator();
+    // ── Header — always visible ─────────────────────────────────────────
+    ImGui::PushID("InspectorHeader");
 
-    if (ImGui::BeginTabBar("##inspector_tabs")) {
-
-        if (ImGui::BeginTabItem("Info")) {
-            m_info_tab.Draw(ctx.db, entry);
-            ImGui::EndTabItem();
+    const char* icon = IconForType(entry->typeId);
+    if (auto* t = entry->profileTag.As<GOW::Gowr::GowrProfileTag>()) {
+        if (t->role != GOW::Gowr::WadEntryRole::Unknown) {
+            icon = IconForRole(t->role);
         }
-        if (ImGui::BeginTabItem("Anims")) {
-            ImGui::TextDisabled("(parser coming soon)");
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Hex")) {
-            ImGui::TextDisabled("(hex viewer coming soon)");
-            ImGui::EndTabItem();
-        }
-
-        ImGui::EndTabBar();
     }
 
-    // Export bar fixed at footer
-    ImGui::SetCursorPosY(
-        ImGui::GetWindowHeight() - 40);
+    ImGui::TextColored(ColorForType(entry->typeId),
+        "%s  [%s]", icon, TypeName(entry->typeId));
+    ImGui::TextWrapped("%s", entry->name.c_str());
+
+    // Second line: WAD + size
+    ImGui::TextDisabled("%s  |  %s", entry->wadName.c_str(),
+                        FormatBytes(entry->size).c_str());
+
+    // ── Context menu on header ──────────────────────────────────────────
+    if (ImGui::BeginPopupContextItem("InspectorHeaderCtx")) {
+        if (ImGui::MenuItem(ICON_SF_DOCUMENT_ON_DOCUMENT "  Copy Name")) {
+            ImGui::SetClipboardText(entry->name.c_str());
+        }
+        if (entry->hash != 0) {
+            if (ImGui::MenuItem(ICON_SF_NUMBER "  Copy Hash")) {
+                ImGui::SetClipboardText(HashHex(entry->hash).c_str());
+            }
+        }
+        {
+            char offsetStr[32];
+            snprintf(offsetStr, sizeof(offsetStr), "0x%08X", entry->offset);
+            if (ImGui::MenuItem(ICON_SF_ARROW_RIGHT "  Copy Offset")) {
+                ImGui::SetClipboardText(offsetStr);
+            }
+        }
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopID();
     ImGui::Separator();
 
-    if (ImGui::Button("Export glTF", ImVec2(110, 0)))
-        {}
-    ImGui::SameLine();
-    if (ImGui::Button("Export DDS", ImVec2(110, 0)))
-        {}
-    ImGui::SameLine();
-    if (ImGui::Button("Copy Hash", ImVec2(90, 0)))
-        ImGui::SetClipboardText(HashHex(entry->hash).c_str());
+    // ── Viewer Inspector section — if a document viewer is active ────────
+    if (GOW::Api::Documents().HasActiveDocument()) {
+        auto doc = GOW::Api::Documents().GetActiveDocument();
+        if (doc) {
+            doc->DrawInspector();
+            ImGui::Separator();
+        }
+    }
+
+    // ── Properties section — always shown (collapsible) ─────────────────
+    if (ImGui::CollapsingHeader("Properties", ImGuiTreeNodeFlags_DefaultOpen)) {
+        m_info_tab.Draw(GOW::Api::Database(), entry);
+    }
 
     ImGui::End();
 }

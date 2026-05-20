@@ -53,7 +53,6 @@ void FlattenEntry(const ParsedEntry& entry,
     ordered_json e;
     e["name"]        = entry.name;
     e["typeId"]      = GOW::TypeIdName(entry.typeId);
-    e["schemaType"]  = entry.schemaType;
     e["size"]        = entry.size;
     e["offset"]      = entry.offset;
     e["childCount"]  = static_cast<uint64_t>(entry.children.size());
@@ -128,7 +127,7 @@ std::string DiffSnapshots(const ordered_json& actual, const ordered_json& expect
     size_t pairCount = std::min(aEntries.size(), eEntries.size());
 
     static constexpr const char* kFields[] = {
-        "name", "typeId", "schemaType", "size", "offset", "childCount", "kind", "payloadHash"
+        "name", "typeId", "size", "offset", "childCount", "kind", "payloadHash"
     };
 
     for (size_t i = 0; i < pairCount; ++i) {

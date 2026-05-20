@@ -1,17 +1,17 @@
 #include "ui/PakBrowser.h"
 #include "UIHelpers.h"
 #include "core/AssetDatabase.h"
-#include "core/types/TypeRegistry.h"
+#include "core/ToolkitApi.h"
 #include "fonts/SFSymbols.h"
 #include "imgui.h"
-#include "ui/AppContext.h"
 #include "ui/ViewerRegistry.h"
+#include "ui/Widgets.h"
 #include "ui/viewers/DocumentWindow.h"
 #include <fstream>
 #include "core/Logger.h"
 
 
-void PakBrowser::draw(AppContext &ctx) {
+void PakBrowser::Draw() {
   if (!visible)
     return;
 
@@ -23,16 +23,18 @@ void PakBrowser::draw(AppContext &ctx) {
 
   ImGui::Separator();
 
-  auto &db = ctx.db;
+  auto &db = GOW::Api::Database();
 
   for (size_t pi = 0; pi < db.paks.size(); pi++) {
     auto &pak = db.paks[pi];
     bool open =
         ImGui::TreeNodeEx(pak.filename.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
 
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x - 16);
     ImGui::PushID((int)pi);
-    if (ImGui::SmallButton(ICON_SF_XMARK)) {
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight());
+    GOW::UI::Widgets::IconButtonOpts closeOpts;
+    closeOpts.tooltip = "Close PAK";
+    if (GOW::UI::Widgets::IconButton("pak_close", ICON_SF_XMARK, closeOpts)) {
       db.ClosePak(pi);
       ImGui::PopID();
       if (open)
@@ -48,20 +50,18 @@ void PakBrowser::draw(AppContext &ctx) {
       if (m_filter[0] && !MatchesFilter(entry.name, m_filter))
         continue;
 
-      const char *icon =
-          IconForType(GOW::GameVersion::GOW2, entry.typeId, entry.schemaType);
-      bool is_selected = (&entry == ctx.selected);
+      const char *icon = IconForType(entry.typeId);
+      const ImVec4 color = ColorForType(entry.typeId);
+      bool is_selected = (&entry == GOW::Api::GetSelected());
 
       ImGuiTreeNodeFlags flags =
-          ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
-          (is_selected ? ImGuiTreeNodeFlags_Selected : 0);
+          ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen |
+          ImGuiTreeNodeFlags_SpanFullWidth;
 
-      ImGui::PushStyleColor(
-          ImGuiCol_Text,
-          ColorForType(GOW::GameVersion::GOW2, entry.typeId, entry.schemaType));
-      ImGui::TreeNodeEx((std::string(icon) + " " + entry.name).c_str(), flags);
-      ImGui::PopStyleColor();
-      ImGui::TreePop();
+      // Stable per-row id via entry offset (unique within a PAK).
+      char rowId[24];
+      snprintf(rowId, sizeof(rowId), "%u", entry.offset);
+      GOW::UI::Widgets::ColoredTreeNode(rowId, entry.name.c_str(), icon, color, flags, is_selected);
       
       ImGui::PushID((int)entry.offset);
       if (ImGui::BeginPopupContextItem()) {
@@ -95,8 +95,9 @@ void PakBrowser::draw(AppContext &ctx) {
       }
       ImGui::PopID();
 
+      // ── Selection (single click) — via Api::SetSelected ──
       if (ImGui::IsItemClicked()) {
-        ctx.selected = &entry;
+        GOW::Api::SetSelected(&entry, &pak);
       }
 
       if (ImGui::IsItemHovered()) {
@@ -114,14 +115,7 @@ void PakBrowser::draw(AppContext &ctx) {
           db.LoadWadFromPakEntry(&entry, pak);
           ImGui::SetWindowFocus("WAD Browser");
         } else {
-          // Try to resolve a handler by TypeId (works for file-level types)
-          auto *handler = GOW::TypeRegistry::Get().Resolve(entry.typeId);
-          bool canOpen =
-              handler != nullptr ||
-              ctx.viewerRegistry.CanHandle(GOW::GameVersion::GOW2, entry.typeId,
-                                           entry.schemaType);
-
-          if (canOpen) {
+          if (GOW::Api::Viewers().CanHandle(entry.typeId)) {
             auto fileHandle = db.OpenPakEntryAsFile(&entry, pak);
             if (fileHandle) {
               OpenWad tempWad;
@@ -134,15 +128,9 @@ void PakBrowser::draw(AppContext &ctx) {
               fileEntry.offset = 0;
               tempWad.entries.push_back(fileEntry);
 
-              std::shared_ptr<GOW::IDocumentContent> viewer;
-              if (handler)
-                viewer = handler->CreateViewer(fileEntry, tempWad);
-              if (!viewer && fileEntry.kind != GOW::MediaKind::Unknown)
-                viewer = ctx.viewerRegistry.OpenByKind(fileEntry, tempWad);
-              if (!viewer)
-                viewer = ctx.viewerRegistry.Open(fileEntry, tempWad);
+              auto viewer = GOW::Api::Viewers().Open(fileEntry, tempWad);
               if (viewer)
-                ctx.documentWindow.AddTab(viewer);
+                GOW::Api::Documents().AddTab(viewer);
             }
           } else {
             db.LoadWadFromPakEntry(&entry, pak);

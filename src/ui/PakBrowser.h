@@ -6,7 +6,7 @@ class AssetDatabase;
 
 class PakBrowser : public IPanel {
 public:
-    void draw(AppContext& ctx) override;
+    void Draw() override;
     std::string_view getName() const override { return "PAK Browser"; }
 
 private:

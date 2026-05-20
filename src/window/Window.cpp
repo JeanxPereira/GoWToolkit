@@ -12,6 +12,9 @@
 
 #include "core/PathUtils.h"
 #include "core/TaskManager.h"
+#include "core/ThemeManager.h"
+#include "core/ScaleManager.h"
+#include "core/FontManager.h"
 #include "core/Events.h"
 #include "ui/NativeWindow.h"
 
@@ -175,16 +178,26 @@ void Window::initImGui() {
                                           m_config.imguiIniState.size());
     }
 
-    ImGui::StyleColorsDark();
+    // Apply centralized accent-derived theme (replaces StyleColorsDark + applyAccent)
+    GOW::Theme::ApplyTheme(m_config.getAccent(),
+                           (GOW::Theme::ThemeMode)m_config.themeMode);
 
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         ImGui::GetStyle().WindowRounding = 0.0f;
         ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
-    m_config.applyAccent();
-    if (m_config.uiScale != 1.0f)
-        ImGui::GetStyle().ScaleAllSizes(m_config.uiScale);
+    // Initialize centralized scale system with OS native DPI
+    float nativeScale = 1.0f;
+#if defined(__APPLE__)
+    {
+        float xscale = 1.0f, yscale = 1.0f;
+        glfwGetWindowContentScale(m_window, &xscale, &yscale);
+        nativeScale = xscale;
+    }
+#endif
+    GOW::Scale::Init(m_config.uiScale, nativeScale);
+    GOW::Scale::ApplyStyleScale(m_config.uiScale);
 
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
 #if defined(__APPLE__)
@@ -281,6 +294,9 @@ void Window::frameBegin() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    // Drive smooth color transitions (preset switches with ease-out)
+    GOW::Theme::UpdateTransition();
+
     beginNativeWindowFrame();
 }
 
@@ -328,6 +344,10 @@ void Window::frameEnd() {
     // Font rebuild MUST happen after all rendering is complete.
     // Rebuilding the atlas before Render() invalidates the font texture
     // that the current frame's draw commands reference.
+    if (GOW::Fonts::IsPendingRebuild()) {
+        GOW::Fonts::UploadAtlas();
+    }
+
     m_app.frameEnd();
 }
 

@@ -2,13 +2,13 @@
 #include "App.h"
 #include "UIHelpers.h"
 #include "imgui_internal.h" // DockBuilder
-#include "ui/AppContext.h"
+
 #include "ui/IPanel.h"
 #include "ui/NativeMenuBar.h"
 #include "ui/NativeWindow.h"
 #include "ui/TitleBar.h"
 
-// Panel headers
+#include "ui/CameraPanel.h"
 #include "ui/Inspector.h"
 #include "ui/IsoBrowser.h"
 #include "ui/PakBrowser.h"
@@ -22,6 +22,7 @@
 #include "ui/viewers/SoundPlayer.h"
 #include "ui/viewers/Viewport3D.h"
 #include "ui/viewers/AnimCurveView.h"
+#include "ui/viewers/Dopesheet.h"
 #include "ui/viewers/WadStatsView.h"
 
 // Core subsystems
@@ -31,6 +32,7 @@
 
 #include "core/Logger.h"
 #include "core/PathUtils.h"
+#include "core/FontManager.h"
 #include "fonts/SFSymbols.h"
 
 void App::registerPanels() {
@@ -38,9 +40,11 @@ void App::registerPanels() {
   m_panels.add(std::make_unique<PakBrowser>());
   m_panels.add(std::make_unique<WadBrowser>());
   m_panels.add(std::make_unique<Inspector>());
+  m_panels.add(std::make_unique<CameraPanel>());
   m_panels.add(std::make_unique<StatusBar>());
   m_panels.add(std::make_unique<SettingsWindow>());
   m_panels.add(std::make_unique<AnimCurveView>());
+  m_panels.add(std::make_unique<Dopesheet>());
   m_panels.add(std::make_unique<WadStatsView>());
 
   // Set initial visibility
@@ -55,6 +59,8 @@ void App::registerPanels() {
   if (auto *wadStats =
           dynamic_cast<WadStatsView *>(m_panels.find("WAD Stats")))
     wadStats->visible = false;
+  if (auto *dope = dynamic_cast<Dopesheet *>(m_panels.find("Dopesheet")))
+    dope->visible = false;
 }
 
 App::App() {}
@@ -64,7 +70,20 @@ void App::init(GLFWwindow *window, AppConfig *config) {
   m_config = config;
 
   // Initialize core subsystems
-  GOW::Api::Init(&m_db, config);
+  GOW::Api::InitParams params;
+  params.db = &m_db;
+  params.config = config;
+  params.viewers = &m_viewerRegistry;
+  params.documents = &m_documentWindow;
+  GOW::Api::Init(params);
+
+  // Initialize centralized font system
+  GOW::Fonts::Init();
+  GOW::Fonts::SetIconFont({
+      PathUtils::resolvePath("third_party/fonts/SFSymbols.ttf"),
+      0xE000, 0xFA19,
+      {0.0f, 3.0f}
+  });
 
   // On macOS: nativeDecorations=true means use traffic lights
   // (borderless=false) On Windows/Linux: always borderless custom titlebar
@@ -74,11 +93,8 @@ void App::init(GLFWwindow *window, AppConfig *config) {
   m_decorator.borderless = true;
 #endif
 
-  // m_decorator.init(window,
-  // PathUtils::resolvePath("third_party/fonts/codicons.ttf").c_str());
-  m_decorator.init(
-      window,
-      PathUtils::resolvePath("third_party/fonts/SFSymbols.ttf").c_str());
+  // WindowDecorator init — icon font is now managed by FontManager
+  m_decorator.init(window, nullptr);
 
   // Restore persisted audio volume
   GOW::SoundPlayer::s_volume = config->audioVolume;
@@ -169,9 +185,8 @@ void App::frame() {
   ImGui::End();
 
   // ── Draw all registered panels ─────────────────────────────────────────
-  AppContext ctx{m_db, m_selected, m_documentWindow, m_viewerRegistry,
-                 m_config};
-  m_panels.drawAll(ctx);
+  // ── Draw all registered panels ─────────────────────────────────────────
+  m_panels.DrawAll();
 
   // ── Document Window (tab host) ─────────────────────────────────────────
   m_documentWindow.Draw();
@@ -181,12 +196,7 @@ void App::frame() {
 }
 
 void App::frameEnd() {
-  // Font rebuild must be outside the ImGui frame
-  if (auto *settings =
-          dynamic_cast<SettingsWindow *>(m_panels.find("Settings"))) {
-    if (settings->pendingFontRebuild)
-      settings->ApplyFontChange();
-  }
+  // Font rebuild is now handled by Window::frameEnd() via GOW::Fonts
 
   // Sync audio volume back to config so it's saved on exit
   if (m_config)
@@ -214,6 +224,7 @@ void App::setupDockLayout(ImGuiID dockspace_id) {
   ImGui::DockBuilderDockWindow("WAD Browser", dock_left);
   ImGui::DockBuilderDockWindow("Viewer", dock_main);
   ImGui::DockBuilderDockWindow("Inspector", dock_right);
+  ImGui::DockBuilderDockWindow("Camera", dock_right); // tab next to Inspector
   ImGui::DockBuilderDockWindow("Log", dock_bottom);
 
   ImGui::DockBuilderFinish(dockspace_id);
@@ -474,14 +485,14 @@ void App::drawMenuItems() {
   }
 
   if (NativeMenuBar::beginMenu("Export")) {
-    bool has = m_selected != nullptr;
+    bool has = GOW::Api::GetSelected() != nullptr;
     if (NativeMenuBar::menuItem("Export glTF...", "Ctrl+E", false, has)) {
     }
     if (NativeMenuBar::menuItem("Export DDS...", nullptr, false, has)) {
     }
     if (NativeMenuBar::menuItem("Copy Hash", "Ctrl+C", false, has))
-      if (m_selected)
-        ImGui::SetClipboardText(HashHex(m_selected->hash).c_str());
+      if (GOW::Api::GetSelected())
+        ImGui::SetClipboardText(HashHex(GOW::Api::GetSelected()->hash).c_str());
     NativeMenuBar::endMenu();
   }
 

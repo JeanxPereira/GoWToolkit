@@ -4,7 +4,7 @@
 #include <string_view>
 #include "ui/IPanel.h"
 
-struct AppContext;
+
 
 class PanelRegistry {
 public:
@@ -12,10 +12,10 @@ public:
         m_panels.push_back(std::move(panel));
     }
 
-    void drawAll(AppContext& ctx) {
+    void DrawAll() {
         for (auto& p : m_panels) {
             if (p->visible)
-                p->draw(ctx);
+                p->Draw();
         }
     }
 

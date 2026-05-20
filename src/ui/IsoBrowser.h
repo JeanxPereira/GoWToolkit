@@ -4,7 +4,7 @@
 
 class IsoBrowser : public IPanel {
 public:
-    void draw(AppContext& ctx) override;
+    void Draw() override;
     std::string_view getName() const override { return "ISO Browser"; }
 
 private:

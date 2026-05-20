@@ -7,7 +7,7 @@
 
 using namespace GOW;
 
-TEST_CASE("ViewerRegistry OpenByKind logic") {
+TEST_CASE("ViewerRegistry Open logic") {
     ViewerRegistry registry;
     OpenWad dummyWad;
 
@@ -16,7 +16,7 @@ TEST_CASE("ViewerRegistry OpenByKind logic") {
         entry.kind = MediaKind::Unknown;
         entry.typeId = TypeId::Unknown;
         
-        auto viewer = registry.OpenByKind(entry, dummyWad);
+        auto viewer = registry.Open(entry, dummyWad);
         CHECK(viewer == nullptr);
     }
 
@@ -25,7 +25,7 @@ TEST_CASE("ViewerRegistry OpenByKind logic") {
         entry.kind = MediaKind::Image;
         entry.typeId = TypeId::Unknown;
         
-        auto viewer = registry.OpenByKind(entry, dummyWad);
+        auto viewer = registry.Open(entry, dummyWad);
         CHECK(viewer == nullptr);
     }
 

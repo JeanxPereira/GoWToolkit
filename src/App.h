@@ -1,7 +1,7 @@
 #pragma once
 #include "imgui.h"
 #include "ui/PanelRegistry.h"
-#include "ui/AppContext.h"
+
 #include "ui/WindowDecorator.h"
 #include "ui/viewers/DocumentWindow.h"
 #include "ui/ViewerRegistry.h"
@@ -46,7 +46,6 @@ private:
     WindowDecorator       m_decorator;
     AppConfig*            m_config  = nullptr;
     GLFWwindow*           m_window  = nullptr;
-    ParsedEntry*          m_selected = nullptr;
     bool                  m_wantClose         = false;
     bool                  m_layoutInitialized = false;
 

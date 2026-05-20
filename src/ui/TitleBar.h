@@ -13,10 +13,6 @@ namespace TitleBar {
     extern bool  showTitleBarBackDrop;
     extern float backdropAlpha;   // 0.0–1.0
 
-    // Carrega a font de ícones Codicons no atlas do ImGui
-    // Chamar depois de ImGui::CreateContext() e antes do loop
-    void loadIconFont(const char* ttfPath, float size = 14.0f);
-
     // Desenha o backdrop (shadow circle) — chamar dentro do BeginMainMenuBar
     void drawBackDrop();
 

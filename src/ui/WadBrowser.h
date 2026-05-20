@@ -6,7 +6,9 @@
 
 class WadBrowser : public IPanel {
 public:
-    void draw(AppContext& ctx) override;
+    WadBrowser();
+    ~WadBrowser();
+    void Draw() override;
     std::string_view getName() const override { return "WAD Browser"; }
 
 private:

@@ -12,7 +12,7 @@ static void PropRow(const char* key, const std::string& value) {
     ImGui::TableSetColumnIndex(0);
     ImGui::TextDisabled("%s", key);
     ImGui::TableSetColumnIndex(1);
-    ImGui::TextUnformatted(value.c_str());
+    ImGui::TextWrapped("%s", value.c_str());
     // Copy on click
     if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1)) {
         ImGui::SetClipboardText(value.c_str());
@@ -44,7 +44,7 @@ void InfoTab::Draw(AssetDatabase& db, ParsedEntry* e) {
         ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 
         PropRow("Name",     e->name);
-        PropRow("Type",     TypeName(GOW::GameVersion::GOW2, e->typeId, e->schemaType));
+        PropRow("Type",     TypeName(e->typeId));
         PropRow("WAD",      e->wadName);
         PropRow("Size",     FormatBytes(e->size));
         PropRow("Offset",   FormatHex32(e->offset));

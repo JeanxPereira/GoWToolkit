@@ -22,7 +22,7 @@ namespace gowtoolkit::testing {
 //     "wad": "<filename>",
 //     "entryCount": N,
 //     "entries": [
-//       { "name": "...", "typeId": "...", "schemaType": "...",
+//       { "name": "...", "typeId": "...",
 //         "size": 1234, "offset": 16, "childCount": 0,
 //         "payloadHash": "0xXXXXXXXXXXXXXXXX" },
 //       ...
