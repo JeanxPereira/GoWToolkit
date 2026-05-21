@@ -176,6 +176,7 @@ All libraries are fetched via CMake `FetchContent` on first configure.
 | [GLM](https://github.com/g-truc/glm) | 1.0.1 | Math (vectors, matrices) |
 | [lz4](https://github.com/lz4/lz4) | 1.9.4 | LZ4 decompression (GOWR WAD) |
 | [ImPlot](https://github.com/epezent/implot) | master | 2D plotting (animation curves) |
+| [ImGuiColorTextEdit (Goossens fork)](https://github.com/goossens/ImGuiColorTextEdit) | submodule | Syntax-highlighted text editor (`TextEditorViewer`) |
 | [doctest](https://github.com/doctest/doctest) | 2.4.11 | Unit test framework |
 | [nlohmann/json](https://github.com/nlohmann/json) | 3.11.3 | JSON for golden tests |
 | [glad](https://glad.dav1d.de/) | bundled | OpenGL loader |
@@ -211,7 +212,10 @@ Currently shipping: `unit`, `Golden_GOW2`, `Golden_GOWR`, `Metrics`, `Logger`, `
 
 ## Acknowledgements
 
-This project builds on the work of the God of War modding community.
+This project builds on the work of the God of War modding community and on
+upstream tooling/UX from the broader reverse-engineering scene.
+
+### God of War reverse-engineering
 
 | Project | Author | Contribution |
 |---|---|---|
@@ -219,6 +223,13 @@ This project builds on the work of the God of War modding community.
 | [GOWTool](https://github.com/kainotoa/GOWTool) | kainotoa | God of War 2018 / Ragnarök asset browser and extractor. Key reference for GOWR WAD containers and asset formats. |
 | [GoWRknk](https://reshax.com/files/file/21-god-of-war-ragnarok-ps4-model-tool/) | id-daemon | GOWR PS4 model export tool with bone and weight support. Reference for reverse-engineered mesh and skeleton binary formats. |
 | GOWR Modding Guide | HitmanHimself | Community mesh replacement tutorial and tooling ecosystem. [Blacksmith's Kingdom Discord](https://discord.gg/z58z836hX9). |
+
+### Tooling and UX inspiration
+
+| Project | Author | Contribution |
+|---|---|---|
+| [ImHex](https://github.com/WerWolv/ImHex) | WerWolv | Reference for the two-column `SettingsWindow` layout, the `TaskManager` thread-pool design, and several CI workflow patterns (concurrency `cancel-in-progress`, `ccache` via `hendrikmuhs/ccache-action`, build-provenance attestations, CodeQL configuration). The async task subsystem in `src/core/TaskManager.{h,cpp}` is adapted from ImHex's `TaskManager` (LGPLv2.1). |
+| [ImGuiColorTextEdit (Goossens fork)](https://github.com/goossens/ImGuiColorTextEdit) | Johan A. Goossens (forked from BalazsJako) | Syntax-highlighted, multi-cursor text editor widget powering `TextEditorViewer` for script/source inspection. Vendored at `third_party/imgui_color_text_edit/` (MIT). |
 
 ## License
 
