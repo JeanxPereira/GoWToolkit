@@ -79,6 +79,7 @@ ImVec4 TextForSurface(const ImVec4& surfaceColor);
 ImVec4 ToolbarButton();
 ImVec4 ToolbarButtonHover();
 ImVec4 ToolbarButtonActive();
+ImVec4 ToolbarButtonText();
 
 // ── Per-color editor support (ImHex-style) ────────────────────────────────
 

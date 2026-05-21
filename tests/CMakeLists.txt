@@ -5,6 +5,12 @@
 
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
+# ThemeManager.cpp lives in src/core/ but is needed by the contrast tests.
+# It's compiled here rather than pulled from a library because the main
+# GoWToolkit executable GLOB compiles it directly, and adding it to
+# gowtoolkit_parser_min would pull in imgui_lib as a transitive dep.
+list(APPEND TEST_SOURCES "${CMAKE_SOURCE_DIR}/src/core/ThemeManager.cpp")
+
 add_executable(gowtoolkit_tests ${TEST_SOURCES})
 
 target_include_directories(gowtoolkit_tests PRIVATE
@@ -21,6 +27,7 @@ target_link_libraries(gowtoolkit_tests PRIVATE
     doctest::doctest
     nlohmann_json::nlohmann_json
     gowtoolkit_parser_min
+    imgui_lib
 )
 
 set_target_properties(gowtoolkit_tests PROPERTIES

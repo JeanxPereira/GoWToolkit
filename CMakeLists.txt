@@ -458,4 +458,6 @@ if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Logger*")
     add_test(NAME Threading
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Threading*")
+    add_test(NAME ThemeContrast
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*ThemeContrast*")
 endif()

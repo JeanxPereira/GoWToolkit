@@ -1,7 +1,9 @@
 #include "ThemeManager.h"
 #include "platform/SystemTheme.h"
+#include "Logger.h"
 #include "imgui.h"
 #include <cmath>
+#include <algorithm>
 
 namespace GOW::Theme {
 
@@ -44,6 +46,135 @@ static ImVec4 Lerp4(const ImVec4 &a, const ImVec4 &b, float t) {
                 a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
 }
 
+// ── Phase 1 helpers: luminance-aware surface tinting ──────────────────────
+
+// Relative luminance (BT.709 coefficients) of an opaque RGB color.
+static float Luminance(const ImVec4& c) {
+    return 0.2126f * c.x + 0.7152f * c.y + 0.0722f * c.z;
+}
+
+// Luminance of a translucent foreground composited over an opaque background.
+static float BlendedLuminance(const ImVec4& fg, const ImVec4& bgOpaque) {
+    const float a = fg.w;
+    const float r = (1.0f - a) * bgOpaque.x + a * fg.x;
+    const float g = (1.0f - a) * bgOpaque.y + a * fg.y;
+    const float b = (1.0f - a) * bgOpaque.z + a * fg.z;
+    return 0.2126f * r + 0.7152f * g + 0.0722f * b;
+}
+
+// Produce an alpha-blended accent surface over bgOpaque that maintains at
+// least |targetDelta| luminance distance from the background. Starts with
+// baseAlpha; if the resulting surface is too close to the bg luminance, it
+// solves for the alpha that pushes the blended pixel to bgLum ± targetDelta,
+// picking the side with more headroom.
+static ImVec4 TintSurface(const ImVec4& accent, const ImVec4& bgOpaque,
+                           float targetDelta, float baseAlpha) {
+    // 1. Try the base alpha first.
+    ImVec4 candidate = Alpha(accent, baseAlpha);
+    float blendedLum = BlendedLuminance(candidate, bgOpaque);
+    float bgLum = Luminance(bgOpaque);
+
+    if (std::fabs(blendedLum - bgLum) >= targetDelta)
+        return candidate; // Already satisfies the delta.
+
+    // 2. Solve for alpha.
+    // Blended luminance = (1 - a) * bgLum + a * accentLum
+    //                   = bgLum + a * (accentLum - bgLum)
+    // We want: |bgLum + a * (accentLum - bgLum) - bgLum| >= targetDelta
+    //        = |a * (accentLum - bgLum)| >= targetDelta
+    // So: a >= targetDelta / |accentLum - bgLum|   (when accent != bg lum)
+    float accentLum = Luminance(accent);
+    float lumDiff = accentLum - bgLum;
+
+    float solvedAlpha;
+    if (std::fabs(lumDiff) < 0.001f) {
+        // Accent and bg are nearly the same luminance. No amount of alpha
+        // will help with this accent color alone. Use max alpha and rely on
+        // the invariant enforcement pass (Phase 3) to correct if needed.
+        solvedAlpha = 0.95f;
+    } else {
+        // Pick direction: lighter or darker than bg, whichever has more room.
+        float headroomUp   = 1.0f - bgLum;
+        float headroomDown = bgLum;
+
+        float targetLum;
+        if (lumDiff > 0) {
+            // Accent is lighter than bg → go lighter (if room) or darker.
+            targetLum = (headroomUp >= targetDelta) ? (bgLum + targetDelta)
+                                                    : (bgLum - targetDelta);
+        } else {
+            // Accent is darker than bg → go darker (if room) or lighter.
+            targetLum = (headroomDown >= targetDelta) ? (bgLum - targetDelta)
+                                                      : (bgLum + targetDelta);
+        }
+
+        // a = (targetLum - bgLum) / (accentLum - bgLum)
+        solvedAlpha = (targetLum - bgLum) / lumDiff;
+    }
+
+    // Clamp to [0.10, 0.95] so the surface never disappears nor becomes
+    // an opaque slab.
+    solvedAlpha = std::clamp(solvedAlpha, 0.10f, 0.95f);
+    return Alpha(accent, solvedAlpha);
+}
+
+// ── Phase 2 helper: force minimum luminance delta ─────────────────────────
+
+// Returns a luminance-shifted copy of `color` so that
+// |Lum(returned) - Lum(ref)| >= minDelta. If already satisfied, returns
+// `color` unmodified. Otherwise mixes toward white or black.
+static ImVec4 ForceMinLumDelta(const ImVec4& color, const ImVec4& ref,
+                                float minDelta) {
+    float colorLum = Luminance(color);
+    float refLum = Luminance(ref);
+
+    if (std::fabs(colorLum - refLum) >= minDelta)
+        return color;
+
+    // Pick direction: away from ref, toward whichever endpoint has more room.
+    ImVec4 target;
+    float headroomUp   = 1.0f - refLum;
+    float headroomDown = refLum;
+
+    if (headroomUp >= headroomDown)
+        target = ImVec4(1.0f, 1.0f, 1.0f, color.w); // mix toward white
+    else
+        target = ImVec4(0.0f, 0.0f, 0.0f, color.w); // mix toward black
+
+    // Binary-search for the smallest mix factor that satisfies the delta.
+    float lo = 0.0f, hi = 1.0f;
+    ImVec4 result = color;
+    for (int i = 0; i < 16; ++i) {
+        float mid = (lo + hi) * 0.5f;
+        result = Lerp4(color, target, mid);
+        float resultLum = Luminance(result);
+        if (std::fabs(resultLum - refLum) >= minDelta)
+            hi = mid;
+        else
+            lo = mid;
+    }
+    // Use hi to guarantee the delta is met.
+    result = Lerp4(color, target, hi);
+    result.w = color.w; // preserve original alpha
+    return result;
+}
+
+// Nudge a pure-accent indicator so it's visible against WindowBg. Only
+// adjusts if accent luminance is within ±threshold of the background.
+static ImVec4 NudgeAccentIndicator(const ImVec4& accent, const ImVec4& bgOpaque,
+                                    float threshold = 0.05f) {
+    float aLum = Luminance(accent);
+    float bLum = Luminance(bgOpaque);
+    if (std::fabs(aLum - bLum) > threshold)
+        return accent;
+
+    // Push toward the opposite pole.
+    if (bLum > 0.5f)
+        return Lerp4(accent, ImVec4(0.0f, 0.0f, 0.0f, accent.w), 0.40f);
+    else
+        return Lerp4(accent, ImVec4(1.0f, 1.0f, 1.0f, accent.w), 0.40f);
+}
+
 // ── Internal: compute accent-derived palette into a color array ───────────
 
 static void ComputeAccentPalette(ImVec4 *colors, const ImVec4 &accent, ThemeMode mode) {
@@ -55,55 +186,169 @@ static void ComputeAccentPalette(ImVec4 *colors, const ImVec4 &accent, ThemeMode
   for (int i = 0; i < ImGuiCol_COUNT; i++)
     colors[i] = tmp.Colors[i];
 
+  // Reference background for luminance calculations.
+  const ImVec4& bg = colors[ImGuiCol_WindowBg];
+
+  // ── Phase 1: luminance-aware accent surface tinting ──
+  // Delta targets by interaction state:
+  //   Normal  = 0.06  — subtle background tint
+  //   Hovered = 0.12  — clear hover feedback
+  //   Active  = 0.20  — strong pressed/active feedback
+  constexpr float kDeltaNormal  = 0.06f;
+  constexpr float kDeltaHovered = 0.12f;
+  constexpr float kDeltaActive  = 0.20f;
+
   // ── Frame backgrounds (accent-tinted) ──
-  colors[ImGuiCol_FrameBg] = Alpha(accent, 0.15f);
-  colors[ImGuiCol_FrameBgHovered] = Alpha(accent, 0.40f);
-  colors[ImGuiCol_FrameBgActive] = Alpha(accent, 0.67f);
+  colors[ImGuiCol_FrameBg]        = TintSurface(accent, bg, kDeltaNormal,  0.15f);
+  colors[ImGuiCol_FrameBgHovered] = TintSurface(accent, bg, kDeltaHovered, 0.40f);
+  colors[ImGuiCol_FrameBgActive]  = TintSurface(accent, bg, kDeltaActive,  0.67f);
 
-  // ── Highlight pure (accent full) ──
-  colors[ImGuiCol_CheckMark] = accent;
-  colors[ImGuiCol_SliderGrabActive] = accent;
-  colors[ImGuiCol_ButtonActive] = Dim(accent, 0.9f);
-  colors[ImGuiCol_HeaderActive] = accent;
-  colors[ImGuiCol_SeparatorActive] = accent;
-  colors[ImGuiCol_ResizeGripActive] = accent;
-  colors[ImGuiCol_NavCursor] = accent;
-  colors[ImGuiCol_InputTextCursor] = accent;
+  // ── Tab system ──
+  colors[ImGuiCol_Tab]                     = TintSurface(accent, bg, kDeltaNormal,  0.30f);
+  colors[ImGuiCol_TabHovered]              = TintSurface(accent, bg, kDeltaHovered, 0.80f);
+  colors[ImGuiCol_TabSelected]             = TintSurface(accent, bg, kDeltaActive,  0.60f);
+  colors[ImGuiCol_TabDimmed]               = TintSurface(accent, bg, kDeltaNormal,  0.15f);
+  colors[ImGuiCol_TabDimmedSelected]       = TintSurface(accent, bg, kDeltaHovered, 0.40f);
 
-  // ── Tab system (COMPLETE) ──
-  colors[ImGuiCol_TabHovered] = Alpha(accent, 0.80f);
-  colors[ImGuiCol_Tab] = Alpha(accent, 0.30f);
-  colors[ImGuiCol_TabSelected] = Alpha(accent, 0.60f);
-  colors[ImGuiCol_TabSelectedOverline] = accent;
-  colors[ImGuiCol_TabDimmed] = Alpha(accent, 0.15f);
-  colors[ImGuiCol_TabDimmedSelected] = Alpha(accent, 0.40f);
-  colors[ImGuiCol_TabDimmedSelectedOverline] = Alpha(accent, 0.50f);
+  // Pure-accent overlines — nudge for visibility only.
+  colors[ImGuiCol_TabSelectedOverline]      = NudgeAccentIndicator(accent, bg);
+  colors[ImGuiCol_TabDimmedSelectedOverline] = Alpha(NudgeAccentIndicator(accent, bg), 0.50f);
 
-  // ── Hover / interactive backgrounds ──
-  colors[ImGuiCol_SliderGrab] = Alpha(accent, 0.80f);
-  colors[ImGuiCol_Button] = Alpha(accent, 0.40f);
-  colors[ImGuiCol_ButtonHovered] = accent;
-  colors[ImGuiCol_Header] = Alpha(accent, 0.31f);
-  colors[ImGuiCol_HeaderHovered] = Alpha(accent, 0.80f);
-  colors[ImGuiCol_SeparatorHovered] = Alpha(accent, 0.78f);
-  colors[ImGuiCol_ResizeGrip] = Alpha(accent, 0.20f);
-  colors[ImGuiCol_ResizeGripHovered] = Alpha(accent, 0.67f);
-  colors[ImGuiCol_TextSelectedBg] = Alpha(accent, 0.35f);
+  // ── Buttons ──
+  colors[ImGuiCol_Button]        = TintSurface(accent, bg, kDeltaNormal,  0.40f);
+  colors[ImGuiCol_ButtonHovered] = TintSurface(accent, bg, kDeltaHovered, 0.80f);
+  colors[ImGuiCol_ButtonActive]  = TintSurface(Dim(accent, 0.9f), bg, kDeltaActive, 0.90f);
+
+  // ── Headers ──
+  colors[ImGuiCol_Header]        = TintSurface(accent, bg, kDeltaNormal,  0.31f);
+  colors[ImGuiCol_HeaderHovered] = TintSurface(accent, bg, kDeltaHovered, 0.80f);
+  colors[ImGuiCol_HeaderActive]  = TintSurface(accent, bg, kDeltaActive,  0.90f);
+
+  // ── Separators ──
+  colors[ImGuiCol_Separator]        = TintSurface(accent, bg, kDeltaNormal,  0.40f);
+  colors[ImGuiCol_SeparatorHovered] = TintSurface(accent, bg, kDeltaHovered, 0.78f);
+  colors[ImGuiCol_SeparatorActive]  = TintSurface(accent, bg, kDeltaActive,  0.90f);
+
+  // ── Resize grip ──
+  colors[ImGuiCol_ResizeGrip]        = TintSurface(accent, bg, kDeltaNormal,  0.20f);
+  colors[ImGuiCol_ResizeGripHovered] = TintSurface(accent, bg, kDeltaHovered, 0.67f);
+  colors[ImGuiCol_ResizeGripActive]  = TintSurface(accent, bg, kDeltaActive,  0.90f);
+
+  // ── Sliders ──
+  colors[ImGuiCol_SliderGrab]       = TintSurface(accent, bg, kDeltaHovered, 0.80f);
+  colors[ImGuiCol_SliderGrabActive] = NudgeAccentIndicator(accent, bg);
+
+  // ── Scrollbar ──
+  colors[ImGuiCol_ScrollbarGrab]        = TintSurface(accent, bg, kDeltaNormal,  0.40f);
+  colors[ImGuiCol_ScrollbarGrabHovered] = TintSurface(accent, bg, kDeltaHovered, 0.70f);
+  colors[ImGuiCol_ScrollbarGrabActive]  = TintSurface(accent, bg, kDeltaActive,  0.90f);
+
+  // ── Title bar ──
+  colors[ImGuiCol_TitleBgActive] = TintSurface(accent, bg, kDeltaNormal, 0.30f);
+
+  // ── Selection / drag-drop ──
+  colors[ImGuiCol_TextSelectedBg] = TintSurface(accent, bg, kDeltaNormal,  0.35f);
+  colors[ImGuiCol_DragDropTarget] = TintSurface(accent, bg, kDeltaActive,  0.90f);
 
   // ── Docking ──
-  colors[ImGuiCol_DockingPreview] = Alpha(accent, 0.70f);
+  colors[ImGuiCol_DockingPreview] = TintSurface(accent, bg, kDeltaHovered, 0.70f);
+
+  // ── Pure-accent indicators (nudge for visibility) ──
+  colors[ImGuiCol_CheckMark]       = NudgeAccentIndicator(accent, bg);
+  colors[ImGuiCol_NavCursor]       = NudgeAccentIndicator(accent, bg);
+  colors[ImGuiCol_InputTextCursor] = NudgeAccentIndicator(accent, bg);
 
   // ── Checkbox (ImGui 1.92+) ──
   colors[ImGuiCol_CheckboxSelectedBg] =
       Lerp4(colors[ImGuiCol_FrameBg], colors[ImGuiCol_FrameBgHovered], 0.65f);
 
-  // ── Misc interactive ──
-  colors[ImGuiCol_Separator] = Alpha(accent, 0.40f);
-  colors[ImGuiCol_TitleBgActive] = Alpha(accent, 0.30f);
-  colors[ImGuiCol_ScrollbarGrabActive] = accent;
-  colors[ImGuiCol_ScrollbarGrabHovered] = Alpha(accent, 0.70f);
+  // ── Misc ──
   colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.50f);
-  colors[ImGuiCol_DragDropTarget] = Alpha(accent, 0.90f);
+
+  // ── Phase 2: Global text recompute ──
+  // Derive ImGuiCol_Text from the window background so it's always readable.
+  colors[ImGuiCol_Text] = GetContrastColor(colors[ImGuiCol_WindowBg]);
+  colors[ImGuiCol_TextDisabled] = Lerp4(colors[ImGuiCol_Text],
+                                        colors[ImGuiCol_WindowBg], 0.50f);
+  colors[ImGuiCol_TextLink] = ForceMinLumDelta(accent, colors[ImGuiCol_Text],
+                                               0.15f);
+
+  // ── Phase 3: Mode-side surface luminance clamp ──
+  //
+  // ImGui has no per-state text color slot — Buttons, Tabs and Headers all
+  // render their label with the global ImGuiCol_Text we just computed in
+  // Phase 2. To keep that label readable on **every** state of **every**
+  // accent surface, we cap the blended surface luminance to stay firmly on
+  // the same side as the WindowBg.
+  //
+  //   Dark base  (white text) → accent surfaces capped at lum ≤ kSurfLumMaxDark
+  //   Light base (black text) → accent surfaces floored at lum ≥ kSurfLumMinLight
+  //
+  // The bounds correspond to roughly a 3:1 WCAG contrast ratio against the
+  // chosen text color, which is the recommended floor for non-body UI text.
+  // A pure-accent indicator (CheckMark, NavCursor, …) is exempt — it does
+  // not carry text on top.
+  constexpr float kSurfLumMaxDark   = 0.30f;
+  constexpr float kSurfLumMinLight  = 0.70f;
+
+  const float textLum = Luminance(colors[ImGuiCol_Text]);
+  const bool  isDark  = textLum > 0.5f;                  // text is white-ish
+  const float surfMax = isDark ? kSurfLumMaxDark : 1.0f;
+  const float surfMin = isDark ? 0.0f           : kSurfLumMinLight;
+
+  // List of accent-tinted surface slots subject to the clamp. Pure-accent
+  // indicators (CheckMark, NavCursor, InputTextCursor, *Overline,
+  // SliderGrabActive) are intentionally absent — they have no text on top.
+  static const int kAccentSurfaceSlots[] = {
+      ImGuiCol_FrameBg,            ImGuiCol_FrameBgHovered,     ImGuiCol_FrameBgActive,
+      ImGuiCol_Tab,                ImGuiCol_TabHovered,         ImGuiCol_TabSelected,
+      ImGuiCol_TabDimmed,          ImGuiCol_TabDimmedSelected,
+      ImGuiCol_Button,             ImGuiCol_ButtonHovered,      ImGuiCol_ButtonActive,
+      ImGuiCol_Header,             ImGuiCol_HeaderHovered,      ImGuiCol_HeaderActive,
+      ImGuiCol_Separator,          ImGuiCol_SeparatorHovered,   ImGuiCol_SeparatorActive,
+      ImGuiCol_ResizeGrip,         ImGuiCol_ResizeGripHovered,  ImGuiCol_ResizeGripActive,
+      ImGuiCol_SliderGrab,
+      ImGuiCol_TitleBgActive,
+      ImGuiCol_ScrollbarGrab,      ImGuiCol_ScrollbarGrabHovered, ImGuiCol_ScrollbarGrabActive,
+      ImGuiCol_DockingPreview,
+      ImGuiCol_TextSelectedBg,     ImGuiCol_DragDropTarget,
+  };
+
+  // Binary-search the alpha that lands the blended surface luminance within
+  // [surfMin, surfMax]. Walks toward the bg if the surface is too bright (or
+  // too dark, in light mode); the bg side is always inside the bound because
+  // the base palette put the WindowBg there.
+  auto ClampSurfaceAlpha = [&](ImVec4& surf) {
+      const float curLum = BlendedLuminance(surf, bg);
+      if (curLum >= surfMin && curLum <= surfMax)
+          return; // already inside the bound
+
+      const float origAlpha = surf.w;
+      // The bg side of [0, origAlpha] is alpha=0 (pure bg). If the bg is
+      // outside the bound the user picked a contradictory WindowBg override
+      // and we can't help — leave the surface alone.
+      const float bgLum = Luminance(bg);
+      if (bgLum < surfMin || bgLum > surfMax)
+          return;
+
+      float lo = 0.0f, hi = origAlpha;
+      float bestAlpha = 0.0f;
+      for (int i = 0; i < 24; ++i) {
+          const float mid = (lo + hi) * 0.5f;
+          ImVec4 trial = Alpha(surf, mid);
+          const float trialLum = BlendedLuminance(trial, bg);
+          if (trialLum >= surfMin && trialLum <= surfMax) {
+              bestAlpha = mid;
+              lo = mid; // try larger alpha that still satisfies bound
+          } else {
+              hi = mid;
+          }
+      }
+      surf = Alpha(surf, bestAlpha);
+  };
+
+  for (int slot : kAccentSurfaceSlots)
+      ClampSurfaceAlpha(colors[slot]);
 }
 
 // ── ApplyTheme ────────────────────────────────────────────────────────────
@@ -114,14 +359,31 @@ void ApplyTheme(const ImVec4 &accent, ThemeMode mode, bool animate) {
   s_currentMode       = mode;            // store user's intent
   s_currentEffective  = ResolveMode(mode); // System → Dark/Light right here
 
-  // Compute target palette
+  // Compute target palette (includes Phases 1–3 inside ComputeAccentPalette)
   ImVec4 target[ImGuiCol_COUNT];
   ComputeAccentPalette(target, accent, s_currentEffective);
 
-  // Apply per-color overrides on top
+  // ── Phase 4: Apply per-color overrides on top ──
+  // Overrides are intentional — we never auto-correct them. But we log a
+  // warning when an override lands a surface on the wrong side of the
+  // Phase 3 mode-side bound, since that almost certainly means unreadable
+  // text on top of that surface.
   for (const auto &[idx, color] : s_overrides) {
-    if (idx >= 0 && idx < ImGuiCol_COUNT)
+    if (idx >= 0 && idx < ImGuiCol_COUNT) {
+      const ImVec4& bg = target[ImGuiCol_WindowBg];
+      const float textLum = Luminance(target[ImGuiCol_Text]);
+      const bool  isDark  = textLum > 0.5f;
+      const float surfLum = BlendedLuminance(color, bg);
+      const float surfMax = isDark ? 0.30f : 1.0f;
+      const float surfMin = isDark ? 0.0f  : 0.70f;
+      if (surfLum < surfMin || surfLum > surfMax) {
+        LOG_WARN("[ThemeManager] Override for slot %d (surfLum=%.2f) is "
+                 "outside the mode bound [%.2f, %.2f]. Text may be "
+                 "unreadable on this surface.",
+                 idx, surfLum, surfMin, surfMax);
+      }
       target[idx] = color;
+    }
   }
 
   if (animate && ImGui::GetTime() > 0.0) {
@@ -222,11 +484,26 @@ ImVec4 TextForSurface(const ImVec4 &surf) {
                         : ImVec4(1.00f, 1.00f, 1.00f, 1.0f);
 }
 
-// ── Semantic toolbar tokens ───────────────────────────────────────────────
+// ── Phase 4: Semantic toolbar tokens ──────────────────────────────────────
+// Derived from the recomputed accent palette rather than hardcoded values.
 
-ImVec4 ToolbarButton() { return {0.15f, 0.15f, 0.18f, 0.85f}; }
-ImVec4 ToolbarButtonHover() { return {0.25f, 0.25f, 0.30f, 0.90f}; }
-ImVec4 ToolbarButtonActive() { return {0.35f, 0.35f, 0.40f, 0.95f}; }
+ImVec4 ToolbarButton() {
+    ImVec4 btn = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+    // Subtle variant: reduce alpha slightly for toolbar's more subdued look.
+    return Alpha(btn, std::max(btn.w * 0.85f, 0.10f));
+}
+
+ImVec4 ToolbarButtonHover() {
+    return ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+}
+
+ImVec4 ToolbarButtonActive() {
+    return ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+}
+
+ImVec4 ToolbarButtonText() {
+    return TextForSurface(ToolbarButton());
+}
 
 // ── Per-color override storage ────────────────────────────────────────────
 
