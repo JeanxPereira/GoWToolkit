@@ -298,16 +298,25 @@ jobs:
         run: find . -type f -name "GoWToolkit-*" | sort
 
       # Categorised changelog from Conventional Commits between the
-      # previous tag and the current one. `--latest` restricts output to
-      # the tag that triggered this workflow.
-      - name: Generate changelog (git-cliff)
-        id: cliff
-        uses: orhun/git-cliff-action@v3
-        with:
-          config: cliff.toml
-          args: --latest --strip header
-        env:
-          OUTPUT: CHANGELOG_BODY.md
+      # previous tag and the current one. We install git-cliff directly
+      # from its GitHub release tarball rather than via
+      # orhun/git-cliff-action: the action wraps a Docker image whose
+      # base layer (orhunp/git-cliff:2.4.0) is built on Debian Buster,
+      # whose apt repositories are archived. apt-get update inside the
+      # image now returns 404 and the action fails before git-cliff is
+      # ever invoked. The musl tarball is self-contained.
+      - name: Install git-cliff
+        run: |
+          set -euo pipefail
+          version="2.6.1"
+          url="https://github.com/orhun/git-cliff/releases/download/v${version}/git-cliff-${version}-x86_64-unknown-linux-musl.tar.gz"
+          curl -fsSL "$url" -o git-cliff.tar.gz
+          tar -xzf git-cliff.tar.gz
+          mv "git-cliff-${version}/git-cliff" /usr/local/bin/git-cliff
+          git-cliff --version
+
+      - name: Generate changelog
+        run: git-cliff --config cliff.toml --latest --strip header --output CHANGELOG_BODY.md
 
       # Build a SHA256 table for the four release artifacts so users can
       # verify downloads. Appended to the changelog after the commit
