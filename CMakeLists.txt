@@ -169,21 +169,34 @@ if(WIN32)
     # the moment that happens, so we omit it and rely on TLS for transport
     # integrity. To pin a specific build, swap the URL to a dated tag
     # (autobuild-YYYY-MM-DD-HH-MM) and reinstate URL_HASH.
+    # Extract into default `_deps/ffmpeg_prebuilt-src` so the
+    # `actions/cache` step (path: build/_deps) actually captures it.
+    # Earlier versions used a `SOURCE_DIR` override into the source tree,
+    # which broke under cache restore: the FetchContent subbuild stamp
+    # was cached and reported "populated", but the source tree extraction
+    # was not, so headers vanished and Windows compiles failed with
+    # `Cannot open include file: 'libavformat/avformat.h'`.
     FetchContent_Declare(
         ffmpeg_prebuilt
         URL      "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip"
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        SOURCE_DIR ${CMAKE_SOURCE_DIR}/third_party/ffmpeg
     )
     FetchContent_MakeAvailable(ffmpeg_prebuilt)
 
-    # O ZIP do BtbN extrai um subdiretório com o nome do release.
-    # Usamos GLOB para encontrá-lo automaticamente sem hardcode.
-    file(GLOB FFMPEG_SUBDIRS "${CMAKE_SOURCE_DIR}/third_party/ffmpeg/ffmpeg-*")
+    # The ZIP extracts as `<src>/ffmpeg-n7.1-.../{include,lib,bin}`.
+    # Locate that nested dir.
+    file(GLOB FFMPEG_SUBDIRS "${ffmpeg_prebuilt_SOURCE_DIR}/ffmpeg-*")
     if(FFMPEG_SUBDIRS)
         list(GET FFMPEG_SUBDIRS 0 FFMPEG_ROOT)
     else()
-        set(FFMPEG_ROOT "${CMAKE_SOURCE_DIR}/third_party/ffmpeg")
+        set(FFMPEG_ROOT "${ffmpeg_prebuilt_SOURCE_DIR}")
+    endif()
+
+    if(NOT EXISTS "${FFMPEG_ROOT}/include/libavformat/avformat.h")
+        message(FATAL_ERROR
+            "FFmpeg headers not found at ${FFMPEG_ROOT}/include. "
+            "FetchContent extraction likely failed or upstream zip layout "
+            "changed. Delete build/_deps/ffmpeg_prebuilt-* and reconfigure.")
     endif()
 
     target_include_directories(ffmpeg_lib INTERFACE "${FFMPEG_ROOT}/include")
@@ -195,8 +208,7 @@ if(WIN32)
         "${FFMPEG_ROOT}/lib/swresample.lib"
     )
 
-    # Armazena o caminho das DLLs — o add_custom_command vem depois
-    # do add_executable, quando o target GoWToolkit já existe.
+    # Path to DLLs — copy step lives after add_executable below.
     file(GLOB FFMPEG_DLLS "${FFMPEG_ROOT}/bin/*.dll")
 
 else()

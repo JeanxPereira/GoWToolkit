@@ -7,6 +7,8 @@
 #include "core/WadTypes.h"
 #include "imgui.h"
 
+#include <cmath>
+
 StatusBar::StatusBar() {
     EventWadOpened::subscribe(this, [this](OpenWad* wad) {
         if (wad) {
