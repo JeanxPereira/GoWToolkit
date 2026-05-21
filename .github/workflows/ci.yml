@@ -1,11 +1,21 @@
 name: CI
 
+# Cancel any in-progress run of this workflow when a new push lands on the
+# same branch or PR. Keeps the runner queue short and avoids burning CI
+# minutes on superseded commits. (Pattern borrowed from ImHex.)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
     tags: ['v*']
   pull_request:
     branches: [main]
+  # Manual button in the Actions UI — handy for re-running builds on
+  # demand or smoke-testing workflow edits without pushing a commit.
+  workflow_dispatch:
 
 jobs:
   # ════════════════════════════════════════════════════════════════════
@@ -91,7 +101,7 @@ jobs:
             name: Linux x64
             artifact_name: GoWToolkit-linux-x64
             cmake_generator: Ninja
-            cmake_args: -DCMAKE_BUILD_TYPE=Release
+            cmake_args: -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
             build_cmd: cmake --build build
             package_cmd: |
               mkdir -p staging
@@ -104,33 +114,34 @@ jobs:
           - os: macos-14
             name: macOS ARM64
             artifact_name: GoWToolkit-macOS-arm64
-            arch_prefix: ""
             cmake_generator: Ninja
-            cmake_args: -DCMAKE_BUILD_TYPE=Release
+            cmake_args: -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_OBJC_COMPILER_LAUNCHER=ccache -DCMAKE_OBJCXX_COMPILER_LAUNCHER=ccache
             build_cmd: cmake --build build
             package_cmd: |
               cd build
               zip -r ../GoWToolkit-macOS-arm64.zip GoWToolkit.app
             artifact_path: GoWToolkit-macOS-arm64.zip
 
-          # ── macOS x64 (Intel) — cross-compiled on Apple Silicon ─────────
-          # macos-13 (Intel) GitHub runners are queued indefinitely. Build
-          # x86_64 from the macos-14 (arm64) runner via -arch x86_64. An
-          # x86_64 Homebrew prefix under /usr/local supplies FFmpeg for
-          # the cross target. Tests run under Rosetta 2 (preinstalled).
-          - os: macos-14
+          # ── macOS x64 (Intel) ───────────────────────────────────────────
+          # `macos-15-intel` is the supported Intel runner image
+          # (`macos-13` queues indefinitely on most repos). Native build,
+          # no Rosetta cross-compile gymnastics.
+          - os: macos-15-intel
             name: macOS x64
             artifact_name: GoWToolkit-macOS-x64
-            arch_prefix: "arch -x86_64"
             cmake_generator: Ninja
-            cmake_args: -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=x86_64
-            build_cmd: arch -x86_64 cmake --build build
+            cmake_args: -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_OBJC_COMPILER_LAUNCHER=ccache -DCMAKE_OBJCXX_COMPILER_LAUNCHER=ccache
+            build_cmd: cmake --build build
             package_cmd: |
               cd build
               zip -r ../GoWToolkit-macOS-x64.zip GoWToolkit.app
             artifact_path: GoWToolkit-macOS-x64.zip
 
           # ── Windows x64 (MSVC) ──────────────────────────────────────────
+          # Visual Studio multi-config generator. ccache is intentionally
+          # not wired here: CMake `_LAUNCHER` doesn't apply to the VS
+          # generator, and switching to Ninja+cl.exe is a larger change
+          # we can do later (see ImHex's win_msvc job for the pattern).
           - os: windows-2022
             name: Windows x64
             artifact_name: GoWToolkit-windows-x64
@@ -146,6 +157,13 @@ jobs:
 
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+
+    # Build provenance attestations need id-token + attestations write so
+    # the runner can mint OIDC tokens and call the attestation API.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
 
     steps:
       # ── Checkout ─────────────────────────────────────────────────────
@@ -163,6 +181,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cmake-deps-
 
+      # ── ccache (Linux + macOS) ───────────────────────────────────────
+      # Caches compiled object files across runs. Massive win on
+      # incremental CI builds — the first run primes the cache, every
+      # subsequent run hits ~80–95% and finishes 5–10x faster. Disabled
+      # on Windows because the Visual Studio CMake generator ignores
+      # `_LAUNCHER`.
+      - name: Set up ccache
+        if: runner.os != 'Windows'
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ matrix.name }}-ccache-${{ github.run_id }}
+          restore-keys: |
+            ${{ matrix.name }}-ccache-
+          max-size: 500M
+
       # ── Install Dependencies (Linux) ─────────────────────────────────
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
@@ -175,36 +208,18 @@ jobs:
             libavformat-dev libavcodec-dev libswscale-dev \
             libswresample-dev libavutil-dev
 
-      # ── Install Dependencies (macOS arm64) ───────────────────────────
-      - name: Install dependencies (macOS arm64)
-        if: matrix.name == 'macOS ARM64'
+      # ── Install Dependencies (macOS) ─────────────────────────────────
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
         run: |
           brew install cmake ninja ffmpeg pkg-config
 
-      # ── Install Dependencies (macOS x64 cross) ───────────────────────
-      # Install a parallel x86_64 Homebrew prefix at /usr/local so the
-      # x86_64 ffmpeg dylibs and pkg-config metadata are available to the
-      # cross build. Cmake/Ninja from the arm64 prefix are reused as-is —
-      # only the compiled output needs to be x86_64.
-      - name: Install dependencies (macOS x64 cross)
-        if: matrix.name == 'macOS x64'
-        run: |
-          NONINTERACTIVE=1 arch -x86_64 /bin/bash -c \
-            "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          arch -x86_64 /usr/local/bin/brew install ffmpeg pkg-config
-
       # ── Configure CMake ──────────────────────────────────────────────
       - name: Configure CMake
-        env:
-          # x86_64 brew pc files live under /usr/local; let pkg-config find
-          # them when we cross-compile. No-op for other matrix entries.
-          PKG_CONFIG_PATH: /usr/local/lib/pkgconfig:/usr/local/opt/ffmpeg/lib/pkgconfig
-        run: ${{ matrix.arch_prefix }} cmake -G "${{ matrix.cmake_generator }}" ${{ matrix.cmake_args }} -B build
+        run: cmake -G "${{ matrix.cmake_generator }}" ${{ matrix.cmake_args }} -B build
 
       # ── Build ────────────────────────────────────────────────────────
       - name: Build
-        env:
-          PKG_CONFIG_PATH: /usr/local/lib/pkgconfig:/usr/local/opt/ffmpeg/lib/pkgconfig
         run: ${{ matrix.build_cmd }}
 
       # ── Tests ────────────────────────────────────────────────────────
@@ -233,6 +248,15 @@ jobs:
         shell: pwsh
         run: ${{ matrix.package_cmd }}
 
+      # ── Build provenance attestation ─────────────────────────────────
+      # Records a signed statement linking the artifact hash to this
+      # workflow run. Skipped on forks and PRs (no OIDC token there).
+      - name: Generate build provenance attestation
+        if: github.event.repository.fork == false && github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ matrix.artifact_path }}
+
       # ── Upload Artifact ──────────────────────────────────────────────
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -240,6 +264,9 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_path }}
           retention-days: 30
+          # Fail the workflow if packaging produced no artifact, instead
+          # of silently uploading an empty bundle.
+          if-no-files-found: error
 
   # ════════════════════════════════════════════════════════════════════
   # Release — only triggered on version tags (v*)
