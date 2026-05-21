@@ -5,6 +5,7 @@
 #include "ui/ActiveAnimation.h"
 #include "imgui.h"
 #include <algorithm>
+#include <cmath>
 #include <set>
 #include <vector>
 

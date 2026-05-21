@@ -15,6 +15,7 @@
 #include "core/vfs/SliceFile.h"
 #include "core/vfs/MemoryFile.h"
 #include "ui/viewers/Viewport3D.h"
+#include <cstring>
 #include <filesystem>
 #include <functional>
 #include <mutex>

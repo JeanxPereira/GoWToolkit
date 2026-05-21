@@ -5,6 +5,7 @@
 #include "fonts/SFSymbols.h"
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <glad/glad.h>
 #include <imgui.h>
 #include <imgui_internal.h>

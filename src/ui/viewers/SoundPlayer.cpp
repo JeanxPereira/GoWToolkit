@@ -5,6 +5,7 @@
 #include "core/audio/AdpcmDecoder.h"
 #include "fonts/SFSymbols.h"
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <imgui.h>
 
