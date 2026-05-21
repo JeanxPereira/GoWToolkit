@@ -1,4 +1,5 @@
 #include <doctest/doctest.h>
+#include <string>
 #include "core/domain/MediaKind.h"
 
 using namespace GOW;

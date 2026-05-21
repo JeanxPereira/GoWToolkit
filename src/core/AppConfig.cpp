@@ -1,6 +1,7 @@
 #include "core/AppConfig.h"
 #include "core/AssetVisibility.h"
 #include "imgui.h"
+#include <cstring>
 #include <fstream>
 #include <string>
 

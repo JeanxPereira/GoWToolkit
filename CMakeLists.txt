@@ -315,9 +315,14 @@ if(APPLE)
         message(STATUS "Using actool: ${_actool_path}")
         set(ICON_SOURCE "${CMAKE_SOURCE_DIR}/dist/macos/GoWToolkit.icon")
         set(ASSETS_CAR  "${CMAKE_CURRENT_BINARY_DIR}/Assets.car")
+        set(ASSETS_STAMP "${CMAKE_CURRENT_BINARY_DIR}/Assets.stamp")
 
+        # actool may exit 0 without producing Assets.car if it does not
+        # understand the .icon (Liquid Glass) format — this happens with
+        # Xcode 15.x. Always emit a stamp file so the custom target stays
+        # valid; the POST_BUILD copy below guards on Assets.car existing.
         add_custom_command(
-            OUTPUT "${ASSETS_CAR}"
+            OUTPUT "${ASSETS_STAMP}"
             COMMAND "${_actool_path}"
                 "${ICON_SOURCE}"
                 --compile "${CMAKE_CURRENT_BINARY_DIR}"
@@ -325,18 +330,28 @@ if(APPLE)
                 --platform macosx
                 --minimum-deployment-target 13.0
                 --output-partial-info-plist /dev/null
+                || true
+            COMMAND ${CMAKE_COMMAND} -E touch "${ASSETS_STAMP}"
             DEPENDS "${ICON_SOURCE}/icon.json"
             COMMENT "Compiling GoWToolkit.icon → Assets.car (Liquid Glass)"
         )
-        add_custom_target(CompileIcon ALL DEPENDS "${ASSETS_CAR}")
+        add_custom_target(CompileIcon ALL DEPENDS "${ASSETS_STAMP}")
         add_dependencies(GoWToolkit CompileIcon)
 
-        # ── Copy Assets.car into bundle Resources ────────────────────────
+        # ── Copy Assets.car into bundle Resources (only if produced) ─────
+        # Guarded with `test -f` because Xcode 15.x actool silently no-ops
+        # on .icon and leaves Assets.car absent.
         add_custom_command(TARGET GoWToolkit POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${ASSETS_CAR}"
-                "$<TARGET_BUNDLE_CONTENT_DIR:GoWToolkit>/Resources/Assets.car"
-            COMMENT "Copying Assets.car into bundle"
+            COMMAND bash -c
+                "if [ -f '${ASSETS_CAR}' ]; then \
+                    '${CMAKE_COMMAND}' -E copy_if_different \
+                        '${ASSETS_CAR}' \
+                        '$<TARGET_BUNDLE_CONTENT_DIR:GoWToolkit>/Resources/Assets.car'; \
+                 else \
+                    echo 'Skipping Assets.car copy: file not produced (Xcode 15.x cannot compile .icon)'; \
+                 fi"
+            COMMENT "Copying Assets.car into bundle (if present)"
+            VERBATIM
         )
     else()
         message(WARNING
