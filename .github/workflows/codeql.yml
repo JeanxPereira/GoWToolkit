@@ -1,0 +1,103 @@
+# CodeQL — GitHub's static analyzer for C++.
+#
+# Treats the codebase as a queryable database (AST + dataflow) and runs
+# security/quality queries that catch issues the compiler doesn't:
+# buffer overflows, use-after-free, tainted-input flows into file
+# offsets, null derefs, resource leaks, etc. Particularly useful for a
+# binary-format parser where attacker-controlled bytes feed array
+# indices and allocation sizes.
+#
+# Findings show up under the repo's Security → Code scanning tab.
+# Schedule is nightly so we don't pay the ~15 min analysis cost on
+# every push, plus on-demand via workflow_dispatch and on PRs into
+# main so reviewers see new alerts before merge.
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 4 * * *'   # daily at 04:00 UTC
+  workflow_dispatch:
+
+# Same single-flight semantics as the CI workflow — supersede in-flight
+# analyses when a newer commit arrives.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL (C++)
+    runs-on: ubuntu-24.04
+
+    # CodeQL uploads results to the GitHub Security dashboard via the
+    # code-scanning API; that needs security-events:write. Other perms
+    # are read-only.
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+          # `security-extended` adds queries beyond the default set
+          # (tainted-flow into pointer arithmetic, integer-overflow
+          # sinks, etc.) — useful for parser code.
+          queries: security-extended
+
+      # Cache CMake FetchContent downloads — same key shape as ci.yml
+      # so we can reuse warm caches between workflows when possible.
+      - name: Cache CMake dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-cmake-deps-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-deps-
+
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: codeql-ccache-${{ github.run_id }}
+          restore-keys: |
+            codeql-ccache-
+          max-size: 500M
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build g++ pkg-config \
+            libgl-dev libx11-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxi-dev libwayland-dev libxkbcommon-dev \
+            libavformat-dev libavcodec-dev libswscale-dev \
+            libswresample-dev libavutil-dev
+
+      # CodeQL hooks into the compiler driver to extract the database
+      # during this real build. No special CMake flags required.
+      - name: Configure CMake
+        run: |
+          cmake -G Ninja -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:cpp
