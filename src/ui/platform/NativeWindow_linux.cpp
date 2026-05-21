@@ -6,7 +6,7 @@
 
 namespace NativeWindow {
 
-void setFullFrameCallback(void(*){}) {}
+void setFullFrameCallback(void(*)()) {}
 void setup(GLFWwindow*, bool) {}
 void beginFrame(GLFWwindow*, float) {}
 void endFrame(GLFWwindow*)          {}
