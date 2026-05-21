@@ -279,6 +279,16 @@ jobs:
       contents: write
 
     steps:
+      # Full history + tags required so git-cliff can compute the range
+      # between the current tag and the previous one. Shallow clone (the
+      # default fetch-depth: 1) leaves git-cliff blind to prior tags and
+      # emits an empty changelog.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -286,6 +296,58 @@ jobs:
 
       - name: List artifacts
         run: find . -type f -name "GoWToolkit-*" | sort
+
+      # Categorised changelog from Conventional Commits between the
+      # previous tag and the current one. `--latest` restricts output to
+      # the tag that triggered this workflow.
+      - name: Generate changelog (git-cliff)
+        id: cliff
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: CHANGELOG_BODY.md
+
+      # Build a SHA256 table for the four release artifacts so users can
+      # verify downloads. Appended to the changelog after the commit
+      # groups, before the auto-generated "Full Changelog" link.
+      - name: Build SHA256 table
+        id: sha
+        run: |
+          {
+            echo ""
+            echo "### Artifacts"
+            echo ""
+            echo "| Platform    | File                                | SHA256 |"
+            echo "|-------------|-------------------------------------|--------|"
+            for entry in \
+              "Linux x64|GoWToolkit-linux-x64/GoWToolkit-linux-x64.tar.gz" \
+              "macOS ARM64|GoWToolkit-macOS-arm64/GoWToolkit-macOS-arm64.zip" \
+              "macOS x64|GoWToolkit-macOS-x64/GoWToolkit-macOS-x64.zip" \
+              "Windows x64|GoWToolkit-windows-x64/GoWToolkit-windows-x64.zip"
+            do
+              platform="${entry%%|*}"
+              path="${entry##*|}"
+              file="$(basename "$path")"
+              if [ -f "$path" ]; then
+                hash="$(sha256sum "$path" | awk '{print $1}')"
+                printf "| %-11s | %-35s | \`%s\` |\n" "$platform" "$file" "$hash"
+              else
+                printf "| %-11s | %-35s | missing |\n" "$platform" "$file"
+              fi
+            done
+            echo ""
+            prev_tag="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo '')"
+            if [ -n "$prev_tag" ]; then
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${prev_tag}...${{ github.ref_name }}"
+            else
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}"
+            fi
+          } > SHA_TABLE.md
+          cat CHANGELOG_BODY.md SHA_TABLE.md > RELEASE_BODY.md
+          echo "---- RELEASE BODY ----"
+          cat RELEASE_BODY.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -295,7 +357,7 @@ jobs:
             GoWToolkit-macOS-arm64/GoWToolkit-macOS-arm64.zip
             GoWToolkit-macOS-x64/GoWToolkit-macOS-x64.zip
             GoWToolkit-windows-x64/GoWToolkit-windows-x64.zip
-          generate_release_notes: true
+          body_path: RELEASE_BODY.md
           draft: false
           prerelease: false
         env:
