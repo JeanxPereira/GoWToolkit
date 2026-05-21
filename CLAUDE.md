@@ -84,3 +84,62 @@ The application has two entry modes, selected at startup in `src/main.cpp`: GUI 
 | PS2 GPU / VIF | `ps2/vif/`, `ps2/dma/` |
 
 The Go project uses a web UI (`web/`) and serves parsed data as JSON — the handler files (`webhandlers.go` inside each format dir) show exactly what fields are extracted and how they map to the binary layout.
+
+## Commits
+
+Conventional Commits format, enforced by `cliff.toml` grouping in release notes:
+
+```
+<type>(<scope>): <Sentence-case subject>
+
+<optional body — explains WHY, not WHAT>
+
+<optional footer>
+```
+
+Rules:
+- **Subject is Sentence case** — first letter capitalized, no trailing period, ≤ 72 chars. Example: `feat(theme): Accent-aware contrast invariant`. Not `feat(theme): accent-aware...` and not `feat(theme): AccentAware...`.
+- **Type is lowercase**, picked from the table below.
+- **Scope is lowercase**, in parentheses, optional. Use a directory or feature name (`build`, `theme`, `ui`, `release`, `parsers`).
+- **Imperative mood** in the subject ("Add X" not "Added X").
+- **Body** wraps at 72 cols, separated from the subject by one blank line. Use it for the *why* — constraint, incident, deadline. Skip if the subject already says everything.
+
+Recognized types (mapped to release sections by `cliff.toml`):
+
+| Type       | Section in release notes |
+|------------|--------------------------|
+| `feat`     | Features                 |
+| `fix`      | Bug Fixes                |
+| `perf`     | Performance              |
+| `refactor` | Refactor                 |
+| `docs`     | Documentation            |
+| `test`     | Tests                    |
+| `build`    | Build                    |
+| `ci`       | CI                       |
+| `chore`    | Chore                    |
+| `style`    | Style                    |
+| `revert`   | Reverts                  |
+
+Commits whose type is not in this table are dropped from the changelog (`filter_unconventional = true`), so non-conforming subjects effectively vanish from releases. Keep the prefix.
+
+## Releases
+
+Tagged via **annotated** SemVer tags (`vX.Y.Z`). Lightweight tags break `git describe --tags --abbrev=0`, which the workflow uses to compute the compare link.
+
+To cut a release:
+
+```bash
+git tag -a vX.Y.Z -m "vX.Y.Z — short summary"
+git push origin vX.Y.Z
+```
+
+The tag push triggers the `release` job in `.github/workflows/ci.yml`, which:
+
+1. Checks out with `fetch-depth: 0` (git-cliff needs full tag history).
+2. Downloads the four artifacts produced by the build matrix.
+3. Installs `git-cliff` from its musl tarball into `/usr/local/bin`. **Do not** revert to `orhun/git-cliff-action@v3` — that action's Docker base is Debian Buster, archived, apt-get returns 404.
+4. Runs `git-cliff --config cliff.toml --latest --strip header` to produce `CHANGELOG_BODY.md`.
+5. Builds an `### Artifacts` table with SHA256 of each artifact plus a compare link computed from the previous tag.
+6. Concatenates into `RELEASE_BODY.md` and publishes via `softprops/action-gh-release@v2`.
+
+If the release job fails before publishing, delete the tag (`git push origin :refs/tags/vX.Y.Z && git tag -d vX.Y.Z`), fix the workflow, then retag and push again. The build matrix re-runs.
