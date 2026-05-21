@@ -352,6 +352,14 @@ endif()
 
 target_include_directories(GoWToolkit PRIVATE src third_party/bcdec)
 
+# MSVC source charset: UCN escapes ( etc. for SF Symbols / codicons) need
+# /utf-8 so MSVC reads source as UTF-8 and emits UTF-8 narrow string literals.
+# Without it cl.exe falls back to CP-1252 and warns C4566 on each codicon.
+if(MSVC)
+    target_compile_options(GoWToolkit            PRIVATE /utf-8)
+    target_compile_options(gowtoolkit_parser_min PRIVATE /utf-8)
+endif()
+
 # Expõe a API nativa do GLFW (glfwGetCocoaWindow, glfwGetWin32Window, etc.)
 target_compile_definitions(GoWToolkit PRIVATE
     $<$<PLATFORM_ID:Windows>:GLFW_EXPOSE_NATIVE_WIN32>

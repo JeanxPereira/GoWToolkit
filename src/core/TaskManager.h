@@ -2,7 +2,9 @@
 
 // TaskManager — Centralized async task execution with progress tracking.
 // Adapted from ImHex's TaskManager (WerWolv, LGPLv2.1)
-// Simplified: uses std::jthread (C++20), no localization, no source_location.
+// Simplified: std::thread pool + atomic stop flag, no localization, no
+// source_location. std::jthread was avoided because Apple Clang's libc++
+// in the macOS-14 CI image still lacks <stop_token>.
 
 #include <atomic>
 #include <condition_variable>

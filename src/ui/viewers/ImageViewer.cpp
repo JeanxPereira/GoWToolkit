@@ -3,6 +3,7 @@
 #include "core/ThemeManager.h"
 #include "ui/Widgets.h"
 #include <algorithm>
+#include <cmath>
 #include <glad/glad.h>
 #include <imgui.h>
 

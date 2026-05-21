@@ -85,7 +85,9 @@ jobs:
       matrix:
         include:
           # ── Linux x64 ──────────────────────────────────────────────────
-          - os: ubuntu-22.04
+          # ubuntu-24.04 ships gcc-13 which has a complete <format>
+          # implementation. ubuntu-22.04 (gcc-11) does not.
+          - os: ubuntu-24.04
             name: Linux x64
             artifact_name: GoWToolkit-linux-x64
             cmake_generator: Ninja

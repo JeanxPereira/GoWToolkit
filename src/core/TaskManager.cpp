@@ -19,7 +19,8 @@ namespace GOW {
 
         std::mutex                           s_queueMutex;
         std::condition_variable              s_jobCondVar;
-        std::vector<std::jthread>            s_workers;
+        std::vector<std::thread>             s_workers;
+        std::atomic<bool>                    s_shouldStop{false};
     }
 
     // ── Task ────────────────────────────────────────────────────────────────
@@ -158,18 +159,20 @@ namespace GOW {
 
         LOG_INFO("[TaskManager] Initializing thread pool with %u workers", threadCount);
 
+        s_shouldStop.store(false);
+
         for (uint32_t i = 0; i < threadCount; i++) {
-            s_workers.emplace_back([](const std::stop_token& stopToken) {
+            s_workers.emplace_back([] {
                 while (true) {
                     std::shared_ptr<Task> task;
 
                     {
                         std::unique_lock lock(s_queueMutex);
-                        s_jobCondVar.wait(lock, [&] {
-                            return !s_taskQueue.empty() || stopToken.stop_requested();
+                        s_jobCondVar.wait(lock, [] {
+                            return !s_taskQueue.empty() || s_shouldStop.load();
                         });
 
-                        if (stopToken.stop_requested())
+                        if (s_shouldStop.load())
                             break;
 
                         task = std::move(s_taskQueue.front());
@@ -202,17 +205,19 @@ namespace GOW {
         for (const auto& task : s_tasks)
             task->interrupt();
 
-        // Ask worker threads to exit
-        for (auto& thread : s_workers)
-            thread.request_stop();
-
-        // Wake up idle workers
+        // Ask worker threads to exit and wake them up
         {
             std::unique_lock lock(s_queueMutex);
+            s_shouldStop.store(true);
             s_jobCondVar.notify_all();
         }
 
-        // Wait for all workers to exit
+        // Join all workers
+        for (auto& thread : s_workers) {
+            if (thread.joinable())
+                thread.join();
+        }
+
         s_workers.clear();
         s_tasks.clear();
         s_taskQueue.clear();
