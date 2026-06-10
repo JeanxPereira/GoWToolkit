@@ -1,6 +1,6 @@
 #pragma once
 
-// Golden-test plumbing: produce a stable JSON snapshot of an `OpenWad`,
+// Golden-test plumbing: produce a stable JSON snapshot of an `AssetContainer`,
 // load a previously-recorded snapshot from disk, and diff the two with a
 // human-readable error message. Tests in this directory use these helpers
 // to verify that parser refactors don't silently change observable output.
@@ -33,7 +33,7 @@ namespace gowtoolkit::testing {
 // the document is stable across runs even if the parser walks the tree in
 // a different order. `payloadHash` is xxhash64 of the on-disk payload
 // bytes (skipped when the entry has `size == 0`).
-nlohmann::ordered_json SnapshotEntries(const OpenWad& wad);
+nlohmann::ordered_json SnapshotEntries(const AssetContainer& wad);
 
 // Reads a golden snapshot from disk. Returns `nullptr` JSON if the file
 // does not exist (so callers can decide to create one on update mode).

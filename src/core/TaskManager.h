@@ -17,7 +17,7 @@
 #include <thread>
 #include <cstdint>
 
-namespace GOW {
+namespace Onyx {
 
     /// Exception thrown when a task is interrupted. Worker threads catch this.
     struct TaskInterruptor {};
@@ -160,4 +160,4 @@ namespace GOW {
                                      std::function<void(Task&)> function);
     };
 
-} // namespace GOW
+} // namespace Onyx

@@ -3,7 +3,7 @@
 #include <vector>
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 
 class DocumentWindow {
 public:
@@ -33,4 +33,4 @@ private:
     std::vector<std::shared_ptr<IDocumentContent>> m_pendingDelete;
 };
 
-} // namespace GOW
+} // namespace Onyx

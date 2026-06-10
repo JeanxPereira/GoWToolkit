@@ -5,7 +5,7 @@
 #include <memory>
 #include <cstdint>
 
-namespace GOW {
+namespace Onyx {
 
 class GOW2SoundParser {
 public:
@@ -25,11 +25,11 @@ public:
     };
 
     static std::unique_ptr<SoundBankData> Parse(
-        const ParsedEntry& entry,
+        const AssetEntry& entry,
         const std::shared_ptr<IFile>& fileSource);
 
 private:
     static constexpr uint32_t GOW2_SBP_MAGIC = 0x15;
 };
 
-} // namespace GOW
+} // namespace Onyx

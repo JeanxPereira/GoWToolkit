@@ -3,9 +3,9 @@
 #include "../../schema/StructDef.h"
 #include <map>
 
-namespace GOW {
+namespace Onyx {
 
-class ProfileGOW2 : public IGameProfile {
+class ProfileGOW2 : public IAssetProfile {
 public:
     ProfileGOW2();
     ~ProfileGOW2() override = default;
@@ -16,16 +16,16 @@ public:
     
     std::shared_ptr<IVirtualFileSystem> MountArchive(const std::filesystem::path& path) override;
     
-    bool ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) override;
+    bool ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) override;
     
-    bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad) override;
+    bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) override;
     
 private:
     void RegisterSchemas();
     bool LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
-                              IFile* tocFile, OpenWad& outWad);
+                              IFile* tocFile, AssetContainer& outWad);
 
     std::map<std::string, std::shared_ptr<StructDef>> m_schemas;
 };
 
-} // namespace GOW
+} // namespace Onyx

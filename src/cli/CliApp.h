@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 
 class CliApp {
 public:
@@ -15,4 +15,4 @@ private:
     static int HandleParseWad(const std::vector<std::string>& args);
 };
 
-} // namespace GOW
+} // namespace Onyx

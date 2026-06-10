@@ -7,15 +7,15 @@
 #include <cstdio>
 #include <cstdlib>
 
-namespace GOW::Api {
+namespace Onyx::Api {
 
     static AssetDatabase*       s_database  = nullptr;
     static AppConfig*           s_config    = nullptr;
-    static GOW::ViewerRegistry* s_viewers   = nullptr;
-    static GOW::DocumentWindow* s_documents = nullptr;
+    static Onyx::ViewerRegistry* s_viewers   = nullptr;
+    static Onyx::DocumentWindow* s_documents = nullptr;
 
-    static ParsedEntry*         s_selectedEntry = nullptr;
-    static OpenWad*             s_selectedWad   = nullptr;
+    static AssetEntry*         s_selectedEntry = nullptr;
+    static AssetContainer*             s_selectedWad   = nullptr;
 
     void Init(const InitParams& params) {
         s_database  = params.db;
@@ -64,18 +64,18 @@ namespace GOW::Api {
         return *s_documents;
     }
 
-    ParsedEntry* GetSelected() {
+    AssetEntry* GetSelected() {
         return s_selectedEntry;
     }
 
-    OpenWad* GetSelectedWad() {
+    AssetContainer* GetSelectedWad() {
         return s_selectedWad;
     }
 
-    void SetSelected(ParsedEntry* entry, OpenWad* wad) {
+    void SetSelected(AssetEntry* entry, AssetContainer* wad) {
         s_selectedEntry = entry;
         s_selectedWad   = wad;
         EventAssetSelected::post(entry, wad);
     }
 
-} // namespace GOW::Api
+} // namespace Onyx::Api

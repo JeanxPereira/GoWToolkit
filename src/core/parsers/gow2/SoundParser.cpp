@@ -4,7 +4,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace GOW {
+namespace Onyx {
 
 static std::string ReadFixedString(const uint8_t* buf, size_t maxLen) {
     size_t len = strnlen((const char*)buf, maxLen);
@@ -20,7 +20,7 @@ static uint16_t ReadU16LE(const uint8_t* p) {
 }
 
 std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
-    const ParsedEntry& entry,
+    const AssetEntry& entry,
     const std::shared_ptr<IFile>& fileSource)
 {
     if (!fileSource) {
@@ -222,4 +222,4 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     return result;
 }
 
-} // namespace GOW
+} // namespace Onyx

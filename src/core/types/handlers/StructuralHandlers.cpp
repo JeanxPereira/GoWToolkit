@@ -7,43 +7,43 @@
 
 namespace {
 
-class EntityCountHandler : public GOW::ITypeHandler {
+class EntityCountHandler : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::EntityCount; }
+    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::EntityCount; }
     const char*  GetName()  const override { return "Entity Count"; }
     uint32_t     GetMagic() const override { return 0; }
     const char*  GetIcon()  const override { return ICON_SF_MINUS; }  // dash
     Color4f      GetColor() const override { return {0.4f, 0.4f, 0.4f, 1.0f}; }
 };
 
-class GroupStartHandler : public GOW::ITypeHandler {
+class GroupStartHandler : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::GroupStart; }
+    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::GroupStart; }
     const char*  GetName()  const override { return "Group"; }
     uint32_t     GetMagic() const override { return 0; }
     const char*  GetIcon()  const override { return ICON_SF_FOLDER_FILL; }  // folder
     Color4f      GetColor() const override { return {0.9f, 0.9f, 0.9f, 1.0f}; }
 };
 
-class GroupEndHandler : public GOW::ITypeHandler {
+class GroupEndHandler : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::GroupEnd; }
+    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::GroupEnd; }
     const char*  GetName()  const override { return "Group End"; }
     uint32_t     GetMagic() const override { return 0; }
     const char*  GetIcon()  const override { return ICON_SF_MINUS; }
     Color4f      GetColor() const override { return {0.4f, 0.4f, 0.4f, 1.0f}; }
 };
 
-class HeaderStartHandler : public GOW::ITypeHandler {
+class HeaderStartHandler : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::HeaderStart; }
+    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::HeaderStart; }
     const char*  GetName()  const override { return "Header Start"; }
     uint32_t     GetMagic() const override { return 0; }
 };
 
-class HeaderPopHandler : public GOW::ITypeHandler {
+class HeaderPopHandler : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::HeaderPop; }
+    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::HeaderPop; }
     const char*  GetName()  const override { return "Header Pop"; }
     uint32_t     GetMagic() const override { return 0; }
 };

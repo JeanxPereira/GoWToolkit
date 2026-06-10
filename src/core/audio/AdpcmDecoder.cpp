@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace GOW {
+namespace Onyx {
 
 static const double vag_f[5][2] = {
     {0.0, 0.0},
@@ -70,4 +70,4 @@ std::vector<int16_t> AdpcmDecoder::Decode(const uint8_t* adpcmData, size_t adpcm
     return result;
 }
 
-} // namespace GOW
+} // namespace Onyx

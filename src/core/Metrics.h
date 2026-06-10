@@ -1,6 +1,6 @@
 #pragma once
 
-// GOW::Metrics — lightweight, opt-in instrumentation surface.
+// Onyx::Metrics — lightweight, opt-in instrumentation surface.
 //
 // The metrics are disabled by default. While disabled, every recording
 // function is a single inlineable branch (a `load(memory_order_relaxed)`
@@ -23,7 +23,7 @@
 #include <mutex>
 #include <string>
 
-namespace GOW::Metrics {
+namespace Onyx::Metrics {
 
 struct Snapshot {
     // Accumulated parse time per TypeId (caller passed as uint32_t).
@@ -53,4 +53,4 @@ void RecordCacheMiss(const char* name);
 // threads continue to record (acquires the internal mutex briefly).
 Snapshot CurrentSnapshot();
 
-} // namespace GOW::Metrics
+} // namespace Onyx::Metrics

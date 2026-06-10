@@ -5,7 +5,7 @@
 
 #include "core/Threading.h"
 
-namespace T = GOW::Threading;
+namespace T = Onyx::Threading;
 
 TEST_CASE("[Threading] MarkMainThread + IsMainThread agree on the calling thread") {
     T::MarkMainThread();

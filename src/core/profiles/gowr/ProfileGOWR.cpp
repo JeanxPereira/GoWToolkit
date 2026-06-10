@@ -18,7 +18,7 @@
 // Binary structures (GOWRWadHeader, GOWRFileDesc, GOWRTypeToString) have been
 // moved to GOWRTypes.h so that WadNodeBuilder.cpp can share them.
 
-namespace GOW {
+namespace Onyx {
 
 ProfileGOWR::ProfileGOWR() {}
 
@@ -42,7 +42,7 @@ std::shared_ptr<IVirtualFileSystem> ProfileGOWR::MountArchive(
     return nullptr;
 }
 
-bool ProfileGOWR::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
+bool ProfileGOWR::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) {
     if (!file || !file->IsValid()) return false;
 
     file->Seek(0, SEEK_END);
@@ -82,7 +82,7 @@ bool ProfileGOWR::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
         LZ4F_decompress(ctx, dst.data(), &outSize, src.data(), &srcSize, &opn);
         LZ4F_freeDecompressionContext(ctx);
 
-        parsedFile = std::make_shared<GOW::MemoryFile>(std::move(dst));
+        parsedFile = std::make_shared<Onyx::MemoryFile>(std::move(dst));
         fileSize   = static_cast<int64_t>(outSize);
         LOG_INFO("[GOWR] Decompressed to %lld bytes.", fileSize);
     }
@@ -212,10 +212,10 @@ bool ProfileGOWR::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
 }
 
 bool ProfileGOWR::LoadFromArchive(
-    std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad)
+    std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad)
 {
     // Ragnarök doesn't use ISO archives
     return false;
 }
 
-} // namespace GOW
+} // namespace Onyx

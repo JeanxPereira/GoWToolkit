@@ -2,7 +2,7 @@
 #include "../../../schema/StructDef.h"
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 namespace Formats {
 namespace GOW2 {
 
@@ -14,4 +14,4 @@ public:
 
 } // namespace GOW2
 } // namespace Formats
-} // namespace GOW
+} // namespace Onyx

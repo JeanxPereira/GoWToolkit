@@ -42,7 +42,7 @@
 #include <vector>
 #include <filesystem>
 
-namespace GOW {
+namespace Onyx {
 
 struct LodEntry {
     int         packIdx;  // which .lodpack file
@@ -82,4 +82,4 @@ private:
     std::vector<std::filesystem::path>     m_packPaths;  // indexed by LodEntry::packIdx
 };
 
-} // namespace GOW
+} // namespace Onyx

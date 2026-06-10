@@ -3,7 +3,7 @@
 // Domain types describing a single entry inside an opened WAD.
 //
 // `WadAssetName` is the decomposed asset-name parser used by the GOWR
-// node builder; `ParsedEntry` is the tree node both profiles produce
+// node builder; `AssetEntry` is the tree node both profiles produce
 // after they walk a WAD. M1.T1 extracted these out of the monolithic
 // `core/WadTypes.h` umbrella so consumers can depend on them in
 // isolation. The umbrella is still around for transitional reasons.
@@ -19,10 +19,10 @@
 #include "core/types/GameVersion.h"
 #include "core/types/TypeId.h"
 
-// NOTE: `WadAssetName` and `ParsedEntry` live at global scope to match
-// the legacy layout in `core/WadTypes.h`. They reference `GOW::TypeId`
-// and `GOW::AssetNode` by qualified name. They will move into the
-// `GOW::` namespace in a later milestone alongside the schema-string
+// NOTE: `WadAssetName` and `AssetEntry` live at global scope to match
+// the legacy layout in `core/WadTypes.h`. They reference `Onyx::TypeId`
+// and `Onyx::AssetNode` by qualified name. They will move into the
+// `Onyx::` namespace in a later milestone alongside the schema-string
 // retirement.
 
 // ── WadAssetName ──────────────────────────────────────────────────────────────
@@ -69,10 +69,10 @@ struct [[deprecated("use profiles/gowr/GowrTaxonomy.h")]] WadAssetName {
     bool IsInternal()    const { return prefix.empty() && lod < 0 && variant.empty(); }
 };
 
-// ── ParsedEntry ──────────────────────────────────────────────────────────────
+// ── AssetEntry ──────────────────────────────────────────────────────────────
 // One node in the parsed WAD tree. Profiles populate this; the inspector
 // UI and the test snapshot harness both read it.
-struct ParsedEntry {
+struct AssetEntry {
     std::string           name;
     std::string           wadName;
     uint32_t              size = 0;
@@ -80,15 +80,15 @@ struct ParsedEntry {
     uint64_t              hash = 0;
 
     // Compiled type identifier
-    GOW::TypeId           typeId = GOW::TypeId::Unknown;
+    Onyx::TypeId           typeId = Onyx::TypeId::Unknown;
 
     // Child nodes for UI tree
-    std::vector<ParsedEntry> children;
+    std::vector<AssetEntry> children;
 
     // Loaded data (on demand)
-    std::shared_ptr<GOW::AssetNode> assetNode;
+    std::shared_ptr<Onyx::AssetNode> assetNode;
 
-    GOW::MediaKind kind       = GOW::MediaKind::Unknown;
-    GOW::ProfileTag profileTag;
+    Onyx::MediaKind kind       = Onyx::MediaKind::Unknown;
+    Onyx::ProfileTag profileTag;
     std::string   displayName;   // human-friendly name (falls back to name if empty)
 };

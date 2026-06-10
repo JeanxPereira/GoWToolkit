@@ -3,7 +3,7 @@
 #include "core/Logger.h"
 #include <cstring>
 
-namespace GOW {
+namespace Onyx {
 
 // Helper para ler strings de tamanho fixo (O MSVC precisa desta definição antes do uso)
 static std::string ReadFixedString(const uint8_t* buf, size_t maxLen) {
@@ -17,7 +17,7 @@ static float ReadFloat(const uint8_t* buf, size_t offset) {
     return *reinterpret_cast<float*>(&val);
 }
 
-std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(const ParsedEntry& matEntry, const std::shared_ptr<IFile>& fileSource) {
+std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(const AssetEntry& matEntry, const std::shared_ptr<IFile>& fileSource) {
     if (!fileSource) return nullptr;
 
     // Header MAT tem 0x38 bytes
@@ -85,4 +85,4 @@ std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(cons
     return matData;
 }
 
-} // namespace GOW
+} // namespace Onyx

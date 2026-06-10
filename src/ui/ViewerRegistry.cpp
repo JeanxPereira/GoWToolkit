@@ -1,10 +1,10 @@
 #include "ui/ViewerRegistry.h"
 #include "core/Logger.h"
 
-namespace GOW {
+namespace Onyx {
 
 ViewerRegistry::ViewerRegistry() {
-    auto defaultLegacyFactory = [](const ParsedEntry& entry, OpenWad& wad) {
+    auto defaultLegacyFactory = [](const AssetEntry& entry, AssetContainer& wad) {
         auto* handler = TypeRegistry::Get().Resolve(entry.typeId);
         if (handler) {
             return handler->CreateViewer(entry, wad);
@@ -23,7 +23,7 @@ bool ViewerRegistry::CanHandle(TypeId typeId) const {
     return TypeRegistry::Get().Resolve(typeId) != nullptr;
 }
 
-std::shared_ptr<IDocumentContent> ViewerRegistry::Open(const ParsedEntry& entry, OpenWad& wad) const {
+std::shared_ptr<IDocumentContent> ViewerRegistry::Open(const AssetEntry& entry, AssetContainer& wad) const {
     // 1. Try TypeRegistry handler first (preferred path)
     auto* handler = TypeRegistry::Get().Resolve(entry.typeId);
     if (handler) {
@@ -51,4 +51,4 @@ std::shared_ptr<IDocumentContent> ViewerRegistry::Open(const ParsedEntry& entry,
     return nullptr;
 }
 
-} // namespace GOW
+} // namespace Onyx

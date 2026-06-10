@@ -5,7 +5,7 @@
 
 using GLuint = unsigned int;
 
-namespace GOW {
+namespace Onyx {
 
 /// Viewport shading mode
 enum class ShadingMode {
@@ -55,4 +55,4 @@ private:
     friend class SceneRenderer;
 };
 
-} // namespace GOW
+} // namespace Onyx

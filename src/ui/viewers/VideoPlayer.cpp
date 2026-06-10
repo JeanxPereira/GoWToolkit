@@ -10,7 +10,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-namespace GOW {
+namespace Onyx {
 
 // ─── Thread-Safe Time ───────────────────────────────────────────────────────
 // Replaces ImGui::GetTime() in background threads to avoid data races on
@@ -815,16 +815,16 @@ void VideoPlayer::DrawControlBar() {
   }
 
   // ─── Row 2: Controls ──────────────────────────────────────────────────
-  ImGui::PushStyleColor(ImGuiCol_Button, GOW::Theme::ToolbarButton());
+  ImGui::PushStyleColor(ImGuiCol_Button, Onyx::Theme::ToolbarButton());
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                        GOW::Theme::ToolbarButtonHover());
+                        Onyx::Theme::ToolbarButtonHover());
 
   // Play / Pause button (icon only, no text)
   if (m_state == PlayState::Playing) {
-    if (GOW::UI::Widgets::SmallButton(ICON_SF_PAUSE_FILL "##play_pause"))
+    if (Onyx::UI::Widgets::SmallButton(ICON_SF_PAUSE_FILL "##play_pause"))
       Pause();
   } else {
-    if (GOW::UI::Widgets::SmallButton(ICON_SF_PLAY_FILL "##play_pause"))
+    if (Onyx::UI::Widgets::SmallButton(ICON_SF_PLAY_FILL "##play_pause"))
       Play();
   }
   if (ImGui::IsItemHovered())
@@ -837,7 +837,7 @@ void VideoPlayer::DrawControlBar() {
   bool canStop = (m_state != PlayState::Stopped);
   if (!canStop)
     ImGui::BeginDisabled();
-  if (GOW::UI::Widgets::SmallButton(ICON_SF_STOP_FILL "##stop"))
+  if (Onyx::UI::Widgets::SmallButton(ICON_SF_STOP_FILL "##stop"))
     Stop();
   if (!canStop)
     ImGui::EndDisabled();
@@ -891,7 +891,7 @@ void VideoPlayer::DrawControlBar() {
   }
 
   // Mute toggle
-  if (GOW::UI::Widgets::SmallButton(m_muted ? ICON_SF_SPEAKER_SLASH_FILL "##mute"
+  if (Onyx::UI::Widgets::SmallButton(m_muted ? ICON_SF_SPEAKER_SLASH_FILL "##mute"
                                             : ICON_SF_SPEAKER_WAVE_2_FILL "##mute"))
     m_muted = !m_muted;
   if (ImGui::IsItemHovered())
@@ -969,4 +969,4 @@ void VideoPlayer::Draw() {
   DrawControlBar();
 }
 
-} // namespace GOW
+} // namespace Onyx

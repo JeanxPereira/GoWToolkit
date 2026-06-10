@@ -3,7 +3,7 @@
 #include "core/vfs/IFile.h"
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 
 // Parser for GOWR goProto* files (skeleton / rig).
 //
@@ -15,4 +15,4 @@ public:
     static std::shared_ptr<ObjectData> Parse(std::shared_ptr<IFile> file);
 };
 
-} // namespace GOW
+} // namespace Onyx

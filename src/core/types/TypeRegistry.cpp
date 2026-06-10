@@ -2,7 +2,7 @@
 #include "core/Logger.h"
 #include <cstring>
 
-namespace GOW {
+namespace Onyx {
 
 TypeRegistry& TypeRegistry::Get() {
     static TypeRegistry instance;
@@ -165,4 +165,4 @@ const char* TypeIdName(TypeId id) {
     }
 }
 
-} // namespace GOW
+} // namespace Onyx

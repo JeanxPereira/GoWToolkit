@@ -2,7 +2,7 @@
 #include "core/domain/Entry.h"
 #include "core/types/TypeRegistry.h"
 
-namespace GOW {
+namespace Onyx {
 
 AssetVisibility& AssetVisibility::Get() {
     static AssetVisibility s_instance;
@@ -75,7 +75,7 @@ bool AssetVisibility::IsVisible(GameVersion ver, TypeId id) const {
     return GetCurrent(ver, id) == Visibility::Visible;
 }
 
-bool AssetVisibility::IsVisible(const ParsedEntry& entry, GameVersion ver) const {
+bool AssetVisibility::IsVisible(const AssetEntry& entry, GameVersion ver) const {
     return IsVisible(ver, entry.typeId);
 }
 
@@ -168,4 +168,4 @@ void AssetVisibility::ImportOverrides(const std::vector<SerializedOverride>& dat
     }
 }
 
-} // namespace GOW
+} // namespace Onyx

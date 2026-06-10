@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <ranges>
 
-namespace GOW {
+namespace Onyx {
 
     // ── Static storage ──────────────────────────────────────────────────────
 
@@ -319,4 +319,4 @@ namespace GOW {
         s_tasksFinishedCallbacks.push_back(function);
     }
 
-} // namespace GOW
+} // namespace Onyx

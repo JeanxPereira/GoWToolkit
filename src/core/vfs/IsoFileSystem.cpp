@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 
 IsoFileSystem::IsoFileSystem(const std::string& isoPath) : m_path(isoPath) {
 }
@@ -161,4 +161,4 @@ bool IsoFileSystem::Exists(const std::string& path) {
     return m_entries.find(norm) != m_entries.end();
 }
 
-} // namespace GOW
+} // namespace Onyx

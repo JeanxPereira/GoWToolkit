@@ -7,7 +7,7 @@
 #include <functional>
 #include <string>
 
-namespace GOW {
+namespace Onyx {
 
 // Hex dump helper for format analysis
 static void hexDump(const char* label, const uint8_t* data, size_t len, size_t maxBytes = 128) {
@@ -497,7 +497,7 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
             
             if (actOffset < 0x30) {
                 // Dummy act: offset points into group header (sentinel for "idle/no action").
-                // GOW engine uses act[0] as null state — real clips start at index 1.
+                // Onyx engine uses act[0] as null state — real clips start at index 1.
                 act.name = "";
                 act.duration = 0.0f;
                 LOG_INFO("[AnimParser]   Act[%u] DUMMY (offset=0x%X < 0x30), skipped", ia, actOffset);
@@ -654,4 +654,4 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
     return anim;
 }
 
-} // namespace GOW
+} // namespace Onyx

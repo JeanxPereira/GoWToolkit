@@ -1,9 +1,9 @@
 #pragma once
 #include <cstdint>
 
-namespace GOW {
+namespace Onyx {
 
-/// Compile-time identity for every known asset/node type across all GOW games.
+/// Compile-time identity for every known asset/node type across all Onyx games.
 /// Canonical type identifiers for WAD assets across all game profiles.
 enum class TypeId : uint32_t {
     Unknown = 0,
@@ -71,4 +71,4 @@ enum class TypeId : uint32_t {
 /// Returns a human-readable name for a TypeId (e.g. "Model", "Material", "Instance").
 const char* TypeIdName(TypeId id);
 
-} // namespace GOW
+} // namespace Onyx

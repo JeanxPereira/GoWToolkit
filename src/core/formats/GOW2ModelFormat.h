@@ -1,7 +1,7 @@
 #pragma once
 #include "core/schema/AssetFormat.h"
 
-namespace GOW {
+namespace Onyx {
 
 // ── GOW2 Model Format ──────────────────────────────────────────────────────
 // Used to map the headers of mdl_ files into the InfoTab properties grid.
@@ -19,4 +19,4 @@ protected:
     }
 };
 
-} // namespace GOW
+} // namespace Onyx

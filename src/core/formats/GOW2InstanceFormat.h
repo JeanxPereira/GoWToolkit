@@ -1,7 +1,7 @@
 #pragma once
 #include "core/schema/AssetFormat.h"
 
-namespace GOW {
+namespace Onyx {
 
 // ── GOW2 Instance Format ───────────────────────────────────────────────────
 // Magic: 0x00030001
@@ -23,4 +23,4 @@ protected:
     }
 };
 
-} // namespace GOW
+} // namespace Onyx

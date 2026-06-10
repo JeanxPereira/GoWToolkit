@@ -8,13 +8,13 @@
 // The viewport that's currently focused sets the pointer each frame;
 // readers should treat it as a weak observer and tolerate nullptr.
 
-namespace GOW {
+namespace Onyx {
 class AnimationPlayer;
 }
 
-namespace GOW::UI {
+namespace Onyx::UI {
 
-void              SetActiveAnimationPlayer(GOW::AnimationPlayer* player);
-GOW::AnimationPlayer* GetActiveAnimationPlayer();
+void              SetActiveAnimationPlayer(Onyx::AnimationPlayer* player);
+Onyx::AnimationPlayer* GetActiveAnimationPlayer();
 
-} // namespace GOW::UI
+} // namespace Onyx::UI

@@ -10,7 +10,7 @@
 #include <cctype>
 #include <fstream>
 
-namespace GOW {
+namespace Onyx {
 
 TextEditorViewer::TextEditorViewer(std::string name, std::string text)
     : m_name(std::move(name)), m_text(std::move(text)) {
@@ -58,11 +58,11 @@ void TextEditorViewer::CopyAll() {
 }
 
 void TextEditorViewer::DrawToolbar() {
-    namespace W = GOW::UI::Widgets;
+    namespace W = Onyx::UI::Widgets;
 
-    ImGui::PushStyleColor(ImGuiCol_Button,        GOW::Theme::ToolbarButton());
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, GOW::Theme::ToolbarButtonHover());
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  GOW::Theme::ToolbarButtonActive());
+    ImGui::PushStyleColor(ImGuiCol_Button,        Onyx::Theme::ToolbarButton());
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Onyx::Theme::ToolbarButtonHover());
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  Onyx::Theme::ToolbarButtonActive());
 
     {
         W::IconButtonOpts opts;
@@ -110,7 +110,7 @@ TextEditor::Palette TextEditorViewer::BuildChromePalette() {
     using C = TextEditor::Color;
     TextEditor::Palette p = TextEditor::GetDarkPalette(); // keep syntax tokens
 
-    const ImVec4 accent   = GOW::Theme::GetAccent();
+    const ImVec4 accent   = Onyx::Theme::GetAccent();
     const ImGuiStyle& st  = ImGui::GetStyle();
     const ImVec4 windowBg = st.Colors[ImGuiCol_WindowBg];
     const ImVec4 textDim  = st.Colors[ImGuiCol_TextDisabled];
@@ -141,10 +141,10 @@ void TextEditorViewer::Draw() {
     DrawToolbar();
     ImGui::Separator();
 
-    ImFont* mono = GOW::Fonts::GetMonoFont();
+    ImFont* mono = Onyx::Fonts::GetMonoFont();
     if (mono) ImGui::PushFont(mono);
     m_editor.Render("##editor", ImVec2(0, 0), false);
     if (mono) ImGui::PopFont();
 }
 
-} // namespace GOW
+} // namespace Onyx

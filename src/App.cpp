@@ -70,16 +70,16 @@ void App::init(GLFWwindow *window, AppConfig *config) {
   m_config = config;
 
   // Initialize core subsystems
-  GOW::Api::InitParams params;
+  Onyx::Api::InitParams params;
   params.db = &m_db;
   params.config = config;
   params.viewers = &m_viewerRegistry;
   params.documents = &m_documentWindow;
-  GOW::Api::Init(params);
+  Onyx::Api::Init(params);
 
   // Initialize centralized font system
-  GOW::Fonts::Init();
-  GOW::Fonts::SetIconFont({
+  Onyx::Fonts::Init();
+  Onyx::Fonts::SetIconFont({
       PathUtils::resolvePath("third_party/fonts/SFSymbols.ttf"),
       0xE000, 0xFA19,
       {0.0f, 3.0f}
@@ -97,7 +97,7 @@ void App::init(GLFWwindow *window, AppConfig *config) {
   m_decorator.init(window, nullptr);
 
   // Restore persisted audio volume
-  GOW::SoundPlayer::s_volume = config->audioVolume;
+  Onyx::SoundPlayer::s_volume = config->audioVolume;
 
   // Initialize panels that need config
   registerPanels();
@@ -124,8 +124,8 @@ void App::frameBegin() {
 
 void App::frame() {
   // Process task manager deferred calls and garbage collection
-  GOW::TaskManager::runDeferredCalls();
-  GOW::TaskManager::collectGarbage();
+  Onyx::TaskManager::runDeferredCalls();
+  Onyx::TaskManager::collectGarbage();
 
 
   // Per-frame tick event for animations, progress bars, etc.
@@ -196,11 +196,11 @@ void App::frame() {
 }
 
 void App::frameEnd() {
-  // Font rebuild is now handled by Window::frameEnd() via GOW::Fonts
+  // Font rebuild is now handled by Window::frameEnd() via Onyx::Fonts
 
   // Sync audio volume back to config so it's saved on exit
   if (m_config)
-    m_config->audioVolume = GOW::SoundPlayer::s_volume;
+    m_config->audioVolume = Onyx::SoundPlayer::s_volume;
 }
 
 void App::setupDockLayout(ImGuiID dockspace_id) {
@@ -485,14 +485,14 @@ void App::drawMenuItems() {
   }
 
   if (NativeMenuBar::beginMenu("Export")) {
-    bool has = GOW::Api::GetSelected() != nullptr;
+    bool has = Onyx::Api::GetSelected() != nullptr;
     if (NativeMenuBar::menuItem("Export glTF...", "Ctrl+E", false, has)) {
     }
     if (NativeMenuBar::menuItem("Export DDS...", nullptr, false, has)) {
     }
     if (NativeMenuBar::menuItem("Copy Hash", "Ctrl+C", false, has))
-      if (GOW::Api::GetSelected())
-        ImGui::SetClipboardText(HashHex(GOW::Api::GetSelected()->hash).c_str());
+      if (Onyx::Api::GetSelected())
+        ImGui::SetClipboardText(HashHex(Onyx::Api::GetSelected()->hash).c_str());
     NativeMenuBar::endMenu();
   }
 

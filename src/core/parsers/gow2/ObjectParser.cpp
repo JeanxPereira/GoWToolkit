@@ -13,7 +13,7 @@
 #include <cstring>
 #include <cmath>
 
-namespace GOW {
+namespace Onyx {
 
 // Constants matching god_of_war_browser/pack/wad/obj
 static const uint32_t DATA_HEADER_SIZE = 0x30;
@@ -259,4 +259,4 @@ std::unique_ptr<ObjectData> GOW2ObjectParser::ParseGOW2(const uint8_t* data, uin
     return obj;
 }
 
-} // namespace GOW
+} // namespace Onyx

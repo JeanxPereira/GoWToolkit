@@ -19,7 +19,7 @@
 //
 // Vertices of meshes[idx] rigidly belong to parentBone, with LODlvl = j.
 
-namespace GOW {
+namespace Onyx {
 
 bool GOWRMgParser::Parse(std::shared_ptr<IFile> file,
                          uint32_t meshSubmeshCount,
@@ -91,4 +91,4 @@ bool GOWRMgParser::Parse(std::shared_ptr<IFile> file,
     return true;
 }
 
-} // namespace GOW
+} // namespace Onyx

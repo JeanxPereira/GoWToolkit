@@ -14,7 +14,7 @@
 
 #include <cassert>
 
-namespace GOW::Threading {
+namespace Onyx::Threading {
 
 // Records the current thread as the "main" thread. Subsequent calls
 // overwrite the previously stored id — typically called exactly once
@@ -26,7 +26,7 @@ void MarkMainThread();
 // called yet, so tests can probe both states without side-effects.
 bool IsMainThread();
 
-} // namespace GOW::Threading
+} // namespace Onyx::Threading
 
 // In a NDEBUG build this expands to nothing — no function call, no
 // branch, no symbol reference. `assert(IsMainThread())` is the right
@@ -34,5 +34,5 @@ bool IsMainThread();
 #ifdef NDEBUG
 #  define ASSERT_MAIN_THREAD() ((void)0)
 #else
-#  define ASSERT_MAIN_THREAD() assert(::GOW::Threading::IsMainThread())
+#  define ASSERT_MAIN_THREAD() assert(::Onyx::Threading::IsMainThread())
 #endif

@@ -1,7 +1,7 @@
 #pragma once
 #include "imgui.h"
 
-// ── GOW Scale Manager ──────────────────────────────────────────────────────
+// ── Onyx Scale Manager ──────────────────────────────────────────────────────
 // Centralized UI scaling system inspired by ImHex's System::getGlobalScale().
 //
 // Three scale factors:
@@ -12,7 +12,7 @@
 // ApplyStyleScale() always resets to a clean ImGuiStyle base before scaling,
 // preventing the cumulative drift bug from incremental ScaleAllSizes() calls.
 
-namespace GOW::Scale {
+namespace Onyx::Scale {
 
 // ── Init (called once by Window during startup) ───────────────────────────
 void Init(float userScale, float nativeDpiScale);
@@ -37,4 +37,4 @@ ImVec2 Scaled(float x, float y);
 // Resets to default sizes first, then scales — avoids cumulative drift.
 void ApplyStyleScale(float userScale);
 
-} // namespace GOW::Scale
+} // namespace Onyx::Scale

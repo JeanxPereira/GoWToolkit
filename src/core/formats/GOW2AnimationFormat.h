@@ -1,7 +1,7 @@
 #pragma once
 #include "core/schema/AssetFormat.h"
 
-namespace GOW {
+namespace Onyx {
 
 // ── GOW2 Animation Format ──────────────────────────────────────────────────
 // Magic: 0x00000003
@@ -18,4 +18,4 @@ protected:
     }
 };
 
-} // namespace GOW
+} // namespace Onyx

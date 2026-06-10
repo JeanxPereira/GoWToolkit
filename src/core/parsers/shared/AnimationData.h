@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 
 // ── Animation data types (from anm.go) ─────────────────────────────────────
 // These identify what each state descriptor animates.
@@ -139,4 +139,4 @@ struct AnimationData {
     }
 };
 
-} // namespace GOW
+} // namespace Onyx

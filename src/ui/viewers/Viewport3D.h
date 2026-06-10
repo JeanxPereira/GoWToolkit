@@ -13,7 +13,7 @@
 #include <memory>
 #include <imgui.h>
 
-namespace GOW {
+namespace Onyx {
 
 class Viewport3D : public IDocumentContent {
 public:
@@ -93,4 +93,4 @@ private:
     bool m_dragToggleValue  = false;
 };
 
-} // namespace GOW
+} // namespace Onyx

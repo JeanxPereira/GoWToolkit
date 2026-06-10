@@ -1,6 +1,6 @@
 #pragma once
 
-namespace GOW::Platform {
+namespace Onyx::Platform {
 
 // Resolved at the moment of the call (no observer / no caching) — caller
 // stores the result. Returns Dark on platforms or fallbacks where the OS
@@ -9,4 +9,4 @@ enum class SystemAppearance { Dark, Light };
 
 SystemAppearance DetectSystemAppearance();
 
-} // namespace GOW::Platform
+} // namespace Onyx::Platform

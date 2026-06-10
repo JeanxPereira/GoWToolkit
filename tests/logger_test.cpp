@@ -6,7 +6,7 @@
 
 #include "core/Logger.h"
 
-namespace L = GOW::Log;
+namespace L = Onyx::Log;
 
 namespace {
 
@@ -135,16 +135,16 @@ TEST_CASE("[Logger] Legacy LOG_INFO funnels through the new pipeline") {
 TEST_CASE("[Logger] Memory ring backs Logger::GetEntries for the UI") {
     IsolatedLog iso;
 
-    GOW::Logger::Get().Clear();
+    Onyx::Logger::Get().Clear();
     GOW_LOG_INFO("ui", "first");
     GOW_LOG_WARN("ui", "second");
 
-    auto entries = GOW::Logger::Get().GetEntries();
+    auto entries = Onyx::Logger::Get().GetEntries();
     REQUIRE(entries.size() >= 2);
     CHECK(entries[entries.size() - 2].message == "first");
     CHECK(entries[entries.size() - 1].message == "second");
-    CHECK(entries[entries.size() - 1].level   == GOW::LogLevel::Warning);
+    CHECK(entries[entries.size() - 1].level   == Onyx::LogLevel::Warning);
 
-    GOW::Logger::Get().Clear();
-    CHECK(GOW::Logger::Get().GetEntries().empty());
+    Onyx::Logger::Get().Clear();
+    CHECK(Onyx::Logger::Get().GetEntries().empty());
 }

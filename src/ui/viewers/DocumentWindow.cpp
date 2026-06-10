@@ -3,14 +3,14 @@
 #include "core/Events.h"
 #include "ui/Widgets.h"
 
-namespace GOW {
+namespace Onyx {
 
 DocumentWindow::DocumentWindow() {
     // Subscribe to EventAssetSelected — when an asset is selected in any browser,
     // DocumentWindow tracks it for potential future auto-preview behavior.
     // Currently this enables the Inspector to query active document state and
     // ensures DocumentWindow is wired into the event pipeline (M3.T2).
-    EventAssetSelected::subscribe(this, [this](ParsedEntry* /*entry*/, OpenWad* /*wad*/) {
+    EventAssetSelected::subscribe(this, [this](AssetEntry* /*entry*/, AssetContainer* /*wad*/) {
         // Track selection for future preview tab policy.
         // Explicit viewer opens (double-click, context menu) go through AddTab().
         // Auto-preview on single-click deferred to UX decision — see D0011.
@@ -90,7 +90,7 @@ void DocumentWindow::Draw() {
             ImGuiTabItemFlags flags = ImGuiTabItemFlags_None;
             std::string tabTitle = tab->GetName() + "###" + std::to_string(reinterpret_cast<uintptr_t>(tab.get()));
             
-            if (GOW::UI::Widgets::BeginTabItem(tabTitle.c_str(), &open, flags)) {
+            if (Onyx::UI::Widgets::BeginTabItem(tabTitle.c_str(), &open, flags)) {
                 m_activeTabIndex = (int)i; // Track active tab
                 tab->Draw();
                 ImGui::EndTabItem();
@@ -114,4 +114,4 @@ void DocumentWindow::Draw() {
     ImGui::End();
 }
 
-} // namespace GOW
+} // namespace Onyx

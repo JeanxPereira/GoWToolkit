@@ -42,19 +42,19 @@ static void EndSubWindow() {
 // ── Init ────────────────────────────────────────────────────────────────────
 
 void SettingsWindow::Init() {
-  // Font list is now managed by GOW::Fonts (populated in App::init)
+  // Font list is now managed by Onyx::Fonts (populated in App::init)
   if (config) {
     m_uiScale = config->uiScale;
     m_fontSize = config->fontSize;
-    m_fontSelected = GOW::Fonts::FindFontIndex(config->fontPath);
+    m_fontSelected = Onyx::Fonts::FindFontIndex(config->fontPath);
     if (m_fontSelected < 0) m_fontSelected = 0;
   }
   // Build the atlas for the first frame with the loaded config
-  GOW::Fonts::BuildAtlas(m_fontSelected, m_fontSize);
+  Onyx::Fonts::BuildAtlas(m_fontSelected, m_fontSize);
   // Persist back to config in case font index resolved differently
   if (config) {
     config->fontSize = m_fontSize;
-    config->fontPath = GOW::Fonts::GetCurrentFontPath();
+    config->fontPath = Onyx::Fonts::GetCurrentFontPath();
   }
 }
 
@@ -71,8 +71,8 @@ void SettingsWindow::Draw() {
         config->accentG = m_accentTargetColor.y;
         config->accentB = m_accentTargetColor.z;
         config->accentA = m_accentTargetColor.w;
-        GOW::Theme::ApplyTheme(config->getAccent(),
-                               (GOW::Theme::ThemeMode)config->themeMode,
+        Onyx::Theme::ApplyTheme(config->getAccent(),
+                               (Onyx::Theme::ThemeMode)config->themeMode,
                                /*animate=*/false);
       }
     }
@@ -90,8 +90,8 @@ void SettingsWindow::Draw() {
       config->accentG = m_accentTargetColor.y;
       config->accentB = m_accentTargetColor.z;
       config->accentA = m_accentTargetColor.w;
-      GOW::Theme::ApplyTheme(config->getAccent(),
-                             (GOW::Theme::ThemeMode)config->themeMode,
+      Onyx::Theme::ApplyTheme(config->getAccent(),
+                             (Onyx::Theme::ThemeMode)config->themeMode,
                              /*animate=*/false);
     } else {
       // Curva cubic ease-out para transição suave
@@ -100,8 +100,8 @@ void SettingsWindow::Draw() {
       config->accentG = m_accentStartColor.y + (m_accentTargetColor.y - m_accentStartColor.y) * ease;
       config->accentB = m_accentStartColor.z + (m_accentTargetColor.z - m_accentStartColor.z) * ease;
       config->accentA = m_accentStartColor.w + (m_accentTargetColor.w - m_accentStartColor.w) * ease;
-      GOW::Theme::ApplyTheme(config->getAccent(),
-                             (GOW::Theme::ThemeMode)config->themeMode,
+      Onyx::Theme::ApplyTheme(config->getAccent(),
+                             (Onyx::Theme::ThemeMode)config->themeMode,
                              /*animate=*/false);
     }
   }
@@ -182,11 +182,11 @@ void SettingsWindow::DrawInterfaceCategory() {
   ImGuiStyle &style = ImGui::GetStyle();
 
   static bool showFontDebug = false;
-  if (GOW::UI::Widgets::Button("Open SF Symbols Debugger")) {
+  if (Onyx::UI::Widgets::Button("Open SF Symbols Debugger")) {
     showFontDebug = true;
   }
   if (showFontDebug) {
-    GOW::FontDebuggerWindow::Draw(&showFontDebug);
+    Onyx::FontDebuggerWindow::Draw(&showFontDebug);
   }
   ImGui::Separator();
 
@@ -198,9 +198,9 @@ void SettingsWindow::DrawInterfaceCategory() {
     float uiScale = m_uiScale;
     if (ImGui::SliderFloat("UI Scale", &uiScale, 0.5f, 3.0f, "%.2fx")) {
       if (uiScale != m_uiScale && uiScale > 0.1f) {
-        GOW::Scale::SetUserScale(uiScale);
-        GOW::Scale::ApplyStyleScale(uiScale);
-        GOW::Theme::ApplyTheme(config->getAccent()); // reapply colors over reset style
+        Onyx::Scale::SetUserScale(uiScale);
+        Onyx::Scale::ApplyStyleScale(uiScale);
+        Onyx::Theme::ApplyTheme(config->getAccent()); // reapply colors over reset style
         m_uiScale = uiScale;
         if (config)
           config->uiScale = uiScale;
@@ -216,10 +216,10 @@ void SettingsWindow::DrawInterfaceCategory() {
 
     ImGui::Spacing();
     auto preset = [&](const char *lbl, float t) {
-      if (GOW::UI::Widgets::Button(lbl, ImVec2(50, 0))) {
-        GOW::Scale::SetUserScale(t);
-        GOW::Scale::ApplyStyleScale(t);
-        GOW::Theme::ApplyTheme(config->getAccent());
+      if (Onyx::UI::Widgets::Button(lbl, ImVec2(50, 0))) {
+        Onyx::Scale::SetUserScale(t);
+        Onyx::Scale::ApplyStyleScale(t);
+        Onyx::Theme::ApplyTheme(config->getAccent());
         m_uiScale = t;
         if (config)
           config->uiScale = t;
@@ -243,8 +243,8 @@ void SettingsWindow::DrawInterfaceCategory() {
     ImGui::PushItemWidth(
         std::min(ImGui::GetContentRegionAvail().x - 120.0f, 300.0f));
 
-    // Font family (uses centralized GOW::Fonts) ──────────────────
-    const auto& fonts = GOW::Fonts::GetFontList();
+    // Font family (uses centralized Onyx::Fonts) ──────────────────
+    const auto& fonts = Onyx::Fonts::GetFontList();
     bool familyChanged = false;
     if (ImGui::BeginCombo("Family", fonts[m_fontSelected].label.c_str())) {
       for (int i = 0; i < (int)fonts.size(); i++) {
@@ -274,8 +274,8 @@ void SettingsWindow::DrawInterfaceCategory() {
       // Rebuild when input is deactivated (Enter key or lost focus)
       if (m_fontSizeChanged && ImGui::IsItemDeactivatedAfterEdit()) {
         m_fontSizeChanged = false;
-        GOW::Fonts::BuildAtlas(m_fontSelected, m_fontSize);
-        if (config) { config->fontSize = m_fontSize; config->fontPath = GOW::Fonts::GetCurrentFontPath(); }
+        Onyx::Fonts::BuildAtlas(m_fontSelected, m_fontSize);
+        if (config) { config->fontSize = m_fontSize; config->fontPath = Onyx::Fonts::GetCurrentFontPath(); }
       }
     }
     ImGui::EndDisabled();
@@ -291,8 +291,8 @@ void SettingsWindow::DrawInterfaceCategory() {
 
     // Auto-rebuild on family change ───────────────────────────────
     if (familyChanged) {
-      GOW::Fonts::BuildAtlas(m_fontSelected, m_fontSize);
-      if (config) { config->fontSize = m_fontSize; config->fontPath = GOW::Fonts::GetCurrentFontPath(); }
+      Onyx::Fonts::BuildAtlas(m_fontSelected, m_fontSize);
+      if (config) { config->fontSize = m_fontSize; config->fontPath = Onyx::Fonts::GetCurrentFontPath(); }
     }
 
     ImGui::PopItemWidth();
@@ -360,13 +360,13 @@ void SettingsWindow::DrawAppearanceCategory() {
       // Show the resolved value when System is active.
       if (config->themeMode == 2) {
         ImGui::SameLine();
-        const bool isDark = (GOW::Theme::GetEffectiveMode() == GOW::Theme::ThemeMode::Dark);
+        const bool isDark = (Onyx::Theme::GetEffectiveMode() == Onyx::Theme::ThemeMode::Dark);
         ImGui::TextDisabled("(%s)", isDark ? "Dark" : "Light");
       }
       if (changed) {
         config->themeMode = (uint8_t)mode;
-        GOW::Theme::ApplyTheme(config->getAccent(),
-                               (GOW::Theme::ThemeMode)config->themeMode,
+        Onyx::Theme::ApplyTheme(config->getAccent(),
+                               (Onyx::Theme::ThemeMode)config->themeMode,
                                /*animate=*/true);
       }
     }
@@ -402,8 +402,8 @@ void SettingsWindow::DrawAppearanceCategory() {
         config->accentG = accent.y;
         config->accentB = accent.z;
         config->accentA = accent.w;
-        GOW::Theme::ApplyTheme(config->getAccent(),
-                               (GOW::Theme::ThemeMode)config->themeMode,
+        Onyx::Theme::ApplyTheme(config->getAccent(),
+                               (Onyx::Theme::ThemeMode)config->themeMode,
                                /*animate=*/false);
       }
 
@@ -535,7 +535,7 @@ void SettingsWindow::DrawViewportCategory() {
 
   if (BeginSubWindow("Shading Base")) {
     if (ImGui::ColorEdit3("Matcap Base Color", &config->matcapR, flags)) {
-      GOW::ShaderManager::Get().GenerateMatcapTexture();
+      Onyx::ShaderManager::Get().GenerateMatcapTexture();
     }
   }
   EndSubWindow();
@@ -544,11 +544,11 @@ void SettingsWindow::DrawViewportCategory() {
 // ── Category: Asset Filters ─────────────────────────────────────────────────
 
 void SettingsWindow::DrawAssetFiltersCategory() {
-    auto& vis = GOW::AssetVisibility::Get();
+    auto& vis = Onyx::AssetVisibility::Get();
 
     if (BeginSubWindow("Filters", ImVec2(0, 0))) {
         // ── Reset button ─────────────────────────────────────────────────────────
-        if (GOW::UI::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All")) {
+        if (Onyx::UI::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All")) {
             vis.ResetAllOverrides();
         }
         ImGui::SameLine();
@@ -557,12 +557,12 @@ void SettingsWindow::DrawAssetFiltersCategory() {
 
         // ── Per-game-version sections ────────────────────────────────────────────
         struct GameSection {
-            GOW::GameVersion version;
+            Onyx::GameVersion version;
             const char*      label;
         };
         static const GameSection sections[] = {
-            { GOW::GameVersion::GOW2, "God of War II (PS2)" },
-            { GOW::GameVersion::GOWR, "God of War Ragnarok" },
+            { Onyx::GameVersion::GOW2, "God of War II (PS2)" },
+            { Onyx::GameVersion::GOWR, "God of War Ragnarok" },
         };
 
         int totalHidden  = 0;
@@ -573,11 +573,11 @@ void SettingsWindow::DrawAssetFiltersCategory() {
             if (types.empty()) continue;
 
             // Separate into hidden-by-default and visible-by-default groups
-            std::vector<GOW::AssetVisibility::TypeVisInfo> hiddenDefaults;
-            std::vector<GOW::AssetVisibility::TypeVisInfo> visibleDefaults;
+            std::vector<Onyx::AssetVisibility::TypeVisInfo> hiddenDefaults;
+            std::vector<Onyx::AssetVisibility::TypeVisInfo> visibleDefaults;
 
             for (const auto& t : types) {
-                if (t.defaultVis == GOW::Visibility::Hidden) {
+                if (t.defaultVis == Onyx::Visibility::Hidden) {
                     hiddenDefaults.push_back(t);
                 } else {
                     visibleDefaults.push_back(t);
@@ -676,7 +676,7 @@ void SettingsWindow::DrawThemeEditorCategory() {
   auto &style = ImGui::GetStyle();
   bool anyHovered = false;
 
-  for (const auto &group : GOW::Theme::GetColorGroups()) {
+  for (const auto &group : Onyx::Theme::GetColorGroups()) {
     if (ImGui::CollapsingHeader(group.groupName)) {
       for (const auto &entry : group.entries) {
         // Restore original color if this was the previously flashed item
@@ -689,7 +689,7 @@ void SettingsWindow::DrawThemeEditorCategory() {
         ImVec4 color = style.Colors[entry.imguiColIdx];
 
         // Override indicator
-        if (GOW::Theme::HasOverride(entry.imguiColIdx)) {
+        if (Onyx::Theme::HasOverride(entry.imguiColIdx)) {
           ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "*");
           if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Custom override — right-click color to reset");
@@ -704,14 +704,14 @@ void SettingsWindow::DrawThemeEditorCategory() {
                     ImGuiColorEditFlags_AlphaBar |
                     ImGuiColorEditFlags_AlphaPreviewHalf)) {
           // User changed a color → store as override
-          GOW::Theme::SetColorOverride(entry.imguiColIdx, color);
+          Onyx::Theme::SetColorOverride(entry.imguiColIdx, color);
         }
 
         // Right-click to reset individual override
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right) &&
-            GOW::Theme::HasOverride(entry.imguiColIdx)) {
-          GOW::Theme::ClearColorOverride(entry.imguiColIdx);
-          GOW::Theme::ApplyTheme(config->getAccent());
+            Onyx::Theme::HasOverride(entry.imguiColIdx)) {
+          Onyx::Theme::ClearColorOverride(entry.imguiColIdx);
+          Onyx::Theme::ApplyTheme(config->getAccent());
         }
 
         // ── Flash highlight on hover (ImHex-style) ──────────────────
@@ -752,9 +752,9 @@ void SettingsWindow::DrawThemeEditorCategory() {
   // ── Reset all button ──────────────────────────────────────────────────
   ImGui::Spacing();
   ImGui::Separator();
-  if (GOW::UI::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All Colors")) {
-    GOW::Theme::ClearAllOverrides();
-    GOW::Theme::ApplyTheme(config->getAccent());
+  if (Onyx::UI::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All Colors")) {
+    Onyx::Theme::ClearAllOverrides();
+    Onyx::Theme::ApplyTheme(config->getAccent());
   }
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Discard all individual color overrides and revert to accent-derived palette");

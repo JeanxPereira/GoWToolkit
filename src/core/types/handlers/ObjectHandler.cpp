@@ -27,8 +27,8 @@ namespace {
 // ── Resolve reference: find a node with exact name + type that has children ──
 // Mirrors Go's GetNodeByName: when a child node is a reference (no children/no payload),
 // the real definition with the same name exists elsewhere in the WAD tree.
-static const ParsedEntry* ResolveRef(const std::vector<ParsedEntry>& tree,
-                                      const std::string& name, GOW::TypeId type) {
+static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
+                                      const std::string& name, Onyx::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && !n.children.empty())
             return &n;
@@ -39,8 +39,8 @@ static const ParsedEntry* ResolveRef(const std::vector<ParsedEntry>& tree,
 }
 
 // Same but for payload (size > 0) instead of children
-static const ParsedEntry* ResolvePayload(const std::vector<ParsedEntry>& tree,
-                                          const std::string& name, GOW::TypeId type) {
+static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
+                                          const std::string& name, Onyx::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && n.size > 0)
             return &n;
@@ -51,21 +51,21 @@ static const ParsedEntry* ResolvePayload(const std::vector<ParsedEntry>& tree,
 }
 
 // Find texture by exact name (Material → Texture uses name lookup, same as Go)
-static const ParsedEntry* FindTexture(const std::vector<ParsedEntry>& nodes, const std::string& name) {
+static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const std::string& name) {
     for (const auto& c : nodes) {
-        if (c.typeId == GOW::TypeId::Texture && c.name == name) return &c;
+        if (c.typeId == Onyx::TypeId::Texture && c.name == name) return &c;
         if (auto f = FindTexture(c.children, name)) return f;
     }
     return nullptr;
 }
 
 // ── Select main texture layer (same priority as Go: StrangeBlended > Usual > first) ──
-static const GOW::MaterialInfo::Layer* SelectMainLayer(const GOW::MaterialInfo& mat) {
-    const GOW::MaterialInfo::Layer* main = nullptr;
+static const Onyx::MaterialInfo::Layer* SelectMainLayer(const Onyx::MaterialInfo& mat) {
+    const Onyx::MaterialInfo::Layer* main = nullptr;
     for (const auto& layer : mat.layers) {
-        if (layer.blendMode == GOW::BlendMode::EnvMap) {
+        if (layer.blendMode == Onyx::BlendMode::EnvMap) {
             return &layer; // StrangeBlended = highest priority
-        } else if (layer.blendMode == GOW::BlendMode::Normal && layer.hasTexture) {
+        } else if (layer.blendMode == Onyx::BlendMode::Normal && layer.hasTexture) {
             main = &layer; // Usual = second priority
         } else if (!main) {
             main = &layer; // First layer = fallback
@@ -75,31 +75,31 @@ static const GOW::MaterialInfo::Layer* SelectMainLayer(const GOW::MaterialInfo& 
 }
 
 // ── Process a single Model node: extract meshes + materials ─────────────────
-static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
-                          GOW::SceneData& scene) {
-    std::vector<const ParsedEntry*> meshSources;
-    std::vector<const ParsedEntry*> matEntries;
+static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
+                          Onyx::SceneData& scene) {
+    std::vector<const AssetEntry*> meshSources;
+    std::vector<const AssetEntry*> matEntries;
     bool isModelSky = false;
 
     // Iterate children by type (like Go's mdl.Marshal iterating SubGroupNodes)
     for (const auto& child : model.children) {
-        if (child.typeId == GOW::TypeId::Mesh && child.size > 0) {
+        if (child.typeId == Onyx::TypeId::Mesh && child.size > 0) {
             meshSources.push_back(&child);
-        } else if (child.typeId == GOW::TypeId::Material || (child.size == 0 && child.typeId == GOW::TypeId::Unknown)) {
-            const ParsedEntry* mat = &child;
+        } else if (child.typeId == Onyx::TypeId::Material || (child.size == 0 && child.typeId == Onyx::TypeId::Unknown)) {
+            const AssetEntry* mat = &child;
             // Material reference? Resolve by exact name
             if (mat->size == 0) {
-                if (auto real = ResolvePayload(wad.entries, mat->name, GOW::TypeId::Material)) {
+                if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::TypeId::Material)) {
                     mat = real;
                     matEntries.push_back(mat);
                 } else {
                     LOG_WARN("[ProcessModel] Could not resolve zero-sized material reference: '%s'", mat->name.c_str());
                 }
-            } else if (child.typeId == GOW::TypeId::Material) {
+            } else if (child.typeId == Onyx::TypeId::Material) {
                 matEntries.push_back(mat);
             }
-        } else if (child.typeId == GOW::TypeId::Script && child.size > 0) {
-            std::string target = GOW::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
+        } else if (child.typeId == Onyx::TypeId::Script && child.size > 0) {
+            std::string target = Onyx::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
             if (target == "SCR_Sky") {
                 isModelSky = true;
                 LOG_INFO("[ProcessModel] Found SCR_Sky on model '%s', marking as sky", model.name.c_str());
@@ -115,19 +115,19 @@ static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
     // Parse materials → MaterialInfo (store all layers for main layer selection)
     for (size_t mi = 0; mi < matEntries.size(); ++mi) {
         const auto* mat = matEntries[mi];
-        GOW::MaterialInfo matInfo;
-        if (auto matData = GOW::GOW2MaterialParser::Parse(*mat, wad.fileSource)) {
+        Onyx::MaterialInfo matInfo;
+        if (auto matData = Onyx::GOW2MaterialParser::Parse(*mat, wad.fileSource)) {
             std::memcpy(matInfo.baseColor, matData->baseColor, sizeof(float) * 4);
             for (const auto& layer : matData->layers) {
-                GOW::MaterialInfo::Layer li;
+                Onyx::MaterialInfo::Layer li;
                 li.textureName = layer.textureName;
                 li.hasTexture = layer.hasTexture;
                 std::memcpy(li.blendColor, layer.blendColor, sizeof(float) * 4);
                 switch (layer.renderingMethod) {
-                    case 1:  li.blendMode = GOW::BlendMode::Additive; break;
-                    case 2:  li.blendMode = GOW::BlendMode::Subtractive; break;
-                    case 3:  li.blendMode = GOW::BlendMode::EnvMap; break;
-                    default: li.blendMode = GOW::BlendMode::Normal; break;
+                    case 1:  li.blendMode = Onyx::BlendMode::Additive; break;
+                    case 2:  li.blendMode = Onyx::BlendMode::Subtractive; break;
+                    case 3:  li.blendMode = Onyx::BlendMode::EnvMap; break;
+                    default: li.blendMode = Onyx::BlendMode::Normal; break;
                 }
                 matInfo.layers.push_back(li);
             }
@@ -147,8 +147,8 @@ static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
 
     // Parse mesh geometry
     for (const auto* src : meshSources) {
-        GOW::SliceFile slice(wad.fileSource, src->offset, src->size);
-        if (auto data = GOW::GOW2MeshParser::Parse(slice, 0, src->size)) {
+        Onyx::SliceFile slice(wad.fileSource, src->offset, src->size);
+        if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->size)) {
             for (auto& p : data->parts) {
                 LOG_INFO("[ProcessModel]   part '%s' materialId=%d (raw) → %d (offset)",
                          p.name.c_str(), p.materialId, p.materialId + (int)materialOffset);
@@ -162,30 +162,30 @@ static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
 
 // ── Build SceneData from Object entry ──────────────────────────────────────
 
-static std::unique_ptr<GOW::SceneData> BuildSceneFromObjectEntry(
-    const ParsedEntry& entry, OpenWad& wad, uint32_t magic)
+static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
+    const AssetEntry& entry, AssetContainer& wad, uint32_t magic)
 {
     if (!wad.fileSource) return nullptr;
-    auto scene = std::make_unique<GOW::SceneData>();
+    auto scene = std::make_unique<Onyx::SceneData>();
 
     // 1. Parse skeleton from Object payload
     if (entry.size > 0) {
         std::vector<uint8_t> objBuf(entry.size);
-        GOW::SliceFile slice(wad.fileSource, entry.offset, entry.size);
+        Onyx::SliceFile slice(wad.fileSource, entry.offset, entry.size);
         slice.Seek(0, SEEK_SET);
         slice.Read(objBuf.data(), entry.size);
-        scene->skeleton = std::shared_ptr<GOW::ObjectData>(
-            GOW::GOW2ObjectParser::Parse(objBuf.data(), entry.size, magic).release());
+        scene->skeleton = std::shared_ptr<Onyx::ObjectData>(
+            Onyx::GOW2ObjectParser::Parse(objBuf.data(), entry.size, magic).release());
     }
 
     // 2. Iterate children by type (like Go's obj.Marshal iterating SubGroupNodes)
     //    If a Model child is a reference (no children), resolve by exact name in WAD.
     for (const auto& child : entry.children) {
-        if (child.typeId == GOW::TypeId::Model) {
-            const ParsedEntry* model = &child;
+        if (child.typeId == Onyx::TypeId::Model) {
+            const AssetEntry* model = &child;
             if (model->children.empty()) {
                 // Reference node — resolve definition by exact name
-                if (auto resolved = ResolveRef(wad.entries, child.name, GOW::TypeId::Model))
+                if (auto resolved = ResolveRef(wad.entries, child.name, Onyx::TypeId::Model))
                     model = resolved;
             }
             if (!model->children.empty()) {
@@ -193,14 +193,14 @@ static std::unique_ptr<GOW::SceneData> BuildSceneFromObjectEntry(
             }
         }
         // 2b. Parse Animation child (like Go's obj.Marshal case *anm.Animations)
-        else if (child.typeId == GOW::TypeId::Animation && child.size > 0) {
-            GOW::SliceFile slice(wad.fileSource, child.offset, child.size);
+        else if (child.typeId == Onyx::TypeId::Animation && child.size > 0) {
+            Onyx::SliceFile slice(wad.fileSource, child.offset, child.size);
             std::vector<uint8_t> anmBuf(child.size);
             slice.Seek(0, SEEK_SET);
             slice.Read(anmBuf.data(), child.size);
-            auto animData = GOW::GOW2AnimationParser::Parse(anmBuf.data(), child.size);
+            auto animData = Onyx::GOW2AnimationParser::Parse(anmBuf.data(), child.size);
             if (animData) {
-                scene->animations = std::shared_ptr<GOW::AnimationData>(animData.release());
+                scene->animations = std::shared_ptr<Onyx::AnimationData>(animData.release());
                 LOG_INFO("[ObjectHandler] Parsed animation '%s': %d groups, %d acts",
                          child.name.c_str(), (int)scene->animations->groups.size(),
                          scene->animations->TotalActs());
@@ -216,12 +216,12 @@ static std::unique_ptr<GOW::SceneData> BuildSceneFromObjectEntry(
 
     // 3. Resolve textures: select main layer per material (like Go: 1 texture per material)
     for (const auto& mat : scene->materials) {
-        std::vector<std::unique_ptr<GOW::TextureData>> matTextures;
-        std::unique_ptr<GOW::TextureData> texData = nullptr;
+        std::vector<std::unique_ptr<Onyx::TextureData>> matTextures;
+        std::unique_ptr<Onyx::TextureData> texData = nullptr;
         if (auto* mainLayer = SelectMainLayer(mat)) {
             if (mainLayer->hasTexture && !mainLayer->textureName.empty()) {
                 if (auto* texEntry = FindTexture(wad.entries, mainLayer->textureName)) {
-                    texData = GOW::GOW2TextureParser::Parse(*texEntry, wad.entries, wad.fileSource);
+                    texData = Onyx::GOW2TextureParser::Parse(*texEntry, wad.entries, wad.fileSource);
                 }
             }
         }
@@ -238,15 +238,15 @@ static std::unique_ptr<GOW::SceneData> BuildSceneFromObjectEntry(
 
 // ── Handler classes ────────────────────────────────────────────────────────
 
-class ObjectHandlerGOW2 : public GOW::ITypeHandler {
+class ObjectHandlerGOW2 : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::Object; }
+    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Object; }
     const char*  GetName()  const override { return "Object"; }
     uint32_t     GetMagic() const override { return 0x00010001; }
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
     Color4f      GetColor() const override { return {0.55f, 0.9f, 1.0f, 1.0f}; }
 
-    std::unique_ptr<GOW::SceneData> BuildSceneData(const ParsedEntry& entry, OpenWad& wad) override {
+    std::unique_ptr<Onyx::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         uint32_t actualMagic = 0;
         if (wad.fileSource) {
             wad.fileSource->Seek(entry.offset, SEEK_SET);
@@ -255,14 +255,14 @@ public:
         return BuildSceneFromObjectEntry(entry, wad, actualMagic);
     }
 
-    std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         uint32_t actualMagic = 0;
         if (wad.fileSource) {
             wad.fileSource->Seek(entry.offset, SEEK_SET);
             wad.fileSource->Read(&actualMagic, 4);
         }
         auto scene = BuildSceneFromObjectEntry(entry, wad, actualMagic);
-        auto vp = std::make_shared<GOW::Viewport3D>(entry.name);
+        auto vp = std::make_shared<Onyx::Viewport3D>(entry.name);
         if (scene && !scene->IsEmpty()) {
             vp->LoadScene(std::move(scene));
         }

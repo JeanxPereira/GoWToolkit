@@ -1,4 +1,4 @@
-// Remaining GOW content type handlers.
+// Remaining Onyx content type handlers.
 // Each registers by magic number for GOW1 and/or GOW2.
 
 #include "core/formats/GOW2AnimationFormat.h"
@@ -27,9 +27,9 @@
 namespace {
 
 // ── Animation ── magic 0x00000003 (ANIMATIONS_MAGIC)
-class AnimationHandler : public GOW::ITypeHandler {
+class AnimationHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::Animation; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::Animation; }
   const char *GetName() const override { return "Animation"; }
   uint32_t GetMagic() const override { return 0x00000003; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; } // play
@@ -37,20 +37,20 @@ public:
     return {1.0f, 0.8f, 0.3f, 1.0f};
   } // amarelo
 
-  std::shared_ptr<GOW::AssetNode>
-  Parse(std::shared_ptr<GOW::IFile> file) override {
+  std::shared_ptr<Onyx::AssetNode>
+  Parse(std::shared_ptr<Onyx::IFile> file) override {
     if (!file || file->Size() < 32)
       return nullptr;
-    GOW::GOW2AnimationFormat format;
+    Onyx::GOW2AnimationFormat format;
     format.Initialize();
-    return GOW::AssetReader::Parse(*format.Root(), file);
+    return Onyx::AssetReader::Parse(*format.Root(), file);
   }
 };
 
 // ── Script ── magic 0x00010004 (SCRIPT_MAGIC)
-class ScriptHandler : public GOW::ITypeHandler {
+class ScriptHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::Script; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::Script; }
   const char *GetName() const override { return "Script"; }
   uint32_t GetMagic() const override { return 0x00010004; }
   const char *GetIcon() const override {
@@ -62,9 +62,9 @@ public:
 };
 
 // ── Light ── magic 0x00000006 (LIGHT_MAGIC)
-class LightHandler : public GOW::ITypeHandler {
+class LightHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::Light; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::Light; }
   const char *GetName() const override { return "Light"; }
   uint32_t GetMagic() const override { return 0x00000006; }
   const char *GetIcon() const override { return ICON_SF_SPARKLES; } // sparkle
@@ -74,9 +74,9 @@ public:
 };
 
 // ── Sound (GOW2) ── magic 0x00000015 (GOW2_SBP_MAGIC)
-class SoundHandlerGOW2 : public GOW::ITypeHandler {
+class SoundHandlerGOW2 : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::Sound; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::Sound; }
   const char *GetName() const override { return "Sound"; }
   uint32_t GetMagic() const override { return 0x00000015; }
   const char *GetIcon() const override {
@@ -84,61 +84,61 @@ public:
   } // unmute
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; } // teal
 
-  std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
-    auto bankData = GOW::GOW2SoundParser::Parse(entry, wad.fileSource);
+    auto bankData = Onyx::GOW2SoundParser::Parse(entry, wad.fileSource);
     if (bankData && !bankData->sounds.empty())
-      return std::make_shared<GOW::SoundPlayer>(entry.name,
+      return std::make_shared<Onyx::SoundPlayer>(entry.name,
                                                 std::move(bankData));
     return nullptr;
   }
 };
 
 // ── Collision ── magic 0x00000011 (COLLISION_MAGIC)
-class CollisionHandler : public GOW::ITypeHandler {
+class CollisionHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::Collision; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::Collision; }
   const char *GetName() const override { return "Collision"; }
   uint32_t GetMagic() const override { return 0x00000011; }
   Color4f GetColor() const override { return {0.7f, 0.7f, 0.7f, 1.0f}; }
 };
 
 // ── Flipbook (GOW2) ── magic 0x0000001B
-class FlipbookHandlerGOW2 : public GOW::ITypeHandler {
+class FlipbookHandlerGOW2 : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::Flipbook; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::Flipbook; }
   const char *GetName() const override { return "Flipbook"; }
   uint32_t GetMagic() const override { return 0x0000001B; }
   Color4f GetColor() const override { return {1.0f, 0.6f, 0.9f, 1.0f}; }
 };
 
 // ── Chunk ── magic 0x80000001 (CHUNK_MAGIC / context)
-class ChunkHandler : public GOW::ITypeHandler {
+class ChunkHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::Chunk; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::Chunk; }
   const char *GetName() const override { return "Chunk"; }
   uint32_t GetMagic() const override { return 0x80000001; }
   Color4f GetColor() const override { return {0.6f, 0.6f, 0.6f, 1.0f}; }
 
-  std::unique_ptr<GOW::SceneData> BuildSceneData(const ParsedEntry &entry,
-                                                 OpenWad &wad) override {
+  std::unique_ptr<Onyx::SceneData> BuildSceneData(const AssetEntry &entry,
+                                                 AssetContainer &wad) override {
     // A Chunk aggregates instances. Delegate to InstanceHandler and merge
     // results.
-    auto mergedScene = std::make_unique<GOW::SceneData>();
+    auto mergedScene = std::make_unique<Onyx::SceneData>();
     int instanceCount = 0;
 
     LOG_INFO("[ChunkHandler] BuildSceneData started for chunk '%s'",
              entry.name.c_str());
 
     // Resolve the Instance handler once
-    auto *instHandler = GOW::TypeRegistry::Get().Resolve(GOW::TypeId::Instance);
+    auto *instHandler = Onyx::TypeRegistry::Get().Resolve(Onyx::TypeId::Instance);
 
-    auto findInstances = [&](const std::vector<ParsedEntry> &entries,
+    auto findInstances = [&](const std::vector<AssetEntry> &entries,
                              auto &findRef) -> void {
       for (const auto &child : entries) {
-        if (child.typeId == GOW::TypeId::Instance && instHandler) {
+        if (child.typeId == Onyx::TypeId::Instance && instHandler) {
           LOG_INFO("[ChunkHandler] Found instance '%s'", child.name.c_str());
 
           // Delegate to InstanceHandler::BuildSceneData
@@ -279,10 +279,10 @@ public:
     return nullptr;
   }
 
-  std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (auto scene = BuildSceneData(entry, wad)) {
-      auto vp = std::make_shared<GOW::Viewport3D>(entry.name);
+      auto vp = std::make_shared<Onyx::Viewport3D>(entry.name);
       vp->LoadScene(std::move(scene));
       return vp;
     }
@@ -292,9 +292,9 @@ public:
 
 // ── Shader Group ── magic 0x00000027 (SHG_MAGIC)
 // Only GOW1
-class ShaderGroupHandler : public GOW::ITypeHandler {
+class ShaderGroupHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::ShaderContainer; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::ShaderContainer; }
   const char *GetName() const override { return "Shader Group"; }
   uint32_t GetMagic() const override { return 0x00000027; }
   const char *GetIcon() const override {
@@ -304,9 +304,9 @@ public:
 };
 
 // ── Audio/Video (File level) ──
-class VagHandler : public GOW::ITypeHandler {
+class VagHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::VagAudio; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::VagAudio; }
   const char *GetName() const override { return "VAG Audio"; }
   uint32_t GetMagic() const override {
     return 0x00;
@@ -314,43 +314,43 @@ public:
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_3; }
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; }
 
-  std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
-    auto vagData = GOW::GOW2VagParser::Parse(wad.fileSource);
+    auto vagData = Onyx::GOW2VagParser::Parse(wad.fileSource);
     if (vagData && !vagData->pcmData.empty())
-      return std::make_shared<GOW::SoundPlayer>(
+      return std::make_shared<Onyx::SoundPlayer>(
           entry.name, std::move(vagData->pcmData), vagData->sampleRate,
           vagData->channels);
     return nullptr;
   }
 };
 
-class VpkHandler : public GOW::ITypeHandler {
+class VpkHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::VpkVideo; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::VpkVideo; }
   const char *GetName() const override { return "VPK Video"; }
   uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_2_FILL; }
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; }
 
-  std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
-    auto vpkData = GOW::GOW2VpkParser::Parse(wad.fileSource);
+    auto vpkData = Onyx::GOW2VpkParser::Parse(wad.fileSource);
     if (vpkData && !vpkData->pcmData.empty())
-      return std::make_shared<GOW::SoundPlayer>(
+      return std::make_shared<Onyx::SoundPlayer>(
           entry.name, std::move(vpkData->pcmData), vpkData->sampleRate,
           vpkData->channels);
     return nullptr;
   }
 };
 
-class PssHandler : public GOW::ITypeHandler {
+class PssHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::PssVideo; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::PssVideo; }
   const char *GetName() const override { return "PSS Video"; }
   uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }
@@ -358,31 +358,31 @@ public:
     return {0.8f, 0.5f, 0.9f, 1.0f};
   } // purple
 
-  std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
-    auto slice = std::make_shared<GOW::SliceFile>(wad.fileSource, entry.offset,
+    auto slice = std::make_shared<Onyx::SliceFile>(wad.fileSource, entry.offset,
                                                   entry.size);
-    return std::make_shared<GOW::VideoPlayer>(entry.name, slice);
+    return std::make_shared<Onyx::VideoPlayer>(entry.name, slice);
   }
 };
 
-class PswHandler : public GOW::ITypeHandler {
+class PswHandler : public Onyx::ITypeHandler {
 public:
-  GOW::TypeId GetId() const override { return GOW::TypeId::PswVideo; }
+  Onyx::TypeId GetId() const override { return Onyx::TypeId::PswVideo; }
   const char *GetName() const override { return "PSW Video"; }
   uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }
   Color4f GetColor() const override { return {0.8f, 0.5f, 0.9f, 1.0f}; }
 
-  std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
-    auto slice = std::make_shared<GOW::SliceFile>(wad.fileSource, entry.offset,
+    auto slice = std::make_shared<Onyx::SliceFile>(wad.fileSource, entry.offset,
                                                   entry.size);
-    return std::make_shared<GOW::VideoPlayer>(entry.name, slice);
+    return std::make_shared<Onyx::VideoPlayer>(entry.name, slice);
   }
 };
 

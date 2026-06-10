@@ -21,7 +21,7 @@
 #  define gowtool_fileno fileno
 #endif
 
-namespace GOW {
+namespace Onyx {
 
 // ── Shared state for the new structured surface ──────────────────────────
 namespace {
@@ -90,7 +90,7 @@ void AppendMemoryEntry(Log::Level lvl, std::string_view message) {
 
 } // anonymous namespace
 
-// ── GOW::Logger (legacy) ──────────────────────────────────────────────────
+// ── Onyx::Logger (legacy) ──────────────────────────────────────────────────
 Logger& Logger::Get() {
     static Logger instance;
     return instance;
@@ -117,7 +117,7 @@ void Logger::Clear() {
     st.memoryEntries.clear();
 }
 
-// ── GOW::Log namespace ────────────────────────────────────────────────────
+// ── Onyx::Log namespace ────────────────────────────────────────────────────
 namespace Log {
 
 const char* LevelName(Level lvl) {
@@ -245,4 +245,4 @@ SinkToken InstallRotatingFileSink(const std::string& path, size_t maxBytes, size
 
 } // namespace Log
 
-} // namespace GOW
+} // namespace Onyx

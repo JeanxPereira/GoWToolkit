@@ -2,7 +2,7 @@
 #include "imgui.h"
 #include "rendering/AnimationPlayer.h"
 
-namespace GOW::UI {
+namespace Onyx::UI {
 
 // Rich timeline widget for skeletal animations.
 //
@@ -19,7 +19,7 @@ struct AnimationTimelineStyle {
 };
 
 bool DrawAnimationTimeline(const char* strId,
-                           GOW::AnimationPlayer& player,
+                           Onyx::AnimationPlayer& player,
                            const AnimationTimelineStyle& style = {});
 
-} // namespace GOW::UI
+} // namespace Onyx::UI

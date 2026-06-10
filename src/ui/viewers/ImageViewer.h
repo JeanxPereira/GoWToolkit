@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 
 class ImageViewer : public IDocumentContent {
 public:
@@ -36,4 +36,4 @@ private:
     void ZoomToAnchored(float newZoom, ImVec2 anchorScreen);
 };
 
-} // namespace GOW
+} // namespace Onyx

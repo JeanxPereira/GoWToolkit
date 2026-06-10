@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace GOW {
+namespace Onyx {
 
 // Parses an MG_*.bin (mesh-group / bone-binding) file.
 //
@@ -23,4 +23,4 @@ public:
                       std::vector<uint16_t>& outParentBone);
 };
 
-} // namespace GOW
+} // namespace Onyx

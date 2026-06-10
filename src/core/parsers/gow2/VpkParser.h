@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 
 class GOW2VpkParser {
 public:
@@ -17,4 +17,4 @@ public:
     static std::unique_ptr<VpkData> Parse(const std::shared_ptr<IFile>& file);
 };
 
-} // namespace GOW
+} // namespace Onyx

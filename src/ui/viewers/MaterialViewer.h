@@ -10,7 +10,7 @@
 
 using GLuint = unsigned int;
 
-namespace GOW {
+namespace Onyx {
 
 class MaterialViewer : public IDocumentContent {
 public:
@@ -39,4 +39,4 @@ private:
     int m_selectedLayer = 0;                  // which layer is selected for preview
 };
 
-} // namespace GOW
+} // namespace Onyx

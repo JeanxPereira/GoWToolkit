@@ -20,7 +20,7 @@
 #include <cstring>
 #include <vector>
 
-namespace GOW { namespace Rdna2 {
+namespace Onyx { namespace Rdna2 {
 
 enum class BitChan : uint8_t { X = 0, Y = 1 };
 
@@ -41,7 +41,7 @@ struct Equation {
 
 // Equations indexed by (sw_mode, element-bytes log2).
 // Element bytes: 8B (BC1/BC4) → log2=3, 16B (BC3/BC5/BC7) → log2=4.
-// Empirically derived for GOW Ragnarök PC; verified against DDS samples.
+// Empirically derived for Onyx Ragnarök PC; verified against DDS samples.
 // SW modes: gfx10 5-bit sw_mode field from T# dw3 bits[24:20].
 inline const Equation* GetEquation(uint32_t swMode, uint32_t elemBytesLog2) {
     // sw_mode 5, 8B element — micro-tile 8w × 4h, MT cluster 2w × 4h, macro 16×16
@@ -124,7 +124,7 @@ inline bool Detile(
 } // namespace Rdna2
 
 // ── Legacy compatibility shim ────────────────────────────────────────────────
-// Old code calls GOW::DetileRdna2(...) with widthInBlocks/heightInBlocks.
+// Old code calls Onyx::DetileRdna2(...) with widthInBlocks/heightInBlocks.
 // Forward to the new equation-based detiler. Returns false if sw_mode/elem
 // combination unknown — caller should fall back gracefully.
 
@@ -144,4 +144,4 @@ inline bool DetileRdna2(
                          /*swMode=*/5, /*pipeBankXor=*/0);
 }
 
-} // namespace GOW
+} // namespace Onyx

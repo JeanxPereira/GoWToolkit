@@ -8,7 +8,7 @@
 #include <imgui.h>
 
 
-namespace GOW {
+namespace Onyx {
 
 ImageViewer::ImageViewer(const std::string &name,
                          std::unique_ptr<TextureData> texture)
@@ -102,21 +102,21 @@ void ImageViewer::Draw() {
   const float texH = static_cast<float>(m_texture->height);
 
   // ── Toolbar ──────────────────────────────────────────────────────────
-  ImGui::PushStyleColor(ImGuiCol_Button, GOW::Theme::ToolbarButton());
-  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, GOW::Theme::ToolbarButtonHover());
+  ImGui::PushStyleColor(ImGuiCol_Button, Onyx::Theme::ToolbarButton());
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Onyx::Theme::ToolbarButtonHover());
 
   ImGui::TextDisabled("%ux%u", m_texture->width, m_texture->height);
   ImGui::SameLine();
 
   // Defer button actions until we know `avail` (canvas size) — the viewport
   // center anchor needs it. Bool flags carry the intent across.
-  const bool zoomInClicked  = GOW::UI::Widgets::SmallButton(ICON_SF_PLUS_MAGNIFYINGGLASS);
+  const bool zoomInClicked  = Onyx::UI::Widgets::SmallButton(ICON_SF_PLUS_MAGNIFYINGGLASS);
   ImGui::SameLine();
-  const bool zoomOutClicked = GOW::UI::Widgets::SmallButton(ICON_SF_MINUS_MAGNIFYINGGLASS);
+  const bool zoomOutClicked = Onyx::UI::Widgets::SmallButton(ICON_SF_MINUS_MAGNIFYINGGLASS);
   ImGui::SameLine();
-  const bool oneToOneClicked = GOW::UI::Widgets::SmallButton("1:1");
+  const bool oneToOneClicked = Onyx::UI::Widgets::SmallButton("1:1");
   ImGui::SameLine();
-  const bool fitClicked = GOW::UI::Widgets::SmallButton("Fit");
+  const bool fitClicked = Onyx::UI::Widgets::SmallButton("Fit");
   ImGui::SameLine();
 
   // Alpha toggle — show alpha channel as grayscale
@@ -268,5 +268,5 @@ void ImageViewer::Draw() {
   dl->PopClipRect();
 }
 
-} // namespace GOW
+} // namespace Onyx
 

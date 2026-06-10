@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 
-namespace GOW {
+namespace Onyx {
 
 struct BoundingBox {
     glm::vec3 min{0.0f};
@@ -10,4 +10,4 @@ struct BoundingBox {
     float Radius() const { return glm::length(max - min) * 0.5f; }
 };
 
-} // namespace GOW
+} // namespace Onyx

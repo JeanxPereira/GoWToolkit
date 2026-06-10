@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace GOW {
+namespace Onyx {
 namespace Gowr {
 
 // Semantic role of a single FileDesc entry inside a Ragnarok WAD.
@@ -90,4 +90,4 @@ struct WadAssetName {
 };
 
 } // namespace Gowr
-} // namespace GOW
+} // namespace Onyx

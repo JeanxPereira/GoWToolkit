@@ -52,7 +52,7 @@ bool showTitleBarBackDrop = true;
 float backdropAlpha = 0.8f;
 
 // NOTE: loadIconFont() has been removed. Icon font is now managed
-// centrally by GOW::Fonts::BuildAtlas() which merges SFSymbols as
+// centrally by Onyx::Fonts::BuildAtlas() which merges SFSymbols as
 // part of the font atlas build. See core/FontManager.cpp.
 
 // ── Backdrop ───────────────────────────────────────────────────────────────

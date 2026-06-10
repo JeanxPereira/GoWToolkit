@@ -13,5 +13,5 @@
 #include "core/profiles/gowr/GowrTaxonomy.h"
 
 // Legacy aliases. Will be retired.
-using WadEntryRole [[deprecated("use profiles/gowr/GowrTaxonomy.h")]] = GOW::Gowr::WadEntryRole;
-using WadBlock     [[deprecated("use profiles/gowr/GowrTaxonomy.h")]] = GOW::Gowr::WadBlock;
+using WadEntryRole [[deprecated("use profiles/gowr/GowrTaxonomy.h")]] = Onyx::Gowr::WadEntryRole;
+using WadBlock     [[deprecated("use profiles/gowr/GowrTaxonomy.h")]] = Onyx::Gowr::WadBlock;

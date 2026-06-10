@@ -3,5 +3,5 @@
 
 class InfoTab {
 public:
-    void Draw(AssetDatabase& db, ParsedEntry* e);
+    void Draw(AssetDatabase& db, AssetEntry* e);
 };

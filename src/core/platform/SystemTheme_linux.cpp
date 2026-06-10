@@ -7,7 +7,7 @@
 #include <cstring>
 #include <string>
 
-namespace GOW::Platform {
+namespace Onyx::Platform {
 
 namespace {
 
@@ -43,6 +43,6 @@ SystemAppearance DetectSystemAppearance() {
     return SystemAppearance::Dark; // safe default
 }
 
-} // namespace GOW::Platform
+} // namespace Onyx::Platform
 
 #endif // !_WIN32 && !__APPLE__

@@ -26,13 +26,13 @@
 #include "core/profiles/gowr/GowrProfileTag.h"
 #include "core/PathUtils.h"
 
-using GOW::Rdna2::Detile;
+using Onyx::Rdna2::Detile;
 
-static GOW::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
-    if (auto* t = e.profileTag.As<GOW::Gowr::GowrProfileTag>()) {
+static Onyx::Gowr::WadEntryRole GetRole(const AssetEntry& e) {
+    if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
         return t->role;
     }
-    return GOW::Gowr::WadEntryRole::Unknown;
+    return Onyx::Gowr::WadEntryRole::Unknown;
 }
 
 #ifdef __APPLE__
@@ -41,7 +41,7 @@ static GOW::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
 
 // ── GOWRLoaders.cpp ────────────────────────────────────────────────────────
 
-namespace GOW {
+namespace Onyx {
 
 // ── Search candidates for runtime files (config.ini, lodpacks.txt) ─────────
 static std::vector<std::filesystem::path> ResourceSearchDirs() {
@@ -207,7 +207,7 @@ void InvalidateLodIndex() {
 
 // ── GOWR Mesh Handling ─────────────────────────────────────────────────────
 
-static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& entry, OpenWad& wad, bool attachSkeleton) {
+static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry, AssetContainer& wad, bool attachSkeleton) {
     if (!wad.fileSource) return nullptr;
 
     // ── Slice the MESH file ────────────────────────────────────────────
@@ -225,8 +225,8 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
 
     std::shared_ptr<IFile> gpuFile;
 
-    std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findGpu;
-    findGpu = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+    std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findGpu;
+    findGpu = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
         for (const auto& e : entries) {
             if (GetRole(e) == Gowr::WadEntryRole::MeshGpu) {
                 std::string gpuBase = e.name;
@@ -246,7 +246,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
         return nullptr;
     };
 
-    const ParsedEntry* gpuEntry = findGpu(wad.entries);
+    const AssetEntry* gpuEntry = findGpu(wad.entries);
     if (gpuEntry) {
         gpuFile = std::make_shared<SliceFile>(
             wad.fileSource, gpuEntry->offset, gpuEntry->size);
@@ -275,8 +275,8 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
 
     // ── Find paired MG_<base> file (bone-binding, no _gpu suffix) ─────
     std::shared_ptr<IFile> mgFile;
-    std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMg;
-    findMg = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+    std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findMg;
+    findMg = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
         for (const auto& e : entries) {
             if (GetRole(e) == Gowr::WadEntryRole::MeshDefn &&
                 e.name.rfind("MG_", 0) == 0)
@@ -295,7 +295,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
         return nullptr;
     };
 
-    const ParsedEntry* mgEntry = findMg(wad.entries);
+    const AssetEntry* mgEntry = findMg(wad.entries);
     if (mgEntry) {
         mgFile = std::make_shared<SliceFile>(
             wad.fileSource, mgEntry->offset, mgEntry->size);
@@ -318,8 +318,8 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
             if (allDigits) mdlBase = mdlBase.substr(0, usPos);
         }
 
-        std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMdl;
-        findMdl = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+        std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findMdl;
+        findMdl = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
             for (const auto& e : entries) {
                 if (GetRole(e) == Gowr::WadEntryRole::Model && e.name.rfind("MDL_", 0) == 0) {
                     std::string n = e.name.substr(4);
@@ -335,7 +335,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
             return nullptr;
         };
 
-        if (const ParsedEntry* mdlEntry = findMdl(wad.entries)) {
+        if (const AssetEntry* mdlEntry = findMdl(wad.entries)) {
             const uint32_t dumpSz = std::min<uint32_t>(mdlEntry->size, 512u);
             std::vector<uint8_t> buf(dumpSz);
             wad.fileSource->Seek(mdlEntry->offset, 0);
@@ -387,8 +387,8 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
             if (allDigits) protoBase = protoBase.substr(0, usPos);
         }
 
-        std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findProto;
-        findProto = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+        std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findProto;
+        findProto = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
             for (const auto& e : entries) {
                 if (GetRole(e) == Gowr::WadEntryRole::GameObjectProto) {
                     std::string n = e.name;
@@ -405,7 +405,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const ParsedEntry& e
             return nullptr;
         };
 
-        const ParsedEntry* protoEntry = findProto(wad.entries);
+        const AssetEntry* protoEntry = findProto(wad.entries);
         if (protoEntry) {
             auto protoFile = std::make_shared<SliceFile>(
                 wad.fileSource, protoEntry->offset, protoEntry->size);
@@ -475,15 +475,15 @@ std::shared_ptr<AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<IFile> fil
     return AssetReader::Parse(*format.Root(), file);
 }
 
-std::shared_ptr<IDocumentContent> GOWRMeshDefnHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
+std::shared_ptr<IDocumentContent> GOWRMeshDefnHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     // MESH_* — render the 3D model without binding to a skeleton.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/false);
 }
-std::shared_ptr<IDocumentContent> GOWRSkinnedMeshHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
+std::shared_ptr<IDocumentContent> GOWRSkinnedMeshHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     // GOWR_SKINNED_MESH — attach the rig so bones drive the mesh.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
-std::shared_ptr<IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
+std::shared_ptr<IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     // go* instance — load with rig.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
@@ -493,7 +493,7 @@ std::shared_ptr<IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const P
 
 class GOWRTextureViewer : public IDocumentContent {
 public:
-    GOWRTextureViewer(const ParsedEntry& entry) : m_entry(entry), m_name(entry.name) {
+    GOWRTextureViewer(const AssetEntry& entry) : m_entry(entry), m_name(entry.name) {
         auto lastUs = m_name.find_last_of('_');
         if (lastUs != std::string::npos && lastUs + 1 < m_name.size()) {
             try { m_hash = std::stoull(m_name.substr(lastUs + 1), nullptr, 16); } catch(...) {}
@@ -541,7 +541,7 @@ public:
     }
 
 private:
-    ParsedEntry m_entry;
+    AssetEntry m_entry;
     std::string m_name;
     uint64_t    m_hash = 0;
     bool        m_initialized = false;
@@ -647,11 +647,11 @@ private:
     }
 };
 
-std::shared_ptr<IDocumentContent> GOWRTextureHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
+std::shared_ptr<IDocumentContent> GOWRTextureHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     return std::make_shared<GOWRTextureViewer>(entry);
 }
 
-std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
+std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     if (!wad.fileSource) return nullptr;
 
     // Derive the base name: "goProtofox00" → "fox00"
@@ -661,8 +661,8 @@ std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const ParsedEntry
     if (dashPos != std::string::npos) protoBase = protoBase.substr(0, dashPos);
 
     // Find the first MESH_<base>* entry in the WAD
-    std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMesh;
-    findMesh = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+    std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findMesh;
+    findMesh = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
         for (const auto& e : entries) {
             if (GetRole(e) == Gowr::WadEntryRole::MeshDefn &&
                 e.name.rfind("MESH_", 0) == 0)
@@ -688,7 +688,7 @@ std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const ParsedEntry
         return nullptr;
     };
 
-    const ParsedEntry* meshEntry = findMesh(wad.entries);
+    const AssetEntry* meshEntry = findMesh(wad.entries);
     if (meshEntry) {
         LOG_INFO("[GOWRRigHandler] Found MESH '%s' for proto '%s'",
                  meshEntry->name.c_str(), entry.name.c_str());
@@ -696,8 +696,8 @@ std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const ParsedEntry
     }
 
     // Fallback: try MG_<base>* (non-gpu) entries
-    std::function<const ParsedEntry*(const std::vector<ParsedEntry>&)> findMg;
-    findMg = [&](const std::vector<ParsedEntry>& entries) -> const ParsedEntry* {
+    std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findMg;
+    findMg = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
         for (const auto& e : entries) {
             if (GetRole(e) == Gowr::WadEntryRole::MeshDefn &&
                 e.name.rfind("MG_", 0) == 0)
@@ -726,7 +726,7 @@ std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const ParsedEntry
         return nullptr;
     };
 
-    const ParsedEntry* mgEntry = findMg(wad.entries);
+    const AssetEntry* mgEntry = findMg(wad.entries);
     if (mgEntry) {
         LOG_INFO("[GOWRRigHandler] Found MG '%s' for proto '%s' (fallback)",
                  mgEntry->name.c_str(), entry.name.c_str());
@@ -759,8 +759,8 @@ public:
             return;
         }
 
-        // ── GOW Header ─────────────────────────────────────────────────
-        ImGui::SeparatorText("GOW Shader Header");
+        // ── Onyx Header ─────────────────────────────────────────────────
+        ImGui::SeparatorText("Onyx Shader Header");
         if (ImGui::BeginTable("##gowhdr", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Field",  ImGuiTableColumnFlags_WidthFixed, 140);
             ImGui::TableSetupColumn("Value",  ImGuiTableColumnFlags_WidthStretch);
@@ -920,7 +920,7 @@ private:
     }
 };
 
-std::shared_ptr<IDocumentContent> GOWRShaderHandler::CreateViewer(const ParsedEntry& entry, OpenWad& wad) {
+std::shared_ptr<IDocumentContent> GOWRShaderHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     if (!wad.fileSource || entry.size == 0) return nullptr;
 
     auto file = std::make_shared<SliceFile>(wad.fileSource, entry.offset, entry.size);
@@ -932,39 +932,39 @@ std::shared_ptr<IDocumentContent> GOWRShaderHandler::CreateViewer(const ParsedEn
 
 // Register shader handlers for all shader TypeIds
 static bool _reg_shader_vs = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderVertex));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderVertex));
     return true;
 }();
 static bool _reg_shader_ps = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderPixel));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderPixel));
     return true;
 }();
 static bool _reg_shader_ct = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderContainer));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderContainer));
     return true;
 }();
 static bool _reg_shader_hs = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderHull));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderHull));
     return true;
 }();
 static bool _reg_shader_ds = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderDomain));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderDomain));
     return true;
 }();
 static bool _reg_shader_cs = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderCompute));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderCompute));
     return true;
 }();
 static bool _reg_shader_ls = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderLibrary));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderLibrary));
     return true;
 }();
 
-} // namespace GOW
+} // namespace Onyx

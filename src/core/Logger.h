@@ -14,7 +14,7 @@
 // `Log::InstallRotatingFileSink(path, maxBytes, rotations)`.
 //
 // Legacy printf-style call sites (`LOG_DEBUG`, `LOG_INFO`, `LOG_WARN`,
-// `LOG_ERR`) and the older `GOW::Logger` facade (with `LogEntry`,
+// `LOG_ERR`) and the older `Onyx::Logger` facade (with `LogEntry`,
 // `GetEntries`, `Clear`) are retained so existing callers (StatusBar,
 // many parser TUs) keep working while we migrate the codebase
 // category-by-category. Both legacy and new paths funnel through the
@@ -29,7 +29,7 @@
 #include <string_view>
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 
 // ── Legacy logging facade (still used by ~250 call sites) ─────────────────
 enum class LogLevel { Debug, Info, Warning, Error };
@@ -100,17 +100,17 @@ inline void Log(Level lvl, std::string_view category,
 
 } // namespace Log
 
-} // namespace GOW
+} // namespace Onyx
 
 // ── New category-aware macros (preferred) ────────────────────────────────
-#define GOW_LOG_TRACE(cat, ...) ::GOW::Log::Log(::GOW::Log::Level::Trace, (cat), __VA_ARGS__)
-#define GOW_LOG_DEBUG(cat, ...) ::GOW::Log::Log(::GOW::Log::Level::Debug, (cat), __VA_ARGS__)
-#define GOW_LOG_INFO(cat, ...)  ::GOW::Log::Log(::GOW::Log::Level::Info,  (cat), __VA_ARGS__)
-#define GOW_LOG_WARN(cat, ...)  ::GOW::Log::Log(::GOW::Log::Level::Warn,  (cat), __VA_ARGS__)
-#define GOW_LOG_ERROR(cat, ...) ::GOW::Log::Log(::GOW::Log::Level::Error, (cat), __VA_ARGS__)
+#define GOW_LOG_TRACE(cat, ...) ::Onyx::Log::Log(::Onyx::Log::Level::Trace, (cat), __VA_ARGS__)
+#define GOW_LOG_DEBUG(cat, ...) ::Onyx::Log::Log(::Onyx::Log::Level::Debug, (cat), __VA_ARGS__)
+#define GOW_LOG_INFO(cat, ...)  ::Onyx::Log::Log(::Onyx::Log::Level::Info,  (cat), __VA_ARGS__)
+#define GOW_LOG_WARN(cat, ...)  ::Onyx::Log::Log(::Onyx::Log::Level::Warn,  (cat), __VA_ARGS__)
+#define GOW_LOG_ERROR(cat, ...) ::Onyx::Log::Log(::Onyx::Log::Level::Error, (cat), __VA_ARGS__)
 
 // ── Legacy printf-style macros (no category) ─────────────────────────────
-#define LOG_DEBUG(...) ::GOW::Logger::Get().Log(::GOW::LogLevel::Debug,   __VA_ARGS__)
-#define LOG_INFO(...)  ::GOW::Logger::Get().Log(::GOW::LogLevel::Info,    __VA_ARGS__)
-#define LOG_WARN(...)  ::GOW::Logger::Get().Log(::GOW::LogLevel::Warning, __VA_ARGS__)
-#define LOG_ERR(...)   ::GOW::Logger::Get().Log(::GOW::LogLevel::Error,   __VA_ARGS__)
+#define LOG_DEBUG(...) ::Onyx::Logger::Get().Log(::Onyx::LogLevel::Debug,   __VA_ARGS__)
+#define LOG_INFO(...)  ::Onyx::Logger::Get().Log(::Onyx::LogLevel::Info,    __VA_ARGS__)
+#define LOG_WARN(...)  ::Onyx::Logger::Get().Log(::Onyx::LogLevel::Warning, __VA_ARGS__)
+#define LOG_ERR(...)   ::Onyx::Logger::Get().Log(::Onyx::LogLevel::Error,   __VA_ARGS__)

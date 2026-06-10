@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <cstring>
 
-namespace GOW {
+namespace Onyx {
 
 ProfileGOW2::ProfileGOW2() {
     // Schemas are registered automatically by TypeHandlers.
@@ -51,7 +51,7 @@ static constexpr uint16_t WADTAG_HEADER_POP    = 19;
 static constexpr uint16_t WADTAG_HEADER_START  = 21;
 // Tags 11-16 are TT_* (tweak template) nodes — added as leaves, no group semantics
 
-bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
+bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) {
     if (!file || !file->IsValid()) return false;
 
     file->Seek(0, SEEK_END);
@@ -63,7 +63,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
     int64_t pos = 0;
 
     // Stack of pointers to vectors of entries. We start with the root vector.
-    std::vector<std::vector<ParsedEntry>*> stack;
+    std::vector<std::vector<AssetEntry>*> stack;
     stack.push_back(&outWad.entries);
 
     bool newGroupTag = false;
@@ -130,7 +130,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
             continue;
         }
 
-        ParsedEntry entry;
+        AssetEntry entry;
         entry.name   = std::string(rawTag.name, strnlen(rawTag.name, 24));
         entry.size   = rawTag.size;
         entry.offset = pos;
@@ -211,7 +211,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
         entry.kind = KindOf(entry.typeId);
 
         // ── Add node to tree ──
-        std::vector<ParsedEntry>* currentLevel = stack.back();
+        std::vector<AssetEntry>* currentLevel = stack.back();
         currentLevel->push_back(std::move(entry));
         totalTags++;
 
@@ -232,7 +232,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
     }
 
     // Pass 2: resolve zero-sized and unknown types from forward references
-    std::function<void(std::vector<ParsedEntry>&)> resolveUnknowns = [&](std::vector<ParsedEntry>& list) {
+    std::function<void(std::vector<AssetEntry>&)> resolveUnknowns = [&](std::vector<AssetEntry>& list) {
         for (auto& n : list) {
             if (n.size == 0 && n.typeId == TypeId::Unknown && !n.name.empty()) {
                 auto it = nameToDefinition.find(n.name);
@@ -255,27 +255,27 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
 
 // ── Shared helper ──────────────────────────────────────────────────────────
 
-static void assignSchemaType(ParsedEntry& entry) {
+static void assignSchemaType(AssetEntry& entry) {
     size_t dot = entry.name.find_last_of('.');
     if (dot != std::string::npos) {
         std::string ext = entry.name.substr(dot + 1);
         std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
 
-        if      (ext == "MDL") { entry.typeId = GOW::TypeId::Model;    }
-        else if (ext == "TXR") { entry.typeId = GOW::TypeId::Texture;  }
-        else if (ext == "ANM") { entry.typeId = GOW::TypeId::Animation; }
-        else if (ext == "WAD") { entry.typeId = GOW::TypeId::WadFile;  }
-        else if (ext == "VAG") { entry.typeId = GOW::TypeId::VagAudio; }
+        if      (ext == "MDL") { entry.typeId = Onyx::TypeId::Model;    }
+        else if (ext == "TXR") { entry.typeId = Onyx::TypeId::Texture;  }
+        else if (ext == "ANM") { entry.typeId = Onyx::TypeId::Animation; }
+        else if (ext == "WAD") { entry.typeId = Onyx::TypeId::WadFile;  }
+        else if (ext == "VAG") { entry.typeId = Onyx::TypeId::VagAudio; }
         else if (ext == "VPK" || ext == "VP1" || ext == "VP2" ||
                  ext == "VP3" || ext == "VP4")
-                              { entry.typeId = GOW::TypeId::VpkVideo; }
-        else if (ext == "PSS") { entry.typeId = GOW::TypeId::PssVideo; }
-        else if (ext == "PSW") { entry.typeId = GOW::TypeId::PswVideo; }
+                              { entry.typeId = Onyx::TypeId::VpkVideo; }
+        else if (ext == "PSS") { entry.typeId = Onyx::TypeId::PssVideo; }
+        else if (ext == "PSW") { entry.typeId = Onyx::TypeId::PswVideo; }
         else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
                  ext == "CSV" || ext == "JSON" || ext == "LOG")
-                              { entry.typeId = GOW::TypeId::TextPlain; }
+                              { entry.typeId = Onyx::TypeId::TextPlain; }
 
-        if (entry.typeId == GOW::TypeId::Unknown) {
+        if (entry.typeId == Onyx::TypeId::Unknown) {
             // Unhandled extension
         }
     }
@@ -301,7 +301,7 @@ struct RawTocEntryGOW2 {
 #pragma pack(pop)
 
 bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
-                                        IFile* tocFile, OpenWad& outWad) {
+                                        IFile* tocFile, AssetContainer& outWad) {
     LOG_INFO("[GOW2] Parsing TOC... size: %zu bytes.", (size_t)tocFile->Size());
 
     uint32_t numFiles = 0;
@@ -340,7 +340,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
             continue;
         }
 
-        ParsedEntry entry;
+        AssetEntry entry;
         entry.name = std::string(raw.name, strnlen(raw.name, 24));
         entry.size   = raw.size;
         entry.offset = (int64_t)realSector * SECTOR_SIZE;
@@ -355,7 +355,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
 }
 
 // ── LoadFromArchive ───────────────────────────────────────────────────────
-bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad) {
+bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) {
     // Try GOW2.TOC first (some builds use this name)
     auto tocFile = vfs->OpenFile("/GOW2.TOC");
 
@@ -364,7 +364,7 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenW
         tocFile = vfs->OpenFile("/GODOFWAR.TOC");
 
     if (!tocFile || !tocFile->IsValid()) {
-        LOG_ERR("[GOW] No TOC file found in ISO (tried GOW2.TOC, GODOFWAR.TOC).");
+        LOG_ERR("[Onyx] No TOC file found in ISO (tried GOW2.TOC, GODOFWAR.TOC).");
         return false;
     }
 
@@ -382,14 +382,14 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenW
                   ((int64_t)(possibleCount * sizeof(RawTocEntryGOW2) + 4) <= tocSize);
 
     if (!isGOW2) {
-        LOG_ERR("[GOW] TOC header does not look like GOW2 (count=%u, size=%lld). "
+        LOG_ERR("[Onyx] TOC header does not look like GOW2 (count=%u, size=%lld). "
                 "GOW1 ISOs are not supported by this profile.",
                 possibleCount, (long long)tocSize);
         return false;
     }
 
-    LOG_INFO("[GOW] Detected GOW2 TOC format (%u entries).", possibleCount);
+    LOG_INFO("[Onyx] Detected GOW2 TOC format (%u entries).", possibleCount);
     return LoadFromArchiveGOW2(vfs, tocFile.get(), outWad);
 }
 
-} // namespace GOW
+} // namespace Onyx

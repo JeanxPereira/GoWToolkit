@@ -8,7 +8,7 @@
 #include <fstream>
 #include <lz4frame.h>
 
-namespace GOW {
+namespace Onyx {
 
 #pragma pack(push, 1)
 struct RawTexInfo {
@@ -320,4 +320,4 @@ std::shared_ptr<IFile> TexPackIndex::GetFile(uint32_t packIdx) {
     return m_packs[packIdx].file;
 }
 
-} // namespace GOW
+} // namespace Onyx

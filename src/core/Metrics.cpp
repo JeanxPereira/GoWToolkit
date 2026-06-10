@@ -2,7 +2,7 @@
 
 #include <atomic>
 
-namespace GOW::Metrics {
+namespace Onyx::Metrics {
 
 namespace {
 
@@ -65,4 +65,4 @@ Snapshot CurrentSnapshot() {
     return s;
 }
 
-} // namespace GOW::Metrics
+} // namespace Onyx::Metrics

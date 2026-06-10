@@ -26,8 +26,8 @@ public:
 
     // UI Component Getters (for external access)
     AssetDatabase& getDatabase() { return m_db; }
-    GOW::DocumentWindow& getDocumentWindow() { return m_documentWindow; }
-    GOW::ViewerRegistry& getViewerRegistry() { return m_viewerRegistry; }
+    Onyx::DocumentWindow& getDocumentWindow() { return m_documentWindow; }
+    Onyx::ViewerRegistry& getViewerRegistry() { return m_viewerRegistry; }
 
 private:
     void drawMenuBar();
@@ -41,8 +41,8 @@ private:
 
     AssetDatabase         m_db;
     PanelRegistry         m_panels;
-    GOW::DocumentWindow   m_documentWindow;
-    GOW::ViewerRegistry   m_viewerRegistry;
+    Onyx::DocumentWindow   m_documentWindow;
+    Onyx::ViewerRegistry   m_viewerRegistry;
     WindowDecorator       m_decorator;
     AppConfig*            m_config  = nullptr;
     GLFWwindow*           m_window  = nullptr;

@@ -10,14 +10,14 @@
 #include <cmath>
 
 StatusBar::StatusBar() {
-    EventWadOpened::subscribe(this, [this](OpenWad* wad) {
+    EventWadOpened::subscribe(this, [this](AssetContainer* wad) {
         if (wad) {
             std::string msg = "Loaded: " + wad->filename;
             SetMessage(msg.c_str());
         }
     });
 
-    EventPakOpened::subscribe(this, [this](OpenWad* pak) {
+    EventPakOpened::subscribe(this, [this](AssetContainer* pak) {
         if (pak) {
             std::string msg = "Loaded PAK: " + pak->filename;
             SetMessage(msg.c_str());
@@ -40,7 +40,7 @@ void StatusBar::Draw() {
     ImGui::Begin("Log", &visible);
 
     // ── TaskManager Progress (new system) ────────────────────────────
-    auto& tasks = GOW::TaskManager::getRunningTasks();
+    auto& tasks = Onyx::TaskManager::getRunningTasks();
     bool hasVisibleTasks = false;
 
     for (auto& task : tasks) {
@@ -64,7 +64,7 @@ void StatusBar::Draw() {
 
 
     // ── Background tasks indicator ──────────────────────────────────
-    size_t bgCount = GOW::TaskManager::getRunningBackgroundTaskCount();
+    size_t bgCount = Onyx::TaskManager::getRunningBackgroundTaskCount();
     if (bgCount > 0) {
         if (hasVisibleTasks) ImGui::Separator();
         ImGui::TextDisabled("Background tasks: %zu", bgCount);
@@ -75,7 +75,7 @@ void StatusBar::Draw() {
 
     // ── Log viewer ──────────────────────────────────────────────────
     if (ImGui::Button("Clear")) {
-        GOW::Logger::Get().Clear();
+        Onyx::Logger::Get().Clear();
     }
     ImGui::SameLine();
     bool copy = ImGui::Button("Copy to Clipboard");
@@ -85,7 +85,7 @@ void StatusBar::Draw() {
 
     if (copy) ImGui::LogToClipboard();
 
-    auto entries = GOW::Logger::Get().GetEntries();
+    auto entries = Onyx::Logger::Get().GetEntries();
 
     // Store scroll state before drawing logic
     bool atBottom = (ImGui::GetScrollY() >= ImGui::GetScrollMaxY());
@@ -94,11 +94,11 @@ void StatusBar::Draw() {
         const auto& entry = entries[i];
 
         // Skip debug messages in UI
-        if (entry.level == GOW::LogLevel::Debug) continue;
+        if (entry.level == Onyx::LogLevel::Debug) continue;
 
         ImVec4 color;
-        if (entry.level == GOW::LogLevel::Error) color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
-        else if (entry.level == GOW::LogLevel::Warning) color = ImVec4(1.0f, 0.8f, 0.4f, 1.0f);
+        if (entry.level == Onyx::LogLevel::Error) color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+        else if (entry.level == Onyx::LogLevel::Warning) color = ImVec4(1.0f, 0.8f, 0.4f, 1.0f);
         else color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
 
         ImGui::PushID(i);
@@ -122,7 +122,7 @@ void StatusBar::Draw() {
             if (ImGui::MenuItem("Copy All")) {
                 std::string allLogs;
                 for (const auto& e : entries) {
-                    if (e.level == GOW::LogLevel::Debug) continue;
+                    if (e.level == Onyx::LogLevel::Debug) continue;
                     allLogs += "[" + e.time + "] " + e.message + "\n";
                 }
                 ImGui::SetClipboardText(allLogs.c_str());

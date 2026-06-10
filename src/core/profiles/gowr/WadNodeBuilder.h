@@ -8,7 +8,7 @@
 
 // ── WadNodeBuilder.h ───────────────────────────────────────────────────────
 // Converts a flat GOWRFileDesc array (from a parsed WTOC WAD) into a
-// hierarchical ParsedEntry tree in outWad.entries.
+// hierarchical AssetEntry tree in outWad.entries.
 //
 // Four passes:
 //   Pass 1 — Classify:      assign WadEntryRole + WadBlock to each raw entry
@@ -16,20 +16,20 @@
 //   Pass 3 — GroupByBlock:  assemble the four functional block folders
 //   Pass 4 — Finalize:      set displayName, sort children
 //
-// All logic is isolated here. ProfileGOWR::ParseWad only calls Build().
+// All logic is isolated here. ProfileGOWR::ParseContainer only calls Build().
 // No other game profile, interface, or UI file is affected.
 
-namespace GOW {
+namespace Onyx {
 
 class WadNodeBuilder {
 public:
     // Main entry point. Call once after absOffsets are computed.
-    // Clears and repopulates outWad.entries with the final ParsedEntry tree.
+    // Clears and repopulates outWad.entries with the final AssetEntry tree.
     void Build(
         const std::vector<GOWRFileDesc>& descs,
         const std::vector<size_t>&       absOffsets,
         const std::string&               wadFilename,
-        OpenWad&                         outWad);
+        AssetContainer&                         outWad);
 
 private:
     // ── Internal working entry ─────────────────────────────────────────────
@@ -57,8 +57,8 @@ private:
     // ── The four passes ────────────────────────────────────────────────────
     void Pass1_Classify();
     void Pass2_Pair();
-    void Pass3_GroupByBlock(OpenWad& outWad);
-    void Pass4_Finalize(OpenWad& outWad);
+    void Pass3_GroupByBlock(AssetContainer& outWad);
+    void Pass4_Finalize(AssetContainer& outWad);
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -68,8 +68,8 @@ private:
     // Convert "ANMX_R_Fox00" → "ANMX → ANMX_Shared_Fox00"
     static std::string MakeSharedWadName(const std::string& entryName);
 
-    // Build a ParsedEntry leaf node from a RawEntry
-    static ParsedEntry ToNode(const RawEntry& r, const std::string& wadFilename);
+    // Build a AssetEntry leaf node from a RawEntry
+    static AssetEntry ToNode(const RawEntry& r, const std::string& wadFilename);
 
     // Strip trailing content hash from texture display name
     // "TX_name_slot_1D293ECA4DE04637" → "TX_name_slot"
@@ -80,7 +80,7 @@ private:
     static std::string ExtractGoContext(const std::string& name);
 
     // Build a synthetic virtual folder node (block, shader group, FX group, etc.)
-    ParsedEntry MakeFolder(
+    AssetEntry MakeFolder(
         const std::string& name,
         WadEntryRole       role,
         WadBlock           block = WadBlock::Unknown) const;
@@ -89,4 +89,4 @@ private:
     static int AssetSortKey(WadEntryRole role);
 };
 
-} // namespace GOW
+} // namespace Onyx

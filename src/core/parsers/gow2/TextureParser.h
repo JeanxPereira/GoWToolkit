@@ -5,7 +5,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace GOW {
+namespace Onyx {
 
 class GOW2TextureParser {
 public:
@@ -14,8 +14,8 @@ public:
     // parentEntries: the sibling entries (from the same MDL group) to find GFX/PAL by name
     // wadFileSource: the file source to read raw data from
     static std::unique_ptr<TextureData> Parse(
-        const ParsedEntry& txrEntry,
-        const std::vector<ParsedEntry>& siblingEntries,
+        const AssetEntry& txrEntry,
+        const std::vector<AssetEntry>& siblingEntries,
         const std::shared_ptr<IFile>& fileSource);
 
     // Parse a raw GFX block directly (lower level)
@@ -47,4 +47,4 @@ private:
     static std::vector<uint8_t> DecodePixelIndices(const GFXData& gfx, int dataIdx);
 };
 
-} // namespace GOW
+} // namespace Onyx

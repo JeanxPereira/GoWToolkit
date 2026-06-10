@@ -21,7 +21,7 @@ extern "C" {
 #include <string>
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 
 // ─── Thread-Safe Queue ──────────────────────────────────────────────────────
 template <typename T>
@@ -248,4 +248,4 @@ private:
     std::atomic<bool> m_forceFrameUpdate{false};
 };
 
-} // namespace GOW
+} // namespace Onyx

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <limits>
 
-namespace GOW {
+namespace Onyx {
 
 GpuMesh::~GpuMesh() { Cleanup(); }
 
@@ -113,4 +113,4 @@ void GpuMesh::Draw() const {
     glBindVertexArray(0);
 }
 
-} // namespace GOW
+} // namespace Onyx

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace GOW {
+namespace Onyx {
 
 Camera::Camera() {
     // Pull persisted tuning knobs so the projection slab matches the user's
@@ -186,4 +186,4 @@ bool Camera::UpdateAnimation(float dt) {
     return true;
 }
 
-} // namespace GOW
+} // namespace Onyx

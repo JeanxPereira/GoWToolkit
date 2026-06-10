@@ -5,7 +5,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-namespace GOW::Platform {
+namespace Onyx::Platform {
 
 SystemAppearance DetectSystemAppearance() {
     // HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme
@@ -32,6 +32,6 @@ SystemAppearance DetectSystemAppearance() {
     return (value == 0) ? SystemAppearance::Dark : SystemAppearance::Light;
 }
 
-} // namespace GOW::Platform
+} // namespace Onyx::Platform
 
 #endif // _WIN32

@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace GOW::Theme {
+namespace Onyx::Theme {
 
 // ── Theme mode ────────────────────────────────────────────────────────────
 // Picks the ImGui base palette before our accent overrides are applied.
@@ -100,4 +100,4 @@ struct FlashState {
 
 FlashState &GetFlashState();
 
-} // namespace GOW::Theme
+} // namespace Onyx::Theme

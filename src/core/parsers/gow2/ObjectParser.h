@@ -3,7 +3,7 @@
 #include <memory>
 #include <cstdint>
 
-namespace GOW {
+namespace Onyx {
 
 class GOW2ObjectParser {
 public:
@@ -20,4 +20,4 @@ private:
     static void FillJoints(ObjectData& obj);
 };
 
-} // namespace GOW
+} // namespace Onyx

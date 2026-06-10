@@ -35,7 +35,7 @@ The application has two entry modes, selected at startup in `src/main.cpp`: GUI 
 
 **Core** (`src/core/`) — All game-format logic, no UI dependency:
 - `AssetDatabase`: loads WADs/ISOs, manages async loading state
-- `ProfileManager` + `IGameProfile`: game variant detection and dispatch (GOW2, GOWR implementations)
+- `ProfileManager` + `IAssetProfile`: game variant detection and dispatch (GOW2, GOWR implementations)
 - `IAssetLoader` / loaders: per-asset-type parsing (mesh, texture, material, sound)
 - `schema/`: `StructDef` + `NodeInstance` tree representing parsed game data
 - `vfs/`: virtual filesystem abstractions (`IsoFileSystem`, PAK support)
@@ -45,13 +45,13 @@ The application has two entry modes, selected at startup in `src/main.cpp`: GUI 
 
 ### Data Flow
 
-1. User opens ISO/PAK → `AssetDatabase::LoadWadAsync` → `ProfileManager` detects game → `IGameProfile::ParseWad` → populates database
+1. User opens ISO/PAK → `AssetDatabase::LoadWadAsync` → `ProfileManager` detects game → `IAssetProfile::ParseContainer` → populates database
 2. Each frame: `App` iterates panels → panels query `AppContext` for loaded assets → active `DocumentWindow` renders its `IDocumentContent` viewer
 3. Config is loaded at startup and persisted on exit via `AppConfig`
 
 ### Key Interfaces
 
-- `IGameProfile` — implemented by `ProfileGOW2` and `ProfileGOWR`
+- `IAssetProfile` — implemented by `ProfileGOW2` and `ProfileGOWR`
 - `IAssetLoader` — one per asset type per game
 - `IPanel` — all dockable panels
 - `IDocumentContent` — all document viewers

@@ -8,10 +8,10 @@
 
 // Forward declarations
 #include <memory>
-struct OpenWad;
-struct ParsedEntry;
-namespace GOW { class IDocumentContent; }
-namespace GOW { struct AnimationData; }
+struct AssetContainer;
+struct AssetEntry;
+namespace Onyx { class IDocumentContent; }
+namespace Onyx { struct AnimationData; }
 class AppConfig;
 
 // ── Lifecycle Events ───────────────────────────────────────────────────────
@@ -25,16 +25,16 @@ EVENT_DEF(EventShutdown);
 // ── WAD / ISO Events ──────────────────────────────────────────────────────
 
 /// Fired after a WAD file has been loaded and parsed.
-/// @param OpenWad* pointer to the newly opened WAD (valid for the WAD's lifetime)
-EVENT_DEF(EventWadOpened, OpenWad*);
+/// @param AssetContainer* pointer to the newly opened WAD (valid for the WAD's lifetime)
+EVENT_DEF(EventWadOpened, AssetContainer*);
 
 /// Fired when a WAD file is about to be closed.
 /// @param size_t index of the WAD being closed in AssetDatabase::wads
 EVENT_DEF(EventWadClosed, size_t);
 
 /// Fired after an ISO PAK has been loaded.
-/// @param OpenWad* pointer to the newly opened PAK
-EVENT_DEF(EventPakOpened, OpenWad*);
+/// @param AssetContainer* pointer to the newly opened PAK
+EVENT_DEF(EventPakOpened, AssetContainer*);
 
 /// Fired when all WADs and PAKs are closed.
 EVENT_DEF(EventAllClosed);
@@ -42,21 +42,21 @@ EVENT_DEF(EventAllClosed);
 // ── Asset Selection & Loading ─────────────────────────────────────────────
 
 /// Fired when the user selects an asset in any browser panel.
-/// @param ParsedEntry* the selected entry (can be nullptr for deselection)
-/// @param OpenWad*     the parent WAD/PAK containing the entry
-EVENT_DEF(EventAssetSelected, ParsedEntry*, OpenWad*);
+/// @param AssetEntry* the selected entry (can be nullptr for deselection)
+/// @param AssetContainer*     the parent WAD/PAK containing the entry
+EVENT_DEF(EventAssetSelected, AssetEntry*, AssetContainer*);
 
 /// Fired after an asset's node data has been loaded via EnsureNodeData.
-/// @param ParsedEntry* the entry whose data is now available
-EVENT_DEF(EventAssetLoaded, ParsedEntry*);
+/// @param AssetEntry* the entry whose data is now available
+EVENT_DEF(EventAssetLoaded, AssetEntry*);
 
 /// Fired when a new document/viewer tab is opened.
 /// @param IDocumentContent* the opened document
-EVENT_DEF(EventDocumentOpened, GOW::IDocumentContent*);
+EVENT_DEF(EventDocumentOpened, Onyx::IDocumentContent*);
 
 /// Fired when animation data is loaded into a scene (e.g. Viewport3D).
-/// @param std::shared_ptr<GOW::AnimationData> the loaded animation data
-EVENT_DEF(EventAnimationLoaded, std::shared_ptr<GOW::AnimationData>);
+/// @param std::shared_ptr<Onyx::AnimationData> the loaded animation data
+EVENT_DEF(EventAnimationLoaded, std::shared_ptr<Onyx::AnimationData>);
 
 // ── UI State Events ───────────────────────────────────────────────────────
 

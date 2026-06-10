@@ -12,7 +12,7 @@
 #include <map>
 #include <functional>
 
-namespace GOW {
+namespace Onyx {
 
 int CliApp::Run(int argc, char** argv) {
     std::vector<std::string> args;
@@ -58,7 +58,7 @@ void CliApp::PrintHelp() {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-static void PrintEntryTree(const ParsedEntry& entry, int depth) {
+static void PrintEntryTree(const AssetEntry& entry, int depth) {
     std::string indent(depth * 2, ' ');
     std::string sizeStr;
     if (entry.size >= 1024 * 1024)
@@ -69,7 +69,7 @@ static void PrintEntryTree(const ParsedEntry& entry, int depth) {
         sizeStr = std::to_string(entry.size) + " B";
 
     std::cout << indent << entry.name
-              << "  [" << GOW::TypeIdName(entry.typeId) << "]"
+              << "  [" << Onyx::TypeIdName(entry.typeId) << "]"
               << "  size=" << sizeStr
               << "  off=0x" << std::hex << std::setfill('0') << std::setw(8) << entry.offset << std::dec
               << "\n";
@@ -80,7 +80,7 @@ static void PrintEntryTree(const ParsedEntry& entry, int depth) {
 
 static bool OpenWadFromFile(const std::filesystem::path& path,
                              const std::string& gameHint,
-                             OpenWad& wad,
+                             AssetContainer& wad,
                              std::shared_ptr<IFile>& fileOut)
 {
     auto profile = gameHint.empty()
@@ -106,15 +106,15 @@ static bool OpenWadFromFile(const std::filesystem::path& path,
     wad.profile = profile;
     wad.fileSource = file;
 
-    if (!profile->ParseWad(file, wad)) {
-        std::cerr << "[CLI] ParseWad failed.\n";
+    if (!profile->ParseContainer(file, wad)) {
+        std::cerr << "[CLI] ParseContainer failed.\n";
         return false;
     }
     return true;
 }
 
 // Find entry by exact name (depth-first search)
-static const ParsedEntry* FindEntryByName(const std::vector<ParsedEntry>& entries, const std::string& name) {
+static const AssetEntry* FindEntryByName(const std::vector<AssetEntry>& entries, const std::string& name) {
     for (const auto& e : entries) {
         if (e.name == name) return &e;
         if (auto f = FindEntryByName(e.children, name)) return f;
@@ -191,7 +191,7 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
         return 1;
     }
 
-    OpenWad wad;
+    AssetContainer wad;
     std::shared_ptr<IFile> file;
     if (!OpenWadFromFile(path, gameHint, wad, file))
         return 1;
@@ -204,8 +204,8 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
 
     // Type summary
     std::map<std::string, int> typeCounts;
-    std::function<void(const ParsedEntry&)> countTypes = [&](const ParsedEntry& e) {
-        typeCounts[GOW::TypeIdName(e.typeId)]++;
+    std::function<void(const AssetEntry&)> countTypes = [&](const AssetEntry& e) {
+        typeCounts[Onyx::TypeIdName(e.typeId)]++;
         for (const auto& c : e.children) countTypes(c);
     };
     for (const auto& e : wad.entries) countTypes(e);
@@ -240,7 +240,7 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
 
     const std::string& entryName = args[2];
 
-    OpenWad wad;
+    AssetContainer wad;
     std::shared_ptr<IFile> file;
     if (!OpenWadFromFile(path, gameHint, wad, file))
         return 1;
@@ -248,23 +248,23 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
     std::cout << "[CLI] Parsed WAD with " << wad.entries.size() << " top-level entries.\n";
     std::cout << "[CLI] Looking for entry: '" << entryName << "'\n";
 
-    const ParsedEntry* entry = FindEntryByName(wad.entries, entryName);
+    const AssetEntry* entry = FindEntryByName(wad.entries, entryName);
     if (!entry) {
         std::cerr << "[CLI] Entry '" << entryName << "' not found.\n";
         std::cerr << "[CLI] Top-level entries:\n";
         for (const auto& e : wad.entries)
-            std::cerr << "  " << e.name << " [" << GOW::TypeIdName(e.typeId) << "]\n";
+            std::cerr << "  " << e.name << " [" << Onyx::TypeIdName(e.typeId) << "]\n";
         return 1;
     }
 
-    std::cout << "[CLI] Found: '" << entry->name << "' [" << GOW::TypeIdName(entry->typeId) << "]"
+    std::cout << "[CLI] Found: '" << entry->name << "' [" << Onyx::TypeIdName(entry->typeId) << "]"
               << " size=" << entry->size << " offset=0x" << std::hex << entry->offset << std::dec
               << " children=" << entry->children.size() << "\n";
 
     auto* handler = TypeRegistry::Get().Resolve(entry->typeId);
     if (!handler) {
         std::cerr << "[CLI] No handler registered for typeId=" << (int)entry->typeId
-                  << " (" << GOW::TypeIdName(entry->typeId) << ")\n";
+                  << " (" << Onyx::TypeIdName(entry->typeId) << ")\n";
         return 1;
     }
 
@@ -315,7 +315,7 @@ int CliApp::HandleExtract(const std::vector<std::string>& args) {
 
     std::filesystem::create_directories(outDir);
 
-    OpenWad topWad;
+    AssetContainer topWad;
     if (!profile->LoadFromArchive(vfs, topWad)) {
         std::cerr << "[CLI] Failed to enumerate ISO contents.\n";
         return 1;
@@ -344,4 +344,4 @@ int CliApp::HandleExtract(const std::vector<std::string>& args) {
     return 0;
 }
 
-} // namespace GOW
+} // namespace Onyx

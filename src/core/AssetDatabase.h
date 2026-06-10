@@ -11,7 +11,7 @@ namespace fs = std::filesystem;
 
 #include "WadTypes.h"
 
-namespace GOW {
+namespace Onyx {
     class IsoFileSystem;
 }
 
@@ -22,10 +22,10 @@ public:
     void ClosePak(size_t idx);
 
     // Carrega WAD interno a partir de um entry do PAK
-    bool LoadWadFromPakEntry(ParsedEntry* e, OpenWad& parentPak);
+    bool LoadWadFromPakEntry(AssetEntry* e, AssetContainer& parentPak);
 
     // Get a file handle for a PAK entry without parsing as WAD
-    std::shared_ptr<GOW::IFile> OpenPakEntryAsFile(ParsedEntry* e, OpenWad& parentPak);
+    std::shared_ptr<Onyx::IFile> OpenPakEntryAsFile(AssetEntry* e, AssetContainer& parentPak);
 
     // Carrega WAD solto de disco (gameHint: "ragnarok", "gow2", etc.)
     bool LoadWad(const fs::path& path, const std::string& gameHint = "");
@@ -34,7 +34,7 @@ public:
     void CloseAll();
 
     // Carregamento lazy de dados de uma entry
-    bool EnsureNodeData(ParsedEntry* e, OpenWad& parentWad);
+    bool EnsureNodeData(AssetEntry* e, AssetContainer& parentWad);
 
     // ISOs carregados (para IsoBrowser)
     bool LoadIso(const fs::path& path);
@@ -51,8 +51,8 @@ public:
     bool IsLoading() const;
 
     // ── Data ──
-    std::vector<OpenWad> paks;  // TOC entries (arquivos dentro de ISOs/PAKs)
-    std::vector<OpenWad> wads;  // WAD internals (tags parseadas de um .WAD)
-    std::vector<std::shared_ptr<GOW::IsoFileSystem>> isos;
+    std::vector<AssetContainer> paks;  // TOC entries (arquivos dentro de ISOs/PAKs)
+    std::vector<AssetContainer> wads;  // WAD internals (tags parseadas de um .WAD)
+    std::vector<std::shared_ptr<Onyx::IsoFileSystem>> isos;
 };
 

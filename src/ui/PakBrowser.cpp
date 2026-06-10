@@ -23,7 +23,7 @@ void PakBrowser::Draw() {
 
   ImGui::Separator();
 
-  auto &db = GOW::Api::Database();
+  auto &db = Onyx::Api::Database();
 
   for (size_t pi = 0; pi < db.paks.size(); pi++) {
     auto &pak = db.paks[pi];
@@ -32,9 +32,9 @@ void PakBrowser::Draw() {
 
     ImGui::PushID((int)pi);
     ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight());
-    GOW::UI::Widgets::IconButtonOpts closeOpts;
+    Onyx::UI::Widgets::IconButtonOpts closeOpts;
     closeOpts.tooltip = "Close PAK";
-    if (GOW::UI::Widgets::IconButton("pak_close", ICON_SF_XMARK, closeOpts)) {
+    if (Onyx::UI::Widgets::IconButton("pak_close", ICON_SF_XMARK, closeOpts)) {
       db.ClosePak(pi);
       ImGui::PopID();
       if (open)
@@ -52,7 +52,7 @@ void PakBrowser::Draw() {
 
       const char *icon = IconForType(entry.typeId);
       const ImVec4 color = ColorForType(entry.typeId);
-      bool is_selected = (&entry == GOW::Api::GetSelected());
+      bool is_selected = (&entry == Onyx::Api::GetSelected());
 
       ImGuiTreeNodeFlags flags =
           ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen |
@@ -61,7 +61,7 @@ void PakBrowser::Draw() {
       // Stable per-row id via entry offset (unique within a PAK).
       char rowId[24];
       snprintf(rowId, sizeof(rowId), "%u", entry.offset);
-      GOW::UI::Widgets::ColoredTreeNode(rowId, entry.name.c_str(), icon, color, flags, is_selected);
+      Onyx::UI::Widgets::ColoredTreeNode(rowId, entry.name.c_str(), icon, color, flags, is_selected);
       
       ImGui::PushID((int)entry.offset);
       if (ImGui::BeginPopupContextItem()) {
@@ -97,7 +97,7 @@ void PakBrowser::Draw() {
 
       // ── Selection (single click) — via Api::SetSelected ──
       if (ImGui::IsItemClicked()) {
-        GOW::Api::SetSelected(&entry, &pak);
+        Onyx::Api::SetSelected(&entry, &pak);
       }
 
       if (ImGui::IsItemHovered()) {
@@ -110,27 +110,27 @@ void PakBrowser::Draw() {
 
       if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
         // WAD files and unknown types → open as WAD browser
-        if (entry.typeId == GOW::TypeId::WadFile ||
-            entry.typeId == GOW::TypeId::Unknown) {
+        if (entry.typeId == Onyx::TypeId::WadFile ||
+            entry.typeId == Onyx::TypeId::Unknown) {
           db.LoadWadFromPakEntry(&entry, pak);
           ImGui::SetWindowFocus("WAD Browser");
         } else {
-          if (GOW::Api::Viewers().CanHandle(entry.typeId)) {
+          if (Onyx::Api::Viewers().CanHandle(entry.typeId)) {
             auto fileHandle = db.OpenPakEntryAsFile(&entry, pak);
             if (fileHandle) {
-              OpenWad tempWad;
+              AssetContainer tempWad;
               tempWad.filename = entry.name;
               tempWad.fullPath = pak.fullPath;
               tempWad.profile = pak.profile;
               tempWad.fileSource = fileHandle;
 
-              ParsedEntry fileEntry = entry;
+              AssetEntry fileEntry = entry;
               fileEntry.offset = 0;
               tempWad.entries.push_back(fileEntry);
 
-              auto viewer = GOW::Api::Viewers().Open(fileEntry, tempWad);
+              auto viewer = Onyx::Api::Viewers().Open(fileEntry, tempWad);
               if (viewer)
-                GOW::Api::Documents().AddTab(viewer);
+                Onyx::Api::Documents().AddTab(viewer);
             }
           } else {
             db.LoadWadFromPakEntry(&entry, pak);

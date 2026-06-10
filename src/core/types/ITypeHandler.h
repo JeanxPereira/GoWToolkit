@@ -9,15 +9,15 @@
 #include <memory>
 
 // Forward declarations
-namespace GOW {
+namespace Onyx {
 class AssetNode;
 class IDocumentContent;
 class SceneData;
-} // namespace GOW
-struct ParsedEntry;
-struct OpenWad;
+} // namespace Onyx
+struct AssetEntry;
+struct AssetContainer;
 
-namespace GOW {
+namespace Onyx {
 
 /// Abstract handler for a single asset type.
 /// Each concrete handler is a self-contained unit that knows how to
@@ -57,7 +57,7 @@ public:
   /// Create a viewer (3D viewport, texture preview, audio player, etc.)
   /// for the given entry. Return nullptr if this type has no viewer.
   virtual std::shared_ptr<IDocumentContent>
-  CreateViewer(const ParsedEntry &entry, OpenWad &wad) {
+  CreateViewer(const AssetEntry &entry, AssetContainer &wad) {
     (void)entry;
     (void)wad;
     return nullptr;
@@ -65,15 +65,15 @@ public:
 
   /// Extract scene data without generating a viewer (useful for composition
   /// layers like Chunks)
-  virtual std::unique_ptr<GOW::SceneData>
-  BuildSceneData(const ParsedEntry &entry, OpenWad &wad) {
+  virtual std::unique_ptr<Onyx::SceneData>
+  BuildSceneData(const AssetEntry &entry, AssetContainer &wad) {
     (void)entry;
     (void)wad;
     return nullptr;
   }
 };
 
-} // namespace GOW
+} // namespace Onyx
 
 // ── Self-registration macro ────────────────────────────────────────────────
 // Usage (at the bottom of a handler .cpp file):
@@ -91,16 +91,16 @@ public:
 #define REGISTER_TYPE(version, HandlerClass)                                   \
   static bool _GOW_REG_CONCAT(_reg_##version##_##HandlerClass##_,              \
                               __LINE__) = [] {                                 \
-    ::GOW::TypeRegistry::Get().RegisterByMagic(                                \
-        ::GOW::GameVersion::version, std::make_unique<HandlerClass>());        \
+    ::Onyx::TypeRegistry::Get().RegisterByMagic(                                \
+        ::Onyx::GameVersion::version, std::make_unique<HandlerClass>());        \
     return true;                                                               \
   }()
 
 #define REGISTER_TAG(version, tagNum, HandlerClass)                            \
   static bool _GOW_REG_CONCAT(_reg_tag_##version##_##HandlerClass##_,          \
                               __LINE__) = [] {                                 \
-    ::GOW::TypeRegistry::Get().RegisterByTag(                                  \
-        ::GOW::GameVersion::version, tagNum,                                   \
+    ::Onyx::TypeRegistry::Get().RegisterByTag(                                  \
+        ::Onyx::GameVersion::version, tagNum,                                   \
         std::make_unique<HandlerClass>());                                     \
     return true;                                                               \
   }()
@@ -111,12 +111,12 @@ public:
 // PAK/TOC.
 #define REGISTER_FILE_TYPE(HandlerClass)                                       \
   static bool _GOW_REG_CONCAT(_reg_ft_##HandlerClass##_, __LINE__) = [] {      \
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(                               \
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(                               \
         std::make_unique<HandlerClass>());                                     \
     return true;                                                               \
   }()
 
 // Forward-declare TypeRegistry so the macros compile
-namespace GOW {
+namespace Onyx {
 class TypeRegistry;
 }

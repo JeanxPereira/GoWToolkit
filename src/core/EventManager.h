@@ -18,43 +18,43 @@
 
 // ── Event definition macros ────────────────────────────────────────────────
 // Usage:
-//   EVENT_DEF(EventWadOpened, OpenWad*);
-//   EventWadOpened::subscribe([](OpenWad* wad) { ... });
+//   EVENT_DEF(EventWadOpened, AssetContainer*);
+//   EventWadOpened::subscribe([](AssetContainer* wad) { ... });
 //   EventWadOpened::post(wadPtr);
 
 #define EVENT_DEF_IMPL(event_name, event_name_string, should_log, ...)                                                  \
-    struct event_name final : public GOW::impl::Event<__VA_ARGS__> {                                                    \
-        constexpr static auto Id = [] { return GOW::impl::EventId(event_name_string); }();                              \
+    struct event_name final : public Onyx::impl::Event<__VA_ARGS__> {                                                    \
+        constexpr static auto Id = [] { return Onyx::impl::EventId(event_name_string); }();                              \
         constexpr static auto ShouldLog = (should_log);                                                                 \
         explicit event_name(Callback func) noexcept : Event(std::move(func)) { }                                        \
                                                                                                                         \
-        static GOW::EventManager::EventList::iterator subscribe(Event::Callback function) {                             \
-            return GOW::EventManager::subscribe<event_name>(std::move(function));                                        \
+        static Onyx::EventManager::EventList::iterator subscribe(Event::Callback function) {                             \
+            return Onyx::EventManager::subscribe<event_name>(std::move(function));                                        \
         }                                                                                                               \
         template<typename = void>                                                                                       \
-        static GOW::EventManager::EventList::iterator subscribe(Event::BaseCallback function)                           \
+        static Onyx::EventManager::EventList::iterator subscribe(Event::BaseCallback function)                           \
         requires (!std::same_as<Event::Callback, Event::BaseCallback>) {                                                \
-            return GOW::EventManager::subscribe<event_name>([function = std::move(function)](auto && ...) {              \
+            return Onyx::EventManager::subscribe<event_name>([function = std::move(function)](auto && ...) {              \
                 function();                                                                                             \
             });                                                                                                         \
         }                                                                                                               \
         static void subscribe(void *token, Event::Callback function) {                                                  \
-            GOW::EventManager::subscribe<event_name>(token, std::move(function));                                        \
+            Onyx::EventManager::subscribe<event_name>(token, std::move(function));                                        \
         }                                                                                                               \
         template<typename = void>                                                                                       \
         static void subscribe(void *token, Event::BaseCallback function)                                                \
         requires (!std::same_as<Event::Callback, Event::BaseCallback>) {                                                \
-            return GOW::EventManager::subscribe<event_name>(token,                                                       \
+            return Onyx::EventManager::subscribe<event_name>(token,                                                       \
                 [function = std::move(function)](auto && ...) { function(); });                                          \
         }                                                                                                               \
-        static void unsubscribe(const GOW::EventManager::EventList::iterator &token) noexcept {                         \
-            GOW::EventManager::unsubscribe(token);                                                                       \
+        static void unsubscribe(const Onyx::EventManager::EventList::iterator &token) noexcept {                         \
+            Onyx::EventManager::unsubscribe(token);                                                                       \
         }                                                                                                               \
         static void unsubscribe(void *token) noexcept {                                                                 \
-            GOW::EventManager::unsubscribe<event_name>(token);                                                           \
+            Onyx::EventManager::unsubscribe<event_name>(token);                                                           \
         }                                                                                                               \
         static void post(auto &&...args) {                                                                              \
-            GOW::EventManager::post<event_name>(std::forward<decltype(args)>(args)...);                                  \
+            Onyx::EventManager::post<event_name>(std::forward<decltype(args)>(args)...);                                  \
         }                                                                                                               \
     }
 
@@ -62,7 +62,7 @@
 #define EVENT_DEF_NO_LOG(event_name, ...)   EVENT_DEF_IMPL(event_name, #event_name, false, __VA_ARGS__)
 
 
-namespace GOW {
+namespace Onyx {
 
     namespace impl {
 
@@ -220,4 +220,4 @@ namespace GOW {
         }
     };
 
-} // namespace GOW
+} // namespace Onyx

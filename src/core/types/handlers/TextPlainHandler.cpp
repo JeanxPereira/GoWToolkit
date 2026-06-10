@@ -13,20 +13,20 @@
 
 namespace {
 
-class TextPlainHandler : public GOW::ITypeHandler {
+class TextPlainHandler : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId GetId() const override { return GOW::TypeId::TextPlain; }
+    Onyx::TypeId GetId() const override { return Onyx::TypeId::TextPlain; }
     const char* GetName() const override { return "Text"; }
     uint32_t    GetMagic() const override { return 0; } // extension-based
     const char* GetIcon() const override { return ICON_SF_DOCUMENT; }
     Color4f     GetColor() const override { return {0.85f, 0.85f, 0.85f, 1.0f}; }
 
-    std::shared_ptr<GOW::IDocumentContent>
-    CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+    std::shared_ptr<Onyx::IDocumentContent>
+    CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
         auto bytes = wad.fileSource->ReadAll();
         std::string text(reinterpret_cast<const char*>(bytes.data()), bytes.size());
-        return std::make_shared<GOW::TextEditorViewer>(entry.name, std::move(text));
+        return std::make_shared<Onyx::TextEditorViewer>(entry.name, std::move(text));
     }
 };
 

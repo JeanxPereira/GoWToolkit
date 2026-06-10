@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 
 class GOW2AnimationParser {
 public:
@@ -12,4 +12,4 @@ public:
     static std::unique_ptr<AnimationData> Parse(const uint8_t* data, size_t size);
 };
 
-} // namespace GOW
+} // namespace Onyx

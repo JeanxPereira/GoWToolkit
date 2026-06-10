@@ -9,7 +9,7 @@
 #include <cstring>
 #include <cmath>
 
-namespace GOW {
+namespace Onyx {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ static float ReadF32(const uint8_t* buf) {
 }
 
 // Build a rotation matrix from Euler angles in radians.
-// GOW uses XYZ rotation order (same as Go's utils.EulerToQuat).
+// Onyx uses XYZ rotation order (same as Go's utils.EulerToQuat).
 // The Go code converts: euler * (180/PI) into degrees, then EulerToQuat.
 // Here we work in radians directly since we build the matrix ourselves.
 //
@@ -75,7 +75,7 @@ static bool IsSkyInstance(const std::string& name) {
 
 // ── Parser ─────────────────────────────────────────────────────────────────
 
-std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const ParsedEntry& entry, std::shared_ptr<IFile> parentFile) {
+std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const AssetEntry& entry, std::shared_ptr<IFile> parentFile) {
     if (!parentFile || entry.size < 0x60) return nullptr;
 
     auto data = std::make_shared<InstanceData>();
@@ -146,4 +146,4 @@ std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const ParsedEntry& entry
     return data;
 }
 
-} // namespace GOW
+} // namespace Onyx

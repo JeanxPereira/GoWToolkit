@@ -17,7 +17,7 @@
 #include <array>
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 namespace Gowr {
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
@@ -169,4 +169,4 @@ std::string WadAssetName::CanonicalName() const {
 }
 
 } // namespace Gowr
-} // namespace GOW
+} // namespace Onyx

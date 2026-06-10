@@ -6,7 +6,7 @@
 #include "core/WadTypes.h"
 #include "core/vfs/IFile.h"
 
-namespace GOW {
+namespace Onyx {
 
 struct InstanceData {
     // GOW1: extracted from binary data [0x04:0x1C].
@@ -27,7 +27,7 @@ struct InstanceData {
 
 class GOW2InstanceParser {
 public:
-    static std::shared_ptr<InstanceData> Parse(const ParsedEntry& entry, std::shared_ptr<IFile> parentFile);
+    static std::shared_ptr<InstanceData> Parse(const AssetEntry& entry, std::shared_ptr<IFile> parentFile);
 };
 
-} // namespace GOW
+} // namespace Onyx

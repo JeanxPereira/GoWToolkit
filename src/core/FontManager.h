@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-// ── GOW Font Manager ───────────────────────────────────────────────────────
+// ── Onyx Font Manager ───────────────────────────────────────────────────────
 // Centralized font management inspired by ImHex's font_loader.cpp.
 //
 // Owns the font list, atlas build, icon font merge, and GPU upload.
@@ -11,14 +11,14 @@
 // WindowDecorator, and App.
 //
 // Usage:
-//   GOW::Fonts::Init();                        // enumerate system fonts
-//   GOW::Fonts::SetIconFont({...});             // configure icon font
-//   GOW::Fonts::BuildAtlas(fontIndex, size);    // build ImGui font atlas
+//   Onyx::Fonts::Init();                        // enumerate system fonts
+//   Onyx::Fonts::SetIconFont({...});             // configure icon font
+//   Onyx::Fonts::BuildAtlas(fontIndex, size);    // build ImGui font atlas
 //   // ... after ImGui::Render() ...
-//   if (GOW::Fonts::IsPendingRebuild())
-//       GOW::Fonts::UploadAtlas();              // GPU upload
+//   if (Onyx::Fonts::IsPendingRebuild())
+//       Onyx::Fonts::UploadAtlas();              // GPU upload
 
-namespace GOW::Fonts {
+namespace Onyx::Fonts {
 
 // ── Font entry (system or bundled font) ───────────────────────────────────
 struct FontEntry {
@@ -69,4 +69,4 @@ float  GetCurrentFontSize();
 int    GetCurrentFontIndex();
 const std::string& GetCurrentFontPath();
 
-} // namespace GOW::Fonts
+} // namespace Onyx::Fonts

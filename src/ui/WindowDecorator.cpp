@@ -5,7 +5,7 @@
 #include "imgui_internal.h"
 
 void WindowDecorator::init(GLFWwindow* window, const char* /*unused*/) {
-    // Icon font is now managed centrally by GOW::Fonts::BuildAtlas()
+    // Icon font is now managed centrally by Onyx::Fonts::BuildAtlas()
     NativeWindow::setup(window, borderless);
 }
 

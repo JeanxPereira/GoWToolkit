@@ -1,14 +1,14 @@
 #include "ProfileManager.h"
 
-namespace GOW {
+namespace Onyx {
 
-void ProfileManager::RegisterProfile(std::shared_ptr<IGameProfile> profile) {
+void ProfileManager::RegisterProfile(std::shared_ptr<IAssetProfile> profile) {
     if (profile) {
         m_profiles.push_back(std::move(profile));
     }
 }
 
-std::shared_ptr<IGameProfile> ProfileManager::DetectProfileForFile(const std::filesystem::path& path) const {
+std::shared_ptr<IAssetProfile> ProfileManager::DetectProfileForFile(const std::filesystem::path& path) const {
     for (const auto& profile : m_profiles) {
         if (profile->Detect(path)) {
             return profile;
@@ -17,7 +17,7 @@ std::shared_ptr<IGameProfile> ProfileManager::DetectProfileForFile(const std::fi
     return nullptr;
 }
 
-std::shared_ptr<IGameProfile> ProfileManager::FindProfileByHint(const std::string& hint) const {
+std::shared_ptr<IAssetProfile> ProfileManager::FindProfileByHint(const std::string& hint) const {
     std::string hintLower = hint;
     for (auto& c : hintLower) c = (char)tolower(c);
 
@@ -45,4 +45,4 @@ std::shared_ptr<IGameProfile> ProfileManager::FindProfileByHint(const std::strin
     return nullptr;
 }
 
-} // namespace GOW
+} // namespace Onyx

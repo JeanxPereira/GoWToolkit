@@ -4,10 +4,10 @@
 #include <vector>
 #include <utility>
 
-namespace GOW {
+namespace Onyx {
 
 // ── Data Types ─────────────────────────────────────────────────────────────
-// All supported binary field types for GOW format reflection.
+// All supported binary field types for Onyx format reflection.
 enum class DataType : uint8_t {
     // Primitives
     Bool,
@@ -129,4 +129,4 @@ inline const char* DataTypeName(DataType t) {
     }
 }
 
-} // namespace GOW
+} // namespace Onyx

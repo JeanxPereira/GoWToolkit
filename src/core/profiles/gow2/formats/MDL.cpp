@@ -1,6 +1,6 @@
 #include "MDL.h"
 
-namespace GOW {
+namespace Onyx {
 namespace Formats {
 namespace GOW2 {
 
@@ -18,4 +18,4 @@ std::unique_ptr<StructDef> MDL::CreateSchema() {
 
 } // namespace GOW2
 } // namespace Formats
-} // namespace GOW
+} // namespace Onyx

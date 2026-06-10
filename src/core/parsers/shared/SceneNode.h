@@ -9,7 +9,7 @@
 #include "TextureData.h"
 #include "AnimationData.h"
 
-namespace GOW {
+namespace Onyx {
 
 /// Blend mode for a render batch, parsed from mat.go flags
 enum class BlendMode : uint8_t {
@@ -71,4 +71,4 @@ struct SceneData {
     }
 };
 
-} // namespace GOW
+} // namespace Onyx
