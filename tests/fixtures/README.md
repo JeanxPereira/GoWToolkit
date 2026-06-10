@@ -35,14 +35,14 @@ at the first 16-byte-aligned boundary at or past 256 KB that lands on a
 `GROUP_END` or `HEADER_START` tag. The resulting slice retains the
 WAD's structural header plus the first few server instances /
 groupings, which exercise the `WADTAG_HEADER_START`, `WADTAG_GROUP_*`,
-and `WADTAG_SERVER_INST` paths in `ProfileGOW2::ParseWad`.
+and `WADTAG_SERVER_INST` paths in `ProfileGOW2::ParseContainer`.
 
 ### GOWR — `gowr/wad_minimal.wad`
 
 Source: `r_athena00.wad`. The file is shipped as-is. The GOWR WAD layout
 (`docs/GoWRknk/Formats/Wad.md`, `src/core/profiles/gowr/GOWRTypes.h`) is
 LZ4-framed and payload offsets are reconstructed at parse time by the
-`blockBitSet` flush algorithm in `ProfileGOWR::ParseWad`. Modifying the
+`blockBitSet` flush algorithm in `ProfileGOWR::ParseContainer`. Modifying the
 `FileDesc` array invalidates those offsets, so naive truncation is not
 viable.
 
