@@ -3,7 +3,7 @@
 
 using GLuint = unsigned int;
 
-namespace GOW {
+namespace Onyx {
 
 class Shader;
 
@@ -22,4 +22,4 @@ private:
     bool   m_initialized = false;
 };
 
-} // namespace GOW
+} // namespace Onyx

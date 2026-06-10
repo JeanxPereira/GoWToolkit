@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace GOW {
+namespace Onyx {
 
 static constexpr float kEps = 1.0f / (1024.0f * 16.0f);
 static constexpr float kQuatToFloat = 1.0f / (1 << 14);
@@ -476,4 +476,4 @@ std::vector<glm::mat4> AnimationPlayer::ComputeJointMatrices() const {
     return result;
 }
 
-} // namespace GOW
+} // namespace Onyx

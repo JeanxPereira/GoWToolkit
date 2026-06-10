@@ -5,7 +5,7 @@
 #include "core/types/TypeId.h"
 #include "ui/viewers/IDocumentContent.h"
 
-using namespace GOW;
+using namespace Onyx;
 
 TEST_CASE("ViewerRegistry Open logic") {
     ViewerRegistry registry;

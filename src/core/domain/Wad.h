@@ -12,18 +12,18 @@
 
 #include "core/domain/Entry.h"
 
-namespace GOW {
+namespace Onyx {
     class IGameProfile;
     class IFile;
 }
 
 // NOTE: `OpenWad` lives at global scope to match the legacy layout in
-// `core/WadTypes.h`. The fields it owns are scoped under `GOW::`. It
+// `core/WadTypes.h`. The fields it owns are scoped under `Onyx::`. It
 // will move into the namespace in a later milestone.
 struct OpenWad {
     std::string                        filename;
     std::string                        fullPath;
-    std::shared_ptr<GOW::IGameProfile> profile;
-    std::shared_ptr<GOW::IFile>        fileSource;
+    std::shared_ptr<Onyx::IGameProfile> profile;
+    std::shared_ptr<Onyx::IFile>        fileSource;
     std::vector<ParsedEntry>           entries;
 };

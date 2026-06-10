@@ -9,7 +9,7 @@
 #define BCDEC_IMPLEMENTATION
 #include "bcdec.h"
 
-namespace GOW {
+namespace Onyx {
 
 // Format enum matching GNF format IDs we encounter
 enum class BcFormat {
@@ -133,4 +133,4 @@ inline bool GnfFmtToBc(uint32_t gnfFmt, BcFormat& out) {
     }
 }
 
-} // namespace GOW
+} // namespace Onyx

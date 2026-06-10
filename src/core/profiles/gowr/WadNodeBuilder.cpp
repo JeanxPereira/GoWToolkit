@@ -8,7 +8,7 @@
 // Four-pass WAD entry tree builder for God of War Ragnarök.
 // See WadNodeBuilder.h for architecture overview.
 
-namespace GOW {
+namespace Onyx {
 
 static Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
     if (auto* t = e.profileTag.As<Gowr::GowrProfileTag>()) {
@@ -440,7 +440,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(OpenWad& outWad) {
                 if (auto* t = pairNode.profileTag.As<Gowr::GowrProfileTag>()) {
                     auto newTag = *t;
                     newTag.role = WadEntryRole::TexturePair;
-                    pairNode.profileTag = GOW::ProfileTag::Of(newTag);
+                    pairNode.profileTag = Onyx::ProfileTag::Of(newTag);
                 }
                 pairNode.displayName = StripTextureHash(e.name);
                 assetsFolder.children.push_back(std::move(pairNode));
@@ -667,10 +667,10 @@ ParsedEntry WadNodeBuilder::ToNode(const RawEntry& r, const std::string& wadFile
     e.typeId      = RoleToTypeId(r.role);
     e.kind        = KindOf(e.typeId);
     e.displayName = r.displayName;
-    e.profileTag  = GOW::ProfileTag::Of(Gowr::GowrProfileTag{
+    e.profileTag  = Onyx::ProfileTag::Of(Gowr::GowrProfileTag{
         r.role,
         r.block,
-        GOW::Gowr::WadAssetName::Parse(r.name)
+        Onyx::Gowr::WadAssetName::Parse(r.name)
     });
     return e;
 }
@@ -686,10 +686,10 @@ ParsedEntry WadNodeBuilder::MakeFolder(
     f.wadName    = m_wadFilename;
     f.offset     = 0;
     f.kind       = KindOf(f.typeId);
-    f.profileTag = GOW::ProfileTag::Of(Gowr::GowrProfileTag{
+    f.profileTag = Onyx::ProfileTag::Of(Gowr::GowrProfileTag{
         role,
         block,
-        GOW::Gowr::WadAssetName::Parse(name)
+        Onyx::Gowr::WadAssetName::Parse(name)
     });
     return f;
 }
@@ -743,4 +743,4 @@ std::string WadNodeBuilder::ExtractGoContext(const std::string& name) {
     return name.substr(us + 1);  // e.g. "envRaceIntro_dust_landing"
 }
 
-} // namespace GOW
+} // namespace Onyx

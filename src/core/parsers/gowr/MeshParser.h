@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 
-namespace GOW {
+namespace Onyx {
 
 // Forward-decl: ParseMeshDefn signature uses shared_ptr<GpuMesh> only as
 // an opaque handle; full def lives in rendering/GpuMesh.h. Avoids pulling
@@ -117,4 +117,4 @@ private:
                             MeshPart& outPart);
 };
 
-} // namespace GOW
+} // namespace Onyx

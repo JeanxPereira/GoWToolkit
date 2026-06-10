@@ -2,7 +2,7 @@
 #include <string>
 #include "core/domain/MediaKind.h"
 
-using namespace GOW;
+using namespace Onyx;
 
 TEST_CASE("MediaKind Constexpr Evaluation") {
     // Verification that KindOf is constexpr

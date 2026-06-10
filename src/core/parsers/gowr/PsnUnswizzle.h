@@ -4,7 +4,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace GOW {
+namespace Onyx {
 
 inline int Morton(int t, int sx, int sy) {
     int num = 0;
@@ -69,4 +69,4 @@ inline void UnSwizzle(const uint8_t* src, size_t srcLen, uint8_t* dst, uint32_t 
     }
 }
 
-} // namespace GOW
+} // namespace Onyx

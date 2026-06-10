@@ -6,7 +6,7 @@
 // ── LodPackIndex.cpp ───────────────────────────────────────────────────────
 // See LodPackIndex.h for the binary layout documentation.
 
-namespace GOW {
+namespace Onyx {
 
 // ── AddPack ────────────────────────────────────────────────────────────────
 int LodPackIndex::AddPack(const std::filesystem::path& path,
@@ -192,4 +192,4 @@ bool LodPackIndex::ReadBlob(const LodEntry& entry,
     return true;
 }
 
-} // namespace GOW
+} // namespace Onyx

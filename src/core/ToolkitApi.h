@@ -6,7 +6,7 @@
 class AssetDatabase;
 class AppConfig;
 
-namespace GOW {
+namespace Onyx {
     class ProfileManager;
     class TypeRegistry;
     class ViewerRegistry;
@@ -16,13 +16,13 @@ namespace GOW {
 struct ParsedEntry;
 struct OpenWad;
 
-namespace GOW::Api {
+namespace Onyx::Api {
 
     struct InitParams {
         AssetDatabase*       db = nullptr;
         AppConfig*           config = nullptr;
-        GOW::ViewerRegistry* viewers = nullptr;
-        GOW::DocumentWindow* documents = nullptr;
+        Onyx::ViewerRegistry* viewers = nullptr;
+        Onyx::DocumentWindow* documents = nullptr;
     };
 
     /// Initialize the facade pointers. Call once in App::init().
@@ -55,4 +55,4 @@ namespace GOW::Api {
     /// Set the globally selected entry and post EventAssetSelected.
     void SetSelected(ParsedEntry* entry, OpenWad* wad);
 
-} // namespace GOW::Api
+} // namespace Onyx::Api

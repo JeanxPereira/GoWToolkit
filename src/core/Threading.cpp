@@ -3,7 +3,7 @@
 #include <atomic>
 #include <thread>
 
-namespace GOW::Threading {
+namespace Onyx::Threading {
 
 namespace {
 
@@ -28,4 +28,4 @@ bool IsMainThread() {
     return std::this_thread::get_id() == g_mainId;
 }
 
-} // namespace GOW::Threading
+} // namespace Onyx::Threading

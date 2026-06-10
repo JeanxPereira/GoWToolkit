@@ -5,7 +5,7 @@
 #include "core/domain/BoundingBox.h"
 #include "core/domain/MeshVertex.h"
 
-namespace GOW {
+namespace Onyx {
 
 // A portion of a mesh using a single material
 struct MeshPart {
@@ -27,4 +27,4 @@ struct MeshData {
     BoundingBox bounds;
 };
 
-} // namespace GOW
+} // namespace Onyx

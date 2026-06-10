@@ -3,7 +3,7 @@
 
 
 
-namespace GOW {
+namespace Onyx {
 
 class Viewport3D;
 
@@ -31,4 +31,4 @@ protected:
     bool m_isOpen = true;
 };
 
-} // namespace GOW
+} // namespace Onyx

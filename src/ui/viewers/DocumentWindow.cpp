@@ -3,7 +3,7 @@
 #include "core/Events.h"
 #include "ui/Widgets.h"
 
-namespace GOW {
+namespace Onyx {
 
 DocumentWindow::DocumentWindow() {
     // Subscribe to EventAssetSelected — when an asset is selected in any browser,
@@ -90,7 +90,7 @@ void DocumentWindow::Draw() {
             ImGuiTabItemFlags flags = ImGuiTabItemFlags_None;
             std::string tabTitle = tab->GetName() + "###" + std::to_string(reinterpret_cast<uintptr_t>(tab.get()));
             
-            if (GOW::UI::Widgets::BeginTabItem(tabTitle.c_str(), &open, flags)) {
+            if (Onyx::UI::Widgets::BeginTabItem(tabTitle.c_str(), &open, flags)) {
                 m_activeTabIndex = (int)i; // Track active tab
                 tab->Draw();
                 ImGui::EndTabItem();
@@ -114,4 +114,4 @@ void DocumentWindow::Draw() {
     ImGui::End();
 }
 
-} // namespace GOW
+} // namespace Onyx

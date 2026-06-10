@@ -4,7 +4,7 @@
 #include <glad/glad.h>
 #include <imgui.h>
 
-namespace GOW {
+namespace Onyx {
 
 MaterialViewer::MaterialViewer(
     const std::string &name,
@@ -164,7 +164,7 @@ void MaterialViewer::Draw() {
         // Make the layer number clickable
         char layerLabel[32];
         snprintf(layerLabel, sizeof(layerLabel), "%zu##layer", i);
-        if (GOW::UI::Widgets::Selectable(layerLabel, isSelected,
+        if (Onyx::UI::Widgets::Selectable(layerLabel, isSelected,
                               ImGuiSelectableFlags_SpanAllColumns)) {
           m_selectedLayer = (int)i;
         }
@@ -213,4 +213,4 @@ void MaterialViewer::Draw() {
   ImGui::EndChild();
 }
 
-} // namespace GOW
+} // namespace Onyx

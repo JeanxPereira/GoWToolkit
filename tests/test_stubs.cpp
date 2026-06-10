@@ -8,7 +8,7 @@
 
 #include "core/parsers/gowr/TexPackIndex.h"
 
-namespace GOW {
+namespace Onyx {
 
 TexPackIndex& GetTexIndex() {
     // No real index — golden tests only need ParseWad to terminate, not to
@@ -17,4 +17,4 @@ TexPackIndex& GetTexIndex() {
     return stub;
 }
 
-} // namespace GOW
+} // namespace Onyx

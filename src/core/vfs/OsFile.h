@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 
-namespace GOW {
+namespace Onyx {
 
 class OsFile : public IFile {
 public:
@@ -23,4 +23,4 @@ private:
     size_t m_size = 0;
 };
 
-} // namespace GOW
+} // namespace Onyx

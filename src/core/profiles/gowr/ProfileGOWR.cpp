@@ -18,7 +18,7 @@
 // Binary structures (GOWRWadHeader, GOWRFileDesc, GOWRTypeToString) have been
 // moved to GOWRTypes.h so that WadNodeBuilder.cpp can share them.
 
-namespace GOW {
+namespace Onyx {
 
 ProfileGOWR::ProfileGOWR() {}
 
@@ -82,7 +82,7 @@ bool ProfileGOWR::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
         LZ4F_decompress(ctx, dst.data(), &outSize, src.data(), &srcSize, &opn);
         LZ4F_freeDecompressionContext(ctx);
 
-        parsedFile = std::make_shared<GOW::MemoryFile>(std::move(dst));
+        parsedFile = std::make_shared<Onyx::MemoryFile>(std::move(dst));
         fileSize   = static_cast<int64_t>(outSize);
         LOG_INFO("[GOWR] Decompressed to %lld bytes.", fileSize);
     }
@@ -218,4 +218,4 @@ bool ProfileGOWR::LoadFromArchive(
     return false;
 }
 
-} // namespace GOW
+} // namespace Onyx

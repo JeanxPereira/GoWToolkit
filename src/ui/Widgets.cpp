@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <unordered_map>
 
-namespace GOW::UI::Widgets {
+namespace Onyx::UI::Widgets {
 
 namespace {
 
@@ -43,7 +43,7 @@ inline bool IsRectHovered(const PredictedRect& r) {
 // if a colour was pushed (caller must Pop matching count).
 inline bool PushTextForSurface(ImGuiCol surfaceCol) {
     ImVec4 bg = ImGui::GetStyleColorVec4(surfaceCol);
-    ImVec4 textCol = GOW::Theme::TextForSurface(bg);
+    ImVec4 textCol = Onyx::Theme::TextForSurface(bg);
     ImGui::PushStyleColor(ImGuiCol_Text, textCol);
     return true;
 }
@@ -269,4 +269,4 @@ bool BeginTabItem(const char* label, bool* p_open, ImGuiTabItemFlags flags) {
     return open;
 }
 
-} // namespace GOW::UI::Widgets
+} // namespace Onyx::UI::Widgets

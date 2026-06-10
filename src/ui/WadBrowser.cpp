@@ -17,11 +17,11 @@
 #include <fstream>
 #include "core/profiles/gowr/GowrProfileTag.h"
 
-static GOW::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
-    if (auto* t = e.profileTag.As<GOW::Gowr::GowrProfileTag>()) {
+static Onyx::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
+    if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
         return t->role;
     }
-    return GOW::Gowr::WadEntryRole::Unknown;
+    return Onyx::Gowr::WadEntryRole::Unknown;
 }
 
 WadBrowser::WadBrowser() {
@@ -37,18 +37,18 @@ WadBrowser::~WadBrowser() {
 // Delegates to the centralized AssetVisibility registry which handles both
 // GOW2 (TypeId-based) and GOWR (role→TypeId mapping) in one code path.
 // Users can toggle visibility per type via the Asset Filters panel.
-static GOW::GameVersion DetectGameVersion(const ParsedEntry& e) {
+static Onyx::GameVersion DetectGameVersion(const ParsedEntry& e) {
     // GOWR entries have a classified role via GowrProfileTag
-    if (auto* t = e.profileTag.As<GOW::Gowr::GowrProfileTag>()) {
-        if (t->role != GOW::Gowr::WadEntryRole::Unknown)
-            return GOW::GameVersion::GOWR;
+    if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
+        if (t->role != Onyx::Gowr::WadEntryRole::Unknown)
+            return Onyx::GameVersion::GOWR;
     }
-    return GOW::GameVersion::GOW2;
+    return Onyx::GameVersion::GOW2;
 }
 
 static bool IsEntryVisible(const ParsedEntry& entry) {
     auto ver = DetectGameVersion(entry);
-    return GOW::AssetVisibility::Get().IsVisible(ver, entry.typeId);
+    return Onyx::AssetVisibility::Get().IsVisible(ver, entry.typeId);
 }
 
 
@@ -56,7 +56,7 @@ void WadBrowser::Draw() {
     if (!visible) return;
     ImGui::Begin("WAD Browser", &visible);
 
-    auto& db = GOW::Api::Database();
+    auto& db = Onyx::Api::Database();
 
     if (db.wads.empty()) {
         ImGui::TextDisabled("No WAD loaded");
@@ -66,10 +66,10 @@ void WadBrowser::Draw() {
 
     static const char* kindNames[]           = {"All",   "Image",    "Mesh",     "Audio",
                                                 "Video", "Material", "Animation"};
-    static const GOW::MediaKind kindValues[] = {
-        GOW::MediaKind::Unknown, // All
-        GOW::MediaKind::Image,   GOW::MediaKind::Mesh,     GOW::MediaKind::Audio,
-        GOW::MediaKind::Video,   GOW::MediaKind::Material, GOW::MediaKind::Animation};
+    static const Onyx::MediaKind kindValues[] = {
+        Onyx::MediaKind::Unknown, // All
+        Onyx::MediaKind::Image,   Onyx::MediaKind::Mesh,     Onyx::MediaKind::Audio,
+        Onyx::MediaKind::Video,   Onyx::MediaKind::Material, Onyx::MediaKind::Animation};
 
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 130);
     ImGui::InputTextWithHint("##filter", "Filter entries...", m_filter, sizeof(m_filter));
@@ -83,8 +83,8 @@ void WadBrowser::Draw() {
     bool hasFilter = !filterLower.empty();
 
     bool hasKindFilter = (m_kindFilterIndex > 0);
-    GOW::MediaKind targetKind =
-        hasKindFilter ? kindValues[m_kindFilterIndex] : GOW::MediaKind::Unknown;
+    Onyx::MediaKind targetKind =
+        hasKindFilter ? kindValues[m_kindFilterIndex] : Onyx::MediaKind::Unknown;
 
     std::function<bool(const ParsedEntry&)> hasMatchingDescendant;
     hasMatchingDescendant = [&](const ParsedEntry& entry) {
@@ -111,20 +111,20 @@ void WadBrowser::Draw() {
         ImGui::SameLine(windowWidth - buttonsWidth);
         ImGui::SetNextItemAllowOverlap();
         {
-            GOW::UI::Widgets::IconButtonOpts opts;
+            Onyx::UI::Widgets::IconButtonOpts opts;
             opts.tooltip = "Load Entire Map/Level";
-            if (GOW::UI::Widgets::IconButton("wad_map", ICON_SF_MAP_FILL, opts)) {
-                auto viewer = std::make_shared<GOW::MapViewer>(wad.filename, wad);
-                GOW::Api::Documents().AddTab(viewer);
+            if (Onyx::UI::Widgets::IconButton("wad_map", ICON_SF_MAP_FILL, opts)) {
+                auto viewer = std::make_shared<Onyx::MapViewer>(wad.filename, wad);
+                Onyx::Api::Documents().AddTab(viewer);
             }
         }
 
         ImGui::SameLine();
         ImGui::SetNextItemAllowOverlap();
         {
-            GOW::UI::Widgets::IconButtonOpts opts;
+            Onyx::UI::Widgets::IconButtonOpts opts;
             opts.tooltip = "Close WAD";
-            if (GOW::UI::Widgets::IconButton("wad_close", ICON_SF_XMARK, opts)) {
+            if (Onyx::UI::Widgets::IconButton("wad_close", ICON_SF_XMARK, opts)) {
                 if (wadOpen) ImGui::TreePop();
                 ImGui::PopID();
                 EventWadClosed::post(wadIdx);
@@ -178,13 +178,13 @@ void WadBrowser::Draw() {
                     flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
                 }
                 if (hasFilter) flags |= ImGuiTreeNodeFlags_DefaultOpen;
-                if (GOW::Api::GetSelected() == &entry) flags |= ImGuiTreeNodeFlags_Selected;
+                if (Onyx::Api::GetSelected() == &entry) flags |= ImGuiTreeNodeFlags_Selected;
 
                 // ── Icon + color (prefer role-based for GOWR entries) ────
                 const char* icon;
                 ImVec4 color;
                 auto role = GetRole(entry);
-                if (role != GOW::Gowr::WadEntryRole::Unknown) {
+                if (role != Onyx::Gowr::WadEntryRole::Unknown) {
                     icon  = IconForRole(role);
                     color = ColorForRole(role);
                 } else {
@@ -197,20 +197,20 @@ void WadBrowser::Draw() {
                     entry.displayName.empty() ? entry.name : entry.displayName;
 
                 // ── TreeNode with formatted label ────────────────────
-                bool isSelected = (GOW::Api::GetSelected() == &entry);
-                bool node_open = GOW::UI::Widgets::ColoredTreeNode("", label_name.c_str(), icon, color, flags, isSelected);
+                bool isSelected = (Onyx::Api::GetSelected() == &entry);
+                bool node_open = Onyx::UI::Widgets::ColoredTreeNode("", label_name.c_str(), icon, color, flags, isSelected);
 
                 // ── Selection (single click) — via Api::SetSelected ──
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
                     db.EnsureNodeData(&entry, wad);
-                    GOW::Api::SetSelected(&entry, &wad);
+                    Onyx::Api::SetSelected(&entry, &wad);
                 }
 
                 // ── Double-click action ────────────────────────────────
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     if (wad.fileSource) {
-                        auto viewer = GOW::Api::Viewers().Open(entry, wad);
-                        if (viewer) GOW::Api::Documents().AddTab(viewer);
+                        auto viewer = Onyx::Api::Viewers().Open(entry, wad);
+                        if (viewer) Onyx::Api::Documents().AddTab(viewer);
                     }
                 }
 
@@ -231,19 +231,19 @@ void WadBrowser::Draw() {
                     ImGui::Separator();
 
                     if (wad.fileSource &&
-                        GOW::Api::Viewers().CanHandle(entry.typeId)) {
+                        Onyx::Api::Viewers().CanHandle(entry.typeId)) {
                         auto title = std::string(ICON_SF_FOLDER_FILL) + "  Open";
                         if (ImGui::MenuItem(title.c_str())) {
-                            auto viewer = GOW::Api::Viewers().Open(entry, wad);
-                            if (viewer) GOW::Api::Documents().AddTab(viewer);
+                            auto viewer = Onyx::Api::Viewers().Open(entry, wad);
+                            if (viewer) Onyx::Api::Documents().AddTab(viewer);
                         }
                     }
 
                     // Type-specific extras: "View All Textures" for MDL with TXR children
-                    if (entry.typeId == GOW::TypeId::Model && has_children && wad.fileSource) {
+                    if (entry.typeId == Onyx::TypeId::Model && has_children && wad.fileSource) {
                         int txrCount = 0;
                         for (const auto& c : entry.children) {
-                            if (c.typeId == GOW::TypeId::Texture) txrCount++;
+                            if (c.typeId == Onyx::TypeId::Texture) txrCount++;
                         }
                         if (txrCount > 0) {
                             char menuLabel[64];
@@ -251,9 +251,9 @@ void WadBrowser::Draw() {
                                      ICON_SF_PHOTO " View All Textures (%d)", txrCount);
                             if (ImGui::MenuItem(menuLabel)) {
                                 for (const auto& c : entry.children) {
-                                    if (c.typeId == GOW::TypeId::Texture) {
-                                        auto viewer = GOW::Api::Viewers().Open(c, wad);
-                                        if (viewer) GOW::Api::Documents().AddTab(viewer);
+                                    if (c.typeId == Onyx::TypeId::Texture) {
+                                        auto viewer = Onyx::Api::Viewers().Open(c, wad);
+                                        if (viewer) Onyx::Api::Documents().AddTab(viewer);
                                     }
                                 }
                             }

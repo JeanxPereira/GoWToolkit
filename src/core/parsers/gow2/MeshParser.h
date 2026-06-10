@@ -4,7 +4,7 @@
 #include "core/vfs/IFile.h"
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 
 class GOW2MeshParser {
 public:
@@ -17,4 +17,4 @@ private:
     static bool ParseDmaChain(const std::vector<uint8_t>& allData, uint32_t objectOffset, uint32_t packetOffset, uint32_t dmaCount, MeshPart& outPart);
 };
 
-} // namespace GOW
+} // namespace Onyx

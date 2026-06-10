@@ -77,7 +77,7 @@ TEST_CASE("ThemeContrast: accent surfaces stay dark in Dark mode") {
 
     for (const auto& fix : kFixtures) {
         SUBCASE(fix.name) {
-            GOW::Theme::ApplyTheme(fix.color, GOW::Theme::ThemeMode::Dark,
+            Onyx::Theme::ApplyTheme(fix.color, Onyx::Theme::ThemeMode::Dark,
                                    /*animate=*/false);
 
             ImGuiStyle& s = ImGui::GetStyle();
@@ -103,7 +103,7 @@ TEST_CASE("ThemeContrast: accent surfaces stay light in Light mode") {
 
     for (const auto& fix : kFixtures) {
         SUBCASE(fix.name) {
-            GOW::Theme::ApplyTheme(fix.color, GOW::Theme::ThemeMode::Light,
+            Onyx::Theme::ApplyTheme(fix.color, Onyx::Theme::ThemeMode::Light,
                                    /*animate=*/false);
 
             ImGuiStyle& s = ImGui::GetStyle();
@@ -128,7 +128,7 @@ TEST_CASE("ThemeContrast: Text color flips correctly for WindowBg") {
     (void)ctx;
 
     // Dark mode with white accent → text should be light (high luminance).
-    GOW::Theme::ApplyTheme(ImVec4{1, 1, 1, 1}, GOW::Theme::ThemeMode::Dark,
+    Onyx::Theme::ApplyTheme(ImVec4{1, 1, 1, 1}, Onyx::Theme::ThemeMode::Dark,
                            false);
     {
         ImVec4 text = ImGui::GetStyle().Colors[ImGuiCol_Text];
@@ -138,7 +138,7 @@ TEST_CASE("ThemeContrast: Text color flips correctly for WindowBg") {
     }
 
     // Light mode with black accent → text should be dark (low luminance).
-    GOW::Theme::ApplyTheme(ImVec4{0, 0, 0, 1}, GOW::Theme::ThemeMode::Light,
+    Onyx::Theme::ApplyTheme(ImVec4{0, 0, 0, 1}, Onyx::Theme::ThemeMode::Light,
                            false);
     {
         ImVec4 text = ImGui::GetStyle().Colors[ImGuiCol_Text];
@@ -154,7 +154,7 @@ TEST_CASE("ThemeContrast: TextLink distinguishable from Text") {
 
     for (const auto& fix : kFixtures) {
         SUBCASE(fix.name) {
-            GOW::Theme::ApplyTheme(fix.color, GOW::Theme::ThemeMode::Dark,
+            Onyx::Theme::ApplyTheme(fix.color, Onyx::Theme::ThemeMode::Dark,
                                    false);
             ImGuiStyle& s = ImGui::GetStyle();
             float textLum = TestLuminance(s.Colors[ImGuiCol_Text]);

@@ -6,7 +6,7 @@
 #include <cmath>
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 
 // ── Shader uniform helpers ───────────────────────────────────────────────
 
@@ -669,4 +669,4 @@ Shader* ShaderManager::GetShader(const std::string& name) {
     return (it != m_shaders.end()) ? &it->second : nullptr;
 }
 
-} // namespace GOW
+} // namespace Onyx

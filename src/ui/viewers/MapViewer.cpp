@@ -7,7 +7,7 @@
 #include "core/WadTypes.h"
 #include <string>
 
-namespace GOW {
+namespace Onyx {
 
 MapViewer::MapViewer(const std::string& wadName, OpenWad& wad) 
     : m_wadName(wadName), m_wad(wad) {
@@ -107,4 +107,4 @@ void MapViewer::LoadMap() {
     }
 }
 
-} // namespace GOW
+} // namespace Onyx

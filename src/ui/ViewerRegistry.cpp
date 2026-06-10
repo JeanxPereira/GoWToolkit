@@ -1,7 +1,7 @@
 #include "ui/ViewerRegistry.h"
 #include "core/Logger.h"
 
-namespace GOW {
+namespace Onyx {
 
 ViewerRegistry::ViewerRegistry() {
     auto defaultLegacyFactory = [](const ParsedEntry& entry, OpenWad& wad) {
@@ -51,4 +51,4 @@ std::shared_ptr<IDocumentContent> ViewerRegistry::Open(const ParsedEntry& entry,
     return nullptr;
 }
 
-} // namespace GOW
+} // namespace Onyx

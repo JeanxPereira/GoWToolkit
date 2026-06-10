@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 
 // VIF command constants (matching ps2/vif/vif.go)
 static const uint32_t VIF_CMD_NOP    = 0x00;
@@ -553,4 +553,4 @@ std::unique_ptr<MeshData> GOW2MeshParser::Parse(IFile& file, uint32_t offset, ui
     return meshData;
 }
 
-} // namespace GOW
+} // namespace Onyx

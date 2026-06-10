@@ -8,32 +8,32 @@
 
 namespace {
 
-class MeshHandler : public GOW::ITypeHandler {
+class MeshHandler : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::Mesh; }
+    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Mesh; }
     const char*  GetName()  const override { return "Mesh"; }
     uint32_t     GetMagic() const override { return 0x0001000F; }
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
     Color4f      GetColor() const override { return {0.4f, 0.8f, 1.0f, 1.0f}; }
 
-    std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
-        if (auto* handler = GOW::TypeRegistry::Get().Resolve(GOW::TypeId::Model)) {
+    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+        if (auto* handler = Onyx::TypeRegistry::Get().Resolve(Onyx::TypeId::Model)) {
             return handler->CreateViewer(entry, wad);
         }
         return nullptr;
     }
 };
 
-class GmdlHandler : public GOW::ITypeHandler {
+class GmdlHandler : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::Mesh; }
+    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Mesh; }
     const char*  GetName()  const override { return "GMDL Mesh"; }
     uint32_t     GetMagic() const override { return 0x0003000F; }
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
     Color4f      GetColor() const override { return {0.4f, 0.8f, 1.0f, 1.0f}; }
 
-    std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
-        if (auto* handler = GOW::TypeRegistry::Get().Resolve(GOW::TypeId::Model)) {
+    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+        if (auto* handler = Onyx::TypeRegistry::Get().Resolve(Onyx::TypeId::Model)) {
             return handler->CreateViewer(entry, wad);
         }
         return nullptr;

@@ -7,7 +7,7 @@
 #include "core/Events.h"
 #include "types/TypeRegistry.h"
 
-namespace GOW {
+namespace Onyx {
     bool EnsureGowrConfigIni(const std::filesystem::path& wadPath);
     void InvalidateLodIndex();
 }
@@ -17,7 +17,7 @@ namespace GOW {
 bool AssetDatabase::LoadPakFromIso(const fs::path& isoPath) {
     if (!fs::exists(isoPath)) return false;
 
-    auto profile = GOW::ProfileManager::Get().DetectProfileForFile(isoPath);
+    auto profile = Onyx::ProfileManager::Get().DetectProfileForFile(isoPath);
     if (!profile) return false;
 
     auto vfs = profile->MountArchive(isoPath);
@@ -30,7 +30,7 @@ bool AssetDatabase::LoadPakFromIso(const fs::path& isoPath) {
 
     if (profile->LoadFromArchive(vfs, pak)) {
         paks.push_back(std::move(pak));
-        GOW::TaskManager::doLater([this]() {
+        Onyx::TaskManager::doLater([this]() {
             if (!paks.empty()) EventPakOpened::post(&paks.back());
         });
         return true;
@@ -64,7 +64,7 @@ bool AssetDatabase::LoadWadFromPakEntry(ParsedEntry* e, OpenWad& parentPak) {
         e->wadName,
     };
 
-    std::unique_ptr<GOW::IFile> partFile;
+    std::unique_ptr<Onyx::IFile> partFile;
     for (auto& p : tryPaths) {
         partFile = vfs->OpenFile(p);
         if (partFile && partFile->IsValid()) {
@@ -80,7 +80,7 @@ bool AssetDatabase::LoadWadFromPakEntry(ParsedEntry* e, OpenWad& parentPak) {
     }
 
     // Criar um slice para o offset/size deste entry dentro do PAK
-    auto slice = std::make_shared<GOW::SliceFile>(std::move(partFile), e->offset, e->size);
+    auto slice = std::make_shared<Onyx::SliceFile>(std::move(partFile), e->offset, e->size);
 
     OpenWad result;
     result.filename = e->name;
@@ -91,7 +91,7 @@ bool AssetDatabase::LoadWadFromPakEntry(ParsedEntry* e, OpenWad& parentPak) {
     if (profile->ParseWad(slice, result)) {
         LOG_INFO("[AssetDatabase] Parsed WAD '%s': %zu tags", e->name.c_str(), result.entries.size());
         wads.push_back(std::move(result));
-        GOW::TaskManager::doLater([this]() {
+        Onyx::TaskManager::doLater([this]() {
             if (!wads.empty()) EventWadOpened::post(&wads.back());
         });
         return true;
@@ -103,7 +103,7 @@ bool AssetDatabase::LoadWadFromPakEntry(ParsedEntry* e, OpenWad& parentPak) {
 
 // ── OpenPakEntryAsFile ────────────────────────────────────────────────────
 // Returns a SliceFile for a PAK entry without parsing as WAD
-std::shared_ptr<GOW::IFile> AssetDatabase::OpenPakEntryAsFile(ParsedEntry* e, OpenWad& parentPak) {
+std::shared_ptr<Onyx::IFile> AssetDatabase::OpenPakEntryAsFile(ParsedEntry* e, OpenWad& parentPak) {
     if (!e || !parentPak.profile) return nullptr;
 
     auto vfs = parentPak.profile->MountArchive(parentPak.fullPath);
@@ -113,7 +113,7 @@ std::shared_ptr<GOW::IFile> AssetDatabase::OpenPakEntryAsFile(ParsedEntry* e, Op
     }
 
     std::vector<std::string> tryPaths = { "/" + e->wadName, e->wadName };
-    std::unique_ptr<GOW::IFile> partFile;
+    std::unique_ptr<Onyx::IFile> partFile;
     for (auto& p : tryPaths) {
         partFile = vfs->OpenFile(p);
         if (partFile && partFile->IsValid()) break;
@@ -125,7 +125,7 @@ std::shared_ptr<GOW::IFile> AssetDatabase::OpenPakEntryAsFile(ParsedEntry* e, Op
         return nullptr;
     }
 
-    return std::make_shared<GOW::SliceFile>(std::move(partFile), e->offset, e->size);
+    return std::make_shared<Onyx::SliceFile>(std::move(partFile), e->offset, e->size);
 }
 
 // ── LoadWad ────────────────────────────────────────────────────────────────
@@ -140,12 +140,12 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     }
 
     // Selecionar profile: por hint explícito ou auto-detect
-    std::shared_ptr<GOW::IGameProfile> profile;
+    std::shared_ptr<Onyx::IGameProfile> profile;
     if (!gameHint.empty()) {
-        profile = GOW::ProfileManager::Get().FindProfileByHint(gameHint);
+        profile = Onyx::ProfileManager::Get().FindProfileByHint(gameHint);
     }
     if (!profile) {
-        profile = GOW::ProfileManager::Get().DetectProfileForFile(path);
+        profile = Onyx::ProfileManager::Get().DetectProfileForFile(path);
     }
     if (!profile) return false;
 
@@ -154,8 +154,8 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     // If we just wrote a fresh config, also invalidate any cached index that
     // was created earlier in this process without it.
     if (profile->GetName().find("Ragnarok") != std::string::npos) {
-        if (GOW::EnsureGowrConfigIni(path)) {
-            GOW::InvalidateLodIndex();
+        if (Onyx::EnsureGowrConfigIni(path)) {
+            Onyx::InvalidateLodIndex();
         }
     }
 
@@ -164,14 +164,14 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     wad.fullPath = path.string();
     wad.profile  = profile;
 
-    auto file = std::make_shared<GOW::OsFile>(path.string());
+    auto file = std::make_shared<Onyx::OsFile>(path.string());
     if (!file->IsValid()) return false;
 
     wad.fileSource = file;
 
     if (profile->ParseWad(file, wad)) {
         wads.push_back(std::move(wad));
-        GOW::TaskManager::doLater([this]() {
+        Onyx::TaskManager::doLater([this]() {
             if (!wads.empty()) EventWadOpened::post(&wads.back());
         });
         return true;
@@ -197,7 +197,7 @@ void AssetDatabase::CloseAll() {
 // ── ISO ────────────────────────────────────────────────────────────────────
 bool AssetDatabase::LoadIso(const fs::path& path) {
     if (!fs::exists(path)) return false;
-    auto vfs = std::make_shared<GOW::IsoFileSystem>(path.string());
+    auto vfs = std::make_shared<Onyx::IsoFileSystem>(path.string());
     if (vfs->Initialize()) {
         isos.push_back(vfs);
         return true;
@@ -220,8 +220,8 @@ bool AssetDatabase::EnsureNodeData(ParsedEntry* e, OpenWad& parentWad) {
         return false;
     }
 
-    if (auto* handler = GOW::TypeRegistry::Get().Resolve(e->typeId)) {
-        auto sliceWindow = std::make_shared<GOW::SliceFile>(parentWad.fileSource, e->offset, e->size);
+    if (auto* handler = Onyx::TypeRegistry::Get().Resolve(e->typeId)) {
+        auto sliceWindow = std::make_shared<Onyx::SliceFile>(parentWad.fileSource, e->offset, e->size);
         e->assetNode = handler->Parse(sliceWindow);
     }
 
@@ -240,7 +240,7 @@ void AssetDatabase::LoadWadAsync(const fs::path& path, const std::string& gameHi
         return;
     }
 
-    GOW::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path, gameHint](GOW::Task& task) {
+    Onyx::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path, gameHint](Onyx::Task& task) {
         task.update(5);
 
         bool success = LoadWad(path, gameHint);
@@ -259,7 +259,7 @@ void AssetDatabase::LoadIsoPakAsync(const fs::path& path) {
         return;
     }
 
-    GOW::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path](GOW::Task& task) {
+    Onyx::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path](Onyx::Task& task) {
         task.update(10);
 
         bool isoSuccess = LoadIso(path);
@@ -277,6 +277,6 @@ void AssetDatabase::LoadIsoPakAsync(const fs::path& path) {
 }
 
 bool AssetDatabase::IsLoading() const {
-    return GOW::TaskManager::getRunningTaskCount() > 0;
+    return Onyx::TaskManager::getRunningTaskCount() > 0;
 }
 

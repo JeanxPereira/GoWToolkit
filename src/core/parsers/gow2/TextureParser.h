@@ -5,7 +5,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace GOW {
+namespace Onyx {
 
 class GOW2TextureParser {
 public:
@@ -47,4 +47,4 @@ private:
     static std::vector<uint8_t> DecodePixelIndices(const GFXData& gfx, int dataIdx);
 };
 
-} // namespace GOW
+} // namespace Onyx

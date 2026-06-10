@@ -12,7 +12,7 @@
 
 #include "miniaudio.h"
 
-namespace GOW {
+namespace Onyx {
 
 float SoundPlayer::s_volume = 1.0f;
 
@@ -218,16 +218,16 @@ void SoundPlayer::Draw() {
 }
 
 void SoundPlayer::DrawToolbar() {
-  ImGui::PushStyleColor(ImGuiCol_Button, GOW::Theme::ToolbarButton());
-  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, GOW::Theme::ToolbarButtonHover());
+  ImGui::PushStyleColor(ImGuiCol_Button, Onyx::Theme::ToolbarButton());
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Onyx::Theme::ToolbarButtonHover());
 
   bool hasSound = !m_decodedPcm.empty();
 
   if (hasSound && m_state != PlayState::Playing) {
-    if (GOW::UI::Widgets::SmallButton(ICON_SF_PLAY_FILL))
+    if (Onyx::UI::Widgets::SmallButton(ICON_SF_PLAY_FILL))
       Play();
   } else if (m_state == PlayState::Playing) {
-    if (GOW::UI::Widgets::SmallButton(ICON_SF_PAUSE_FILL))
+    if (Onyx::UI::Widgets::SmallButton(ICON_SF_PAUSE_FILL))
       Pause();
   } else {
     ImGui::BeginDisabled();
@@ -237,7 +237,7 @@ void SoundPlayer::DrawToolbar() {
 
   ImGui::SameLine();
   if (hasSound && m_state != PlayState::Stopped) {
-    if (GOW::UI::Widgets::SmallButton(ICON_SF_STOP_FILL))
+    if (Onyx::UI::Widgets::SmallButton(ICON_SF_STOP_FILL))
       Stop();
   } else {
     ImGui::BeginDisabled();
@@ -377,4 +377,4 @@ void SoundPlayer::DrawWaveform() {
   }
 }
 
-} // namespace GOW
+} // namespace Onyx

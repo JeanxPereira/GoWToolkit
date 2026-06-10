@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <cstring>
 
-namespace GOW {
+namespace Onyx {
 
 ProfileGOW2::ProfileGOW2() {
     // Schemas are registered automatically by TypeHandlers.
@@ -261,21 +261,21 @@ static void assignSchemaType(ParsedEntry& entry) {
         std::string ext = entry.name.substr(dot + 1);
         std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
 
-        if      (ext == "MDL") { entry.typeId = GOW::TypeId::Model;    }
-        else if (ext == "TXR") { entry.typeId = GOW::TypeId::Texture;  }
-        else if (ext == "ANM") { entry.typeId = GOW::TypeId::Animation; }
-        else if (ext == "WAD") { entry.typeId = GOW::TypeId::WadFile;  }
-        else if (ext == "VAG") { entry.typeId = GOW::TypeId::VagAudio; }
+        if      (ext == "MDL") { entry.typeId = Onyx::TypeId::Model;    }
+        else if (ext == "TXR") { entry.typeId = Onyx::TypeId::Texture;  }
+        else if (ext == "ANM") { entry.typeId = Onyx::TypeId::Animation; }
+        else if (ext == "WAD") { entry.typeId = Onyx::TypeId::WadFile;  }
+        else if (ext == "VAG") { entry.typeId = Onyx::TypeId::VagAudio; }
         else if (ext == "VPK" || ext == "VP1" || ext == "VP2" ||
                  ext == "VP3" || ext == "VP4")
-                              { entry.typeId = GOW::TypeId::VpkVideo; }
-        else if (ext == "PSS") { entry.typeId = GOW::TypeId::PssVideo; }
-        else if (ext == "PSW") { entry.typeId = GOW::TypeId::PswVideo; }
+                              { entry.typeId = Onyx::TypeId::VpkVideo; }
+        else if (ext == "PSS") { entry.typeId = Onyx::TypeId::PssVideo; }
+        else if (ext == "PSW") { entry.typeId = Onyx::TypeId::PswVideo; }
         else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
                  ext == "CSV" || ext == "JSON" || ext == "LOG")
-                              { entry.typeId = GOW::TypeId::TextPlain; }
+                              { entry.typeId = Onyx::TypeId::TextPlain; }
 
-        if (entry.typeId == GOW::TypeId::Unknown) {
+        if (entry.typeId == Onyx::TypeId::Unknown) {
             // Unhandled extension
         }
     }
@@ -364,7 +364,7 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenW
         tocFile = vfs->OpenFile("/GODOFWAR.TOC");
 
     if (!tocFile || !tocFile->IsValid()) {
-        LOG_ERR("[GOW] No TOC file found in ISO (tried GOW2.TOC, GODOFWAR.TOC).");
+        LOG_ERR("[Onyx] No TOC file found in ISO (tried GOW2.TOC, GODOFWAR.TOC).");
         return false;
     }
 
@@ -382,14 +382,14 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenW
                   ((int64_t)(possibleCount * sizeof(RawTocEntryGOW2) + 4) <= tocSize);
 
     if (!isGOW2) {
-        LOG_ERR("[GOW] TOC header does not look like GOW2 (count=%u, size=%lld). "
+        LOG_ERR("[Onyx] TOC header does not look like GOW2 (count=%u, size=%lld). "
                 "GOW1 ISOs are not supported by this profile.",
                 possibleCount, (long long)tocSize);
         return false;
     }
 
-    LOG_INFO("[GOW] Detected GOW2 TOC format (%u entries).", possibleCount);
+    LOG_INFO("[Onyx] Detected GOW2 TOC format (%u entries).", possibleCount);
     return LoadFromArchiveGOW2(vfs, tocFile.get(), outWad);
 }
 
-} // namespace GOW
+} // namespace Onyx

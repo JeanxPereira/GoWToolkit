@@ -12,13 +12,13 @@
 #endif
 
 static void registerProfiles() {
-    GOW::ProfileManager::Get().RegisterProfile(std::make_shared<GOW::ProfileGOW2>());
-    GOW::ProfileManager::Get().RegisterProfile(std::make_shared<GOW::ProfileGOWR>());
+    Onyx::ProfileManager::Get().RegisterProfile(std::make_shared<Onyx::ProfileGOW2>());
+    Onyx::ProfileManager::Get().RegisterProfile(std::make_shared<Onyx::ProfileGOWR>());
 }
 
 int main(int argc, char** argv) {
     // Record the main thread before anything else spawns workers.
-    GOW::Threading::MarkMainThread();
+    Onyx::Threading::MarkMainThread();
 
     registerProfiles();
 
@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
             (void)freopen("CONOUT$", "w", stderr);
         }
 #endif
-        GOW::CliApp::Run(argc, argv);
+        Onyx::CliApp::Run(argc, argv);
         return 0;
     }
 

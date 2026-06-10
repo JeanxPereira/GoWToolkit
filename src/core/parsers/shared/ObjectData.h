@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 
 /// A single joint in the skeleton hierarchy.
 struct Joint {
@@ -56,4 +56,4 @@ struct ObjectData {
   bool HasSkeleton() const { return !joints.empty(); }
 };
 
-} // namespace GOW
+} // namespace Onyx

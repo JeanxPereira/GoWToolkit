@@ -2,7 +2,7 @@
 #include "core/types/ITypeHandler.h"
 #include <filesystem>
 
-namespace GOW {
+namespace Onyx {
 
 class GOWRMeshDefnHandler : public ITypeHandler {
 public:
@@ -66,4 +66,4 @@ TexPackIndex& GetTexIndex();
 // present or was written successfully.
 bool EnsureGowrConfigIni(const std::filesystem::path& wadPath);
 
-} // namespace GOW
+} // namespace Onyx

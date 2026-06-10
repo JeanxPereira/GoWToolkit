@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 
-namespace GOW {
+namespace Onyx {
 
 class MapViewer : public IDocumentContent {
 public:
@@ -34,4 +34,4 @@ private:
     std::string m_loadStatus;
 };
 
-} // namespace GOW
+} // namespace Onyx

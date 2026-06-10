@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cstring>
 
-namespace GOW {
+namespace Onyx {
 
 class MemoryFile : public IFile {
 public:
@@ -47,4 +47,4 @@ private:
     size_t m_pos;
 };
 
-} // namespace GOW
+} // namespace Onyx

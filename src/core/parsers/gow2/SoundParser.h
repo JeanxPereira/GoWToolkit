@@ -5,7 +5,7 @@
 #include <memory>
 #include <cstdint>
 
-namespace GOW {
+namespace Onyx {
 
 class GOW2SoundParser {
 public:
@@ -32,4 +32,4 @@ private:
     static constexpr uint32_t GOW2_SBP_MAGIC = 0x15;
 };
 
-} // namespace GOW
+} // namespace Onyx

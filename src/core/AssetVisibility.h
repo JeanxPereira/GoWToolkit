@@ -7,7 +7,7 @@
 
 struct ParsedEntry;
 
-namespace GOW {
+namespace Onyx {
 
 /// Controls whether a type appears in the WAD browser tree.
 enum class Visibility : uint8_t {
@@ -83,4 +83,4 @@ private:
     void RegisterDefaults();
 };
 
-} // namespace GOW
+} // namespace Onyx

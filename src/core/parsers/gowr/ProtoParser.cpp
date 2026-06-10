@@ -28,7 +28,7 @@
 //             float[3][4]  rotation 3x3 (last column ignored)  = 48 bytes
 //             float[4]     position (last component ignored)   = 16 bytes
 
-namespace GOW {
+namespace Onyx {
 
 std::shared_ptr<ObjectData> GOWRProtoParser::Parse(std::shared_ptr<IFile> file) {
     if (!file || !file->IsValid()) return nullptr;
@@ -140,4 +140,4 @@ std::shared_ptr<ObjectData> GOWRProtoParser::Parse(std::shared_ptr<IFile> file) 
     return obj;
 }
 
-} // namespace GOW
+} // namespace Onyx

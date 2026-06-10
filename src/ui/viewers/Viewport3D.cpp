@@ -12,7 +12,7 @@
 #include "ui/ActiveAnimation.h"
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace GOW {
+namespace Onyx {
 
 Viewport3D::Viewport3D(const std::string& name) : m_name(name) {
     InitFBO();
@@ -23,8 +23,8 @@ Viewport3D::~Viewport3D() {
     // otherwise downstream panels (Anim Curves / Dopesheet) keep a dangling
     // pointer into a freed AnimationPlayer.
     if (m_sceneRenderer &&
-        GOW::UI::GetActiveAnimationPlayer() == m_sceneRenderer->GetAnimPlayer()) {
-        GOW::UI::SetActiveAnimationPlayer(nullptr);
+        Onyx::UI::GetActiveAnimationPlayer() == m_sceneRenderer->GetAnimPlayer()) {
+        Onyx::UI::SetActiveAnimationPlayer(nullptr);
     }
     ClearScene();
 
@@ -40,8 +40,8 @@ std::string Viewport3D::GetName() const { return m_name; }
 
 void Viewport3D::ClearScene() {
     if (m_sceneRenderer &&
-        GOW::UI::GetActiveAnimationPlayer() == m_sceneRenderer->GetAnimPlayer()) {
-        GOW::UI::SetActiveAnimationPlayer(nullptr);
+        Onyx::UI::GetActiveAnimationPlayer() == m_sceneRenderer->GetAnimPlayer()) {
+        Onyx::UI::SetActiveAnimationPlayer(nullptr);
     }
     m_sceneRenderer.reset();
     m_sceneData.reset();
@@ -123,7 +123,7 @@ void Viewport3D::Draw() {
     // Reserve a strip at the bottom of the viewport for the animation
     // transport (only when a clip is loaded). Image render area shrinks
     // by that height so the bar lives directly under the 3D scene.
-    GOW::AnimationPlayer* transportPlayer =
+    Onyx::AnimationPlayer* transportPlayer =
         m_sceneRenderer ? m_sceneRenderer->GetAnimPlayer() : nullptr;
     const bool hasTransport =
         transportPlayer && transportPlayer->GetCurrentActIndex() >= 0 &&
@@ -332,11 +332,11 @@ void Viewport3D::HandleInput() {
 void Viewport3D::DrawToolbar(ImVec2 avail, ImVec2 cursorPos) {
     ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + 4, cursorPos.y - avail.y + 4));
 
-    ImGui::PushStyleColor(ImGuiCol_Button, GOW::Theme::ToolbarButton());
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, GOW::Theme::ToolbarButtonHover());
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, GOW::Theme::ToolbarButtonActive());
+    ImGui::PushStyleColor(ImGuiCol_Button, Onyx::Theme::ToolbarButton());
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Onyx::Theme::ToolbarButtonHover());
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, Onyx::Theme::ToolbarButtonActive());
 
-    namespace W = GOW::UI::Widgets;
+    namespace W = Onyx::UI::Widgets;
 
     // Shading cycle — icon is the cube; mode goes in the tooltip.
     const char* shadingLabel = nullptr;
@@ -483,9 +483,9 @@ void Viewport3D::DrawInspector() {
     // Publish whichever player this viewport currently owns so cross-cutting
     // panels (Anim Curves, Dopesheet) can read its playhead.
     if (m_sceneRenderer) {
-        GOW::UI::SetActiveAnimationPlayer(m_sceneRenderer->GetAnimPlayer());
+        Onyx::UI::SetActiveAnimationPlayer(m_sceneRenderer->GetAnimPlayer());
     } else {
-        GOW::UI::SetActiveAnimationPlayer(nullptr);
+        Onyx::UI::SetActiveAnimationPlayer(nullptr);
     }
 
     // ── Animation Section ─────────────────────────────────────────────
@@ -693,7 +693,7 @@ void Viewport3D::DrawObjectList(ImVec2 avail, ImVec2 cursorPos) {
 
 void Viewport3D::DrawTransportBar() {
     if (!m_sceneRenderer) return;
-    GOW::AnimationPlayer* player = m_sceneRenderer->GetAnimPlayer();
+    Onyx::AnimationPlayer* player = m_sceneRenderer->GetAnimPlayer();
     if (!player || player->GetCurrentActIndex() < 0) return;
 
     bool  isPlaying   = player->IsPlaying();
@@ -775,7 +775,7 @@ void Viewport3D::DrawTransportBar() {
     }
 
     // Row 2: rich timeline with frame ticks, keyframe markers, scrub
-    if (GOW::UI::DrawAnimationTimeline("anim_timeline", *player)) {
+    if (Onyx::UI::DrawAnimationTimeline("anim_timeline", *player)) {
         m_needsRedraw = true;
     }
 
@@ -783,4 +783,4 @@ void Viewport3D::DrawTransportBar() {
     ImGui::PopStyleColor();
 }
 
-} // namespace GOW
+} // namespace Onyx

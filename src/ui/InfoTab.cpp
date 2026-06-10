@@ -62,5 +62,5 @@ void InfoTab::Draw(AssetDatabase& db, ParsedEntry* e) {
     ImGui::Spacing();
 
     // Render the tree using the auto-renderer
-    GOW::RenderAssetNode(*e->assetNode);
+    Onyx::RenderAssetNode(*e->assetNode);
 }

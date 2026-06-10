@@ -7,12 +7,12 @@
 #include <cstdio>
 #include <cstdlib>
 
-namespace GOW::Api {
+namespace Onyx::Api {
 
     static AssetDatabase*       s_database  = nullptr;
     static AppConfig*           s_config    = nullptr;
-    static GOW::ViewerRegistry* s_viewers   = nullptr;
-    static GOW::DocumentWindow* s_documents = nullptr;
+    static Onyx::ViewerRegistry* s_viewers   = nullptr;
+    static Onyx::DocumentWindow* s_documents = nullptr;
 
     static ParsedEntry*         s_selectedEntry = nullptr;
     static OpenWad*             s_selectedWad   = nullptr;
@@ -78,4 +78,4 @@ namespace GOW::Api {
         EventAssetSelected::post(entry, wad);
     }
 
-} // namespace GOW::Api
+} // namespace Onyx::Api

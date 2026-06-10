@@ -1,7 +1,7 @@
 #pragma once
 #include "core/schema/AssetFormat.h"
 
-namespace GOW {
+namespace Onyx {
 
 // ── GOWR Mesh Definition ───────────────────────────────────────────────────
 class GOWRMeshDefnFormat : public AssetFormat {
@@ -31,4 +31,4 @@ protected:
     }
 };
 
-} // namespace GOW
+} // namespace Onyx

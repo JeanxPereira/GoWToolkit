@@ -3,7 +3,7 @@
 #include "core/Logger.h"
 #include <cstring>
 
-namespace GOW {
+namespace Onyx {
 
 static uint32_t ReadU32LE(const uint8_t* p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
@@ -89,4 +89,4 @@ done:
     return result;
 }
 
-} // namespace GOW
+} // namespace Onyx

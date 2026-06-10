@@ -1,7 +1,7 @@
 #include "NodeInstance.h"
 #include "../vfs/IFile.h"
 
-namespace GOW {
+namespace Onyx {
 
 bool NodeInstance::ReadFromFile(IFile* file) {
     if (!file || !m_def) return false;
@@ -17,4 +17,4 @@ bool NodeInstance::ReadFromFile(IFile* file) {
     return readCount == sizeToRead;
 }
 
-} // namespace GOW
+} // namespace Onyx

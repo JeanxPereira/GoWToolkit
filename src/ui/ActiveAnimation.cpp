@@ -1,10 +1,10 @@
 #include "ui/ActiveAnimation.h"
 
-namespace GOW::UI {
+namespace Onyx::UI {
 
-static GOW::AnimationPlayer* s_activePlayer = nullptr;
+static Onyx::AnimationPlayer* s_activePlayer = nullptr;
 
-void SetActiveAnimationPlayer(GOW::AnimationPlayer* p) { s_activePlayer = p; }
-GOW::AnimationPlayer* GetActiveAnimationPlayer()       { return s_activePlayer; }
+void SetActiveAnimationPlayer(Onyx::AnimationPlayer* p) { s_activePlayer = p; }
+Onyx::AnimationPlayer* GetActiveAnimationPlayer()       { return s_activePlayer; }
 
-} // namespace GOW::UI
+} // namespace Onyx::UI

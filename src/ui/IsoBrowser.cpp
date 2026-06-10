@@ -16,7 +16,7 @@ void IsoBrowser::Draw() {
     ImGui::InputTextWithHint("##iso_filter", "Filter...", m_filter, sizeof(m_filter));
     ImGui::Separator();
 
-    auto& db = GOW::Api::Database();
+    auto& db = Onyx::Api::Database();
 
     for (size_t i = 0; i < db.isos.size(); i++) {
         auto& iso = db.isos[i];
@@ -28,9 +28,9 @@ void IsoBrowser::Draw() {
         bool open = ImGui::TreeNodeEx(filename.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
 
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight());
-        GOW::UI::Widgets::IconButtonOpts closeOpts;
+        Onyx::UI::Widgets::IconButtonOpts closeOpts;
         closeOpts.tooltip = "Close ISO";
-        if (GOW::UI::Widgets::IconButton("iso_close", ICON_SF_XMARK, closeOpts)) {
+        if (Onyx::UI::Widgets::IconButton("iso_close", ICON_SF_XMARK, closeOpts)) {
             db.CloseIso(i);
             if (open) ImGui::TreePop();
             ImGui::PopID();
@@ -59,7 +59,7 @@ void IsoBrowser::Draw() {
 
             char rowId[24];
             snprintf(rowId, sizeof(rowId), "%d", rowIdx++);
-            GOW::UI::Widgets::ColoredTreeNode(rowId, path.c_str(), icon, neutralColor, flags, false);
+            Onyx::UI::Widgets::ColoredTreeNode(rowId, path.c_str(), icon, neutralColor, flags, false);
 
             if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();

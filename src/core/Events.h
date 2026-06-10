@@ -10,8 +10,8 @@
 #include <memory>
 struct OpenWad;
 struct ParsedEntry;
-namespace GOW { class IDocumentContent; }
-namespace GOW { struct AnimationData; }
+namespace Onyx { class IDocumentContent; }
+namespace Onyx { struct AnimationData; }
 class AppConfig;
 
 // ── Lifecycle Events ───────────────────────────────────────────────────────
@@ -52,11 +52,11 @@ EVENT_DEF(EventAssetLoaded, ParsedEntry*);
 
 /// Fired when a new document/viewer tab is opened.
 /// @param IDocumentContent* the opened document
-EVENT_DEF(EventDocumentOpened, GOW::IDocumentContent*);
+EVENT_DEF(EventDocumentOpened, Onyx::IDocumentContent*);
 
 /// Fired when animation data is loaded into a scene (e.g. Viewport3D).
-/// @param std::shared_ptr<GOW::AnimationData> the loaded animation data
-EVENT_DEF(EventAnimationLoaded, std::shared_ptr<GOW::AnimationData>);
+/// @param std::shared_ptr<Onyx::AnimationData> the loaded animation data
+EVENT_DEF(EventAnimationLoaded, std::shared_ptr<Onyx::AnimationData>);
 
 // ── UI State Events ───────────────────────────────────────────────────────
 

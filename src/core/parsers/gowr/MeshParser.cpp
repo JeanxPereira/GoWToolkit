@@ -35,7 +35,7 @@
 //  Buffer offsets table: uint32 each, at bufOffsetsOffset.
 //  Each value is an ABSOLUTE offset inside the GPU/LOD blob.
 
-namespace GOW {
+namespace Onyx {
 
 // ── ElementSize ────────────────────────────────────────────────────────────
 static uint32_t ElementSize(GOWRMeshParser::AttrFormat fmt, uint8_t compCount) {
@@ -686,4 +686,4 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<IFile>    meshFile,
     return !outData.parts.empty();
 }
 
-} // namespace GOW
+} // namespace Onyx

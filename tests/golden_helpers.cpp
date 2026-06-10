@@ -37,7 +37,7 @@ std::string ToHex64(uint64_t value) {
 
 // Reads up to `kPayloadHashLimit` bytes at `offset` from `source` and returns
 // xxhash64 of the slice (0 when the entry has no payload).
-uint64_t HashEntryPayload(GOW::IFile& source, uint64_t offset, uint64_t size) {
+uint64_t HashEntryPayload(Onyx::IFile& source, uint64_t offset, uint64_t size) {
     if (size == 0) return 0;
     size_t toRead = static_cast<size_t>(std::min<uint64_t>(size, kPayloadHashLimit));
     std::vector<uint8_t> buf(toRead);
@@ -48,15 +48,15 @@ uint64_t HashEntryPayload(GOW::IFile& source, uint64_t offset, uint64_t size) {
 }
 
 void FlattenEntry(const ParsedEntry& entry,
-                  GOW::IFile* source,
+                  Onyx::IFile* source,
                   std::vector<ordered_json>& out) {
     ordered_json e;
     e["name"]        = entry.name;
-    e["typeId"]      = GOW::TypeIdName(entry.typeId);
+    e["typeId"]      = Onyx::TypeIdName(entry.typeId);
     e["size"]        = entry.size;
     e["offset"]      = entry.offset;
     e["childCount"]  = static_cast<uint64_t>(entry.children.size());
-    e["kind"]        = std::string(GOW::Name(entry.kind));
+    e["kind"]        = std::string(Onyx::Name(entry.kind));
     if (source && entry.size > 0) {
         e["payloadHash"] = ToHex64(HashEntryPayload(*source, entry.offset, entry.size));
     } else {
@@ -173,7 +173,7 @@ void RunGoldenTest(std::string_view versionTag,
     REQUIRE_MESSAGE(fs::exists(wadPath),
                     "fixture WAD not found: " << wadPath.string());
 
-    auto file = std::make_shared<GOW::OsFile>(wadPath.string());
+    auto file = std::make_shared<Onyx::OsFile>(wadPath.string());
     REQUIRE_MESSAGE(file->IsValid(),
                     "failed to open fixture WAD: " << wadPath.string());
 
@@ -184,10 +184,10 @@ void RunGoldenTest(std::string_view versionTag,
 
     bool parsed = false;
     if (versionTag == "gow2") {
-        GOW::ProfileGOW2 profile;
+        Onyx::ProfileGOW2 profile;
         parsed = profile.ParseWad(file, wad);
     } else if (versionTag == "gowr") {
-        GOW::ProfileGOWR profile;
+        Onyx::ProfileGOWR profile;
         parsed = profile.ParseWad(file, wad);
     } else {
         FAIL("unknown versionTag: " << versionTag);

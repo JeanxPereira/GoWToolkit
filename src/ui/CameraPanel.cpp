@@ -47,9 +47,9 @@ void CameraPanel::Draw() {
     // Resolve the active viewport via IDocumentContent::GetEmbeddedViewport,
     // so both bare Viewport3D documents (Object viewer) and composite ones
     // (MapViewer, which wraps a Viewport3D internally) bind correctly.
-    GOW::Viewport3D* vp = nullptr;
-    if (GOW::Api::Documents().HasActiveDocument()) {
-        auto doc = GOW::Api::Documents().GetActiveDocument();
+    Onyx::Viewport3D* vp = nullptr;
+    if (Onyx::Api::Documents().HasActiveDocument()) {
+        auto doc = Onyx::Api::Documents().GetActiveDocument();
         if (doc) vp = doc->GetEmbeddedViewport();
     }
 
@@ -60,7 +60,7 @@ void CameraPanel::Draw() {
         return;
     }
 
-    GOW::Camera& cam = vp->GetCamera();
+    Onyx::Camera& cam = vp->GetCamera();
     bool changed = false;
 
     // ── FOV ───────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@
 #include <any>
 #include <utility>
 
-namespace GOW {
+namespace Onyx {
 
 // Type-safe wrapper for opaque profile-specific tag data attached to ParsedEntry.
 class ProfileTag {
@@ -24,4 +24,4 @@ public:
     }
 };
 
-} // namespace GOW
+} // namespace Onyx

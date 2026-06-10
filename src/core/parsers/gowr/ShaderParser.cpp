@@ -3,7 +3,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace GOW {
+namespace Onyx {
 
 // ── Display helpers ────────────────────────────────────────────────────────
 
@@ -136,7 +136,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<IFile> file) {
     auto shader = std::make_unique<GOWRShaderData>();
     file->Seek(0, 0);
 
-    // ── GOW custom header (28 bytes) ───────────────────────────────────
+    // ── Onyx custom header (28 bytes) ───────────────────────────────────
     file->Read(&shader->formatVersion, 2);
     file->Read(&shader->subVersion, 2);
 
@@ -157,7 +157,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<IFile> file) {
     file->Read(magic, 4);
     if (magic[0] != 'D' || magic[1] != 'X' || magic[2] != 'B' || magic[3] != 'C') {
         LOG_WARN("[ShaderParser] No DXBC magic at offset 0x1C");
-        return shader; // return with GOW header only
+        return shader; // return with Onyx header only
     }
     shader->hasDxbc = true;
 
@@ -261,4 +261,4 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<IFile> file) {
     return shader;
 }
 
-} // namespace GOW
+} // namespace Onyx

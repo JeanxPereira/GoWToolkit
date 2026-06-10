@@ -4,7 +4,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace GOW {
+namespace Onyx {
 
 // ────────────────────────────────────────────────────────────────────────
 // PS2 GS Texture Unswizzle
@@ -311,4 +311,4 @@ std::unique_ptr<TextureData> GOW2TextureParser::Parse(
     return result;
 }
 
-} // namespace GOW
+} // namespace Onyx

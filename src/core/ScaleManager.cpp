@@ -3,7 +3,7 @@
 #include "imgui_internal.h"
 #include <algorithm>
 
-namespace GOW::Scale {
+namespace Onyx::Scale {
 
 // ── Static state ──────────────────────────────────────────────────────────
 static float s_userScale   = 1.0f;
@@ -98,4 +98,4 @@ void ApplyStyleScale(float userScale) {
     current.TabBorderSize   = ImMax(current.TabBorderSize, 0.0f);
 }
 
-} // namespace GOW::Scale
+} // namespace Onyx::Scale

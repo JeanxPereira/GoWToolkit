@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 
 class IFile {
 public:
@@ -26,4 +26,4 @@ public:
     }
 };
 
-} // namespace GOW
+} // namespace Onyx

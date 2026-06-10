@@ -10,7 +10,7 @@
 #include <cstring>
 #include <limits>
 
-namespace GOW {
+namespace Onyx {
 
 // ── Texture upload ──────────────────────────────────────────────────────────
 
@@ -250,7 +250,7 @@ void SceneRenderer::BuildFromMeshData(const MeshData& data,
 // Matrixes1 is parentToJoint in the PS2 VU microcode sense and is NOT the same
 // as the GLTF-equivalent TRS local matrix; using it caused all verts to collapse.
 
-static glm::mat4 BuildLocalTRS(const GOW::ObjectData& obj, int i) {
+static glm::mat4 BuildLocalTRS(const Onyx::ObjectData& obj, int i) {
     // Port exato de obj/export_gltf.go + obj.go GetQuaterionLocalRotationForJoint:
     //
     // GOW2 (obj_gow2.go): IsQuaterion NUNCA é setado → sempre false.
@@ -920,4 +920,4 @@ void SceneRenderer::RenderOutlineScreenSpace(const glm::mat4& view, const glm::m
     glEnable(GL_DEPTH_TEST);
 }
 
-} // namespace GOW
+} // namespace Onyx

@@ -9,7 +9,7 @@
 
 #include "../WadTypes.h"
 
-namespace GOW {
+namespace Onyx {
 
 class IGameProfile {
 public:
@@ -33,4 +33,4 @@ public:
 
 };
 
-} // namespace GOW
+} // namespace Onyx

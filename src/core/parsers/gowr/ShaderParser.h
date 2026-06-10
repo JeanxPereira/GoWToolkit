@@ -5,7 +5,7 @@
 #include <memory>
 #include "core/vfs/IFile.h"
 
-namespace GOW {
+namespace Onyx {
 
 // ── DXBC Chunk descriptor ──────────────────────────────────────────────────
 struct DxbcChunk {
@@ -48,7 +48,7 @@ struct DxilInfo {
 
 // ── Full parsed shader result ──────────────────────────────────────────────
 struct GOWRShaderData {
-    // GOW custom header (28 bytes)
+    // Onyx custom header (28 bytes)
     uint16_t    formatVersion = 0;
     uint16_t    subVersion    = 0;
     uint32_t    dxbcSize      = 0;
@@ -93,7 +93,7 @@ struct GOWRShaderData {
     static std::string MaskString(uint8_t mask);
 };
 
-// Parse a GOWR shader file (28-byte GOW header + DXBC container)
+// Parse a GOWR shader file (28-byte Onyx header + DXBC container)
 std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<IFile> file);
 
-} // namespace GOW
+} // namespace Onyx

@@ -7,7 +7,7 @@
 #include "core/Metrics.h"
 
 using namespace std::chrono_literals;
-namespace M = GOW::Metrics;
+namespace M = Onyx::Metrics;
 
 TEST_CASE("[Metrics] Default is disabled and Record* are no-ops") {
     M::Reset();

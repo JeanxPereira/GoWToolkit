@@ -1,6 +1,6 @@
 #include "StructDef.h"
 
-namespace GOW {
+namespace Onyx {
 
 size_t StructDef::GetFixedSize() const {
     size_t size = 0;
@@ -10,4 +10,4 @@ size_t StructDef::GetFixedSize() const {
     return size;
 }
 
-} // namespace GOW
+} // namespace Onyx

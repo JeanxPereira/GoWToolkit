@@ -3,7 +3,7 @@
 #include "core/Logger.h"
 #include <vector>
 
-namespace GOW {
+namespace Onyx {
 
 std::string ScriptTargetParser::ExtractTargetName(const ParsedEntry& entry, std::shared_ptr<IFile> file) {
     if (!file || !file->IsValid() || entry.size < 0x14) return "";
@@ -22,4 +22,4 @@ std::string ScriptTargetParser::ExtractTargetName(const ParsedEntry& entry, std:
     return std::string(buf, strnlen(buf, 16));
 }
 
-} // namespace GOW
+} // namespace Onyx

@@ -3,7 +3,7 @@
 #include <TextEditor.h>
 #include <string>
 
-namespace GOW {
+namespace Onyx {
 
 // Read-only text viewer backed by the Goossens fork of ImGuiColorTextEdit.
 // Used for .txt / .ini / .cfg / .csv / .json / .log entries; future Lua / .scp
@@ -34,4 +34,4 @@ private:
     bool        m_showLineNumbers = true;
 };
 
-} // namespace GOW
+} // namespace Onyx

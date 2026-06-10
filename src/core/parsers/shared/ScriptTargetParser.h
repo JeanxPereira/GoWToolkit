@@ -3,7 +3,7 @@
 #include "core/WadTypes.h"
 #include <string>
 
-namespace GOW {
+namespace Onyx {
 class IFile;
 
 class ScriptTargetParser {
@@ -13,4 +13,4 @@ public:
     static std::string ExtractTargetName(const ParsedEntry& entry, std::shared_ptr<IFile> file);
 };
 
-} // namespace GOW
+} // namespace Onyx

@@ -26,7 +26,7 @@ namespace {
 // We search the full tree since we don't have positional ordering.
 static const ParsedEntry* FindEntryByNameAndType(
     const std::vector<ParsedEntry>& tree,
-    const std::string& name, GOW::TypeId type)
+    const std::string& name, Onyx::TypeId type)
 {
     for (const auto& n : tree) {
         if (n.name == name && n.typeId == type)
@@ -53,17 +53,17 @@ static const ParsedEntry* FindEntryByName(
 
 // ── InstanceHandler ────────────────────────────────────────────────────────
 
-class InstanceHandler : public GOW::ITypeHandler {
+class InstanceHandler : public Onyx::ITypeHandler {
 public:
-    GOW::TypeId  GetId()    const override { return GOW::TypeId::Instance; }
+    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Instance; }
     const char*  GetName()  const override { return "Instance"; }
     uint32_t     GetMagic() const override { return 0x00030001; }
     const char*  GetIcon()  const override { return ICON_SF_PERSON_FILL; }
     Color4f      GetColor() const override { return {1.0f, 0.7f, 0.7f, 1.0f}; }
 
-    std::unique_ptr<GOW::SceneData> BuildSceneData(const ParsedEntry& entry, OpenWad& wad) override {
+    std::unique_ptr<Onyx::SceneData> BuildSceneData(const ParsedEntry& entry, OpenWad& wad) override {
         // 1. Parse instance transform
-        auto instData = GOW::GOW2InstanceParser::Parse(entry, wad.fileSource);
+        auto instData = Onyx::GOW2InstanceParser::Parse(entry, wad.fileSource);
         if (!instData) {
             LOG_WARN("[InstanceHandler] Failed to parse instance data for '%s'", entry.name.c_str());
             return nullptr;
@@ -104,14 +104,14 @@ public:
 
             // Search children for Object, then Model
             for (const auto& child : sourceEntry->children) {
-                if (child.typeId == GOW::TypeId::Object) {
+                if (child.typeId == Onyx::TypeId::Object) {
                     objEntry = &child;
                     break;
                 }
             }
             if (!objEntry) {
                 for (const auto& child : sourceEntry->children) {
-                    if (child.typeId == GOW::TypeId::Model) {
+                    if (child.typeId == Onyx::TypeId::Model) {
                         objEntry = &child;
                         break;
                     }
@@ -125,7 +125,7 @@ public:
         }
 
         // 3. Delegate scene building to the child handler
-        auto* handler = GOW::TypeRegistry::Get().Resolve(objEntry->typeId);
+        auto* handler = Onyx::TypeRegistry::Get().Resolve(objEntry->typeId);
         if (!handler) {
             LOG_WARN("[InstanceHandler] No handler for typeId=%d in '%s'", (int)objEntry->typeId, entry.name.c_str());
             return nullptr;
@@ -179,8 +179,8 @@ public:
         return scene;
     }
 
-    std::shared_ptr<GOW::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
-        auto vp = std::make_shared<GOW::Viewport3D>(entry.name);
+    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+        auto vp = std::make_shared<Onyx::Viewport3D>(entry.name);
         if (auto scene = BuildSceneData(entry, wad)) {
             vp->LoadScene(std::move(scene));
         }

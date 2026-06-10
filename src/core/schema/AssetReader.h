@@ -6,7 +6,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace GOW {
+namespace Onyx {
 
 // ── AssetReader ────────────────────────────────────────────────────────────
 // Turns binary data + StructDefinition into a tree of AssetNodes.
@@ -207,4 +207,4 @@ private:
     }
 };
 
-} // namespace GOW
+} // namespace Onyx

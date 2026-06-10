@@ -2,7 +2,7 @@
 #include "core/domain/Entry.h"
 #include "core/types/TypeRegistry.h"
 
-namespace GOW {
+namespace Onyx {
 
 AssetVisibility& AssetVisibility::Get() {
     static AssetVisibility s_instance;
@@ -168,4 +168,4 @@ void AssetVisibility::ImportOverrides(const std::vector<SerializedOverride>& dat
     }
 }
 
-} // namespace GOW
+} // namespace Onyx

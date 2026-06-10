@@ -16,7 +16,7 @@ void WadStatsView::computeStats() {
 
     std::map<std::string, TypeStat> byType;
 
-    for (auto& wad : GOW::Api::Database().wads) {
+    for (auto& wad : Onyx::Api::Database().wads) {
         for (auto& entry : wad.entries) {
             std::string label = TypeName(entry.typeId);
             auto& stat = byType[label];
@@ -35,7 +35,7 @@ void WadStatsView::computeStats() {
         return a.count > b.count;
     });
 
-    m_lastWadCount = GOW::Api::Database().wads.size();
+    m_lastWadCount = Onyx::Api::Database().wads.size();
     m_dirty = false;
 }
 
@@ -48,14 +48,14 @@ void WadStatsView::Draw() {
         return;
     }
 
-    if (GOW::Api::Database().wads.empty()) {
+    if (Onyx::Api::Database().wads.empty()) {
         ImGui::TextDisabled("No WAD files loaded.");
         ImGui::End();
         return;
     }
 
     // Recompute stats if WADs changed
-    if (m_dirty || GOW::Api::Database().wads.size() != m_lastWadCount)
+    if (m_dirty || Onyx::Api::Database().wads.size() != m_lastWadCount)
         computeStats();
 
     // ── Summary Header ──────────────────────────────────────────────────

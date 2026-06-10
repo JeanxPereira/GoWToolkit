@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 
-namespace GOW {
+namespace Onyx {
 
 class IsoFile : public IFile {
 public:
@@ -25,4 +25,4 @@ private:
     int64_t m_pos; // Logical position within the subfile
 };
 
-} // namespace GOW
+} // namespace Onyx

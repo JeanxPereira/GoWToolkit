@@ -4,7 +4,7 @@
 #include <string>
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 
 class StructDef {
 public:
@@ -36,4 +36,4 @@ private:
     std::vector<SchemaField> m_fields;
 };
 
-} // namespace GOW
+} // namespace Onyx

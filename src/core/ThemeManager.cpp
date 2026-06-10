@@ -5,7 +5,7 @@
 #include <cmath>
 #include <algorithm>
 
-namespace GOW::Theme {
+namespace Onyx::Theme {
 
 // ── Static state ──────────────────────────────────────────────────────────
 
@@ -19,8 +19,8 @@ static FlashState s_flashState;
 // ApplyTheme call rather than per-frame to avoid spawning popen() on Linux.
 static ThemeMode ResolveMode(ThemeMode m) {
     if (m != ThemeMode::System) return m;
-    auto sys = GOW::Platform::DetectSystemAppearance();
-    return (sys == GOW::Platform::SystemAppearance::Dark) ? ThemeMode::Dark
+    auto sys = Onyx::Platform::DetectSystemAppearance();
+    return (sys == Onyx::Platform::SystemAppearance::Dark) ? ThemeMode::Dark
                                                           : ThemeMode::Light;
 }
 
@@ -625,4 +625,4 @@ const std::vector<ColorGroup> &GetColorGroups() {
   return groups;
 }
 
-} // namespace GOW::Theme
+} // namespace Onyx::Theme

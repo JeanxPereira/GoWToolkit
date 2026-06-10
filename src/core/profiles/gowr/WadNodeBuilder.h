@@ -19,7 +19,7 @@
 // All logic is isolated here. ProfileGOWR::ParseWad only calls Build().
 // No other game profile, interface, or UI file is affected.
 
-namespace GOW {
+namespace Onyx {
 
 class WadNodeBuilder {
 public:
@@ -89,4 +89,4 @@ private:
     static int AssetSortKey(WadEntryRole role);
 };
 
-} // namespace GOW
+} // namespace Onyx

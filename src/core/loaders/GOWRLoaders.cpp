@@ -26,13 +26,13 @@
 #include "core/profiles/gowr/GowrProfileTag.h"
 #include "core/PathUtils.h"
 
-using GOW::Rdna2::Detile;
+using Onyx::Rdna2::Detile;
 
-static GOW::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
-    if (auto* t = e.profileTag.As<GOW::Gowr::GowrProfileTag>()) {
+static Onyx::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
+    if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
         return t->role;
     }
-    return GOW::Gowr::WadEntryRole::Unknown;
+    return Onyx::Gowr::WadEntryRole::Unknown;
 }
 
 #ifdef __APPLE__
@@ -41,7 +41,7 @@ static GOW::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
 
 // ── GOWRLoaders.cpp ────────────────────────────────────────────────────────
 
-namespace GOW {
+namespace Onyx {
 
 // ── Search candidates for runtime files (config.ini, lodpacks.txt) ─────────
 static std::vector<std::filesystem::path> ResourceSearchDirs() {
@@ -759,8 +759,8 @@ public:
             return;
         }
 
-        // ── GOW Header ─────────────────────────────────────────────────
-        ImGui::SeparatorText("GOW Shader Header");
+        // ── Onyx Header ─────────────────────────────────────────────────
+        ImGui::SeparatorText("Onyx Shader Header");
         if (ImGui::BeginTable("##gowhdr", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Field",  ImGuiTableColumnFlags_WidthFixed, 140);
             ImGui::TableSetupColumn("Value",  ImGuiTableColumnFlags_WidthStretch);
@@ -932,39 +932,39 @@ std::shared_ptr<IDocumentContent> GOWRShaderHandler::CreateViewer(const ParsedEn
 
 // Register shader handlers for all shader TypeIds
 static bool _reg_shader_vs = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderVertex));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderVertex));
     return true;
 }();
 static bool _reg_shader_ps = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderPixel));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderPixel));
     return true;
 }();
 static bool _reg_shader_ct = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderContainer));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderContainer));
     return true;
 }();
 static bool _reg_shader_hs = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderHull));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderHull));
     return true;
 }();
 static bool _reg_shader_ds = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderDomain));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderDomain));
     return true;
 }();
 static bool _reg_shader_cs = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderCompute));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderCompute));
     return true;
 }();
 static bool _reg_shader_ls = [] {
-    ::GOW::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<GOW::GOWRShaderHandler>(GOW::TypeId::ShaderLibrary));
+    ::Onyx::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderLibrary));
     return true;
 }();
 
-} // namespace GOW
+} // namespace Onyx

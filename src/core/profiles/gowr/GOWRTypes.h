@@ -9,7 +9,7 @@
 // Confirmed layout via Ghidra (GoWR.exe) + direct binary inspection of r_fox00.wad.
 // stride = 0x90 (144 bytes) per FileDesc entry.
 
-namespace GOW {
+namespace Onyx {
 
 // ── Binary structures ──────────────────────────────────────────────────────
 
@@ -99,4 +99,4 @@ inline std::string GOWRTypeToString(uint16_t type) {
     }
 }
 
-} // namespace GOW
+} // namespace Onyx

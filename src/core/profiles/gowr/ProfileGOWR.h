@@ -3,7 +3,7 @@
 #include "../../schema/StructDef.h"
 #include <map>
 
-namespace GOW {
+namespace Onyx {
 
 class ProfileGOWR : public IGameProfile {
 public:
@@ -23,4 +23,4 @@ private:
     std::map<std::string, std::shared_ptr<StructDef>> m_schemas;
 };
 
-} // namespace GOW
+} // namespace Onyx

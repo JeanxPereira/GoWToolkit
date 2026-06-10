@@ -3,7 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "core/domain/BoundingBox.h"
 
-namespace GOW {
+namespace Onyx {
 
 enum class CameraView {
     Front,   // +Z
@@ -89,4 +89,4 @@ private:
     float m_animToPitch  = 0.0f;
 };
 
-} // namespace GOW
+} // namespace Onyx

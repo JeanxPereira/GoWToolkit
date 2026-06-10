@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <string>
 
-namespace GOW {
+namespace Onyx {
 
 // ── AssetFormat ────────────────────────────────────────────────────────────
 // Base class for all binary format definitions.
@@ -245,4 +245,4 @@ private:
     bool m_built = false;
 };
 
-} // namespace GOW
+} // namespace Onyx

@@ -4,7 +4,7 @@
 #include <memory>
 #include <filesystem>
 
-namespace GOW {
+namespace Onyx {
 
 class ProfileManager {
 public:
@@ -29,4 +29,4 @@ private:
     std::vector<std::shared_ptr<IGameProfile>> m_profiles;
 };
 
-} // namespace GOW
+} // namespace Onyx

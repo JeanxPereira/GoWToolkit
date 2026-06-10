@@ -14,7 +14,7 @@ void Inspector::Draw() {
     ImGui::Begin("Inspector", &visible);
 
     // Use the global selection state
-    ParsedEntry* entry = GOW::Api::GetSelected();
+    ParsedEntry* entry = Onyx::Api::GetSelected();
 
     if (!entry) {
         ImGui::TextDisabled("No entry selected");
@@ -26,8 +26,8 @@ void Inspector::Draw() {
     ImGui::PushID("InspectorHeader");
 
     const char* icon = IconForType(entry->typeId);
-    if (auto* t = entry->profileTag.As<GOW::Gowr::GowrProfileTag>()) {
-        if (t->role != GOW::Gowr::WadEntryRole::Unknown) {
+    if (auto* t = entry->profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
+        if (t->role != Onyx::Gowr::WadEntryRole::Unknown) {
             icon = IconForRole(t->role);
         }
     }
@@ -64,8 +64,8 @@ void Inspector::Draw() {
     ImGui::Separator();
 
     // ── Viewer Inspector section — if a document viewer is active ────────
-    if (GOW::Api::Documents().HasActiveDocument()) {
-        auto doc = GOW::Api::Documents().GetActiveDocument();
+    if (Onyx::Api::Documents().HasActiveDocument()) {
+        auto doc = Onyx::Api::Documents().GetActiveDocument();
         if (doc) {
             doc->DrawInspector();
             ImGui::Separator();
@@ -74,7 +74,7 @@ void Inspector::Draw() {
 
     // ── Properties section — always shown (collapsible) ─────────────────
     if (ImGui::CollapsingHeader("Properties", ImGuiTreeNodeFlags_DefaultOpen)) {
-        m_info_tab.Draw(GOW::Api::Database(), entry);
+        m_info_tab.Draw(Onyx::Api::Database(), entry);
     }
 
     ImGui::End();

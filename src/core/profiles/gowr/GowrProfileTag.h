@@ -1,7 +1,7 @@
 #pragma once
 #include "core/profiles/gowr/GowrTaxonomy.h"
 
-namespace GOW {
+namespace Onyx {
 namespace Gowr {
 
 struct GowrProfileTag {
@@ -11,4 +11,4 @@ struct GowrProfileTag {
 };
 
 } // namespace Gowr
-} // namespace GOW
+} // namespace Onyx

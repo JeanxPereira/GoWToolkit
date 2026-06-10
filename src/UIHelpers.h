@@ -6,11 +6,11 @@
 
 // Formatting utilities (HashHex, FormatBytes, FormatNum, MatchesFilter)
 #include "ui/Formatting.h"
-// Bring GOW:: formatting helpers into global scope for backward compatibility
-using GOW::HashHex;
-using GOW::FormatBytes;
-using GOW::FormatNum;
-using GOW::MatchesFilter;
+// Bring Onyx:: formatting helpers into global scope for backward compatibility
+using Onyx::HashHex;
+using Onyx::FormatBytes;
+using Onyx::FormatNum;
+using Onyx::MatchesFilter;
 
 // TypeId → visual mapping (TypeName, ColorForType, IconForType, SkinModeName)
 #include "ui/TypeVisuals.h"

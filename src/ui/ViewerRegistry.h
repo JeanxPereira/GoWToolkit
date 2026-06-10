@@ -8,7 +8,7 @@
 #include <functional>
 #include <unordered_map>
 
-namespace GOW {
+namespace Onyx {
 
 class ViewerRegistry {
 public:
@@ -23,4 +23,4 @@ private:
     std::unordered_map<MediaKind, Factory> m_factories;
 };
 
-} // namespace GOW
+} // namespace Onyx

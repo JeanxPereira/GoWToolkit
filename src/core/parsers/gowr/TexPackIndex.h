@@ -9,7 +9,7 @@
 #include <atomic>
 #include <mutex>
 
-namespace GOW {
+namespace Onyx {
 
 struct TexpackEntry {
     uint32_t packIdx;
@@ -74,4 +74,4 @@ private:
     std::atomic<int> m_packsLoaded{0};
 };
 
-} // namespace GOW
+} // namespace Onyx

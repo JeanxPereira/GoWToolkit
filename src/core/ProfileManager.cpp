@@ -1,6 +1,6 @@
 #include "ProfileManager.h"
 
-namespace GOW {
+namespace Onyx {
 
 void ProfileManager::RegisterProfile(std::shared_ptr<IGameProfile> profile) {
     if (profile) {
@@ -45,4 +45,4 @@ std::shared_ptr<IGameProfile> ProfileManager::FindProfileByHint(const std::strin
     return nullptr;
 }
 
-} // namespace GOW
+} // namespace Onyx

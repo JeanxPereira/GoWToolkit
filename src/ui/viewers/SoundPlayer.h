@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <atomic>
 
-namespace GOW {
+namespace Onyx {
 
 class SoundPlayer : public IDocumentContent {
 public:
@@ -55,4 +55,4 @@ private:
 
 };
 
-} // namespace GOW
+} // namespace Onyx

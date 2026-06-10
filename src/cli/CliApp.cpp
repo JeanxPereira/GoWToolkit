@@ -12,7 +12,7 @@
 #include <map>
 #include <functional>
 
-namespace GOW {
+namespace Onyx {
 
 int CliApp::Run(int argc, char** argv) {
     std::vector<std::string> args;
@@ -69,7 +69,7 @@ static void PrintEntryTree(const ParsedEntry& entry, int depth) {
         sizeStr = std::to_string(entry.size) + " B";
 
     std::cout << indent << entry.name
-              << "  [" << GOW::TypeIdName(entry.typeId) << "]"
+              << "  [" << Onyx::TypeIdName(entry.typeId) << "]"
               << "  size=" << sizeStr
               << "  off=0x" << std::hex << std::setfill('0') << std::setw(8) << entry.offset << std::dec
               << "\n";
@@ -205,7 +205,7 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
     // Type summary
     std::map<std::string, int> typeCounts;
     std::function<void(const ParsedEntry&)> countTypes = [&](const ParsedEntry& e) {
-        typeCounts[GOW::TypeIdName(e.typeId)]++;
+        typeCounts[Onyx::TypeIdName(e.typeId)]++;
         for (const auto& c : e.children) countTypes(c);
     };
     for (const auto& e : wad.entries) countTypes(e);
@@ -253,18 +253,18 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
         std::cerr << "[CLI] Entry '" << entryName << "' not found.\n";
         std::cerr << "[CLI] Top-level entries:\n";
         for (const auto& e : wad.entries)
-            std::cerr << "  " << e.name << " [" << GOW::TypeIdName(e.typeId) << "]\n";
+            std::cerr << "  " << e.name << " [" << Onyx::TypeIdName(e.typeId) << "]\n";
         return 1;
     }
 
-    std::cout << "[CLI] Found: '" << entry->name << "' [" << GOW::TypeIdName(entry->typeId) << "]"
+    std::cout << "[CLI] Found: '" << entry->name << "' [" << Onyx::TypeIdName(entry->typeId) << "]"
               << " size=" << entry->size << " offset=0x" << std::hex << entry->offset << std::dec
               << " children=" << entry->children.size() << "\n";
 
     auto* handler = TypeRegistry::Get().Resolve(entry->typeId);
     if (!handler) {
         std::cerr << "[CLI] No handler registered for typeId=" << (int)entry->typeId
-                  << " (" << GOW::TypeIdName(entry->typeId) << ")\n";
+                  << " (" << Onyx::TypeIdName(entry->typeId) << ")\n";
         return 1;
     }
 
@@ -344,4 +344,4 @@ int CliApp::HandleExtract(const std::vector<std::string>& args) {
     return 0;
 }
 
-} // namespace GOW
+} // namespace Onyx

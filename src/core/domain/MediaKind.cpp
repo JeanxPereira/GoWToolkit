@@ -1,7 +1,7 @@
 #include "MediaKind.h"
 #include "fonts/SFSymbols.h"
 
-namespace GOW {
+namespace Onyx {
 
 const char* Name(MediaKind kind) {
     switch (kind) {
@@ -41,4 +41,4 @@ const char* Icon(MediaKind kind) {
     return ICON_SF_QUESTIONMARK_CIRCLE;
 }
 
-} // namespace GOW
+} // namespace Onyx

@@ -3,7 +3,7 @@
 #include <cstdint>
 #include "core/types/TypeId.h"
 
-namespace GOW {
+namespace Onyx {
 
 /// Represents the high-level semantic "kind" of media an asset represents,
 /// regardless of the underlying game version or specific format.
@@ -128,4 +128,4 @@ const char* Name(MediaKind kind);
 /// Returns an SF Symbol icon string for a MediaKind.
 const char* Icon(MediaKind kind);
 
-} // namespace GOW
+} // namespace Onyx

@@ -51,7 +51,7 @@ Window::Window()
     setupNativeWindow();
 
     // Initialize core systems
-    GOW::TaskManager::init();
+    Onyx::TaskManager::init();
 
     m_app.init(m_window, &m_config);
 
@@ -85,8 +85,8 @@ Window::~Window() {
 
     // Shutdown core systems
     EventShutdown::post();
-    GOW::EventManager::clear();
-    GOW::TaskManager::exit();
+    Onyx::EventManager::clear();
+    Onyx::TaskManager::exit();
 
     exitImGui();
     exitGLFW();
@@ -179,8 +179,8 @@ void Window::initImGui() {
     }
 
     // Apply centralized accent-derived theme (replaces StyleColorsDark + applyAccent)
-    GOW::Theme::ApplyTheme(m_config.getAccent(),
-                           (GOW::Theme::ThemeMode)m_config.themeMode);
+    Onyx::Theme::ApplyTheme(m_config.getAccent(),
+                           (Onyx::Theme::ThemeMode)m_config.themeMode);
 
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         ImGui::GetStyle().WindowRounding = 0.0f;
@@ -196,8 +196,8 @@ void Window::initImGui() {
         nativeScale = xscale;
     }
 #endif
-    GOW::Scale::Init(m_config.uiScale, nativeScale);
-    GOW::Scale::ApplyStyleScale(m_config.uiScale);
+    Onyx::Scale::Init(m_config.uiScale, nativeScale);
+    Onyx::Scale::ApplyStyleScale(m_config.uiScale);
 
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
 #if defined(__APPLE__)
@@ -295,7 +295,7 @@ void Window::frameBegin() {
     ImGui::NewFrame();
 
     // Drive smooth color transitions (preset switches with ease-out)
-    GOW::Theme::UpdateTransition();
+    Onyx::Theme::UpdateTransition();
 
     beginNativeWindowFrame();
 }
@@ -344,8 +344,8 @@ void Window::frameEnd() {
     // Font rebuild MUST happen after all rendering is complete.
     // Rebuilding the atlas before Render() invalidates the font texture
     // that the current frame's draw commands reference.
-    if (GOW::Fonts::IsPendingRebuild()) {
-        GOW::Fonts::UploadAtlas();
+    if (Onyx::Fonts::IsPendingRebuild()) {
+        Onyx::Fonts::UploadAtlas();
     }
 
     m_app.frameEnd();

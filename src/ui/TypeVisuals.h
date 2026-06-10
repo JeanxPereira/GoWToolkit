@@ -5,31 +5,31 @@
 
 // ── TypeId → name / color / icon ──────────────────────────────────────────
 
-inline const char *TypeName(GOW::TypeId typeId) {
-  auto *handler = GOW::TypeRegistry::Get().Resolve(typeId);
+inline const char *TypeName(Onyx::TypeId typeId) {
+  auto *handler = Onyx::TypeRegistry::Get().Resolve(typeId);
   if (handler) {
     return handler->GetName();
   }
 
   // GOWR fallbacks / unmigrated types
   switch (typeId) {
-      case GOW::TypeId::ShaderContainer:
-      case GOW::TypeId::ShaderVertex:
-      case GOW::TypeId::ShaderPixel:
-      case GOW::TypeId::ShaderHull:
-      case GOW::TypeId::ShaderDomain:
-      case GOW::TypeId::ShaderCompute:
-      case GOW::TypeId::ShaderLibrary:  return "SHADER";
-      case GOW::TypeId::MeshDefn:       return "GOWR MESH DEFN";
-      case GOW::TypeId::Model:          return "GOWR MDL DEFN";
-      case GOW::TypeId::TexturePair:    return "GOWR TEXTURE";
-      case GOW::TypeId::GameObjectProto:return "GOWR GO PROTO RIG";
+      case Onyx::TypeId::ShaderContainer:
+      case Onyx::TypeId::ShaderVertex:
+      case Onyx::TypeId::ShaderPixel:
+      case Onyx::TypeId::ShaderHull:
+      case Onyx::TypeId::ShaderDomain:
+      case Onyx::TypeId::ShaderCompute:
+      case Onyx::TypeId::ShaderLibrary:  return "SHADER";
+      case Onyx::TypeId::MeshDefn:       return "GOWR MESH DEFN";
+      case Onyx::TypeId::Model:          return "GOWR MDL DEFN";
+      case Onyx::TypeId::TexturePair:    return "GOWR TEXTURE";
+      case Onyx::TypeId::GameObjectProto:return "GOWR GO PROTO RIG";
       default:                          return "UNKNOWN";
   }
 }
 
-inline ImVec4 ColorForType(GOW::TypeId typeId) {
-  auto *handler = GOW::TypeRegistry::Get().Resolve(typeId);
+inline ImVec4 ColorForType(Onyx::TypeId typeId) {
+  auto *handler = Onyx::TypeRegistry::Get().Resolve(typeId);
   if (handler) {
     auto c = handler->GetColor();
     return {c.r, c.g, c.b, c.a};
@@ -37,20 +37,20 @@ inline ImVec4 ColorForType(GOW::TypeId typeId) {
 
   // GOWR fallbacks
   switch (typeId) {
-      case GOW::TypeId::MeshDefn:
-      case GOW::TypeId::Model:
+      case Onyx::TypeId::MeshDefn:
+      case Onyx::TypeId::Model:
           return {0.4f, 0.8f, 1.0f, 1.0f};
-      case GOW::TypeId::TexturePair:
+      case Onyx::TypeId::TexturePair:
           return {1.0f, 0.5f, 0.8f, 1.0f};
-      case GOW::TypeId::ShaderContainer:
-      case GOW::TypeId::ShaderVertex:
-      case GOW::TypeId::ShaderPixel:
-      case GOW::TypeId::ShaderHull:
-      case GOW::TypeId::ShaderDomain:
-      case GOW::TypeId::ShaderCompute:
-      case GOW::TypeId::ShaderLibrary:
+      case Onyx::TypeId::ShaderContainer:
+      case Onyx::TypeId::ShaderVertex:
+      case Onyx::TypeId::ShaderPixel:
+      case Onyx::TypeId::ShaderHull:
+      case Onyx::TypeId::ShaderDomain:
+      case Onyx::TypeId::ShaderCompute:
+      case Onyx::TypeId::ShaderLibrary:
           return {0.5f, 1.0f, 0.5f, 1.0f};
-      case GOW::TypeId::GameObjectProto:
+      case Onyx::TypeId::GameObjectProto:
           return {1.0f, 0.6f, 0.3f, 1.0f};
       // GOWR_MG_GPU_BUFF is MeshGpu role, TypeId could be Unknown or MeshGpu? 
       // We will fallback to gray.
@@ -59,28 +59,28 @@ inline ImVec4 ColorForType(GOW::TypeId typeId) {
   }
 }
 
-inline const char *IconForType(GOW::TypeId typeId) {
-  auto *handler = GOW::TypeRegistry::Get().Resolve(typeId);
+inline const char *IconForType(Onyx::TypeId typeId) {
+  auto *handler = Onyx::TypeRegistry::Get().Resolve(typeId);
   if (handler) {
     return handler->GetIcon();
   }
 
   // GOWR fallbacks
   switch (typeId) {
-      case GOW::TypeId::MeshDefn:
-      case GOW::TypeId::Model:
+      case Onyx::TypeId::MeshDefn:
+      case Onyx::TypeId::Model:
           return ICON_SF_CUBE_FILL;
-      case GOW::TypeId::TexturePair:
+      case Onyx::TypeId::TexturePair:
           return ICON_SF_PHOTO;
-      case GOW::TypeId::ShaderContainer:
-      case GOW::TypeId::ShaderVertex:
-      case GOW::TypeId::ShaderPixel:
-      case GOW::TypeId::ShaderHull:
-      case GOW::TypeId::ShaderDomain:
-      case GOW::TypeId::ShaderCompute:
-      case GOW::TypeId::ShaderLibrary:
+      case Onyx::TypeId::ShaderContainer:
+      case Onyx::TypeId::ShaderVertex:
+      case Onyx::TypeId::ShaderPixel:
+      case Onyx::TypeId::ShaderHull:
+      case Onyx::TypeId::ShaderDomain:
+      case Onyx::TypeId::ShaderCompute:
+      case Onyx::TypeId::ShaderLibrary:
           return ICON_SF_CURLYBRACES;
-      case GOW::TypeId::GameObjectProto:
+      case Onyx::TypeId::GameObjectProto:
           return ICON_SF_PERSON_FILL;
       default:
           return ICON_SF_DOCUMENT;

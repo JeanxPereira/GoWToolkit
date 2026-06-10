@@ -4,7 +4,7 @@
 #include <string>
 #include <memory>
 
-namespace GOW {
+namespace Onyx {
 
 class GOW2MaterialParser {
 public:
@@ -31,4 +31,4 @@ public:
     static std::unique_ptr<MaterialData> Parse(const ParsedEntry& matEntry, const std::shared_ptr<IFile>& fileSource);
 };
 
-} // namespace GOW
+} // namespace Onyx

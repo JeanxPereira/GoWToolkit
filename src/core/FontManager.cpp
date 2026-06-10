@@ -12,7 +12,7 @@
 #include <windows.h>
 #endif
 
-namespace GOW::Fonts {
+namespace Onyx::Fonts {
 
 // ── Static state ──────────────────────────────────────────────────────────
 static std::vector<FontEntry> s_fonts;
@@ -197,4 +197,4 @@ const std::string& GetCurrentFontPath() {
     return empty;
 }
 
-} // namespace GOW::Fonts
+} // namespace Onyx::Fonts

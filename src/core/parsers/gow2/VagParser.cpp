@@ -3,7 +3,7 @@
 #include "core/Logger.h"
 #include <cstring>
 
-namespace GOW {
+namespace Onyx {
 
 static uint32_t ReadU32BE(const uint8_t* p) {
     return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
@@ -57,4 +57,4 @@ std::unique_ptr<GOW2VagParser::VagData> GOW2VagParser::Parse(const std::shared_p
     return result;
 }
 
-} // namespace GOW
+} // namespace Onyx

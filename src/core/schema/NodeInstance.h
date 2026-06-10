@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <cstring>
 
-namespace GOW {
+namespace Onyx {
 
 class NodeInstance {
 public:
@@ -43,4 +43,4 @@ private:
     std::vector<uint8_t> m_data;
 };
 
-} // namespace GOW
+} // namespace Onyx

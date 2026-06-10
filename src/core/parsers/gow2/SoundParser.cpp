@@ -4,7 +4,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace GOW {
+namespace Onyx {
 
 static std::string ReadFixedString(const uint8_t* buf, size_t maxLen) {
     size_t len = strnlen((const char*)buf, maxLen);
@@ -222,4 +222,4 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     return result;
 }
 
-} // namespace GOW
+} // namespace Onyx

@@ -5,7 +5,7 @@
 #include <cmath>
 #include <set>
 
-namespace GOW::UI {
+namespace Onyx::UI {
 
 namespace {
 
@@ -13,12 +13,12 @@ namespace {
 // integer frame indices. We treat a keyframe as the start offset of any
 // substream — those are the points where the engine actually has stored
 // data, so they line up with what an animator would call a key.
-void CollectKeyFrames(const GOW::AnimationPlayer& player,
+void CollectKeyFrames(const Onyx::AnimationPlayer& player,
                       std::set<int>& out) {
-    const GOW::AnimationData* anim = nullptr;
+    const Onyx::AnimationData* anim = nullptr;
     int g = player.GetCurrentGroupIndex();
     int a = player.GetCurrentActIndex();
-    const GOW::BakedAnimation* baked = player.GetBaked();
+    const Onyx::BakedAnimation* baked = player.GetBaked();
     if (!baked || g < 0 || a < 0) return;
 
     // The player owns the anim pointer but doesn't expose it; derive markers
@@ -49,9 +49,9 @@ ImU32 BlendU32(ImU32 a, ImU32 b, float t) {
 } // namespace
 
 bool DrawAnimationTimeline(const char* strId,
-                           GOW::AnimationPlayer& player,
+                           Onyx::AnimationPlayer& player,
                            const AnimationTimelineStyle& style) {
-    const GOW::BakedAnimation* baked = player.GetBaked();
+    const Onyx::BakedAnimation* baked = player.GetBaked();
     if (!baked || baked->empty()) return false;
 
     const int frameCount = baked->frameCount;
@@ -173,4 +173,4 @@ bool DrawAnimationTimeline(const char* strId,
     return changed;
 }
 
-} // namespace GOW::UI
+} // namespace Onyx::UI
