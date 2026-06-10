@@ -1,7 +1,6 @@
 #include "core/AssetVisibility.h"
 #include "core/domain/Entry.h"
 #include "core/types/TypeRegistry.h"
-#include "core/types/GameTypes.h"
 
 namespace Onyx {
 
@@ -10,48 +9,10 @@ AssetVisibility& AssetVisibility::Get() {
     return s_instance;
 }
 
-AssetVisibility::AssetVisibility() {
-    RegisterDefaults();
-}
+AssetVisibility::AssetVisibility() = default;
 
-void AssetVisibility::RegisterDefaults() {
-    // Helper lambdas
-    auto set = [this](GameVersion ver, TypeId id, Visibility vis) {
-        m_defaults[MakeKey(ver, id)] = vis;
-    };
-
-    // ── GOW2: Structural (Internal — never shown) ────────────────────
-    set(GameVersion::GOW2, GameTypes::EntityCount,  Visibility::Internal);
-    set(GameVersion::GOW2, GameTypes::GroupStart,    Visibility::Internal);
-    set(GameVersion::GOW2, GameTypes::GroupEnd,      Visibility::Internal);
-    set(GameVersion::GOW2, GameTypes::HeaderStart,   Visibility::Internal);
-    set(GameVersion::GOW2, GameTypes::HeaderPop,     Visibility::Internal);
-    set(GameVersion::GOW2, GameTypes::Sentinel,      Visibility::Internal);
-
-    // ── GOW2: Hidden by default (no viewer, consumed internally) ─────
-    set(GameVersion::GOW2, GameTypes::GfxData,       Visibility::Hidden);
-    set(GameVersion::GOW2, GameTypes::PalData,       Visibility::Hidden);
-    set(GameVersion::GOW2, GameTypes::Light,         Visibility::Hidden);
-    set(GameVersion::GOW2, GameTypes::Collision,     Visibility::Hidden);
-    set(GameVersion::GOW2, GameTypes::Script,        Visibility::Hidden);
-    set(GameVersion::GOW2, GameTypes::Flipbook,      Visibility::Hidden);
-
-    // ── GOWR: Structural (Internal) ──────────────────────────────────
-    set(GameVersion::GOWR, GameTypes::Sentinel,      Visibility::Internal);
-    set(GameVersion::GOWR, GameTypes::ClientGuid,    Visibility::Internal);
-
-    // ── GOWR: Hidden by default (no viewer / internal GPU data) ──────
-    set(GameVersion::GOWR, GameTypes::MeshGpu,       Visibility::Hidden);
-    set(GameVersion::GOWR, GameTypes::Model,         Visibility::Hidden);
-    set(GameVersion::GOWR, GameTypes::Material,      Visibility::Hidden);
-    set(GameVersion::GOWR, GameTypes::MaterialRef,   Visibility::Hidden);
-    set(GameVersion::GOWR, GameTypes::AnimClip,      Visibility::Hidden);
-    set(GameVersion::GOWR, GameTypes::SoundEmitter,  Visibility::Hidden);
-    set(GameVersion::GOWR, GameTypes::LodBinding,    Visibility::Hidden);
-
-    // Note: TextureCpu is not a TypeId — it's a GOWR role that maps entries
-    // with GameTypes::TexturePair. The WadBrowser handles this via the role-based
-    // path which now also delegates to AssetVisibility for GOWR roles.
+void AssetVisibility::SetDefault(GameVersion ver, TypeId id, Visibility vis) {
+    m_defaults[MakeKey(ver, id)] = vis;
 }
 
 // ── Query ─────────────────────────────────────────────────────────────────

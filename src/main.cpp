@@ -3,6 +3,7 @@
 #include "core/profiles/gow2/ProfileGOW2.h"
 #include "core/profiles/gowr/ProfileGOWR.h"
 #include "core/types/GameTypes.h"
+#include "core/profiles/AssetVisibilityDefaults.h"
 #include "core/Threading.h"
 #include "cli/CliApp.h"
 
@@ -24,6 +25,10 @@ int main(int argc, char** argv) {
     // Populate the asset-type catalog before any parse or UI draw — every
     // GameTypes:: handle is invalid until this runs.
     Onyx::GameTypes::RegisterGameTypes();
+
+    // Seed the game-specific default asset visibility table. The store itself
+    // holds no game knowledge; this app-level call owns the GoW defaults.
+    Onyx::RegisterGameVisibilityDefaults();
 
     registerProfiles();
 

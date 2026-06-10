@@ -36,6 +36,11 @@ public:
     Visibility GetDefault(GameVersion ver, TypeId id) const;
     Visibility GetCurrent(GameVersion ver, TypeId id) const;
 
+    /// Seed a default visibility for a (ver, type) pair. Called at startup by
+    /// app-level code that owns the game-specific default table; the store
+    /// itself holds no game knowledge.
+    void SetDefault(GameVersion ver, TypeId id, Visibility vis);
+
     /// Toggle an override. Only works for Hidden types (not Internal).
     void SetUserOverride(GameVersion ver, TypeId id, bool visible);
     void ClearUserOverride(GameVersion ver, TypeId id);
@@ -79,8 +84,6 @@ private:
 
     // User overrides: key → visible (true = force show, false = force hide)
     std::unordered_map<uint32_t, bool> m_overrides;
-
-    void RegisterDefaults();
 };
 
 } // namespace Onyx
