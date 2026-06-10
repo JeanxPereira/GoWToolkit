@@ -394,4 +394,8 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, Asset
     return LoadFromArchiveGOW2(vfs, tocFile.get(), outWad);
 }
 
+bool ProfileGOW2::IsContainerEntry(const AssetEntry& e) const {
+    return e.typeId == GameTypes::WadFile || e.typeId == GameTypes::Unknown;
+}
+
 } // namespace Onyx

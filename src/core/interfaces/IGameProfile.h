@@ -31,6 +31,10 @@ public:
     // e popula a estrutura do jogo no AssetContainer
     virtual bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) = 0;
 
+    // True if this entry represents an openable container (e.g. a WAD/archive
+    // node the user can drill into). Default: false. Profiles override.
+    virtual bool IsContainerEntry(const AssetEntry& entry) const { return false; }
+
 };
 
 } // namespace Onyx

@@ -19,7 +19,9 @@ public:
     bool ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) override;
     
     bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) override;
-    
+
+    bool IsContainerEntry(const AssetEntry& entry) const override;
+
 private:
     void RegisterSchemas();
     bool LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,

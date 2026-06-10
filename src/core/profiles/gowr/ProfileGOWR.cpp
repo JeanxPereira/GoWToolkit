@@ -13,6 +13,7 @@
 #include <mutex>
 #include <thread>
 #include "../../loaders/GOWRLoaders.h"
+#include "core/types/GameTypes.h"
 
 // ── ProfileGOWR.cpp ────────────────────────────────────────────────────────
 // Binary structures (GOWRWadHeader, GOWRFileDesc, GOWRTypeToString) have been
@@ -216,6 +217,10 @@ bool ProfileGOWR::LoadFromArchive(
 {
     // Ragnarök doesn't use ISO archives
     return false;
+}
+
+bool ProfileGOWR::IsContainerEntry(const AssetEntry& e) const {
+    return e.typeId == GameTypes::WadFile || e.typeId == GameTypes::Unknown;
 }
 
 } // namespace Onyx

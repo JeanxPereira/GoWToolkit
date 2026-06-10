@@ -1,7 +1,6 @@
 #include "ui/PakBrowser.h"
 #include "UIHelpers.h"
 #include "core/AssetDatabase.h"
-#include "core/types/GameTypes.h"
 #include "core/ToolkitApi.h"
 #include "fonts/SFSymbols.h"
 #include "imgui.h"
@@ -110,9 +109,9 @@ void PakBrowser::Draw() {
       }
 
       if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
-        // WAD files and unknown types → open as WAD browser
-        if (entry.typeId == Onyx::GameTypes::WadFile ||
-            entry.typeId == Onyx::GameTypes::Unknown) {
+        // WAD files and unknown types → open as WAD browser. The decision of
+        // what counts as an openable container is owned by the active profile.
+        if (pak.profile && pak.profile->IsContainerEntry(entry)) {
           db.LoadWadFromPakEntry(&entry, pak);
           ImGui::SetWindowFocus("WAD Browser");
         } else {
