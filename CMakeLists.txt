@@ -254,6 +254,8 @@ set(PARSER_MIN_SOURCES
     src/core/schema/NodeInstance.cpp
     src/core/schema/StructDef.cpp
     src/core/types/TypeRegistry.cpp
+    src/core/types/TypeCatalog.cpp
+    src/core/types/GameTypes.cpp
     src/core/domain/MediaKind.cpp
     src/core/vfs/IsoFile.cpp
     src/core/vfs/IsoFileSystem.cpp

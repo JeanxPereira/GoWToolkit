@@ -12,6 +12,8 @@
 #include "core/profiles/gow2/ProfileGOW2.h"
 #include "core/profiles/gowr/ProfileGOWR.h"
 #include "core/types/TypeId.h"
+#include "core/types/GameTypes.h"
+#include "core/types/TypeCatalog.h"
 #include "core/vfs/MemoryFile.h"
 #include "core/vfs/OsFile.h"
 
@@ -52,7 +54,7 @@ void FlattenEntry(const AssetEntry& entry,
                   std::vector<ordered_json>& out) {
     ordered_json e;
     e["name"]        = entry.name;
-    e["typeId"]      = Onyx::TypeIdName(entry.typeId);
+    e["typeId"]      = Onyx::TypeCatalog::Get().Label(entry.typeId);
     e["size"]        = entry.size;
     e["offset"]      = entry.offset;
     e["childCount"]  = static_cast<uint64_t>(entry.children.size());
@@ -170,6 +172,9 @@ bool ShouldUpdateGoldens() {
 void RunGoldenTest(std::string_view versionTag,
                    const fs::path& wadPath,
                    const fs::path& expectedJsonPath) {
+    // Type catalog must be populated before parsing so handles/labels resolve.
+    Onyx::GameTypes::RegisterGameTypes();
+
     REQUIRE_MESSAGE(fs::exists(wadPath),
                     "fixture WAD not found: " << wadPath.string());
 

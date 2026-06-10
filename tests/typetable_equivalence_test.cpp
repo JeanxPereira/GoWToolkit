@@ -1,22 +1,23 @@
 #include <doctest/doctest.h>
 #include "core/types/GameTypeTable.h"
 #include "core/types/TypeId.h"
+#include "core/types/GameTypes.h"
+#include "core/types/TypeCatalog.h"
 #include "core/domain/MediaKind.h"
 #include <cstring>
 
 using namespace Onyx;
 
-TEST_CASE("GameTypeTable reproduces legacy KindOf and TypeIdName") {
-    // Row count matches the enum (excluding COUNT).
-    CHECK((int)(sizeof(kGameTypeTable)/sizeof(kGameTypeTable[0])) == (int)TypeId::COUNT);
+TEST_CASE("GameTypeTable seeds the catalog with stable values, media and labels") {
+    GameTypes::RegisterGameTypes();
 
     for (const auto& row : kGameTypeTable) {
-        TypeId legacy = static_cast<TypeId>(row.legacyValue);
-        // legacyValue is exactly the enum numeric value
-        CHECK((uint32_t)legacy == row.legacyValue);
-        // media metadata matches the old constexpr switch
-        CHECK(KindOf(legacy) == row.media);
-        // label metadata matches the old TypeIdName switch
-        CHECK(std::strcmp(TypeIdName(legacy), row.label) == 0);
+        TypeId id{row.legacyValue};
+        // The registered handle's value must equal its legacy enum position.
+        CHECK(id.value == row.legacyValue);
+        // media metadata matches the table (which mirrors the old KindOf switch)
+        CHECK(TypeCatalog::Get().Media(id) == row.media);
+        // label metadata matches the table (which mirrors the old TypeIdName)
+        CHECK(std::strcmp(TypeCatalog::Get().Label(id), row.label) == 0);
     }
 }

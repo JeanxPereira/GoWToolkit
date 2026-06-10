@@ -47,7 +47,7 @@ std::shared_ptr<IDocumentContent> ViewerRegistry::Open(const AssetEntry& entry, 
     }
     
     LOG_WARN("ViewerRegistry: No viewer found for TypeId=%d, kind=%d",
-            (int)entry.typeId, (int)entry.kind);
+            (int)entry.typeId.value, (int)entry.kind);
     return nullptr;
 }
 

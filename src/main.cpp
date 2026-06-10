@@ -2,6 +2,7 @@
 #include "core/ProfileManager.h"
 #include "core/profiles/gow2/ProfileGOW2.h"
 #include "core/profiles/gowr/ProfileGOWR.h"
+#include "core/types/GameTypes.h"
 #include "core/Threading.h"
 #include "cli/CliApp.h"
 
@@ -19,6 +20,10 @@ static void registerProfiles() {
 int main(int argc, char** argv) {
     // Record the main thread before anything else spawns workers.
     Onyx::Threading::MarkMainThread();
+
+    // Populate the asset-type catalog before any parse or UI draw — every
+    // GameTypes:: handle is invalid until this runs.
+    Onyx::GameTypes::RegisterGameTypes();
 
     registerProfiles();
 

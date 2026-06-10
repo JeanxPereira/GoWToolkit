@@ -4,6 +4,8 @@
 #include "../core/vfs/OsFile.h"
 #include "../core/types/TypeRegistry.h"
 #include "../core/types/ITypeHandler.h"
+#include "../core/types/TypeCatalog.h"
+#include "../core/types/GameTypes.h"
 #include "../core/parsers/shared/SceneNode.h"
 #include <filesystem>
 #include <fstream>
@@ -15,6 +17,9 @@
 namespace Onyx {
 
 int CliApp::Run(int argc, char** argv) {
+    // Populate the type catalog before any parse — handles are invalid otherwise.
+    Onyx::GameTypes::RegisterGameTypes();
+
     std::vector<std::string> args;
     for (int i = 1; i < argc; ++i) {
         args.push_back(argv[i]);
@@ -69,7 +74,7 @@ static void PrintEntryTree(const AssetEntry& entry, int depth) {
         sizeStr = std::to_string(entry.size) + " B";
 
     std::cout << indent << entry.name
-              << "  [" << Onyx::TypeIdName(entry.typeId) << "]"
+              << "  [" << Onyx::TypeCatalog::Get().Label(entry.typeId) << "]"
               << "  size=" << sizeStr
               << "  off=0x" << std::hex << std::setfill('0') << std::setw(8) << entry.offset << std::dec
               << "\n";
@@ -205,7 +210,7 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
     // Type summary
     std::map<std::string, int> typeCounts;
     std::function<void(const AssetEntry&)> countTypes = [&](const AssetEntry& e) {
-        typeCounts[Onyx::TypeIdName(e.typeId)]++;
+        typeCounts[Onyx::TypeCatalog::Get().Label(e.typeId)]++;
         for (const auto& c : e.children) countTypes(c);
     };
     for (const auto& e : wad.entries) countTypes(e);
@@ -253,18 +258,18 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
         std::cerr << "[CLI] Entry '" << entryName << "' not found.\n";
         std::cerr << "[CLI] Top-level entries:\n";
         for (const auto& e : wad.entries)
-            std::cerr << "  " << e.name << " [" << Onyx::TypeIdName(e.typeId) << "]\n";
+            std::cerr << "  " << e.name << " [" << Onyx::TypeCatalog::Get().Label(e.typeId) << "]\n";
         return 1;
     }
 
-    std::cout << "[CLI] Found: '" << entry->name << "' [" << Onyx::TypeIdName(entry->typeId) << "]"
+    std::cout << "[CLI] Found: '" << entry->name << "' [" << Onyx::TypeCatalog::Get().Label(entry->typeId) << "]"
               << " size=" << entry->size << " offset=0x" << std::hex << entry->offset << std::dec
               << " children=" << entry->children.size() << "\n";
 
     auto* handler = TypeRegistry::Get().Resolve(entry->typeId);
     if (!handler) {
-        std::cerr << "[CLI] No handler registered for typeId=" << (int)entry->typeId
-                  << " (" << Onyx::TypeIdName(entry->typeId) << ")\n";
+        std::cerr << "[CLI] No handler registered for typeId=" << (int)entry->typeId.value
+                  << " (" << Onyx::TypeCatalog::Get().Label(entry->typeId) << ")\n";
         return 1;
     }
 

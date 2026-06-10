@@ -228,7 +228,7 @@ bool AssetDatabase::EnsureNodeData(AssetEntry* e, AssetContainer& parentWad) {
     if (e->assetNode) return true;
 
     // Most types don't have struct schemas yet. Only log at debug level to avoid spam.
-    LOG_DEBUG("[AssetDatabase] No schema/handler for '%s' (TypeId: %d)", e->name.c_str(), (int)e->typeId);
+    LOG_DEBUG("[AssetDatabase] No schema/handler for '%s' (TypeId: %d)", e->name.c_str(), (int)e->typeId.value);
     return false;
 }
 

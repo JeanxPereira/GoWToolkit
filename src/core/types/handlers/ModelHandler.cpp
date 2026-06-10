@@ -55,7 +55,7 @@ static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
 // Find texture by exact name (same as Go's GetNodeByName for textures)
 static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const std::string& name) {
     for (const auto& c : nodes) {
-        if (c.typeId == Onyx::TypeId::Texture && c.name == name) return &c;
+        if (c.typeId == Onyx::GameTypes::Texture && c.name == name) return &c;
         if (auto f = FindTexture(c.children, name)) return f;
     }
     return nullptr;
@@ -78,7 +78,7 @@ static const Onyx::MaterialInfo::Layer* SelectMainLayer(const Onyx::MaterialInfo
 
 class ModelHandler : public Onyx::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Model; }
+    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Model; }
     const char*  GetName()  const override { return "Model"; }
     uint32_t     GetMagic() const override { return 0x0002000F; }
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }  // symbol-misc
@@ -97,7 +97,7 @@ public:
         // Resolve the Model entry itself — if it's a reference, find the definition
         const AssetEntry* model = &entry;
         if (model->children.empty()) {
-            if (auto resolved = ResolveRef(wad.entries, entry.name, Onyx::TypeId::Model))
+            if (auto resolved = ResolveRef(wad.entries, entry.name, Onyx::GameTypes::Model))
                 model = resolved;
         }
         if (model->children.empty()) return nullptr;
@@ -109,12 +109,12 @@ public:
         std::vector<const AssetEntry*> matEntries;
 
         for (const auto& child : model->children) {
-            if (child.typeId == Onyx::TypeId::Mesh && child.size > 0) {
+            if (child.typeId == Onyx::GameTypes::Mesh && child.size > 0) {
                 meshSources.push_back(&child);
-            } else if (child.typeId == Onyx::TypeId::Material) {
+            } else if (child.typeId == Onyx::GameTypes::Material) {
                 const AssetEntry* mat = &child;
                 if (mat->size == 0) {
-                    if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::TypeId::Material))
+                    if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::GameTypes::Material))
                         mat = real;
                 }
                 matEntries.push_back(mat);
@@ -169,7 +169,7 @@ public:
         // SceneRenderer (which reads part.isSky into RenderBatch::isSky) can
         // route them through the sky pass.
         for (const auto& child : model->children) {
-            if (child.typeId == Onyx::TypeId::Script && child.size > 0) {
+            if (child.typeId == Onyx::GameTypes::Script && child.size > 0) {
                 std::string target = Onyx::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
                 if (target == "SCR_Sky") {
                     scene->isSky = true;

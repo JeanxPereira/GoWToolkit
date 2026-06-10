@@ -3,6 +3,8 @@
 #include "../../vfs/IsoFileSystem.h"
 #include "core/Logger.h"
 #include "core/types/TypeRegistry.h"
+#include "core/types/TypeCatalog.h"
+#include "core/types/GameTypes.h"
 #include <iostream>
 #include <set>
 #include <algorithm>
@@ -146,39 +148,39 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
         }
 
         auto* handler = TypeRegistry::Get().ResolveByTag(GameVersion::GOW2, rawTag.tag, payloadMagic, payloadSizeAvailable);
-        entry.typeId = handler ? handler->GetId() : TypeId::Unknown;
+        entry.typeId = handler ? handler->GetId() : GameTypes::Unknown;
 
         // Set schema string for UI display
 
 
         // Fallback type resolution for types not yet in TypeRegistry
-        if (entry.typeId == TypeId::Unknown) {
+        if (entry.typeId == GameTypes::Unknown) {
             size_t dotPos = entry.name.find_last_of('.');
             if (dotPos != std::string::npos) {
                 std::string ext = entry.name.substr(dotPos + 1);
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
 
-                if      (ext == "WAD") { entry.typeId = TypeId::WadFile; }
-                else if (ext == "VAG") { entry.typeId = TypeId::VagAudio; }
-                else if (ext == "VPK" || ext == "VP1") { entry.typeId = TypeId::VpkVideo; }
-                else if (ext == "PSS") { entry.typeId = TypeId::PssVideo; }
-                else if (ext == "PSW") { entry.typeId = TypeId::PswVideo; }
+                if      (ext == "WAD") { entry.typeId = GameTypes::WadFile; }
+                else if (ext == "VAG") { entry.typeId = GameTypes::VagAudio; }
+                else if (ext == "VPK" || ext == "VP1") { entry.typeId = GameTypes::VpkVideo; }
+                else if (ext == "PSS") { entry.typeId = GameTypes::PssVideo; }
+                else if (ext == "PSW") { entry.typeId = GameTypes::PswVideo; }
                 else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
                          ext == "CSV" || ext == "JSON" || ext == "LOG") {
-                    entry.typeId = TypeId::TextPlain;
+                    entry.typeId = GameTypes::TextPlain;
                 }
             } else {
                 std::string nameLower = entry.name;
                 std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
                 if (nameLower.find("pal_") == 0) {
-                    entry.typeId = TypeId::PalData;
+                    entry.typeId = GameTypes::PalData;
 
                 } else {
                     if (rawTag.size >= 4) {
                         uint32_t magic;
                         std::memcpy(&magic, payloadMagic, 4);
                         if ((magic & 0x80000000) != 0) {
-                            entry.typeId = TypeId::Chunk;
+                            entry.typeId = GameTypes::Chunk;
 
                         } else {
 
@@ -234,7 +236,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
     // Pass 2: resolve zero-sized and unknown types from forward references
     std::function<void(std::vector<AssetEntry>&)> resolveUnknowns = [&](std::vector<AssetEntry>& list) {
         for (auto& n : list) {
-            if (n.size == 0 && n.typeId == TypeId::Unknown && !n.name.empty()) {
+            if (n.size == 0 && n.typeId == GameTypes::Unknown && !n.name.empty()) {
                 auto it = nameToDefinition.find(n.name);
                 if (it != nameToDefinition.end()) {
                     n.typeId = it->second.typeId;
@@ -261,21 +263,21 @@ static void assignSchemaType(AssetEntry& entry) {
         std::string ext = entry.name.substr(dot + 1);
         std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
 
-        if      (ext == "MDL") { entry.typeId = Onyx::TypeId::Model;    }
-        else if (ext == "TXR") { entry.typeId = Onyx::TypeId::Texture;  }
-        else if (ext == "ANM") { entry.typeId = Onyx::TypeId::Animation; }
-        else if (ext == "WAD") { entry.typeId = Onyx::TypeId::WadFile;  }
-        else if (ext == "VAG") { entry.typeId = Onyx::TypeId::VagAudio; }
+        if      (ext == "MDL") { entry.typeId = Onyx::GameTypes::Model;    }
+        else if (ext == "TXR") { entry.typeId = Onyx::GameTypes::Texture;  }
+        else if (ext == "ANM") { entry.typeId = Onyx::GameTypes::Animation; }
+        else if (ext == "WAD") { entry.typeId = Onyx::GameTypes::WadFile;  }
+        else if (ext == "VAG") { entry.typeId = Onyx::GameTypes::VagAudio; }
         else if (ext == "VPK" || ext == "VP1" || ext == "VP2" ||
                  ext == "VP3" || ext == "VP4")
-                              { entry.typeId = Onyx::TypeId::VpkVideo; }
-        else if (ext == "PSS") { entry.typeId = Onyx::TypeId::PssVideo; }
-        else if (ext == "PSW") { entry.typeId = Onyx::TypeId::PswVideo; }
+                              { entry.typeId = Onyx::GameTypes::VpkVideo; }
+        else if (ext == "PSS") { entry.typeId = Onyx::GameTypes::PssVideo; }
+        else if (ext == "PSW") { entry.typeId = Onyx::GameTypes::PswVideo; }
         else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
                  ext == "CSV" || ext == "JSON" || ext == "LOG")
-                              { entry.typeId = Onyx::TypeId::TextPlain; }
+                              { entry.typeId = Onyx::GameTypes::TextPlain; }
 
-        if (entry.typeId == Onyx::TypeId::Unknown) {
+        if (entry.typeId == Onyx::GameTypes::Unknown) {
             // Unhandled extension
         }
     }

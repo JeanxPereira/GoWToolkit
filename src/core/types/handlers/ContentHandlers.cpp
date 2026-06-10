@@ -29,7 +29,7 @@ namespace {
 // ── Animation ── magic 0x00000003 (ANIMATIONS_MAGIC)
 class AnimationHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::Animation; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Animation; }
   const char *GetName() const override { return "Animation"; }
   uint32_t GetMagic() const override { return 0x00000003; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; } // play
@@ -50,7 +50,7 @@ public:
 // ── Script ── magic 0x00010004 (SCRIPT_MAGIC)
 class ScriptHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::Script; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Script; }
   const char *GetName() const override { return "Script"; }
   uint32_t GetMagic() const override { return 0x00010004; }
   const char *GetIcon() const override {
@@ -64,7 +64,7 @@ public:
 // ── Light ── magic 0x00000006 (LIGHT_MAGIC)
 class LightHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::Light; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Light; }
   const char *GetName() const override { return "Light"; }
   uint32_t GetMagic() const override { return 0x00000006; }
   const char *GetIcon() const override { return ICON_SF_SPARKLES; } // sparkle
@@ -76,7 +76,7 @@ public:
 // ── Sound (GOW2) ── magic 0x00000015 (GOW2_SBP_MAGIC)
 class SoundHandlerGOW2 : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::Sound; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Sound; }
   const char *GetName() const override { return "Sound"; }
   uint32_t GetMagic() const override { return 0x00000015; }
   const char *GetIcon() const override {
@@ -99,7 +99,7 @@ public:
 // ── Collision ── magic 0x00000011 (COLLISION_MAGIC)
 class CollisionHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::Collision; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Collision; }
   const char *GetName() const override { return "Collision"; }
   uint32_t GetMagic() const override { return 0x00000011; }
   Color4f GetColor() const override { return {0.7f, 0.7f, 0.7f, 1.0f}; }
@@ -108,7 +108,7 @@ public:
 // ── Flipbook (GOW2) ── magic 0x0000001B
 class FlipbookHandlerGOW2 : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::Flipbook; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Flipbook; }
   const char *GetName() const override { return "Flipbook"; }
   uint32_t GetMagic() const override { return 0x0000001B; }
   Color4f GetColor() const override { return {1.0f, 0.6f, 0.9f, 1.0f}; }
@@ -117,7 +117,7 @@ public:
 // ── Chunk ── magic 0x80000001 (CHUNK_MAGIC / context)
 class ChunkHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::Chunk; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Chunk; }
   const char *GetName() const override { return "Chunk"; }
   uint32_t GetMagic() const override { return 0x80000001; }
   Color4f GetColor() const override { return {0.6f, 0.6f, 0.6f, 1.0f}; }
@@ -133,12 +133,12 @@ public:
              entry.name.c_str());
 
     // Resolve the Instance handler once
-    auto *instHandler = Onyx::TypeRegistry::Get().Resolve(Onyx::TypeId::Instance);
+    auto *instHandler = Onyx::TypeRegistry::Get().Resolve(Onyx::GameTypes::Instance);
 
     auto findInstances = [&](const std::vector<AssetEntry> &entries,
                              auto &findRef) -> void {
       for (const auto &child : entries) {
-        if (child.typeId == Onyx::TypeId::Instance && instHandler) {
+        if (child.typeId == Onyx::GameTypes::Instance && instHandler) {
           LOG_INFO("[ChunkHandler] Found instance '%s'", child.name.c_str());
 
           // Delegate to InstanceHandler::BuildSceneData
@@ -294,7 +294,7 @@ public:
 // Only GOW1
 class ShaderGroupHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::ShaderContainer; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::ShaderContainer; }
   const char *GetName() const override { return "Shader Group"; }
   uint32_t GetMagic() const override { return 0x00000027; }
   const char *GetIcon() const override {
@@ -306,7 +306,7 @@ public:
 // ── Audio/Video (File level) ──
 class VagHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::VagAudio; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::VagAudio; }
   const char *GetName() const override { return "VAG Audio"; }
   uint32_t GetMagic() const override {
     return 0x00;
@@ -329,7 +329,7 @@ public:
 
 class VpkHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::VpkVideo; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::VpkVideo; }
   const char *GetName() const override { return "VPK Video"; }
   uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_2_FILL; }
@@ -350,7 +350,7 @@ public:
 
 class PssHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::PssVideo; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::PssVideo; }
   const char *GetName() const override { return "PSS Video"; }
   uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }
@@ -370,7 +370,7 @@ public:
 
 class PswHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::PswVideo; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::PswVideo; }
   const char *GetName() const override { return "PSW Video"; }
   uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }

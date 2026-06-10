@@ -10,7 +10,7 @@ namespace {
 
 class GfxHandler : public Onyx::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::TypeId::GfxData; }
+  Onyx::TypeId GetId() const override { return Onyx::GameTypes::GfxData; }
   const char *GetName() const override { return "GFX Data"; }
   uint32_t GetMagic() const override { return 0x0000000C; }
   const char *GetIcon() const override { return ICON_SF_PHOTO; } // file-media

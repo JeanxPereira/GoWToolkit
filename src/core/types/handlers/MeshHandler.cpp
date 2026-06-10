@@ -10,14 +10,14 @@ namespace {
 
 class MeshHandler : public Onyx::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Mesh; }
+    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Mesh; }
     const char*  GetName()  const override { return "Mesh"; }
     uint32_t     GetMagic() const override { return 0x0001000F; }
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
     Color4f      GetColor() const override { return {0.4f, 0.8f, 1.0f, 1.0f}; }
 
     std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
-        if (auto* handler = Onyx::TypeRegistry::Get().Resolve(Onyx::TypeId::Model)) {
+        if (auto* handler = Onyx::TypeRegistry::Get().Resolve(Onyx::GameTypes::Model)) {
             return handler->CreateViewer(entry, wad);
         }
         return nullptr;
@@ -26,14 +26,14 @@ public:
 
 class GmdlHandler : public Onyx::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Mesh; }
+    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Mesh; }
     const char*  GetName()  const override { return "GMDL Mesh"; }
     uint32_t     GetMagic() const override { return 0x0003000F; }
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
     Color4f      GetColor() const override { return {0.4f, 0.8f, 1.0f, 1.0f}; }
 
     std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
-        if (auto* handler = Onyx::TypeRegistry::Get().Resolve(Onyx::TypeId::Model)) {
+        if (auto* handler = Onyx::TypeRegistry::Get().Resolve(Onyx::GameTypes::Model)) {
             return handler->CreateViewer(entry, wad);
         }
         return nullptr;

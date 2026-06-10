@@ -12,7 +12,7 @@ namespace {
 
 class TextureHandler : public Onyx::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Texture; }
+    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Texture; }
     const char*  GetName()  const override { return "Texture"; }
     uint32_t     GetMagic() const override { return 0x00000007; }
     const char*  GetIcon()  const override { return ICON_SF_PHOTO; }  // file-media

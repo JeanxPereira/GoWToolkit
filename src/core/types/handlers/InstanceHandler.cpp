@@ -55,7 +55,7 @@ static const AssetEntry* FindEntryByName(
 
 class InstanceHandler : public Onyx::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Instance; }
+    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Instance; }
     const char*  GetName()  const override { return "Instance"; }
     uint32_t     GetMagic() const override { return 0x00030001; }
     const char*  GetIcon()  const override { return ICON_SF_PERSON_FILL; }
@@ -104,14 +104,14 @@ public:
 
             // Search children for Object, then Model
             for (const auto& child : sourceEntry->children) {
-                if (child.typeId == Onyx::TypeId::Object) {
+                if (child.typeId == Onyx::GameTypes::Object) {
                     objEntry = &child;
                     break;
                 }
             }
             if (!objEntry) {
                 for (const auto& child : sourceEntry->children) {
-                    if (child.typeId == Onyx::TypeId::Model) {
+                    if (child.typeId == Onyx::GameTypes::Model) {
                         objEntry = &child;
                         break;
                     }
@@ -127,7 +127,7 @@ public:
         // 3. Delegate scene building to the child handler
         auto* handler = Onyx::TypeRegistry::Get().Resolve(objEntry->typeId);
         if (!handler) {
-            LOG_WARN("[InstanceHandler] No handler for typeId=%d in '%s'", (int)objEntry->typeId, entry.name.c_str());
+            LOG_WARN("[InstanceHandler] No handler for typeId=%d in '%s'", (int)objEntry->typeId.value, entry.name.c_str());
             return nullptr;
         }
 

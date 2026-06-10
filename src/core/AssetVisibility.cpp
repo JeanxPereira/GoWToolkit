@@ -1,6 +1,7 @@
 #include "core/AssetVisibility.h"
 #include "core/domain/Entry.h"
 #include "core/types/TypeRegistry.h"
+#include "core/types/GameTypes.h"
 
 namespace Onyx {
 
@@ -20,36 +21,36 @@ void AssetVisibility::RegisterDefaults() {
     };
 
     // ── GOW2: Structural (Internal — never shown) ────────────────────
-    set(GameVersion::GOW2, TypeId::EntityCount,  Visibility::Internal);
-    set(GameVersion::GOW2, TypeId::GroupStart,    Visibility::Internal);
-    set(GameVersion::GOW2, TypeId::GroupEnd,      Visibility::Internal);
-    set(GameVersion::GOW2, TypeId::HeaderStart,   Visibility::Internal);
-    set(GameVersion::GOW2, TypeId::HeaderPop,     Visibility::Internal);
-    set(GameVersion::GOW2, TypeId::Sentinel,      Visibility::Internal);
+    set(GameVersion::GOW2, GameTypes::EntityCount,  Visibility::Internal);
+    set(GameVersion::GOW2, GameTypes::GroupStart,    Visibility::Internal);
+    set(GameVersion::GOW2, GameTypes::GroupEnd,      Visibility::Internal);
+    set(GameVersion::GOW2, GameTypes::HeaderStart,   Visibility::Internal);
+    set(GameVersion::GOW2, GameTypes::HeaderPop,     Visibility::Internal);
+    set(GameVersion::GOW2, GameTypes::Sentinel,      Visibility::Internal);
 
     // ── GOW2: Hidden by default (no viewer, consumed internally) ─────
-    set(GameVersion::GOW2, TypeId::GfxData,       Visibility::Hidden);
-    set(GameVersion::GOW2, TypeId::PalData,       Visibility::Hidden);
-    set(GameVersion::GOW2, TypeId::Light,         Visibility::Hidden);
-    set(GameVersion::GOW2, TypeId::Collision,     Visibility::Hidden);
-    set(GameVersion::GOW2, TypeId::Script,        Visibility::Hidden);
-    set(GameVersion::GOW2, TypeId::Flipbook,      Visibility::Hidden);
+    set(GameVersion::GOW2, GameTypes::GfxData,       Visibility::Hidden);
+    set(GameVersion::GOW2, GameTypes::PalData,       Visibility::Hidden);
+    set(GameVersion::GOW2, GameTypes::Light,         Visibility::Hidden);
+    set(GameVersion::GOW2, GameTypes::Collision,     Visibility::Hidden);
+    set(GameVersion::GOW2, GameTypes::Script,        Visibility::Hidden);
+    set(GameVersion::GOW2, GameTypes::Flipbook,      Visibility::Hidden);
 
     // ── GOWR: Structural (Internal) ──────────────────────────────────
-    set(GameVersion::GOWR, TypeId::Sentinel,      Visibility::Internal);
-    set(GameVersion::GOWR, TypeId::ClientGuid,    Visibility::Internal);
+    set(GameVersion::GOWR, GameTypes::Sentinel,      Visibility::Internal);
+    set(GameVersion::GOWR, GameTypes::ClientGuid,    Visibility::Internal);
 
     // ── GOWR: Hidden by default (no viewer / internal GPU data) ──────
-    set(GameVersion::GOWR, TypeId::MeshGpu,       Visibility::Hidden);
-    set(GameVersion::GOWR, TypeId::Model,         Visibility::Hidden);
-    set(GameVersion::GOWR, TypeId::Material,      Visibility::Hidden);
-    set(GameVersion::GOWR, TypeId::MaterialRef,   Visibility::Hidden);
-    set(GameVersion::GOWR, TypeId::AnimClip,      Visibility::Hidden);
-    set(GameVersion::GOWR, TypeId::SoundEmitter,  Visibility::Hidden);
-    set(GameVersion::GOWR, TypeId::LodBinding,    Visibility::Hidden);
+    set(GameVersion::GOWR, GameTypes::MeshGpu,       Visibility::Hidden);
+    set(GameVersion::GOWR, GameTypes::Model,         Visibility::Hidden);
+    set(GameVersion::GOWR, GameTypes::Material,      Visibility::Hidden);
+    set(GameVersion::GOWR, GameTypes::MaterialRef,   Visibility::Hidden);
+    set(GameVersion::GOWR, GameTypes::AnimClip,      Visibility::Hidden);
+    set(GameVersion::GOWR, GameTypes::SoundEmitter,  Visibility::Hidden);
+    set(GameVersion::GOWR, GameTypes::LodBinding,    Visibility::Hidden);
 
     // Note: TextureCpu is not a TypeId — it's a GOWR role that maps entries
-    // with TypeId::TexturePair. The WadBrowser handles this via the role-based
+    // with GameTypes::TexturePair. The WadBrowser handles this via the role-based
     // path which now also delegates to AssetVisibility for GOWR roles.
 }
 
@@ -122,7 +123,7 @@ std::vector<AssetVisibility::TypeVisInfo> AssetVisibility::GetFilterableTypes(Ga
         if (def == Visibility::Internal) continue;
 
         // Skip Unknown type
-        if (id == TypeId::Unknown || id == TypeId::COUNT) continue;
+        if (!id.valid()) continue;
 
         TypeVisInfo info;
         info.id               = id;
@@ -163,7 +164,7 @@ void AssetVisibility::ImportOverrides(const std::vector<SerializedOverride>& dat
         uint8_t gameVer = (uint8_t)(so.key >> 8);
         uint8_t typeId  = (uint8_t)(so.key & 0xFF);
         uint32_t key = MakeKey(static_cast<GameVersion>(gameVer),
-                               static_cast<TypeId>(typeId));
+                               TypeId{typeId});
         m_overrides[key] = (so.visible != 0);
     }
 }

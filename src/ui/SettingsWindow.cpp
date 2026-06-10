@@ -592,7 +592,7 @@ void SettingsWindow::DrawAssetFiltersCategory() {
                     ImGui::Indent(8.0f);
 
                     for (auto& t : hiddenDefaults) {
-                        ImGui::PushID(static_cast<int>(t.id) +
+                        ImGui::PushID(static_cast<int>(t.id.value) +
                                       static_cast<int>(section.version) * 1000);
 
                         bool checked = t.currentlyVisible;
@@ -624,7 +624,7 @@ void SettingsWindow::DrawAssetFiltersCategory() {
                     ImGui::Indent(8.0f);
 
                     for (auto& t : visibleDefaults) {
-                        ImGui::PushID(static_cast<int>(t.id) +
+                        ImGui::PushID(static_cast<int>(t.id.value) +
                                       static_cast<int>(section.version) * 1000 + 500);
 
                         bool checked = t.currentlyVisible;

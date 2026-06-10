@@ -15,7 +15,7 @@ namespace {
 
 class TextPlainHandler : public Onyx::ITypeHandler {
 public:
-    Onyx::TypeId GetId() const override { return Onyx::TypeId::TextPlain; }
+    Onyx::TypeId GetId() const override { return Onyx::GameTypes::TextPlain; }
     const char* GetName() const override { return "Text"; }
     uint32_t    GetMagic() const override { return 0; } // extension-based
     const char* GetIcon() const override { return ICON_SF_DOCUMENT; }

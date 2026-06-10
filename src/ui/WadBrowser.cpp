@@ -240,10 +240,10 @@ void WadBrowser::Draw() {
                     }
 
                     // Type-specific extras: "View All Textures" for MDL with TXR children
-                    if (entry.typeId == Onyx::TypeId::Model && has_children && wad.fileSource) {
+                    if (entry.typeId == Onyx::GameTypes::Model && has_children && wad.fileSource) {
                         int txrCount = 0;
                         for (const auto& c : entry.children) {
-                            if (c.typeId == Onyx::TypeId::Texture) txrCount++;
+                            if (c.typeId == Onyx::GameTypes::Texture) txrCount++;
                         }
                         if (txrCount > 0) {
                             char menuLabel[64];
@@ -251,7 +251,7 @@ void WadBrowser::Draw() {
                                      ICON_SF_PHOTO " View All Textures (%d)", txrCount);
                             if (ImGui::MenuItem(menuLabel)) {
                                 for (const auto& c : entry.children) {
-                                    if (c.typeId == Onyx::TypeId::Texture) {
+                                    if (c.typeId == Onyx::GameTypes::Texture) {
                                         auto viewer = Onyx::Api::Viewers().Open(c, wad);
                                         if (viewer) Onyx::Api::Documents().AddTab(viewer);
                                     }

@@ -26,7 +26,7 @@ static const AssetEntry* FindEntryWithPayload(const std::vector<AssetEntry>& ent
 
 static const AssetEntry* FindTextureEntry(const std::vector<AssetEntry>& entries, const std::string& name) {
     for (const auto& entry : entries) {
-        if (entry.typeId == Onyx::TypeId::Texture && entry.name == name)
+        if (entry.typeId == Onyx::GameTypes::Texture && entry.name == name)
             return &entry;
         if (!entry.children.empty()) {
             if (auto found = FindTextureEntry(entry.children, name))
@@ -38,7 +38,7 @@ static const AssetEntry* FindTextureEntry(const std::vector<AssetEntry>& entries
 
 class MaterialHandler : public Onyx::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Material; }
+    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Material; }
     const char*  GetName()  const override { return "Material"; }
     uint32_t     GetMagic() const override { return 0x00000008; }
     const char*  GetIcon()  const override { return ICON_SF_PAINTPALETTE_FILL; }  // symbol-color
@@ -49,7 +49,7 @@ public:
         
         const AssetEntry* matEntryToParse = &entry;
         if (matEntryToParse->size == 0) {
-            if (auto realMat = FindEntryWithPayload(wad.entries, matEntryToParse->name, Onyx::TypeId::Material))
+            if (auto realMat = FindEntryWithPayload(wad.entries, matEntryToParse->name, Onyx::GameTypes::Material))
                 matEntryToParse = realMat;
         }
 

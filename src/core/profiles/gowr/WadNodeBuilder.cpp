@@ -1,5 +1,7 @@
 #include "WadNodeBuilder.h"
 #include "core/profiles/gowr/GowrProfileTag.h"
+#include "core/types/TypeCatalog.h"
+#include "core/types/GameTypes.h"
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -628,33 +630,33 @@ void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
 
 static TypeId RoleToTypeId(WadEntryRole role) {
     switch (role) {
-        case WadEntryRole::ShaderContainer: return TypeId::ShaderContainer;
-        case WadEntryRole::ShaderVertex: return TypeId::ShaderVertex;
-        case WadEntryRole::ShaderPixel: return TypeId::ShaderPixel;
-        case WadEntryRole::ShaderHull: return TypeId::ShaderHull;
-        case WadEntryRole::ShaderDomain: return TypeId::ShaderDomain;
-        case WadEntryRole::ShaderCompute: return TypeId::ShaderCompute;
-        case WadEntryRole::ShaderLibrary: return TypeId::ShaderLibrary;
-        case WadEntryRole::MeshGpu: return TypeId::MeshGpu;
-        case WadEntryRole::MeshDefn: return TypeId::MeshDefn;
-        case WadEntryRole::GameObjectProto: return TypeId::GameObjectProto;
-        case WadEntryRole::GameObjectInst: return TypeId::GameObjectInst;
-        case WadEntryRole::GameObjectOverride: return TypeId::GameObjectOverride;
-        case WadEntryRole::TexturePair: return TypeId::TexturePair;
-        case WadEntryRole::TextureGpu: return TypeId::TexturePair;
-        case WadEntryRole::TextureCpu: return TypeId::TexturePair;
-        case WadEntryRole::Material: return TypeId::Material;
-        case WadEntryRole::MaterialRef: return TypeId::MaterialRef;
-        case WadEntryRole::LodBinding: return TypeId::LodBinding;
-        case WadEntryRole::AnimClip: return TypeId::AnimClip;
-        case WadEntryRole::SoundEmitter: return TypeId::SoundEmitter;
-        case WadEntryRole::ParticleEmitter: return TypeId::ParticleEmitter;
-        case WadEntryRole::ParticleSystem: return TypeId::ParticleSystem;
-        case WadEntryRole::ClientGuid: return TypeId::ClientGuid;
-        case WadEntryRole::WadIdentity: return TypeId::WadIdentity;
-        case WadEntryRole::SharedWadRef: return TypeId::SharedWadRef;
-        case WadEntryRole::Sentinel: return TypeId::Sentinel;
-        default: return TypeId::Unknown;
+        case WadEntryRole::ShaderContainer: return GameTypes::ShaderContainer;
+        case WadEntryRole::ShaderVertex: return GameTypes::ShaderVertex;
+        case WadEntryRole::ShaderPixel: return GameTypes::ShaderPixel;
+        case WadEntryRole::ShaderHull: return GameTypes::ShaderHull;
+        case WadEntryRole::ShaderDomain: return GameTypes::ShaderDomain;
+        case WadEntryRole::ShaderCompute: return GameTypes::ShaderCompute;
+        case WadEntryRole::ShaderLibrary: return GameTypes::ShaderLibrary;
+        case WadEntryRole::MeshGpu: return GameTypes::MeshGpu;
+        case WadEntryRole::MeshDefn: return GameTypes::MeshDefn;
+        case WadEntryRole::GameObjectProto: return GameTypes::GameObjectProto;
+        case WadEntryRole::GameObjectInst: return GameTypes::GameObjectInst;
+        case WadEntryRole::GameObjectOverride: return GameTypes::GameObjectOverride;
+        case WadEntryRole::TexturePair: return GameTypes::TexturePair;
+        case WadEntryRole::TextureGpu: return GameTypes::TexturePair;
+        case WadEntryRole::TextureCpu: return GameTypes::TexturePair;
+        case WadEntryRole::Material: return GameTypes::Material;
+        case WadEntryRole::MaterialRef: return GameTypes::MaterialRef;
+        case WadEntryRole::LodBinding: return GameTypes::LodBinding;
+        case WadEntryRole::AnimClip: return GameTypes::AnimClip;
+        case WadEntryRole::SoundEmitter: return GameTypes::SoundEmitter;
+        case WadEntryRole::ParticleEmitter: return GameTypes::ParticleEmitter;
+        case WadEntryRole::ParticleSystem: return GameTypes::ParticleSystem;
+        case WadEntryRole::ClientGuid: return GameTypes::ClientGuid;
+        case WadEntryRole::WadIdentity: return GameTypes::WadIdentity;
+        case WadEntryRole::SharedWadRef: return GameTypes::SharedWadRef;
+        case WadEntryRole::Sentinel: return GameTypes::Sentinel;
+        default: return GameTypes::Unknown;
     }
 }
 

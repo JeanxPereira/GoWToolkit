@@ -53,7 +53,7 @@ static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
 // Find texture by exact name (Material → Texture uses name lookup, same as Go)
 static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const std::string& name) {
     for (const auto& c : nodes) {
-        if (c.typeId == Onyx::TypeId::Texture && c.name == name) return &c;
+        if (c.typeId == Onyx::GameTypes::Texture && c.name == name) return &c;
         if (auto f = FindTexture(c.children, name)) return f;
     }
     return nullptr;
@@ -83,22 +83,22 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
 
     // Iterate children by type (like Go's mdl.Marshal iterating SubGroupNodes)
     for (const auto& child : model.children) {
-        if (child.typeId == Onyx::TypeId::Mesh && child.size > 0) {
+        if (child.typeId == Onyx::GameTypes::Mesh && child.size > 0) {
             meshSources.push_back(&child);
-        } else if (child.typeId == Onyx::TypeId::Material || (child.size == 0 && child.typeId == Onyx::TypeId::Unknown)) {
+        } else if (child.typeId == Onyx::GameTypes::Material || (child.size == 0 && child.typeId == Onyx::GameTypes::Unknown)) {
             const AssetEntry* mat = &child;
             // Material reference? Resolve by exact name
             if (mat->size == 0) {
-                if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::TypeId::Material)) {
+                if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::GameTypes::Material)) {
                     mat = real;
                     matEntries.push_back(mat);
                 } else {
                     LOG_WARN("[ProcessModel] Could not resolve zero-sized material reference: '%s'", mat->name.c_str());
                 }
-            } else if (child.typeId == Onyx::TypeId::Material) {
+            } else if (child.typeId == Onyx::GameTypes::Material) {
                 matEntries.push_back(mat);
             }
-        } else if (child.typeId == Onyx::TypeId::Script && child.size > 0) {
+        } else if (child.typeId == Onyx::GameTypes::Script && child.size > 0) {
             std::string target = Onyx::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
             if (target == "SCR_Sky") {
                 isModelSky = true;
@@ -181,11 +181,11 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
     // 2. Iterate children by type (like Go's obj.Marshal iterating SubGroupNodes)
     //    If a Model child is a reference (no children), resolve by exact name in WAD.
     for (const auto& child : entry.children) {
-        if (child.typeId == Onyx::TypeId::Model) {
+        if (child.typeId == Onyx::GameTypes::Model) {
             const AssetEntry* model = &child;
             if (model->children.empty()) {
                 // Reference node — resolve definition by exact name
-                if (auto resolved = ResolveRef(wad.entries, child.name, Onyx::TypeId::Model))
+                if (auto resolved = ResolveRef(wad.entries, child.name, Onyx::GameTypes::Model))
                     model = resolved;
             }
             if (!model->children.empty()) {
@@ -193,7 +193,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
             }
         }
         // 2b. Parse Animation child (like Go's obj.Marshal case *anm.Animations)
-        else if (child.typeId == Onyx::TypeId::Animation && child.size > 0) {
+        else if (child.typeId == Onyx::GameTypes::Animation && child.size > 0) {
             Onyx::SliceFile slice(wad.fileSource, child.offset, child.size);
             std::vector<uint8_t> anmBuf(child.size);
             slice.Seek(0, SEEK_SET);
@@ -240,7 +240,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
 
 class ObjectHandlerGOW2 : public Onyx::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::TypeId::Object; }
+    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Object; }
     const char*  GetName()  const override { return "Object"; }
     uint32_t     GetMagic() const override { return 0x00010001; }
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }

@@ -26,7 +26,7 @@ void TypeRegistry::RegisterByMagic(GameVersion ver, std::unique_ptr<ITypeHandler
     m_magicMap[key] = raw;
 
     // Also register in the id map (first registration wins)
-    uint32_t idKey = static_cast<uint32_t>(id);
+    uint32_t idKey = id.value;
     if (!m_idMap.count(idKey)) {
         m_idMap[idKey] = raw;
     }
@@ -51,7 +51,7 @@ void TypeRegistry::RegisterByTag(GameVersion ver, uint16_t tagNum, std::unique_p
     m_tagMap[key] = raw;
 
     // Also register in the id map
-    uint32_t idKey = static_cast<uint32_t>(id);
+    uint32_t idKey = id.value;
     if (!m_idMap.count(idKey)) {
         m_idMap[idKey] = raw;
     }
@@ -67,7 +67,7 @@ void TypeRegistry::RegisterByTypeId(std::unique_ptr<ITypeHandler> handler) {
     m_owned.push_back(std::move(handler));
     m_allHandlers.push_back(raw);
 
-    uint32_t idKey = static_cast<uint32_t>(raw->GetId());
+    uint32_t idKey = raw->GetId().value;
     m_idMap[idKey] = raw;  // Always overwrites — one canonical handler per TypeId
 
     LOG_INFO("[TypeRegistry] Registered file-level handler: %s (TypeId=%d)",
@@ -103,66 +103,8 @@ ITypeHandler* TypeRegistry::ResolveByTag(GameVersion ver, uint16_t tagNum,
 }
 
 ITypeHandler* TypeRegistry::Resolve(TypeId id) const {
-    auto it = m_idMap.find(static_cast<uint32_t>(id));
+    auto it = m_idMap.find(id.value);
     return (it != m_idMap.end()) ? it->second : nullptr;
-}
-
-// ── TypeIdName ──────────────────────────────────────────────────────────────
-
-const char* TypeIdName(TypeId id) {
-    switch (id) {
-        case TypeId::Unknown:        return "Unknown";
-        case TypeId::EntityCount:    return "Entity Count";
-        case TypeId::GroupStart:     return "Group Start";
-        case TypeId::GroupEnd:       return "Group End";
-        case TypeId::HeaderStart:    return "Header Start";
-        case TypeId::HeaderPop:      return "Header Pop";
-        case TypeId::Instance:       return "Instance";
-        case TypeId::Object:         return "Object";
-        case TypeId::Model:          return "Model";
-        case TypeId::Mesh:           return "Mesh";
-        case TypeId::Material:       return "Material";
-        case TypeId::Texture:        return "Texture";
-        case TypeId::GfxData:        return "GFX Data";
-        case TypeId::PalData:        return "Palette";
-        case TypeId::Animation:      return "Animation";
-        case TypeId::Script:         return "Script";
-        case TypeId::Light:          return "Light";
-        case TypeId::Sound:          return "Sound";
-        case TypeId::Collision:      return "Collision";
-        case TypeId::Flipbook:       return "Flipbook";
-        case TypeId::Chunk:          return "Chunk";
-        case TypeId::WadFile:        return "WAD File";
-        case TypeId::VagAudio:       return "VAG Audio";
-        case TypeId::VpkVideo:       return "VPK Video";
-        case TypeId::PssVideo:       return "PSS Video";
-        case TypeId::PswVideo:       return "PSW Video";
-        case TypeId::TextPlain:      return "Text";
-        case TypeId::ShaderContainer: return "Shader";
-        case TypeId::ShaderVertex:   return "Vertex Shader";
-        case TypeId::ShaderPixel:    return "Pixel Shader";
-        case TypeId::ShaderHull:     return "Hull Shader";
-        case TypeId::ShaderDomain:   return "Domain Shader";
-        case TypeId::ShaderCompute:  return "Compute Shader";
-        case TypeId::ShaderLibrary:  return "Library Shader";
-        case TypeId::MeshGpu:        return "Mesh GPU";
-        case TypeId::MeshDefn:       return "Mesh Definition";
-        case TypeId::GameObjectProto: return "GO Proto";
-        case TypeId::GameObjectInst: return "GO Instance";
-        case TypeId::GameObjectOverride: return "GO Override";
-        case TypeId::TexturePair:    return "Texture Pair";
-        case TypeId::MaterialRef:    return "Material Ref";
-        case TypeId::LodBinding:     return "LOD Binding";
-        case TypeId::AnimClip:       return "Anim Clip";
-        case TypeId::SoundEmitter:   return "Sound Emitter";
-        case TypeId::ParticleEmitter: return "Particle Emitter";
-        case TypeId::ParticleSystem: return "Particle System";
-        case TypeId::ClientGuid:     return "Client GUID";
-        case TypeId::WadIdentity:    return "WAD Identity";
-        case TypeId::SharedWadRef:   return "Shared WAD Ref";
-        case TypeId::Sentinel:       return "Sentinel";
-        default:                     return "Unknown";
-    }
 }
 
 } // namespace Onyx

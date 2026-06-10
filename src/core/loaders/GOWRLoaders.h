@@ -6,7 +6,7 @@ namespace Onyx {
 
 class GOWRMeshDefnHandler : public ITypeHandler {
 public:
-    TypeId  GetId()    const override { return TypeId::MeshDefn; }
+    TypeId  GetId()    const override { return GameTypes::MeshDefn; }
     const char*  GetName()  const override { return "GOWR Mesh Defn"; }
     uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<AssetNode> Parse(std::shared_ptr<IFile> file) override;
@@ -15,7 +15,7 @@ public:
 
 class GOWRSkinnedMeshHandler : public ITypeHandler {
 public:
-    TypeId  GetId()    const override { return TypeId::MeshDefn; } // reuse
+    TypeId  GetId()    const override { return GameTypes::MeshDefn; } // reuse
     const char*  GetName()  const override { return "GOWR Skinned Mesh"; }
     uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
@@ -23,7 +23,7 @@ public:
 
 class GOWRModelInstanceHandler : public ITypeHandler {
 public:
-    TypeId  GetId()    const override { return TypeId::GameObjectInst; }
+    TypeId  GetId()    const override { return GameTypes::GameObjectInst; }
     const char*  GetName()  const override { return "GOWR Model Instance"; }
     uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
@@ -31,7 +31,7 @@ public:
 
 class GOWRTextureHandler : public ITypeHandler {
 public:
-    TypeId  GetId()    const override { return TypeId::TexturePair; }
+    TypeId  GetId()    const override { return GameTypes::TexturePair; }
     const char*  GetName()  const override { return "GOWR Texture Pair"; }
     uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
@@ -40,7 +40,7 @@ public:
 
 class GOWRRigHandler : public ITypeHandler {
 public:
-    TypeId  GetId()    const override { return TypeId::GameObjectProto; }
+    TypeId  GetId()    const override { return GameTypes::GameObjectProto; }
     const char*  GetName()  const override { return "GOWR Proto Rig"; }
     uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;

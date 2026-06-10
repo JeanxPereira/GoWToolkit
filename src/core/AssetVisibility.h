@@ -71,7 +71,7 @@ private:
     AssetVisibility();
 
     static uint32_t MakeKey(GameVersion ver, TypeId id) {
-        return (static_cast<uint32_t>(ver) << 16) | static_cast<uint32_t>(id);
+        return (static_cast<uint32_t>(ver) << 16) | id.value;
     }
 
     // Default visibility per (ver, typeId)

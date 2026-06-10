@@ -110,8 +110,8 @@ void PakBrowser::Draw() {
 
       if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
         // WAD files and unknown types → open as WAD browser
-        if (entry.typeId == Onyx::TypeId::WadFile ||
-            entry.typeId == Onyx::TypeId::Unknown) {
+        if (entry.typeId == Onyx::GameTypes::WadFile ||
+            entry.typeId == Onyx::GameTypes::Unknown) {
           db.LoadWadFromPakEntry(&entry, pak);
           ImGui::SetWindowFocus("WAD Browser");
         } else {

@@ -933,37 +933,37 @@ std::shared_ptr<IDocumentContent> GOWRShaderHandler::CreateViewer(const AssetEnt
 // Register shader handlers for all shader TypeIds
 static bool _reg_shader_vs = [] {
     ::Onyx::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderVertex));
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderVertex));
     return true;
 }();
 static bool _reg_shader_ps = [] {
     ::Onyx::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderPixel));
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderPixel));
     return true;
 }();
 static bool _reg_shader_ct = [] {
     ::Onyx::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderContainer));
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderContainer));
     return true;
 }();
 static bool _reg_shader_hs = [] {
     ::Onyx::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderHull));
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderHull));
     return true;
 }();
 static bool _reg_shader_ds = [] {
     ::Onyx::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderDomain));
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderDomain));
     return true;
 }();
 static bool _reg_shader_cs = [] {
     ::Onyx::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderCompute));
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderCompute));
     return true;
 }();
 static bool _reg_shader_ls = [] {
     ::Onyx::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::TypeId::ShaderLibrary));
+        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderLibrary));
     return true;
 }();
 

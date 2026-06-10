@@ -3,18 +3,20 @@
 #include "core/domain/MediaKind.h"
 #include "core/WadTypes.h"
 #include "core/types/TypeId.h"
+#include "core/types/GameTypes.h"
 #include "ui/viewers/IDocumentContent.h"
 
 using namespace Onyx;
 
 TEST_CASE("ViewerRegistry Open logic") {
+    GameTypes::RegisterGameTypes();
     ViewerRegistry registry;
     AssetContainer dummyWad;
 
     SUBCASE("Unknown kind returns nullptr") {
         AssetEntry entry;
         entry.kind = MediaKind::Unknown;
-        entry.typeId = TypeId::Unknown;
+        entry.typeId = GameTypes::Unknown;
         
         auto viewer = registry.Open(entry, dummyWad);
         CHECK(viewer == nullptr);
@@ -23,7 +25,7 @@ TEST_CASE("ViewerRegistry Open logic") {
     SUBCASE("Image kind with Unknown TypeId returns nullptr") {
         AssetEntry entry;
         entry.kind = MediaKind::Image;
-        entry.typeId = TypeId::Unknown;
+        entry.typeId = GameTypes::Unknown;
         
         auto viewer = registry.Open(entry, dummyWad);
         CHECK(viewer == nullptr);
@@ -32,7 +34,7 @@ TEST_CASE("ViewerRegistry Open logic") {
     // We can't easily test a valid ImageViewer instantiation here without 
     // an OpenGL context (which ImGui needs) because ImageViewer constructor 
     // usually does OpenGL calls. We just check the interface contract:
-    // It should delegate and since TypeId::Texture might need a valid TextureData, 
+    // It should delegate and since GameTypes::Texture might need a valid TextureData, 
     // it will return nullptr or crash if we pass dummy data. 
     // But the AC asks: Para asset com kind == Unknown, retorna nullptr
 }

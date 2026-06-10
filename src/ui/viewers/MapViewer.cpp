@@ -45,7 +45,7 @@ void MapViewer::LoadMap() {
     std::vector<const AssetEntry*> chunks;
     auto findChunks = [&](const std::vector<AssetEntry>& entries, auto& findRef) -> void {
         for (const auto& entry : entries) {
-            if (entry.typeId == TypeId::Chunk && entry.name.find("CXT_") == 0) {
+            if (entry.typeId == GameTypes::Chunk && entry.name.find("CXT_") == 0) {
                 chunks.push_back(&entry);
             }
             if (!entry.children.empty()) {
@@ -63,11 +63,11 @@ void MapViewer::LoadMap() {
         m_loadStatus = "Loading chunk: " + chunk->name;
         m_loadProgress = (float)processed / (float)chunks.size();
         
-        auto handler = TypeRegistry::Get().Resolve(TypeId::Chunk);
+        auto handler = TypeRegistry::Get().Resolve(GameTypes::Chunk);
         if (handler) {
             auto printTree = [&](const AssetEntry& e, int depth, auto& pr) -> void {
                 std::string indent(depth * 2, ' ');
-                LOG_INFO("[MapViewer] %s- %s (type=%d, children=%zu)", indent.c_str(), e.name.c_str(), (int)e.typeId, e.children.size());
+                LOG_INFO("[MapViewer] %s- %s (type=%d, children=%zu)", indent.c_str(), e.name.c_str(), (int)e.typeId.value, e.children.size());
                 for (const auto& c : e.children) {
                     pr(c, depth + 1, pr);
                 }
