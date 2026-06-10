@@ -1,6 +1,8 @@
 #include "core/types/GameTypes.h"
 #include "core/types/TypeCatalog.h"
 #include "core/types/GameTypeTable.h"
+#include <cassert>
+#include <iterator>
 
 namespace Onyx::GameTypes {
 
@@ -27,6 +29,8 @@ void RegisterGameTypes() {
         &AnimClip, &SoundEmitter, &ParticleEmitter, &ParticleSystem, &ClientGuid,
         &WadIdentity, &SharedWadRef, &Sentinel,
     };
+    static_assert(std::size(slots) == std::size(kGameTypeTable),
+                  "slots[] and kGameTypeTable must stay in sync");
     auto& cat = TypeCatalog::Get();
     for (const auto& row : kGameTypeTable) {
         TypeInfo info;
@@ -35,6 +39,7 @@ void RegisterGameTypes() {
         info.color[0]=row.color[0]; info.color[1]=row.color[1];
         info.color[2]=row.color[2]; info.color[3]=row.color[3];
         TypeId id = cat.Register(info, row.legacyValue);  // force value == legacy
+        assert(row.legacyValue < std::size(slots));
         *slots[row.legacyValue] = id;
     }
 }
