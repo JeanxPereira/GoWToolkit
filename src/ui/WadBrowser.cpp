@@ -7,6 +7,7 @@
 #include "core/Logger.h"
 #include "core/ToolkitApi.h"
 #include "core/WadTypes.h"
+#include "core/types/GameTypes.h"
 #include "fonts/SFSymbols.h"
 #include "imgui.h"
 #include "ui/ViewerRegistry.h"

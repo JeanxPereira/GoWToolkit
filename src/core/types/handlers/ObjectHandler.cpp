@@ -8,6 +8,7 @@
 #include "core/types/TypeRegistry.h"
 #include "core/interfaces/IGameProfile.h"
 #include "core/types/ITypeHandler.h"
+#include "core/types/GameTypes.h"
 #include "core/parsers/gow2/ObjectParser.h"
 #include "core/parsers/gow2/MeshParser.h"
 #include "core/parsers/gow2/MaterialParser.h"

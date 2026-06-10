@@ -18,7 +18,6 @@
 #include "core/schema/AssetNode.h"
 #include "core/types/GameVersion.h"
 #include "core/types/TypeId.h"
-#include "core/types/GameTypes.h"
 
 // NOTE: `WadAssetName` and `AssetEntry` live at global scope to match
 // the legacy layout in `core/WadTypes.h`. They reference `Onyx::TypeId`
@@ -81,7 +80,7 @@ struct AssetEntry {
     uint64_t              hash = 0;
 
     // Compiled type identifier
-    Onyx::TypeId           typeId = Onyx::GameTypes::Unknown;
+    Onyx::TypeId           typeId = {};
 
     // Child nodes for UI tree
     std::vector<AssetEntry> children;

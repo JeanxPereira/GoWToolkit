@@ -9,6 +9,7 @@
 
 #include "core/types/TypeRegistry.h"
 #include "core/types/ITypeHandler.h"
+#include "core/types/GameTypes.h"
 #include "core/schema/AssetReader.h"
 #include "core/formats/GOW2ModelFormat.h"
 

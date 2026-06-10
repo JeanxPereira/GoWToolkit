@@ -4,6 +4,7 @@
 
 #include "core/types/TypeRegistry.h"
 #include "core/types/ITypeHandler.h"
+#include "core/types/GameTypes.h"
 #include "fonts/SFSymbols.h"
 
 namespace {

@@ -5,6 +5,7 @@
 #include "core/schema/AssetReader.h"
 #include "core/types/ITypeHandler.h"
 #include "core/types/TypeRegistry.h"
+#include "core/types/GameTypes.h"
 #include "fonts/SFSymbols.h"
 #include "ui/viewers/SoundPlayer.h"
 

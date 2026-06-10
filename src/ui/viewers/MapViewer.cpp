@@ -3,6 +3,7 @@
 #include "core/Logger.h"
 #include "core/types/TypeRegistry.h"
 #include "core/types/TypeId.h"
+#include "core/types/GameTypes.h"
 #include "core/parsers/shared/SceneNode.h"
 #include "core/WadTypes.h"
 #include <string>

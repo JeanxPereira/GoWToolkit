@@ -7,6 +7,7 @@
 #include "core/domain/Wad.h"
 #include "core/types/ITypeHandler.h"
 #include "core/types/TypeRegistry.h"
+#include "core/types/GameTypes.h"
 #include "core/vfs/IFile.h"
 #include "fonts/SFSymbols.h"
 #include "ui/viewers/TextEditorViewer.h"

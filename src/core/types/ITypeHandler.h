@@ -3,7 +3,6 @@
 #include "../vfs/IFile.h"
 #include "GameVersion.h"
 #include "TypeId.h"
-#include "GameTypes.h"
 #include "fonts/SFSymbols.h"
 #include <cstddef>
 #include <cstdint>

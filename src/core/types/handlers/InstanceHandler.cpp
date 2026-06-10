@@ -8,6 +8,7 @@
 
 #include "core/types/TypeRegistry.h"
 #include "core/types/ITypeHandler.h"
+#include "core/types/GameTypes.h"
 #include "core/WadTypes.h"
 #include "core/Logger.h"
 #include "core/parsers/gow2/InstanceParser.h"

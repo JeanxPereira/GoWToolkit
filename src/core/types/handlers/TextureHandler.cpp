@@ -3,6 +3,7 @@
 
 #include "core/types/TypeRegistry.h"
 #include "core/types/ITypeHandler.h"
+#include "core/types/GameTypes.h"
 
 #include "ui/viewers/ImageViewer.h"
 #include "core/parsers/gow2/TextureParser.h"

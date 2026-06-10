@@ -1,5 +1,6 @@
 #pragma once
 #include "core/types/ITypeHandler.h"
+#include "core/types/GameTypes.h"
 #include <filesystem>
 
 namespace Onyx {

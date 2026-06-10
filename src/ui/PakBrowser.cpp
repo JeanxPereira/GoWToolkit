@@ -1,6 +1,7 @@
 #include "ui/PakBrowser.h"
 #include "UIHelpers.h"
 #include "core/AssetDatabase.h"
+#include "core/types/GameTypes.h"
 #include "core/ToolkitApi.h"
 #include "fonts/SFSymbols.h"
 #include "imgui.h"
