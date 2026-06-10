@@ -5,7 +5,7 @@
 
 namespace Onyx {
 
-class ProfileGOWR : public IGameProfile {
+class ProfileGOWR : public IAssetProfile {
 public:
     ProfileGOWR();
     ~ProfileGOWR() override = default;
@@ -16,9 +16,9 @@ public:
     
     std::shared_ptr<IVirtualFileSystem> MountArchive(const std::filesystem::path& path) override;
     
-    bool ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) override;
+    bool ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) override;
     
-    bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad) override;
+    bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) override;
 private:
     std::map<std::string, std::shared_ptr<StructDef>> m_schemas;
 };

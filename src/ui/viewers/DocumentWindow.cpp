@@ -10,7 +10,7 @@ DocumentWindow::DocumentWindow() {
     // DocumentWindow tracks it for potential future auto-preview behavior.
     // Currently this enables the Inspector to query active document state and
     // ensures DocumentWindow is wired into the event pipeline (M3.T2).
-    EventAssetSelected::subscribe(this, [this](ParsedEntry* /*entry*/, OpenWad* /*wad*/) {
+    EventAssetSelected::subscribe(this, [this](AssetEntry* /*entry*/, AssetContainer* /*wad*/) {
         // Track selection for future preview tab policy.
         // Explicit viewer opens (double-click, context menu) go through AddTab().
         // Auto-preview on single-click deferred to UX decision — see D0011.

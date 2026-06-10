@@ -23,7 +23,7 @@ bool AssetDatabase::LoadPakFromIso(const fs::path& isoPath) {
     auto vfs = profile->MountArchive(isoPath);
     if (!vfs) return false;
 
-    OpenWad pak;
+    AssetContainer pak;
     pak.filename = isoPath.filename().string();
     pak.fullPath = isoPath.string();
     pak.profile  = profile;
@@ -44,8 +44,8 @@ void AssetDatabase::ClosePak(size_t idx) {
 }
 
 // ── LoadWadFromPakEntry ────────────────────────────────────────────────────
-// Abre o PAK dentro da ISO, corta um SliceFile para o entry, ParseWad → wads[]
-bool AssetDatabase::LoadWadFromPakEntry(ParsedEntry* e, OpenWad& parentPak) {
+// Abre o PAK dentro da ISO, corta um SliceFile para o entry, ParseContainer → wads[]
+bool AssetDatabase::LoadWadFromPakEntry(AssetEntry* e, AssetContainer& parentPak) {
     if (!e || !parentPak.profile) return false;
 
     auto profile = parentPak.profile;
@@ -82,13 +82,13 @@ bool AssetDatabase::LoadWadFromPakEntry(ParsedEntry* e, OpenWad& parentPak) {
     // Criar um slice para o offset/size deste entry dentro do PAK
     auto slice = std::make_shared<Onyx::SliceFile>(std::move(partFile), e->offset, e->size);
 
-    OpenWad result;
+    AssetContainer result;
     result.filename = e->name;
     result.fullPath = parentPak.fullPath;
     result.profile  = profile;
     result.fileSource = slice; // Cache the source stream
 
-    if (profile->ParseWad(slice, result)) {
+    if (profile->ParseContainer(slice, result)) {
         LOG_INFO("[AssetDatabase] Parsed WAD '%s': %zu tags", e->name.c_str(), result.entries.size());
         wads.push_back(std::move(result));
         Onyx::TaskManager::doLater([this]() {
@@ -97,13 +97,13 @@ bool AssetDatabase::LoadWadFromPakEntry(ParsedEntry* e, OpenWad& parentPak) {
         return true;
     }
 
-    LOG_ERR("[AssetDatabase] ParseWad failed for '%s'", e->name.c_str());
+    LOG_ERR("[AssetDatabase] ParseContainer failed for '%s'", e->name.c_str());
     return false;
 }
 
 // ── OpenPakEntryAsFile ────────────────────────────────────────────────────
 // Returns a SliceFile for a PAK entry without parsing as WAD
-std::shared_ptr<Onyx::IFile> AssetDatabase::OpenPakEntryAsFile(ParsedEntry* e, OpenWad& parentPak) {
+std::shared_ptr<Onyx::IFile> AssetDatabase::OpenPakEntryAsFile(AssetEntry* e, AssetContainer& parentPak) {
     if (!e || !parentPak.profile) return nullptr;
 
     auto vfs = parentPak.profile->MountArchive(parentPak.fullPath);
@@ -140,7 +140,7 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     }
 
     // Selecionar profile: por hint explícito ou auto-detect
-    std::shared_ptr<Onyx::IGameProfile> profile;
+    std::shared_ptr<Onyx::IAssetProfile> profile;
     if (!gameHint.empty()) {
         profile = Onyx::ProfileManager::Get().FindProfileByHint(gameHint);
     }
@@ -149,8 +149,8 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     }
     if (!profile) return false;
 
-    // For GOWR, ensure config.ini exists BEFORE ParseWad so the eager
-    // GetTexIndex() call inside ProfileGOWR::ParseWad picks up the game root.
+    // For GOWR, ensure config.ini exists BEFORE ParseContainer so the eager
+    // GetTexIndex() call inside ProfileGOWR::ParseContainer picks up the game root.
     // If we just wrote a fresh config, also invalidate any cached index that
     // was created earlier in this process without it.
     if (profile->GetName().find("Ragnarok") != std::string::npos) {
@@ -159,7 +159,7 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
         }
     }
 
-    OpenWad wad;
+    AssetContainer wad;
     wad.filename = path.filename().string();
     wad.fullPath = path.string();
     wad.profile  = profile;
@@ -169,7 +169,7 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
 
     wad.fileSource = file;
 
-    if (profile->ParseWad(file, wad)) {
+    if (profile->ParseContainer(file, wad)) {
         wads.push_back(std::move(wad));
         Onyx::TaskManager::doLater([this]() {
             if (!wads.empty()) EventWadOpened::post(&wads.back());
@@ -211,7 +211,7 @@ void AssetDatabase::CloseIso(size_t idx) {
 }
 
 // ── EnsureNodeData ─────────────────────────────────────────────────────────
-bool AssetDatabase::EnsureNodeData(ParsedEntry* e, OpenWad& parentWad) {
+bool AssetDatabase::EnsureNodeData(AssetEntry* e, AssetContainer& parentWad) {
     if (!e) return false;
     if (e->assetNode) return true;
 

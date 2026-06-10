@@ -14,8 +14,8 @@ class AssetNode;
 class IDocumentContent;
 class SceneData;
 } // namespace Onyx
-struct ParsedEntry;
-struct OpenWad;
+struct AssetEntry;
+struct AssetContainer;
 
 namespace Onyx {
 
@@ -57,7 +57,7 @@ public:
   /// Create a viewer (3D viewport, texture preview, audio player, etc.)
   /// for the given entry. Return nullptr if this type has no viewer.
   virtual std::shared_ptr<IDocumentContent>
-  CreateViewer(const ParsedEntry &entry, OpenWad &wad) {
+  CreateViewer(const AssetEntry &entry, AssetContainer &wad) {
     (void)entry;
     (void)wad;
     return nullptr;
@@ -66,7 +66,7 @@ public:
   /// Extract scene data without generating a viewer (useful for composition
   /// layers like Chunks)
   virtual std::unique_ptr<Onyx::SceneData>
-  BuildSceneData(const ParsedEntry &entry, OpenWad &wad) {
+  BuildSceneData(const AssetEntry &entry, AssetContainer &wad) {
     (void)entry;
     (void)wad;
     return nullptr;

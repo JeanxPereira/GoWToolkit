@@ -20,7 +20,7 @@ static uint16_t ReadU16LE(const uint8_t* p) {
 }
 
 std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
-    const ParsedEntry& entry,
+    const AssetEntry& entry,
     const std::shared_ptr<IFile>& fileSource)
 {
     if (!fileSource) {

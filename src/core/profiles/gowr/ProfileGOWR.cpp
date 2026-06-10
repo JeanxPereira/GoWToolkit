@@ -42,7 +42,7 @@ std::shared_ptr<IVirtualFileSystem> ProfileGOWR::MountArchive(
     return nullptr;
 }
 
-bool ProfileGOWR::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
+bool ProfileGOWR::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) {
     if (!file || !file->IsValid()) return false;
 
     file->Seek(0, SEEK_END);
@@ -212,7 +212,7 @@ bool ProfileGOWR::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
 }
 
 bool ProfileGOWR::LoadFromArchive(
-    std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad)
+    std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad)
 {
     // Ragnarök doesn't use ISO archives
     return false;

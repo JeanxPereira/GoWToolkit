@@ -25,7 +25,7 @@ public:
     };
 
     static std::unique_ptr<SoundBankData> Parse(
-        const ParsedEntry& entry,
+        const AssetEntry& entry,
         const std::shared_ptr<IFile>& fileSource);
 
 private:

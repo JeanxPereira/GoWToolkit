@@ -9,7 +9,7 @@
 
 namespace Onyx {
 
-MapViewer::MapViewer(const std::string& wadName, OpenWad& wad) 
+MapViewer::MapViewer(const std::string& wadName, AssetContainer& wad) 
     : m_wadName(wadName), m_wad(wad) {
     m_viewport = std::make_unique<Viewport3D>("Map Viewport");
     LoadMap();
@@ -42,8 +42,8 @@ void MapViewer::LoadMap() {
     auto combinedScene = std::make_unique<SceneData>();
     
     // 1. Find all CXT_* chunks anywhere in the WAD
-    std::vector<const ParsedEntry*> chunks;
-    auto findChunks = [&](const std::vector<ParsedEntry>& entries, auto& findRef) -> void {
+    std::vector<const AssetEntry*> chunks;
+    auto findChunks = [&](const std::vector<AssetEntry>& entries, auto& findRef) -> void {
         for (const auto& entry : entries) {
             if (entry.typeId == TypeId::Chunk && entry.name.find("CXT_") == 0) {
                 chunks.push_back(&entry);
@@ -65,7 +65,7 @@ void MapViewer::LoadMap() {
         
         auto handler = TypeRegistry::Get().Resolve(TypeId::Chunk);
         if (handler) {
-            auto printTree = [&](const ParsedEntry& e, int depth, auto& pr) -> void {
+            auto printTree = [&](const AssetEntry& e, int depth, auto& pr) -> void {
                 std::string indent(depth * 2, ' ');
                 LOG_INFO("[MapViewer] %s- %s (type=%d, children=%zu)", indent.c_str(), e.name.c_str(), (int)e.typeId, e.children.size());
                 for (const auto& c : e.children) {

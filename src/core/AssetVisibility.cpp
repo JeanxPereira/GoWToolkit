@@ -75,7 +75,7 @@ bool AssetVisibility::IsVisible(GameVersion ver, TypeId id) const {
     return GetCurrent(ver, id) == Visibility::Visible;
 }
 
-bool AssetVisibility::IsVisible(const ParsedEntry& entry, GameVersion ver) const {
+bool AssetVisibility::IsVisible(const AssetEntry& entry, GameVersion ver) const {
     return IsVisible(ver, entry.typeId);
 }
 

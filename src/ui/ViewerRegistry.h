@@ -12,12 +12,12 @@ namespace Onyx {
 
 class ViewerRegistry {
 public:
-    using Factory = std::function<std::shared_ptr<IDocumentContent>(const ParsedEntry&, OpenWad&)>;
+    using Factory = std::function<std::shared_ptr<IDocumentContent>(const AssetEntry&, AssetContainer&)>;
 
     ViewerRegistry();
 
     bool CanHandle(TypeId typeId) const;
-    std::shared_ptr<IDocumentContent> Open(const ParsedEntry& entry, OpenWad& wad) const;
+    std::shared_ptr<IDocumentContent> Open(const AssetEntry& entry, AssetContainer& wad) const;
 
 private:
     std::unordered_map<MediaKind, Factory> m_factories;

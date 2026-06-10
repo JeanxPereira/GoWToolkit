@@ -27,7 +27,7 @@ namespace {
 // ── Resolve reference: find a node with exact name + type that has children ──
 // Mirrors Go's GetNodeByName: when a child node is a reference (no children/no payload),
 // the real definition with the same name exists elsewhere in the WAD tree.
-static const ParsedEntry* ResolveRef(const std::vector<ParsedEntry>& tree,
+static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
                                       const std::string& name, Onyx::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && !n.children.empty())
@@ -39,7 +39,7 @@ static const ParsedEntry* ResolveRef(const std::vector<ParsedEntry>& tree,
 }
 
 // Same but for payload (size > 0) instead of children
-static const ParsedEntry* ResolvePayload(const std::vector<ParsedEntry>& tree,
+static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
                                           const std::string& name, Onyx::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && n.size > 0)
@@ -51,7 +51,7 @@ static const ParsedEntry* ResolvePayload(const std::vector<ParsedEntry>& tree,
 }
 
 // Find texture by exact name (Material → Texture uses name lookup, same as Go)
-static const ParsedEntry* FindTexture(const std::vector<ParsedEntry>& nodes, const std::string& name) {
+static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const std::string& name) {
     for (const auto& c : nodes) {
         if (c.typeId == Onyx::TypeId::Texture && c.name == name) return &c;
         if (auto f = FindTexture(c.children, name)) return f;
@@ -75,10 +75,10 @@ static const Onyx::MaterialInfo::Layer* SelectMainLayer(const Onyx::MaterialInfo
 }
 
 // ── Process a single Model node: extract meshes + materials ─────────────────
-static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
+static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
                           Onyx::SceneData& scene) {
-    std::vector<const ParsedEntry*> meshSources;
-    std::vector<const ParsedEntry*> matEntries;
+    std::vector<const AssetEntry*> meshSources;
+    std::vector<const AssetEntry*> matEntries;
     bool isModelSky = false;
 
     // Iterate children by type (like Go's mdl.Marshal iterating SubGroupNodes)
@@ -86,7 +86,7 @@ static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
         if (child.typeId == Onyx::TypeId::Mesh && child.size > 0) {
             meshSources.push_back(&child);
         } else if (child.typeId == Onyx::TypeId::Material || (child.size == 0 && child.typeId == Onyx::TypeId::Unknown)) {
-            const ParsedEntry* mat = &child;
+            const AssetEntry* mat = &child;
             // Material reference? Resolve by exact name
             if (mat->size == 0) {
                 if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::TypeId::Material)) {
@@ -163,7 +163,7 @@ static void ProcessModel(const ParsedEntry& model, OpenWad& wad,
 // ── Build SceneData from Object entry ──────────────────────────────────────
 
 static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
-    const ParsedEntry& entry, OpenWad& wad, uint32_t magic)
+    const AssetEntry& entry, AssetContainer& wad, uint32_t magic)
 {
     if (!wad.fileSource) return nullptr;
     auto scene = std::make_unique<Onyx::SceneData>();
@@ -182,7 +182,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
     //    If a Model child is a reference (no children), resolve by exact name in WAD.
     for (const auto& child : entry.children) {
         if (child.typeId == Onyx::TypeId::Model) {
-            const ParsedEntry* model = &child;
+            const AssetEntry* model = &child;
             if (model->children.empty()) {
                 // Reference node — resolve definition by exact name
                 if (auto resolved = ResolveRef(wad.entries, child.name, Onyx::TypeId::Model))
@@ -246,7 +246,7 @@ public:
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
     Color4f      GetColor() const override { return {0.55f, 0.9f, 1.0f, 1.0f}; }
 
-    std::unique_ptr<Onyx::SceneData> BuildSceneData(const ParsedEntry& entry, OpenWad& wad) override {
+    std::unique_ptr<Onyx::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         uint32_t actualMagic = 0;
         if (wad.fileSource) {
             wad.fileSource->Seek(entry.offset, SEEK_SET);
@@ -255,7 +255,7 @@ public:
         return BuildSceneFromObjectEntry(entry, wad, actualMagic);
     }
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         uint32_t actualMagic = 0;
         if (wad.fileSource) {
             wad.fileSource->Seek(entry.offset, SEEK_SET);

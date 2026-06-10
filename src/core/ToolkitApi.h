@@ -13,8 +13,8 @@ namespace Onyx {
     class DocumentWindow;
 }
 
-struct ParsedEntry;
-struct OpenWad;
+struct AssetEntry;
+struct AssetContainer;
 
 namespace Onyx::Api {
 
@@ -47,12 +47,12 @@ namespace Onyx::Api {
     DocumentWindow& Documents();
 
     /// Access the currently selected entry in the active WAD/PAK.
-    ParsedEntry* GetSelected();
+    AssetEntry* GetSelected();
 
     /// Access the WAD containing the currently selected entry.
-    OpenWad* GetSelectedWad();
+    AssetContainer* GetSelectedWad();
 
     /// Set the globally selected entry and post EventAssetSelected.
-    void SetSelected(ParsedEntry* entry, OpenWad* wad);
+    void SetSelected(AssetEntry* entry, AssetContainer* wad);
 
 } // namespace Onyx::Api

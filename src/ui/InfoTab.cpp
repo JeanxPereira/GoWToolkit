@@ -31,7 +31,7 @@ static std::string FormatFloat(float v) {
     return ss.str();
 }
 
-void InfoTab::Draw(AssetDatabase& db, ParsedEntry* e) {
+void InfoTab::Draw(AssetDatabase& db, AssetEntry* e) {
     if (!e) return;
 
     // Basic metadata table (always shown, read-only)

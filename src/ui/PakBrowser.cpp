@@ -118,13 +118,13 @@ void PakBrowser::Draw() {
           if (Onyx::Api::Viewers().CanHandle(entry.typeId)) {
             auto fileHandle = db.OpenPakEntryAsFile(&entry, pak);
             if (fileHandle) {
-              OpenWad tempWad;
+              AssetContainer tempWad;
               tempWad.filename = entry.name;
               tempWad.fullPath = pak.fullPath;
               tempWad.profile = pak.profile;
               tempWad.fileSource = fileHandle;
 
-              ParsedEntry fileEntry = entry;
+              AssetEntry fileEntry = entry;
               fileEntry.offset = 0;
               tempWad.entries.push_back(fileEntry);
 

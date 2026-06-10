@@ -51,7 +51,7 @@ static constexpr uint16_t WADTAG_HEADER_POP    = 19;
 static constexpr uint16_t WADTAG_HEADER_START  = 21;
 // Tags 11-16 are TT_* (tweak template) nodes — added as leaves, no group semantics
 
-bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
+bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) {
     if (!file || !file->IsValid()) return false;
 
     file->Seek(0, SEEK_END);
@@ -63,7 +63,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
     int64_t pos = 0;
 
     // Stack of pointers to vectors of entries. We start with the root vector.
-    std::vector<std::vector<ParsedEntry>*> stack;
+    std::vector<std::vector<AssetEntry>*> stack;
     stack.push_back(&outWad.entries);
 
     bool newGroupTag = false;
@@ -130,7 +130,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
             continue;
         }
 
-        ParsedEntry entry;
+        AssetEntry entry;
         entry.name   = std::string(rawTag.name, strnlen(rawTag.name, 24));
         entry.size   = rawTag.size;
         entry.offset = pos;
@@ -211,7 +211,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
         entry.kind = KindOf(entry.typeId);
 
         // ── Add node to tree ──
-        std::vector<ParsedEntry>* currentLevel = stack.back();
+        std::vector<AssetEntry>* currentLevel = stack.back();
         currentLevel->push_back(std::move(entry));
         totalTags++;
 
@@ -232,7 +232,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
     }
 
     // Pass 2: resolve zero-sized and unknown types from forward references
-    std::function<void(std::vector<ParsedEntry>&)> resolveUnknowns = [&](std::vector<ParsedEntry>& list) {
+    std::function<void(std::vector<AssetEntry>&)> resolveUnknowns = [&](std::vector<AssetEntry>& list) {
         for (auto& n : list) {
             if (n.size == 0 && n.typeId == TypeId::Unknown && !n.name.empty()) {
                 auto it = nameToDefinition.find(n.name);
@@ -255,7 +255,7 @@ bool ProfileGOW2::ParseWad(std::shared_ptr<IFile> file, OpenWad& outWad) {
 
 // ── Shared helper ──────────────────────────────────────────────────────────
 
-static void assignSchemaType(ParsedEntry& entry) {
+static void assignSchemaType(AssetEntry& entry) {
     size_t dot = entry.name.find_last_of('.');
     if (dot != std::string::npos) {
         std::string ext = entry.name.substr(dot + 1);
@@ -301,7 +301,7 @@ struct RawTocEntryGOW2 {
 #pragma pack(pop)
 
 bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
-                                        IFile* tocFile, OpenWad& outWad) {
+                                        IFile* tocFile, AssetContainer& outWad) {
     LOG_INFO("[GOW2] Parsing TOC... size: %zu bytes.", (size_t)tocFile->Size());
 
     uint32_t numFiles = 0;
@@ -340,7 +340,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
             continue;
         }
 
-        ParsedEntry entry;
+        AssetEntry entry;
         entry.name = std::string(raw.name, strnlen(raw.name, 24));
         entry.size   = raw.size;
         entry.offset = (int64_t)realSector * SECTOR_SIZE;
@@ -355,7 +355,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
 }
 
 // ── LoadFromArchive ───────────────────────────────────────────────────────
-bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, OpenWad& outWad) {
+bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) {
     // Try GOW2.TOC first (some builds use this name)
     auto tocFile = vfs->OpenFile("/GOW2.TOC");
 

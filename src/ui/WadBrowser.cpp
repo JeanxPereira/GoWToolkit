@@ -17,7 +17,7 @@
 #include <fstream>
 #include "core/profiles/gowr/GowrProfileTag.h"
 
-static Onyx::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
+static Onyx::Gowr::WadEntryRole GetRole(const AssetEntry& e) {
     if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
         return t->role;
     }
@@ -25,7 +25,7 @@ static Onyx::Gowr::WadEntryRole GetRole(const ParsedEntry& e) {
 }
 
 WadBrowser::WadBrowser() {
-    EventWadOpened::subscribe(this, [this](OpenWad*) { visible = true; });
+    EventWadOpened::subscribe(this, [this](AssetContainer*) { visible = true; });
 }
 
 WadBrowser::~WadBrowser() {
@@ -37,7 +37,7 @@ WadBrowser::~WadBrowser() {
 // Delegates to the centralized AssetVisibility registry which handles both
 // GOW2 (TypeId-based) and GOWR (role→TypeId mapping) in one code path.
 // Users can toggle visibility per type via the Asset Filters panel.
-static Onyx::GameVersion DetectGameVersion(const ParsedEntry& e) {
+static Onyx::GameVersion DetectGameVersion(const AssetEntry& e) {
     // GOWR entries have a classified role via GowrProfileTag
     if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
         if (t->role != Onyx::Gowr::WadEntryRole::Unknown)
@@ -46,7 +46,7 @@ static Onyx::GameVersion DetectGameVersion(const ParsedEntry& e) {
     return Onyx::GameVersion::GOW2;
 }
 
-static bool IsEntryVisible(const ParsedEntry& entry) {
+static bool IsEntryVisible(const AssetEntry& entry) {
     auto ver = DetectGameVersion(entry);
     return Onyx::AssetVisibility::Get().IsVisible(ver, entry.typeId);
 }
@@ -86,8 +86,8 @@ void WadBrowser::Draw() {
     Onyx::MediaKind targetKind =
         hasKindFilter ? kindValues[m_kindFilterIndex] : Onyx::MediaKind::Unknown;
 
-    std::function<bool(const ParsedEntry&)> hasMatchingDescendant;
-    hasMatchingDescendant = [&](const ParsedEntry& entry) {
+    std::function<bool(const AssetEntry&)> hasMatchingDescendant;
+    hasMatchingDescendant = [&](const AssetEntry& entry) {
         if (entry.kind == targetKind) return true;
         for (const auto& child : entry.children) {
             if (hasMatchingDescendant(child)) return true;
@@ -137,8 +137,8 @@ void WadBrowser::Draw() {
             int entryIdx = 0;
 
             // Recursive lambda for rendering tree
-            std::function<void(ParsedEntry&, int&)> renderEntryTree;
-            renderEntryTree = [&](ParsedEntry& entry, int& idx) {
+            std::function<void(AssetEntry&, int&)> renderEntryTree;
+            renderEntryTree = [&](AssetEntry& entry, int& idx) {
                 // Filter: check name match
                 if (hasFilter) {
                     std::string nameLower = entry.name;

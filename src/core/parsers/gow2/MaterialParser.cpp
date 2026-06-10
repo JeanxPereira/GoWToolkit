@@ -17,7 +17,7 @@ static float ReadFloat(const uint8_t* buf, size_t offset) {
     return *reinterpret_cast<float*>(&val);
 }
 
-std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(const ParsedEntry& matEntry, const std::shared_ptr<IFile>& fileSource) {
+std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(const AssetEntry& matEntry, const std::shared_ptr<IFile>& fileSource) {
     if (!fileSource) return nullptr;
 
     // Header MAT tem 0x38 bytes

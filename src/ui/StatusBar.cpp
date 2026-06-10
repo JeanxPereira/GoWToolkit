@@ -10,14 +10,14 @@
 #include <cmath>
 
 StatusBar::StatusBar() {
-    EventWadOpened::subscribe(this, [this](OpenWad* wad) {
+    EventWadOpened::subscribe(this, [this](AssetContainer* wad) {
         if (wad) {
             std::string msg = "Loaded: " + wad->filename;
             SetMessage(msg.c_str());
         }
     });
 
-    EventPakOpened::subscribe(this, [this](OpenWad* pak) {
+    EventPakOpened::subscribe(this, [this](AssetContainer* pak) {
         if (pak) {
             std::string msg = "Loaded PAK: " + pak->filename;
             SetMessage(msg.c_str());

@@ -14,7 +14,7 @@ void Inspector::Draw() {
     ImGui::Begin("Inspector", &visible);
 
     // Use the global selection state
-    ParsedEntry* entry = Onyx::Api::GetSelected();
+    AssetEntry* entry = Onyx::Api::GetSelected();
 
     if (!entry) {
         ImGui::TextDisabled("No entry selected");

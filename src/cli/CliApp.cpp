@@ -58,7 +58,7 @@ void CliApp::PrintHelp() {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-static void PrintEntryTree(const ParsedEntry& entry, int depth) {
+static void PrintEntryTree(const AssetEntry& entry, int depth) {
     std::string indent(depth * 2, ' ');
     std::string sizeStr;
     if (entry.size >= 1024 * 1024)
@@ -80,7 +80,7 @@ static void PrintEntryTree(const ParsedEntry& entry, int depth) {
 
 static bool OpenWadFromFile(const std::filesystem::path& path,
                              const std::string& gameHint,
-                             OpenWad& wad,
+                             AssetContainer& wad,
                              std::shared_ptr<IFile>& fileOut)
 {
     auto profile = gameHint.empty()
@@ -106,15 +106,15 @@ static bool OpenWadFromFile(const std::filesystem::path& path,
     wad.profile = profile;
     wad.fileSource = file;
 
-    if (!profile->ParseWad(file, wad)) {
-        std::cerr << "[CLI] ParseWad failed.\n";
+    if (!profile->ParseContainer(file, wad)) {
+        std::cerr << "[CLI] ParseContainer failed.\n";
         return false;
     }
     return true;
 }
 
 // Find entry by exact name (depth-first search)
-static const ParsedEntry* FindEntryByName(const std::vector<ParsedEntry>& entries, const std::string& name) {
+static const AssetEntry* FindEntryByName(const std::vector<AssetEntry>& entries, const std::string& name) {
     for (const auto& e : entries) {
         if (e.name == name) return &e;
         if (auto f = FindEntryByName(e.children, name)) return f;
@@ -191,7 +191,7 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
         return 1;
     }
 
-    OpenWad wad;
+    AssetContainer wad;
     std::shared_ptr<IFile> file;
     if (!OpenWadFromFile(path, gameHint, wad, file))
         return 1;
@@ -204,7 +204,7 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
 
     // Type summary
     std::map<std::string, int> typeCounts;
-    std::function<void(const ParsedEntry&)> countTypes = [&](const ParsedEntry& e) {
+    std::function<void(const AssetEntry&)> countTypes = [&](const AssetEntry& e) {
         typeCounts[Onyx::TypeIdName(e.typeId)]++;
         for (const auto& c : e.children) countTypes(c);
     };
@@ -240,7 +240,7 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
 
     const std::string& entryName = args[2];
 
-    OpenWad wad;
+    AssetContainer wad;
     std::shared_ptr<IFile> file;
     if (!OpenWadFromFile(path, gameHint, wad, file))
         return 1;
@@ -248,7 +248,7 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
     std::cout << "[CLI] Parsed WAD with " << wad.entries.size() << " top-level entries.\n";
     std::cout << "[CLI] Looking for entry: '" << entryName << "'\n";
 
-    const ParsedEntry* entry = FindEntryByName(wad.entries, entryName);
+    const AssetEntry* entry = FindEntryByName(wad.entries, entryName);
     if (!entry) {
         std::cerr << "[CLI] Entry '" << entryName << "' not found.\n";
         std::cerr << "[CLI] Top-level entries:\n";
@@ -315,7 +315,7 @@ int CliApp::HandleExtract(const std::vector<std::string>& args) {
 
     std::filesystem::create_directories(outDir);
 
-    OpenWad topWad;
+    AssetContainer topWad;
     if (!profile->LoadFromArchive(vfs, topWad)) {
         std::cerr << "[CLI] Failed to enumerate ISO contents.\n";
         return 1;

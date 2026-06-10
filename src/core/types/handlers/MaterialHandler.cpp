@@ -12,7 +12,7 @@
 
 namespace {
 
-static const ParsedEntry* FindEntryWithPayload(const std::vector<ParsedEntry>& entries, const std::string& name, Onyx::TypeId type) {
+static const AssetEntry* FindEntryWithPayload(const std::vector<AssetEntry>& entries, const std::string& name, Onyx::TypeId type) {
     for (const auto& entry : entries) {
         if (entry.typeId == type && entry.name == name && entry.size > 0)
             return &entry;
@@ -24,7 +24,7 @@ static const ParsedEntry* FindEntryWithPayload(const std::vector<ParsedEntry>& e
     return nullptr;
 }
 
-static const ParsedEntry* FindTextureEntry(const std::vector<ParsedEntry>& entries, const std::string& name) {
+static const AssetEntry* FindTextureEntry(const std::vector<AssetEntry>& entries, const std::string& name) {
     for (const auto& entry : entries) {
         if (entry.typeId == Onyx::TypeId::Texture && entry.name == name)
             return &entry;
@@ -44,10 +44,10 @@ public:
     const char*  GetIcon()  const override { return ICON_SF_PAINTPALETTE_FILL; }  // symbol-color
     Color4f      GetColor() const override { return {0.95f, 0.6f, 0.2f, 1.0f}; }  // orange
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
         
-        const ParsedEntry* matEntryToParse = &entry;
+        const AssetEntry* matEntryToParse = &entry;
         if (matEntryToParse->size == 0) {
             if (auto realMat = FindEntryWithPayload(wad.entries, matEntryToParse->name, Onyx::TypeId::Material))
                 matEntryToParse = realMat;

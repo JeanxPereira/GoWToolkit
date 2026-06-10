@@ -9,10 +9,10 @@ using namespace Onyx;
 
 TEST_CASE("ViewerRegistry Open logic") {
     ViewerRegistry registry;
-    OpenWad dummyWad;
+    AssetContainer dummyWad;
 
     SUBCASE("Unknown kind returns nullptr") {
-        ParsedEntry entry;
+        AssetEntry entry;
         entry.kind = MediaKind::Unknown;
         entry.typeId = TypeId::Unknown;
         
@@ -21,7 +21,7 @@ TEST_CASE("ViewerRegistry Open logic") {
     }
 
     SUBCASE("Image kind with Unknown TypeId returns nullptr") {
-        ParsedEntry entry;
+        AssetEntry entry;
         entry.kind = MediaKind::Image;
         entry.typeId = TypeId::Unknown;
         

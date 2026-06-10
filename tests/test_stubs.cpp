@@ -11,7 +11,7 @@
 namespace Onyx {
 
 TexPackIndex& GetTexIndex() {
-    // No real index — golden tests only need ParseWad to terminate, not to
+    // No real index — golden tests only need ParseContainer to terminate, not to
     // resolve textures from .texpack archives.
     static TexPackIndex stub;
     return stub;

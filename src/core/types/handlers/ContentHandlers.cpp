@@ -84,8 +84,8 @@ public:
   } // unmute
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; } // teal
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
     auto bankData = Onyx::GOW2SoundParser::Parse(entry, wad.fileSource);
@@ -122,8 +122,8 @@ public:
   uint32_t GetMagic() const override { return 0x80000001; }
   Color4f GetColor() const override { return {0.6f, 0.6f, 0.6f, 1.0f}; }
 
-  std::unique_ptr<Onyx::SceneData> BuildSceneData(const ParsedEntry &entry,
-                                                 OpenWad &wad) override {
+  std::unique_ptr<Onyx::SceneData> BuildSceneData(const AssetEntry &entry,
+                                                 AssetContainer &wad) override {
     // A Chunk aggregates instances. Delegate to InstanceHandler and merge
     // results.
     auto mergedScene = std::make_unique<Onyx::SceneData>();
@@ -135,7 +135,7 @@ public:
     // Resolve the Instance handler once
     auto *instHandler = Onyx::TypeRegistry::Get().Resolve(Onyx::TypeId::Instance);
 
-    auto findInstances = [&](const std::vector<ParsedEntry> &entries,
+    auto findInstances = [&](const std::vector<AssetEntry> &entries,
                              auto &findRef) -> void {
       for (const auto &child : entries) {
         if (child.typeId == Onyx::TypeId::Instance && instHandler) {
@@ -279,8 +279,8 @@ public:
     return nullptr;
   }
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (auto scene = BuildSceneData(entry, wad)) {
       auto vp = std::make_shared<Onyx::Viewport3D>(entry.name);
       vp->LoadScene(std::move(scene));
@@ -314,8 +314,8 @@ public:
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_3; }
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; }
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
     auto vagData = Onyx::GOW2VagParser::Parse(wad.fileSource);
@@ -335,8 +335,8 @@ public:
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_2_FILL; }
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; }
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
     auto vpkData = Onyx::GOW2VpkParser::Parse(wad.fileSource);
@@ -358,8 +358,8 @@ public:
     return {0.8f, 0.5f, 0.9f, 1.0f};
   } // purple
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
     auto slice = std::make_shared<Onyx::SliceFile>(wad.fileSource, entry.offset,
@@ -376,8 +376,8 @@ public:
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }
   Color4f GetColor() const override { return {0.8f, 0.5f, 0.9f, 1.0f}; }
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry &entry,
-                                                      OpenWad &wad) override {
+  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+                                                      AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
     auto slice = std::make_shared<Onyx::SliceFile>(wad.fileSource, entry.offset,

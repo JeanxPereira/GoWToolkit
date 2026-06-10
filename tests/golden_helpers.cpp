@@ -47,7 +47,7 @@ uint64_t HashEntryPayload(Onyx::IFile& source, uint64_t offset, uint64_t size) {
     return XXH64(buf.data(), buf.size(), /*seed=*/0);
 }
 
-void FlattenEntry(const ParsedEntry& entry,
+void FlattenEntry(const AssetEntry& entry,
                   Onyx::IFile* source,
                   std::vector<ordered_json>& out) {
     ordered_json e;
@@ -71,7 +71,7 @@ void FlattenEntry(const ParsedEntry& entry,
 
 } // anonymous namespace
 
-ordered_json SnapshotEntries(const OpenWad& wad) {
+ordered_json SnapshotEntries(const AssetContainer& wad) {
     std::vector<ordered_json> flat;
     auto* source = wad.fileSource.get();
     for (const auto& entry : wad.entries) {
@@ -177,7 +177,7 @@ void RunGoldenTest(std::string_view versionTag,
     REQUIRE_MESSAGE(file->IsValid(),
                     "failed to open fixture WAD: " << wadPath.string());
 
-    OpenWad wad;
+    AssetContainer wad;
     wad.filename = wadPath.filename().string();
     wad.fullPath = wadPath.string();
     wad.fileSource = file;
@@ -185,14 +185,14 @@ void RunGoldenTest(std::string_view versionTag,
     bool parsed = false;
     if (versionTag == "gow2") {
         Onyx::ProfileGOW2 profile;
-        parsed = profile.ParseWad(file, wad);
+        parsed = profile.ParseContainer(file, wad);
     } else if (versionTag == "gowr") {
         Onyx::ProfileGOWR profile;
-        parsed = profile.ParseWad(file, wad);
+        parsed = profile.ParseContainer(file, wad);
     } else {
         FAIL("unknown versionTag: " << versionTag);
     }
-    REQUIRE_MESSAGE(parsed, "ParseWad failed for " << wadPath.string());
+    REQUIRE_MESSAGE(parsed, "ParseContainer failed for " << wadPath.string());
 
     ordered_json actual = SnapshotEntries(wad);
 

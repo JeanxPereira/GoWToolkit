@@ -18,8 +18,8 @@
 
 // ── Event definition macros ────────────────────────────────────────────────
 // Usage:
-//   EVENT_DEF(EventWadOpened, OpenWad*);
-//   EventWadOpened::subscribe([](OpenWad* wad) { ... });
+//   EVENT_DEF(EventWadOpened, AssetContainer*);
+//   EventWadOpened::subscribe([](AssetContainer* wad) { ... });
 //   EventWadOpened::post(wadPtr);
 
 #define EVENT_DEF_IMPL(event_name, event_name_string, should_log, ...)                                                  \

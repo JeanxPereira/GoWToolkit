@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-struct ParsedEntry;
+struct AssetEntry;
 
 namespace Onyx {
 
@@ -31,7 +31,7 @@ public:
 
     /// Convenience overload that reads game version from the entry's context.
     /// Uses GOW2 as default — GOWR entries checked via role→TypeId mapping.
-    bool IsVisible(const ParsedEntry& entry, GameVersion ver) const;
+    bool IsVisible(const AssetEntry& entry, GameVersion ver) const;
 
     Visibility GetDefault(GameVersion ver, TypeId id) const;
     Visibility GetCurrent(GameVersion ver, TypeId id) const;

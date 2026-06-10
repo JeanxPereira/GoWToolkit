@@ -22,7 +22,7 @@ public:
     Color4f     GetColor() const override { return {0.85f, 0.85f, 0.85f, 1.0f}; }
 
     std::shared_ptr<Onyx::IDocumentContent>
-    CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+    CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
         auto bytes = wad.fileSource->ReadAll();
         std::string text(reinterpret_cast<const char*>(bytes.data()), bytes.size());

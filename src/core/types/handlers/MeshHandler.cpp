@@ -16,7 +16,7 @@ public:
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
     Color4f      GetColor() const override { return {0.4f, 0.8f, 1.0f, 1.0f}; }
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         if (auto* handler = Onyx::TypeRegistry::Get().Resolve(Onyx::TypeId::Model)) {
             return handler->CreateViewer(entry, wad);
         }
@@ -32,7 +32,7 @@ public:
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
     Color4f      GetColor() const override { return {0.4f, 0.8f, 1.0f, 1.0f}; }
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         if (auto* handler = Onyx::TypeRegistry::Get().Resolve(Onyx::TypeId::Model)) {
             return handler->CreateViewer(entry, wad);
         }

@@ -184,7 +184,7 @@ static std::string ReadFixedString(const uint8_t* buf, size_t maxLen) {
 }
 
 // Find a sibling entry by name
-static const ParsedEntry* FindSibling(const std::vector<ParsedEntry>& siblings, const std::string& name) {
+static const AssetEntry* FindSibling(const std::vector<AssetEntry>& siblings, const std::string& name) {
     for (const auto& e : siblings) {
         if (e.name == name) return &e;
         // Search children recursively
@@ -196,8 +196,8 @@ static const ParsedEntry* FindSibling(const std::vector<ParsedEntry>& siblings, 
 }
 
 std::unique_ptr<TextureData> GOW2TextureParser::Parse(
-    const ParsedEntry& txrEntry,
-    const std::vector<ParsedEntry>& siblingEntries,
+    const AssetEntry& txrEntry,
+    const std::vector<AssetEntry>& siblingEntries,
     const std::shared_ptr<IFile>& fileSource)
 {
     if (!fileSource || txrEntry.size < 0x58) {
@@ -228,8 +228,8 @@ std::unique_ptr<TextureData> GOW2TextureParser::Parse(
     }
     
     // Find GFX and PAL sibling entries
-    const ParsedEntry* gfxEntry = FindSibling(siblingEntries, gfxName);
-    const ParsedEntry* palEntry = FindSibling(siblingEntries, palName);
+    const AssetEntry* gfxEntry = FindSibling(siblingEntries, gfxName);
+    const AssetEntry* palEntry = FindSibling(siblingEntries, palName);
     
     if (!gfxEntry) {
         LOG_ERR("[GOW2Texture] Cannot find GFX sibling '%s'", gfxName.c_str());

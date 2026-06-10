@@ -75,7 +75,7 @@ static bool IsSkyInstance(const std::string& name) {
 
 // ── Parser ─────────────────────────────────────────────────────────────────
 
-std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const ParsedEntry& entry, std::shared_ptr<IFile> parentFile) {
+std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const AssetEntry& entry, std::shared_ptr<IFile> parentFile) {
     if (!parentFile || entry.size < 0x60) return nullptr;
 
     auto data = std::make_shared<InstanceData>();

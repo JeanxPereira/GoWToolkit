@@ -4,7 +4,7 @@
 
 namespace Onyx {
 
-// Type-safe wrapper for opaque profile-specific tag data attached to ParsedEntry.
+// Type-safe wrapper for opaque profile-specific tag data attached to AssetEntry.
 class ProfileTag {
     std::any m_data;
 

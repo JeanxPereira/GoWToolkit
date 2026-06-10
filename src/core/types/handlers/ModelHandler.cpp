@@ -29,7 +29,7 @@
 namespace {
 
 // Resolve a reference node: find definition with exact name + type + has children
-static const ParsedEntry* ResolveRef(const std::vector<ParsedEntry>& tree,
+static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
                                       const std::string& name, Onyx::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && !n.children.empty())
@@ -41,7 +41,7 @@ static const ParsedEntry* ResolveRef(const std::vector<ParsedEntry>& tree,
 }
 
 // Resolve a reference node by payload (size > 0)
-static const ParsedEntry* ResolvePayload(const std::vector<ParsedEntry>& tree,
+static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
                                           const std::string& name, Onyx::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && n.size > 0)
@@ -53,7 +53,7 @@ static const ParsedEntry* ResolvePayload(const std::vector<ParsedEntry>& tree,
 }
 
 // Find texture by exact name (same as Go's GetNodeByName for textures)
-static const ParsedEntry* FindTexture(const std::vector<ParsedEntry>& nodes, const std::string& name) {
+static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const std::string& name) {
     for (const auto& c : nodes) {
         if (c.typeId == Onyx::TypeId::Texture && c.name == name) return &c;
         if (auto f = FindTexture(c.children, name)) return f;
@@ -91,11 +91,11 @@ public:
         return Onyx::AssetReader::Parse(*format.Root(), file);
     }
 
-    std::unique_ptr<Onyx::SceneData> BuildSceneData(const ParsedEntry& entry, OpenWad& wad) override {
+    std::unique_ptr<Onyx::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
 
         // Resolve the Model entry itself — if it's a reference, find the definition
-        const ParsedEntry* model = &entry;
+        const AssetEntry* model = &entry;
         if (model->children.empty()) {
             if (auto resolved = ResolveRef(wad.entries, entry.name, Onyx::TypeId::Model))
                 model = resolved;
@@ -105,14 +105,14 @@ public:
         // Build SceneData by iterating children (like Go's mdl.Marshal)
         auto scene = std::make_unique<Onyx::SceneData>();
 
-        std::vector<const ParsedEntry*> meshSources;
-        std::vector<const ParsedEntry*> matEntries;
+        std::vector<const AssetEntry*> meshSources;
+        std::vector<const AssetEntry*> matEntries;
 
         for (const auto& child : model->children) {
             if (child.typeId == Onyx::TypeId::Mesh && child.size > 0) {
                 meshSources.push_back(&child);
             } else if (child.typeId == Onyx::TypeId::Material) {
-                const ParsedEntry* mat = &child;
+                const AssetEntry* mat = &child;
                 if (mat->size == 0) {
                     if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::TypeId::Material))
                         mat = real;
@@ -204,7 +204,7 @@ public:
         return scene;
     }
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const ParsedEntry& entry, OpenWad& wad) override {
+    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         auto vp = std::make_shared<Onyx::Viewport3D>(entry.name);
         if (auto scene = BuildSceneData(entry, wad)) {
             vp->LoadScene(std::move(scene));

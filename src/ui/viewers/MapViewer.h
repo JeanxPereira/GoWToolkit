@@ -11,7 +11,7 @@ namespace Onyx {
 
 class MapViewer : public IDocumentContent {
 public:
-    MapViewer(const std::string& wadName, OpenWad& wad);
+    MapViewer(const std::string& wadName, AssetContainer& wad);
     ~MapViewer() override = default;
 
     std::string GetName() const override { return "Map: " + m_wadName; }
@@ -24,7 +24,7 @@ public:
 
 private:
     std::string m_wadName;
-    OpenWad& m_wad;
+    AssetContainer& m_wad;
     
     std::unique_ptr<Viewport3D> m_viewport;
     bool m_isLoading = false;
