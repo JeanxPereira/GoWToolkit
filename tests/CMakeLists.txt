@@ -5,6 +5,12 @@
 
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
+# Explicitly ensure the type-table equivalence test is part of the runner even
+# if a stale GLOB cache misses it (CONFIGURE_DEPENDS already covers it, but the
+# explicit listing documents intent and guards against cache staleness).
+list(APPEND TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/typetable_equivalence_test.cpp")
+list(REMOVE_DUPLICATES TEST_SOURCES)
+
 # ThemeManager.cpp lives in src/core/ but is needed by the contrast tests.
 # It's compiled here rather than pulled from a library because the main
 # GoWToolkit executable GLOB compiles it directly, and adding it to
