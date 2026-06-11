@@ -4,7 +4,7 @@
 #include "Core/Logger.h"
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 GridRenderer::~GridRenderer() {
     if (m_vbo) glDeleteBuffers(1, &m_vbo);
@@ -58,4 +58,4 @@ void GridRenderer::Draw(const glm::mat4& view, const glm::mat4& projection, cons
     glDisable(GL_BLEND);
 }
 
-} // namespace Onyx
+} // namespace Onyx::Rendering

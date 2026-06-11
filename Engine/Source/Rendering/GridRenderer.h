@@ -3,7 +3,7 @@
 
 using GLuint = unsigned int;
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 class Shader;
 
@@ -22,4 +22,4 @@ private:
     bool   m_initialized = false;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Rendering

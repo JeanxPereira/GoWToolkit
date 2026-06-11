@@ -10,7 +10,7 @@
 // Forward-declare GL types
 using GLenum = unsigned int;
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 /// A single renderable batch: one mesh part + its resolved material + GL resources.
 struct RenderBatch {
@@ -144,4 +144,4 @@ private:
                                   int viewportW, int viewportH);
 };
 
-} // namespace Onyx
+} // namespace Onyx::Rendering

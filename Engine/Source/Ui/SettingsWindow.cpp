@@ -535,7 +535,7 @@ void SettingsWindow::DrawViewportCategory() {
 
   if (BeginSubWindow("Shading Base")) {
     if (ImGui::ColorEdit3("Matcap Base Color", &config->matcapR, flags)) {
-      Onyx::ShaderManager::Get().GenerateMatcapTexture();
+      Onyx::Rendering::ShaderManager::Get().GenerateMatcapTexture();
     }
   }
   EndSubWindow();

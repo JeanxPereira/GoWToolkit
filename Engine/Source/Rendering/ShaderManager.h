@@ -5,7 +5,7 @@
 
 using GLuint = unsigned int;
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 /// Viewport shading mode
 enum class ShadingMode {
@@ -55,4 +55,4 @@ private:
     friend class SceneRenderer;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Rendering

@@ -32,8 +32,8 @@ public:
 
     // Accessors for the CameraPanel (renders camera tuning UI as a dock tab
     // next to Inspector).
-    Camera&            GetCamera()  { return m_camera; }
-    SceneRenderer*     GetSceneRenderer() const { return m_sceneRenderer.get(); }
+    Rendering::Camera&            GetCamera()  { return m_camera; }
+    Rendering::SceneRenderer*     GetSceneRenderer() const { return m_sceneRenderer.get(); }
     int                GetFboWidth()  const { return m_fboWidth; }
     int                GetFboHeight() const { return m_fboHeight; }
     void               RequestRedraw()       { m_needsRedraw = true; }
@@ -43,7 +43,7 @@ public:
     bool showOutline    = true;
     bool showBones      = false;
     bool showObjectList = true;
-    ShadingMode shadingMode = ShadingMode::Solid;
+    Rendering::ShadingMode shadingMode = Rendering::ShadingMode::Solid;
 
     // Outline settings
     glm::vec4 outlineColor      {0.0f, 0.0f, 0.0f, 1.0f};
@@ -62,12 +62,12 @@ private:
     void HandleInput();
 
     std::string m_name;
-    Camera m_camera;
-    GridRenderer m_grid;
-    AxisGizmo m_axisGizmo;
+    Rendering::Camera m_camera;
+    Rendering::GridRenderer m_grid;
+    Rendering::AxisGizmo m_axisGizmo;
 
     // Unified scene renderer — all content goes through here
-    std::unique_ptr<SceneRenderer> m_sceneRenderer;
+    std::unique_ptr<Rendering::SceneRenderer> m_sceneRenderer;
 
     // Keep scene data around for animation access
     std::shared_ptr<Parsers::SceneData> m_sceneData;

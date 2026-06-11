@@ -1,9 +1,9 @@
-#include <glad/glad.h>
+﻿#include <glad/glad.h>
 #include "GpuMesh.h"
 #include <algorithm>
 #include <limits>
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 GpuMesh::~GpuMesh() { Cleanup(); }
 
@@ -88,7 +88,7 @@ void GpuMesh::Upload(const std::vector<Domain::GpuVertex>& vertices,
                           (void*)offsetof(Domain::GpuVertex, color));
     glEnableVertexAttribArray(3);
 
-    // location 4: uv1 (vec2) — secondary UV for env mapping
+    // location 4: uv1 (vec2) â€” secondary UV for env mapping
     glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(Domain::GpuVertex),
                           (void*)offsetof(Domain::GpuVertex, uv1));
     glEnableVertexAttribArray(4);
@@ -98,7 +98,7 @@ void GpuMesh::Upload(const std::vector<Domain::GpuVertex>& vertices,
                           (void*)offsetof(Domain::GpuVertex, boneWeights));
     glEnableVertexAttribArray(5);
 
-    // location 6: boneIndices (uvec4) — integer attribute
+    // location 6: boneIndices (uvec4) â€” integer attribute
     glVertexAttribIPointer(6, 4, GL_UNSIGNED_INT, sizeof(Domain::GpuVertex),
                            (void*)offsetof(Domain::GpuVertex, boneIndices));
     glEnableVertexAttribArray(6);
@@ -113,4 +113,4 @@ void GpuMesh::Draw() const {
     glBindVertexArray(0);
 }
 
-} // namespace Onyx
+} // namespace Onyx::Rendering

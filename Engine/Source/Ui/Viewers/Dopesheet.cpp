@@ -138,7 +138,7 @@ void Dopesheet::Draw() {
     // fall back to ceil(duration / frameTime).
     int frameCount = 0;
     float frameTime = sd.frameTime > 0 ? sd.frameTime : (1.0f / 30.0f);
-    Onyx::AnimationPlayer* player = Onyx::UI::GetActiveAnimationPlayer();
+    Onyx::Rendering::AnimationPlayer* player = Onyx::UI::GetActiveAnimationPlayer();
     if (player && player->GetFrameCount() > 0 &&
         player->GetCurrentGroupIndex() == m_selectedGroup &&
         player->GetCurrentActIndex() == m_selectedAct) {

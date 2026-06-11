@@ -13,12 +13,12 @@ namespace {
 // integer frame indices. We treat a keyframe as the start offset of any
 // substream â€” those are the points where the engine actually has stored
 // data, so they line up with what an animator would call a key.
-void CollectKeyFrames(const Onyx::AnimationPlayer& player,
+void CollectKeyFrames(const Onyx::Rendering::AnimationPlayer& player,
                       std::set<int>& out) {
     const Onyx::Parsers::AnimationData* anim = nullptr;
     int g = player.GetCurrentGroupIndex();
     int a = player.GetCurrentActIndex();
-    const Onyx::BakedAnimation* baked = player.GetBaked();
+    const Onyx::Rendering::BakedAnimation* baked = player.GetBaked();
     if (!baked || g < 0 || a < 0) return;
 
     // The player owns the anim pointer but doesn't expose it; derive markers
@@ -49,9 +49,9 @@ ImU32 BlendU32(ImU32 a, ImU32 b, float t) {
 } // namespace
 
 bool DrawAnimationTimeline(const char* strId,
-                           Onyx::AnimationPlayer& player,
+                           Onyx::Rendering::AnimationPlayer& player,
                            const AnimationTimelineStyle& style) {
-    const Onyx::BakedAnimation* baked = player.GetBaked();
+    const Onyx::Rendering::BakedAnimation* baked = player.GetBaked();
     if (!baked || baked->empty()) return false;
 
     const int frameCount = baked->frameCount;

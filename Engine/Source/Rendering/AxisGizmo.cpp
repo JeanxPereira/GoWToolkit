@@ -1,7 +1,7 @@
-#include "AxisGizmo.h"
+﻿#include "AxisGizmo.h"
 #include <algorithm>
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 namespace {
 
@@ -129,4 +129,4 @@ bool AxisGizmo::Draw(const glm::mat3& viewRot,
     return false;
 }
 
-} // namespace Onyx
+} // namespace Onyx::Rendering

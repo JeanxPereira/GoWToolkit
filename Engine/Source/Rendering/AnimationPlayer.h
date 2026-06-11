@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 // Per-frame pose cache for one act. Built once via Bake() and queried with
 // EvaluateAt() so timeline scrubbing is O(1) regardless of how additive the
@@ -131,4 +131,4 @@ private:
     std::vector<glm::vec4> m_jointLocalScale;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Rendering

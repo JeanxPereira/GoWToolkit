@@ -8,7 +8,7 @@
 // Forward-declare GL types to avoid pulling glad.h into headers
 using GLuint = unsigned int;
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 class GpuMesh {
 public:
@@ -45,4 +45,4 @@ private:
     GLuint m_textureId = 0;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Rendering

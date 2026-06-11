@@ -1,4 +1,4 @@
-#include "Viewport3D.h"
+﻿#include "Viewport3D.h"
 #include "Rendering/ShaderManager.h"
 #include "Core/Events.h"
 #include <glad/glad.h>
@@ -52,7 +52,7 @@ void Viewport3D::LoadFromMeshData(const Parsers::MeshData& data, const std::vect
     ClearScene();
     if (data.parts.empty()) return;
 
-    m_sceneRenderer = std::make_unique<SceneRenderer>();
+    m_sceneRenderer = std::make_unique<Rendering::SceneRenderer>();
     m_sceneRenderer->BuildFromMeshData(data, textures);
     m_camera.FocusOn(m_sceneRenderer->GetBounds());
     m_needsRedraw = true;
@@ -69,7 +69,7 @@ void Viewport3D::LoadScene(std::unique_ptr<Parsers::SceneData> scene) {
         EventAnimationLoaded::post(m_sceneData->animations);
     }
 
-    m_sceneRenderer = std::make_unique<SceneRenderer>();
+    m_sceneRenderer = std::make_unique<Rendering::SceneRenderer>();
     m_sceneRenderer->Build(*m_sceneData);
     m_camera.FocusOn(m_sceneRenderer->GetBounds());
     m_needsRedraw = true;
@@ -84,7 +84,7 @@ void Viewport3D::InitFBO() {
     glGenFramebuffers(1, &m_fbo);
     glGenTextures(1, &m_colorTex);
 
-    ShaderManager::Get().Initialize();
+    Rendering::ShaderManager::Get().Initialize();
 }
 
 void Viewport3D::ResizeFBO(int width, int height) {
@@ -123,7 +123,7 @@ void Viewport3D::Draw() {
     // Reserve a strip at the bottom of the viewport for the animation
     // transport (only when a clip is loaded). Image render area shrinks
     // by that height so the bar lives directly under the 3D scene.
-    Onyx::AnimationPlayer* transportPlayer =
+    Onyx::Rendering::AnimationPlayer* transportPlayer =
         m_sceneRenderer ? m_sceneRenderer->GetAnimPlayer() : nullptr;
     const bool hasTransport =
         transportPlayer && transportPlayer->GetCurrentActIndex() >= 0 &&
@@ -134,7 +134,7 @@ void Viewport3D::Draw() {
 
     ResizeFBO((int)viewSize.x, (int)viewSize.y);
 
-    // ── Animation update (every frame, regardless of redraw) ─────────
+    // â”€â”€ Animation update (every frame, regardless of redraw) â”€â”€â”€â”€â”€â”€â”€â”€â”€
     float currentTime = (float)ImGui::GetTime();
     float dt = (m_lastFrameTime > 0.0f) ? (currentTime - m_lastFrameTime) : 0.0f;
     m_lastFrameTime = currentTime;
@@ -146,7 +146,7 @@ void Viewport3D::Draw() {
         m_needsRedraw = true;
     }
 
-    // ── Render to FBO ────────────────────────────────────────────────
+    // â”€â”€ Render to FBO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (m_needsRedraw && m_fboWidth > 0 && m_fboHeight > 0) {
         m_needsRedraw = false;
 
@@ -164,23 +164,23 @@ void Viewport3D::Draw() {
         bool hasContent = m_sceneRenderer && !m_sceneRenderer->IsEmpty();
         auto* cfg = AppConfig::Get();
 
-        // ── Background gradient ────────────────────��─────────────────
+        // â”€â”€ Background gradient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (hasContent && cfg) {
-            SceneRenderer::RenderBackground(
+            Rendering::SceneRenderer::RenderBackground(
                 glm::vec3(cfg->bgTopR, cfg->bgTopG, cfg->bgTopB),
                 glm::vec3(cfg->bgBotR, cfg->bgBotG, cfg->bgBotB)
             );
         } else if (hasContent) {
-            SceneRenderer::RenderBackground(bgTopColor, bgBottomColor);
+            Rendering::SceneRenderer::RenderBackground(bgTopColor, bgBottomColor);
         } else if (cfg) {
             // Empty viewport: darker gradient based on configured top color
-            SceneRenderer::RenderBackground(
+            Rendering::SceneRenderer::RenderBackground(
                 glm::vec3(cfg->bgTopR * 0.8f, cfg->bgTopG * 0.8f, cfg->bgTopB * 0.8f),
                 glm::vec3(cfg->bgBotR * 0.8f, cfg->bgBotG * 0.8f, cfg->bgBotB * 0.8f)
             );
         } else {
             // Empty viewport: darker gradient
-            SceneRenderer::RenderBackground(
+            Rendering::SceneRenderer::RenderBackground(
                 glm::vec3(0.14f, 0.14f, 0.16f),
                 glm::vec3(0.06f, 0.06f, 0.08f)
             );
@@ -191,7 +191,7 @@ void Viewport3D::Draw() {
         glDepthMask(GL_TRUE);
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        // ── Scene ────────────────────────────────────────────────────
+        // â”€â”€ Scene â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (hasContent) {
             if (m_sceneRenderer->HasSky()) {
                 m_sceneRenderer->RenderSky(view, proj, shadingMode);
@@ -204,7 +204,7 @@ void Viewport3D::Draw() {
             }
         }
 
-        // ── Grid ────────────────────────────────────────────────────────────
+        // â”€â”€ Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (showGrid) {
             glm::vec4 gridColor = cfg ? glm::vec4(cfg->gridR, cfg->gridG, cfg->gridB, cfg->gridA) 
                                       : glm::vec4(0.35f, 0.35f, 0.35f, 0.5f);
@@ -217,7 +217,7 @@ void Viewport3D::Draw() {
             glDepthMask(GL_TRUE);
         }
 
-        // ── Resolve MSAA ────────────────────────���────────────────────
+        // â”€â”€ Resolve MSAA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         glBindFramebuffer(GL_READ_FRAMEBUFFER, m_msaaFbo);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
         glBlitFramebuffer(0, 0, m_fboWidth, m_fboHeight, 0, 0, m_fboWidth, m_fboHeight,
@@ -227,7 +227,7 @@ void Viewport3D::Draw() {
         glDisable(GL_MULTISAMPLE);
     }
 
-    // ── Display cached texture ────────────────────────��─────────────
+    // â”€â”€ Display cached texture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ImVec2 uv0(0, 1), uv1(1, 0); // flip Y for OpenGL
     ImGui::Image((void*)(intptr_t)m_colorTex, viewSize, uv0, uv1);
 
@@ -235,24 +235,24 @@ void Viewport3D::Draw() {
     const ImVec2 imageMin = ImGui::GetItemRectMin();
     const ImVec2 imageMax = ImGui::GetItemRectMax();
 
-    // ── Axis gizmo overlay ──────────────────────────────────────────
-    CameraView snapTarget;
+    // â”€â”€ Axis gizmo overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    Rendering::CameraView snapTarget;
     if (m_axisGizmo.Draw(m_camera.GetViewRotation(), imageMin, imageMax, snapTarget)) {
         m_camera.SnapToView(snapTarget);
         m_needsRedraw = true;
     }
 
-    // ── Input ───────────────────────��───────────────────────────────
+    // â”€â”€ Input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     HandleInput();
 
-    // ── Toolbar overlay ─────────────────────────────────────────────
+    // â”€â”€ Toolbar overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ImVec2 cursorPos = ImGui::GetCursorScreenPos();
     DrawToolbar(avail, cursorPos);
 
-    // ── Object list ──────────────────────────────────────────────────
+    // â”€â”€ Object list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     DrawObjectList(avail, cursorPos);
 
-    // ── Empty viewport message ─────────────────────────���────────────
+    // â”€â”€ Empty viewport message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (!m_sceneRenderer || m_sceneRenderer->IsEmpty()) {
         const char* msg = "No mesh loaded";
         ImVec2 textSize = ImGui::CalcTextSize(msg);
@@ -263,7 +263,7 @@ void Viewport3D::Draw() {
         ImGui::TextDisabled("%s", msg);
     }
 
-    // ── Animation transport bar (only when a clip is loaded) ─────────
+    // â”€â”€ Animation transport bar (only when a clip is loaded) â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (hasTransport) {
         DrawTransportBar();
     }
@@ -274,7 +274,7 @@ void Viewport3D::HandleInput() {
 
     ImGuiIO& io = ImGui::GetIO();
 
-    // Suppress camera mouse handling while the axis gizmo owns the cursor —
+    // Suppress camera mouse handling while the axis gizmo owns the cursor â€”
     // otherwise a click-to-snap would also fire an orbit on drag-off.
     const bool gizmoHot = m_axisGizmo.IsHovered();
 
@@ -308,11 +308,11 @@ void Viewport3D::HandleInput() {
         // Z: Cycle shading mode
         if (ImGui::IsKeyPressed(ImGuiKey_Z)) {
             switch (shadingMode) {
-                case ShadingMode::Solid:        shadingMode = ShadingMode::Matcap;       break;
-                case ShadingMode::Matcap:       shadingMode = ShadingMode::Textured;     break;
-                case ShadingMode::Textured:     shadingMode = ShadingMode::Wireframe;    break;
-                case ShadingMode::Wireframe:    shadingMode = ShadingMode::TexturedWire; break;
-                case ShadingMode::TexturedWire: shadingMode = ShadingMode::Solid;        break;
+                case Rendering::ShadingMode::Solid:        shadingMode = Rendering::ShadingMode::Matcap;       break;
+                case Rendering::ShadingMode::Matcap:       shadingMode = Rendering::ShadingMode::Textured;     break;
+                case Rendering::ShadingMode::Textured:     shadingMode = Rendering::ShadingMode::Wireframe;    break;
+                case Rendering::ShadingMode::Wireframe:    shadingMode = Rendering::ShadingMode::TexturedWire; break;
+                case Rendering::ShadingMode::TexturedWire: shadingMode = Rendering::ShadingMode::Solid;        break;
             }
             m_needsRedraw = true;
         }
@@ -338,14 +338,14 @@ void Viewport3D::DrawToolbar(ImVec2 avail, ImVec2 cursorPos) {
 
     namespace W = Onyx::UI::Widgets;
 
-    // Shading cycle — icon is the cube; mode goes in the tooltip.
+    // Shading cycle â€” icon is the cube; mode goes in the tooltip.
     const char* shadingLabel = nullptr;
     switch (shadingMode) {
-        case ShadingMode::Solid:        shadingLabel = "Solid";      break;
-        case ShadingMode::Matcap:       shadingLabel = "Matcap";     break;
-        case ShadingMode::Textured:     shadingLabel = "Textured";   break;
-        case ShadingMode::Wireframe:    shadingLabel = "Wire";       break;
-        case ShadingMode::TexturedWire: shadingLabel = "Wire (Tex)"; break;
+        case Rendering::ShadingMode::Solid:        shadingLabel = "Solid";      break;
+        case Rendering::ShadingMode::Matcap:       shadingLabel = "Matcap";     break;
+        case Rendering::ShadingMode::Textured:     shadingLabel = "Textured";   break;
+        case Rendering::ShadingMode::Wireframe:    shadingLabel = "Wire";       break;
+        case Rendering::ShadingMode::TexturedWire: shadingLabel = "Wire (Tex)"; break;
     }
     char shadingTip[64];
     snprintf(shadingTip, sizeof(shadingTip), "Shading: %s [Z]", shadingLabel);
@@ -354,11 +354,11 @@ void Viewport3D::DrawToolbar(ImVec2 avail, ImVec2 cursorPos) {
         opts.tooltip = shadingTip;
         if (W::IconButton("vp_shading", ICON_SF_CUBE, opts)) {
             switch (shadingMode) {
-                case ShadingMode::Solid:        shadingMode = ShadingMode::Matcap;       break;
-                case ShadingMode::Matcap:       shadingMode = ShadingMode::Textured;     break;
-                case ShadingMode::Textured:     shadingMode = ShadingMode::Wireframe;    break;
-                case ShadingMode::Wireframe:    shadingMode = ShadingMode::TexturedWire; break;
-                case ShadingMode::TexturedWire: shadingMode = ShadingMode::Solid;        break;
+                case Rendering::ShadingMode::Solid:        shadingMode = Rendering::ShadingMode::Matcap;       break;
+                case Rendering::ShadingMode::Matcap:       shadingMode = Rendering::ShadingMode::Textured;     break;
+                case Rendering::ShadingMode::Textured:     shadingMode = Rendering::ShadingMode::Wireframe;    break;
+                case Rendering::ShadingMode::Wireframe:    shadingMode = Rendering::ShadingMode::TexturedWire; break;
+                case Rendering::ShadingMode::TexturedWire: shadingMode = Rendering::ShadingMode::Solid;        break;
             }
             m_needsRedraw = true;
         }
@@ -449,7 +449,7 @@ void Viewport3D::DrawToolbar(ImVec2 avail, ImVec2 cursorPos) {
         }
     }
 
-    // FPS counter — bottom center
+    // FPS counter â€” bottom center
     {
         char fpsBuf[32];
         snprintf(fpsBuf, sizeof(fpsBuf), "%.0f FPS", ImGui::GetIO().Framerate);
@@ -471,7 +471,7 @@ void Viewport3D::DrawInspector() {
     const char* shadingLabel = "Solid\0Matcap\0Textured\0Wireframe\0TexturedWire\0";
     int mode = (int)shadingMode;
     if (ImGui::Combo("Shading", &mode, shadingLabel)) {
-        shadingMode = (ShadingMode)mode;
+        shadingMode = (Rendering::ShadingMode)mode;
         m_needsRedraw = true;
     }
 
@@ -488,7 +488,7 @@ void Viewport3D::DrawInspector() {
         Onyx::UI::SetActiveAnimationPlayer(nullptr);
     }
 
-    // ── Animation Section ─────────────────────────────────────────────
+    // â”€â”€ Animation Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (m_sceneRenderer && m_sceneRenderer->HasAnimations()) {
         ImGui::Separator();
         ImGui::Text("Animations");
@@ -542,10 +542,10 @@ void Viewport3D::DrawInspector() {
         // Transport now lives in the bar directly under the viewport.
         // The inspector keeps just the clip browser so users can pick
         // an act without leaving their docked panel.
-        ImGui::TextDisabled("Transport controls below viewport ↓");
+        ImGui::TextDisabled("Transport controls below viewport â†“");
     }
 
-    // ── Mesh Batches ────────────────────────────────────────────────
+    // â”€â”€ Mesh Batches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ImGui::Separator();
     ImGui::Text("Scene Mesh Batches");
 
@@ -571,7 +571,7 @@ void Viewport3D::DrawInspector() {
         }
     }
 
-    auto renderVisibilityToggle = [this](RenderBatch& batch) {
+    auto renderVisibilityToggle = [this](Rendering::RenderBatch& batch) {
         bool prev = batch.isVisible;
         ImGui::Checkbox("##vis", &batch.isVisible);
         bool itemHovered = ImGui::IsItemHovered();
@@ -590,7 +590,7 @@ void Viewport3D::DrawInspector() {
         }
     };
 
-    auto renderHighlightOnHover = [this](RenderBatch& batch) {
+    auto renderHighlightOnHover = [this](Rendering::RenderBatch& batch) {
         bool hovered = ImGui::IsItemHovered();
         if (hovered != batch.isHighlighted) {
             batch.isHighlighted = hovered;
@@ -621,7 +621,7 @@ void Viewport3D::DrawInspector() {
         // Multi-LOD group: collapsible tree
         ImGui::PushID((int)(1000 + g));
 
-        // Group-level visibility checkbox: ANY visible → checked; toggling sets all
+        // Group-level visibility checkbox: ANY visible â†’ checked; toggling sets all
         bool anyVisible = false, allVisible = true;
         for (size_t i : grp.idx) {
             if (batches[i].isVisible) anyVisible = true;
@@ -693,7 +693,7 @@ void Viewport3D::DrawObjectList(ImVec2 avail, ImVec2 cursorPos) {
 
 void Viewport3D::DrawTransportBar() {
     if (!m_sceneRenderer) return;
-    Onyx::AnimationPlayer* player = m_sceneRenderer->GetAnimPlayer();
+    Onyx::Rendering::AnimationPlayer* player = m_sceneRenderer->GetAnimPlayer();
     if (!player || player->GetCurrentActIndex() < 0) return;
 
     bool  isPlaying   = player->IsPlaying();
@@ -749,7 +749,7 @@ void Viewport3D::DrawTransportBar() {
     int loopMode = (int)player->GetLoopMode();
     const char* loopLabels[] = { "No Loop", "Loop", "PingPong" };
     if (ImGui::Combo("##loop", &loopMode, loopLabels, IM_ARRAYSIZE(loopLabels))) {
-        player->SetLoopMode((AnimationPlayer::LoopMode)loopMode);
+        player->SetLoopMode((Rendering::AnimationPlayer::LoopMode)loopMode);
     }
     ImGui::PopItemWidth();
 

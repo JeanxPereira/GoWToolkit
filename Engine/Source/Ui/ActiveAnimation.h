@@ -8,13 +8,13 @@
 // The viewport that's currently focused sets the pointer each frame;
 // readers should treat it as a weak observer and tolerate nullptr.
 
-namespace Onyx {
+namespace Onyx::Rendering {
 class AnimationPlayer;
 }
 
 namespace Onyx::UI {
 
-void              SetActiveAnimationPlayer(Onyx::AnimationPlayer* player);
-Onyx::AnimationPlayer* GetActiveAnimationPlayer();
+void              SetActiveAnimationPlayer(Onyx::Rendering::AnimationPlayer* player);
+Onyx::Rendering::AnimationPlayer* GetActiveAnimationPlayer();
 
 } // namespace Onyx::UI

@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <imgui.h>
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 // Blender-style navigation gizmo. Draws six axis discs (+X/-X/+Y/-Y/+Z/-Z)
 // in the bottom-right corner of the viewport using ImDrawList (no GL state).
@@ -32,4 +32,4 @@ private:
     bool m_hovered = false;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Rendering

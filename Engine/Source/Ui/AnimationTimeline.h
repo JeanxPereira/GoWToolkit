@@ -19,7 +19,7 @@ struct AnimationTimelineStyle {
 };
 
 bool DrawAnimationTimeline(const char* strId,
-                           Onyx::AnimationPlayer& player,
+                           Onyx::Rendering::AnimationPlayer& player,
                            const AnimationTimelineStyle& style = {});
 
 } // namespace Onyx::UI

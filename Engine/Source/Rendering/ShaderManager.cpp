@@ -6,7 +6,7 @@
 #include <cmath>
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Rendering {
 
 // â”€â”€ Shader uniform helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -669,4 +669,4 @@ Shader* ShaderManager::GetShader(const std::string& name) {
     return (it != m_shaders.end()) ? &it->second : nullptr;
 }
 
-} // namespace Onyx
+} // namespace Onyx::Rendering
