@@ -10,7 +10,7 @@
 #include <vector>
 
 Dopesheet::Dopesheet() {
-    EventAnimationLoaded::subscribe(this, [this](std::shared_ptr<Onyx::AnimationData> data) {
+    EventAnimationLoaded::subscribe(this, [this](std::shared_ptr<Onyx::Parsers::AnimationData> data) {
         m_animData = std::move(data);
         m_selectedGroup = 0;
         m_selectedAct = 0;
@@ -24,14 +24,14 @@ Dopesheet::~Dopesheet() {
 
 namespace {
 
-void GatherJointIds(const Onyx::AnimSubstream& s, std::set<int>& out) {
+void GatherJointIds(const Onyx::Parsers::AnimSubstream& s, std::set<int>& out) {
     for (auto& [key, _] : s.samples) {
         if (key < 0) continue;
         out.insert(key / 4);
     }
 }
 
-void GatherFromState(const Onyx::SkinningState& st, std::set<int>& outJoints,
+void GatherFromState(const Onyx::Parsers::SkinningState& st, std::set<int>& outJoints,
                      bool rotation, bool position) {
     if (rotation) {
         GatherJointIds(st.rotationStream, outJoints);
@@ -53,7 +53,7 @@ struct ChannelRange {
     int count;
 };
 
-void CollectRanges(const Onyx::AnimSubstream& s, int jointId,
+void CollectRanges(const Onyx::Parsers::AnimSubstream& s, int jointId,
                    std::vector<ChannelRange>& out) {
     bool any = false;
     for (int coord = 0; coord < 4; ++coord) {

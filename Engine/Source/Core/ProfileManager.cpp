@@ -2,13 +2,13 @@
 
 namespace Onyx {
 
-void ProfileManager::RegisterProfile(std::shared_ptr<IAssetProfile> profile) {
+void ProfileManager::RegisterProfile(std::shared_ptr<Domain::IAssetProfile> profile) {
     if (profile) {
         m_profiles.push_back(std::move(profile));
     }
 }
 
-std::shared_ptr<IAssetProfile> ProfileManager::DetectProfileForFile(const std::filesystem::path& path) const {
+std::shared_ptr<Domain::IAssetProfile> ProfileManager::DetectProfileForFile(const std::filesystem::path& path) const {
     for (const auto& profile : m_profiles) {
         if (profile->Detect(path)) {
             return profile;
@@ -17,7 +17,7 @@ std::shared_ptr<IAssetProfile> ProfileManager::DetectProfileForFile(const std::f
     return nullptr;
 }
 
-std::shared_ptr<IAssetProfile> ProfileManager::FindProfileByHint(const std::string& hint) const {
+std::shared_ptr<Domain::IAssetProfile> ProfileManager::FindProfileByHint(const std::string& hint) const {
     std::string hintLower = hint;
     for (auto& c : hintLower) c = (char)tolower(c);
 

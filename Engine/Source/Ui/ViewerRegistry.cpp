@@ -5,27 +5,27 @@ namespace Onyx {
 
 ViewerRegistry::ViewerRegistry() {
     auto defaultLegacyFactory = [](const AssetEntry& entry, AssetContainer& wad) {
-        auto* handler = TypeRegistry::Get().Resolve(entry.typeId);
+        auto* handler = Types::TypeRegistry::Get().Resolve(entry.typeId);
         if (handler) {
             return handler->CreateViewer(entry, wad);
         }
         return std::shared_ptr<IDocumentContent>(nullptr);
     };
 
-    m_factories[MediaKind::Image] = defaultLegacyFactory;
-    m_factories[MediaKind::Mesh] = defaultLegacyFactory;
-    m_factories[MediaKind::Audio] = defaultLegacyFactory;
-    m_factories[MediaKind::Video] = defaultLegacyFactory;
-    m_factories[MediaKind::Material] = defaultLegacyFactory;
+    m_factories[Domain::MediaKind::Image] = defaultLegacyFactory;
+    m_factories[Domain::MediaKind::Mesh] = defaultLegacyFactory;
+    m_factories[Domain::MediaKind::Audio] = defaultLegacyFactory;
+    m_factories[Domain::MediaKind::Video] = defaultLegacyFactory;
+    m_factories[Domain::MediaKind::Material] = defaultLegacyFactory;
 }
 
-bool ViewerRegistry::CanHandle(TypeId typeId) const {
-    return TypeRegistry::Get().Resolve(typeId) != nullptr;
+bool ViewerRegistry::CanHandle(Types::TypeId typeId) const {
+    return Types::TypeRegistry::Get().Resolve(typeId) != nullptr;
 }
 
 std::shared_ptr<IDocumentContent> ViewerRegistry::Open(const AssetEntry& entry, AssetContainer& wad) const {
     // 1. Try TypeRegistry handler first (preferred path)
-    auto* handler = TypeRegistry::Get().Resolve(entry.typeId);
+    auto* handler = Types::TypeRegistry::Get().Resolve(entry.typeId);
     if (handler) {
         auto viewer = handler->CreateViewer(entry, wad);
         if (!viewer) {
@@ -36,7 +36,7 @@ std::shared_ptr<IDocumentContent> ViewerRegistry::Open(const AssetEntry& entry, 
     }
     
     // 2. Fallback: try kind-based factory
-    if (entry.kind != MediaKind::Unknown) {
+    if (entry.kind != Domain::MediaKind::Unknown) {
         auto it = m_factories.find(entry.kind);
         if (it != m_factories.end() && it->second) {
             auto viewer = it->second(entry, wad);

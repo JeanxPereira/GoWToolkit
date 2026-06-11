@@ -557,12 +557,12 @@ void SettingsWindow::DrawAssetFiltersCategory() {
 
         // â”€â”€ Per-game-version sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         struct GameSection {
-            Onyx::GameVersion version;
+            Onyx::Types::GameVersion version;
             const char*      label;
         };
         static const GameSection sections[] = {
-            { Onyx::GameVersion::GOW2, "God of War II (PS2)" },
-            { Onyx::GameVersion::GOWR, "God of War Ragnarok" },
+            { Onyx::Types::GameVersion::GOW2, "God of War II (PS2)" },
+            { Onyx::Types::GameVersion::GOWR, "God of War Ragnarok" },
         };
 
         int totalHidden  = 0;

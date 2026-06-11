@@ -40,7 +40,7 @@ void MapViewer::LoadMap() {
     m_isLoading = true;
     m_loadStatus = "Finding chunks...";
     
-    auto combinedScene = std::make_unique<SceneData>();
+    auto combinedScene = std::make_unique<Parsers::SceneData>();
     
     // 1. Find all CXT_* chunks anywhere in the WAD
     std::vector<const AssetEntry*> chunks;
@@ -58,13 +58,13 @@ void MapViewer::LoadMap() {
     
     LOG_INFO("[MapViewer] Found %zu chunks in %s", chunks.size(), m_wadName.c_str());
     
-    // 2. Load each chunk into SceneData and merge
+    // 2. Load each chunk into Parsers::SceneData and merge
     size_t processed = 0;
     for (const auto* chunk : chunks) {
         m_loadStatus = "Loading chunk: " + chunk->name;
         m_loadProgress = (float)processed / (float)chunks.size();
         
-        auto handler = TypeRegistry::Get().Resolve(GameTypes::Chunk);
+        auto handler = Types::TypeRegistry::Get().Resolve(GameTypes::Chunk);
         if (handler) {
             auto printTree = [&](const AssetEntry& e, int depth, auto& pr) -> void {
                 std::string indent(depth * 2, ' ');

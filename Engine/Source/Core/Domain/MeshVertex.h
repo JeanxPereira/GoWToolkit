@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <glm/glm.hpp>
 
 namespace Onyx::Domain {
@@ -19,6 +19,3 @@ struct GpuVertex {
 };
 
 } // namespace Onyx::Domain
-
-// Backwards-compat alias
-namespace Onyx { using GpuVertex = Domain::GpuVertex; }

@@ -17,6 +17,3 @@ public:
 };
 
 } // namespace Onyx::Parsers
-
-// Backwards-compat alias
-namespace Onyx { using ScriptTargetParser = Parsers::ScriptTargetParser; } // namespace Onyx

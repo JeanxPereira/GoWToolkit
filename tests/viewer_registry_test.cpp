@@ -7,6 +7,8 @@
 #include "Ui/Viewers/IDocumentContent.h"
 
 using namespace Onyx;
+using namespace Onyx::Domain;
+using namespace Onyx::Types;
 
 TEST_CASE("ViewerRegistry Open logic") {
     GameTypes::RegisterGameTypes();

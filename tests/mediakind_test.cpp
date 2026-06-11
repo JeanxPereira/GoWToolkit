@@ -5,6 +5,8 @@
 #include "Core/Types/TypeCatalog.h"
 
 using namespace Onyx;
+using namespace Onyx::Domain;
+using namespace Onyx::Types;
 
 TEST_CASE("Catalog media routing") {
     GameTypes::RegisterGameTypes();

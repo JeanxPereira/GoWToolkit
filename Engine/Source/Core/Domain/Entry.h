@@ -76,7 +76,7 @@ struct AssetEntry {
     uint64_t              hash = 0;
 
     // Compiled type identifier
-    Onyx::TypeId           typeId = {};
+    Onyx::Types::TypeId    typeId = {};
 
     // Child nodes for UI tree
     std::vector<AssetEntry> children;
@@ -84,8 +84,8 @@ struct AssetEntry {
     // Loaded data (on demand)
     std::shared_ptr<Onyx::Schema::AssetNode> assetNode;
 
-    Onyx::MediaKind kind       = Onyx::MediaKind::Unknown;
-    Onyx::ProfileTag profileTag;
+    MediaKind kind       = MediaKind::Unknown;
+    ProfileTag profileTag;
     std::string   displayName;   // human-friendly name (falls back to name if empty)
 };
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <glm/glm.hpp>
 #include <vector>
 #include <memory>
@@ -73,10 +73,3 @@ struct SceneData {
 };
 
 } // namespace Onyx::Parsers
-
-// Backwards-compat aliases
-namespace Onyx {
-    using BlendMode    = Parsers::BlendMode;
-    using MaterialInfo = Parsers::MaterialInfo;
-    using SceneData    = Parsers::SceneData;
-} // namespace Onyx

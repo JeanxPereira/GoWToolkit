@@ -7,12 +7,14 @@
 #include <cstring>
 
 using namespace Onyx;
+using namespace Onyx::Domain;
+using namespace Onyx::Types;
 
 TEST_CASE("GameTypeTable seeds the catalog with stable values, media and labels") {
     GameTypes::RegisterGameTypes();
 
     for (const auto& row : kGameTypeTable) {
-        TypeId id{row.legacyValue};
+        Types::TypeId id{row.legacyValue};
         // The registered handle's value must equal its legacy enum position.
         CHECK(id.value == row.legacyValue);
         // media metadata matches the table (which mirrors the old KindOf switch)

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <cstdint>
 #include <map>
 #include <string>
@@ -140,27 +140,3 @@ struct AnimationData {
 };
 
 } // namespace Onyx::Parsers
-
-// Backwards-compat aliases
-namespace Onyx {
-    using AnimationData         = Parsers::AnimationData;
-    using AnimDataType          = Parsers::AnimDataType;
-    using AnimSamplesManager    = Parsers::AnimSamplesManager;
-    using DataBitMap            = Parsers::DataBitMap;
-    using AnimSubstream         = Parsers::AnimSubstream;
-    using AnimStateDescrHeader  = Parsers::AnimStateDescrHeader;
-    using SkinningState         = Parsers::SkinningState;
-    using AnimStateDescr        = Parsers::AnimStateDescr;
-    using AnimAct               = Parsers::AnimAct;
-    using AnimGroup             = Parsers::AnimGroup;
-    using AnimDataTypeId        = Parsers::AnimDataTypeId;
-    // Re-export unscoped enum constants into Onyx namespace
-    using Parsers::ANIM_DATATYPE_SKINNING;
-    using Parsers::ANIM_DATATYPE_MATERIAL;
-    using Parsers::ANIM_DATATYPE_UNKNOWN5;
-    using Parsers::ANIM_DATATYPE_TEXTUREPOS;
-    using Parsers::ANIM_DATATYPE_TEXTURESHEET;
-    using Parsers::ANIM_DATATYPE_PARTICLES;
-    using Parsers::ANIM_DATATYPE_UNKNOWN11;
-    using Parsers::ANIM_DATATYPE_UNKNOWN12;
-} // namespace Onyx

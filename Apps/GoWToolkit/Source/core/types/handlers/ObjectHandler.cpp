@@ -1,4 +1,4 @@
-﻿// Object handler â€” GOW2 skeleton/joints container
+// Object handler — GOW2 skeleton/joints container
 // Magic: 0x00010001 (GOW2), 0x00040001 (GOW1)
 //
 // Resolution follows the Go project (god_of_war_browser):
@@ -25,11 +25,11 @@
 
 namespace {
 
-// â”€â”€ Resolve reference: find a node with exact name + type that has children â”€â”€
+// ── Resolve reference: find a node with exact name + type that has children ──
 // Mirrors Go's GetNodeByName: when a child node is a reference (no children/no payload),
 // the real definition with the same name exists elsewhere in the WAD tree.
 static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
-                                      const std::string& name, Onyx::TypeId type) {
+                                      const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && !n.children.empty())
             return &n;
@@ -41,7 +41,7 @@ static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
 
 // Same but for payload (size > 0) instead of children
 static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
-                                          const std::string& name, Onyx::TypeId type) {
+                                          const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && n.size > 0)
             return &n;
@@ -51,7 +51,7 @@ static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
     return nullptr;
 }
 
-// Find texture by exact name (Material â†’ Texture uses name lookup, same as Go)
+// Find texture by exact name (Material → Texture uses name lookup, same as Go)
 static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const std::string& name) {
     for (const auto& c : nodes) {
         if (c.typeId == Onyx::GameTypes::Texture && c.name == name) return &c;
@@ -60,13 +60,13 @@ static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const
     return nullptr;
 }
 
-// â”€â”€ Select main texture layer (same priority as Go: StrangeBlended > Usual > first) â”€â”€
-static const Onyx::MaterialInfo::Layer* SelectMainLayer(const Onyx::MaterialInfo& mat) {
-    const Onyx::MaterialInfo::Layer* main = nullptr;
+// ── Select main texture layer (same priority as Go: StrangeBlended > Usual > first) ──
+static const Onyx::Parsers::MaterialInfo::Layer* SelectMainLayer(const Onyx::Parsers::MaterialInfo& mat) {
+    const Onyx::Parsers::MaterialInfo::Layer* main = nullptr;
     for (const auto& layer : mat.layers) {
-        if (layer.blendMode == Onyx::BlendMode::EnvMap) {
+        if (layer.blendMode == Onyx::Parsers::BlendMode::EnvMap) {
             return &layer; // StrangeBlended = highest priority
-        } else if (layer.blendMode == Onyx::BlendMode::Normal && layer.hasTexture) {
+        } else if (layer.blendMode == Onyx::Parsers::BlendMode::Normal && layer.hasTexture) {
             main = &layer; // Usual = second priority
         } else if (!main) {
             main = &layer; // First layer = fallback
@@ -75,9 +75,8 @@ static const Onyx::MaterialInfo::Layer* SelectMainLayer(const Onyx::MaterialInfo
     return main;
 }
 
-// â”€â”€ Process a single Model node: extract meshes + materials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
-                          Onyx::SceneData& scene) {
+// ── Process a single Model node: extract meshes + materials ─────────────────
+static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Parsers::SceneData& scene) {
     std::vector<const AssetEntry*> meshSources;
     std::vector<const AssetEntry*> matEntries;
     bool isModelSky = false;
@@ -100,7 +99,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
                 matEntries.push_back(mat);
             }
         } else if (child.typeId == Onyx::GameTypes::Script && child.size > 0) {
-            std::string target = Onyx::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
+            std::string target = Onyx::Parsers::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
             if (target == "SCR_Sky") {
                 isModelSky = true;
                 LOG_INFO("[ProcessModel] Found SCR_Sky on model '%s', marking as sky", model.name.c_str());
@@ -113,22 +112,22 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
     LOG_INFO("[ProcessModel] Model '%s': %zu mesh children, %zu material children, materialOffset=%u",
              model.name.c_str(), meshSources.size(), matEntries.size(), materialOffset);
 
-    // Parse materials â†’ MaterialInfo (store all layers for main layer selection)
+    // Parse materials → MaterialInfo (store all layers for main layer selection)
     for (size_t mi = 0; mi < matEntries.size(); ++mi) {
         const auto* mat = matEntries[mi];
-        Onyx::MaterialInfo matInfo;
+        Onyx::Parsers::MaterialInfo matInfo;
         if (auto matData = Onyx::GOW2MaterialParser::Parse(*mat, wad.fileSource)) {
             std::memcpy(matInfo.baseColor, matData->baseColor, sizeof(float) * 4);
             for (const auto& layer : matData->layers) {
-                Onyx::MaterialInfo::Layer li;
+                Onyx::Parsers::MaterialInfo::Layer li;
                 li.textureName = layer.textureName;
                 li.hasTexture = layer.hasTexture;
                 std::memcpy(li.blendColor, layer.blendColor, sizeof(float) * 4);
                 switch (layer.renderingMethod) {
-                    case 1:  li.blendMode = Onyx::BlendMode::Additive; break;
-                    case 2:  li.blendMode = Onyx::BlendMode::Subtractive; break;
-                    case 3:  li.blendMode = Onyx::BlendMode::EnvMap; break;
-                    default: li.blendMode = Onyx::BlendMode::Normal; break;
+                    case 1:  li.blendMode = Onyx::Parsers::BlendMode::Additive; break;
+                    case 2:  li.blendMode = Onyx::Parsers::BlendMode::Subtractive; break;
+                    case 3:  li.blendMode = Onyx::Parsers::BlendMode::EnvMap; break;
+                    default: li.blendMode = Onyx::Parsers::BlendMode::Normal; break;
                 }
                 matInfo.layers.push_back(li);
             }
@@ -151,7 +150,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
         Onyx::Vfs::SliceFile slice(wad.fileSource, src->offset, src->size);
         if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->size)) {
             for (auto& p : data->parts) {
-                LOG_INFO("[ProcessModel]   part '%s' materialId=%d (raw) â†’ %d (offset)",
+                LOG_INFO("[ProcessModel]   part '%s' materialId=%d (raw) → %d (offset)",
                          p.name.c_str(), p.materialId, p.materialId + (int)materialOffset);
                 p.materialId += materialOffset;
                 p.isSky = isModelSky;
@@ -161,13 +160,13 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
     }
 }
 
-// â”€â”€ Build SceneData from Object entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Build SceneData from Object entry ──────────────────────────────────────
 
-static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
+static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
     const AssetEntry& entry, AssetContainer& wad, uint32_t magic)
 {
     if (!wad.fileSource) return nullptr;
-    auto scene = std::make_unique<Onyx::SceneData>();
+    auto scene = std::make_unique<Onyx::Parsers::SceneData>();
 
     // 1. Parse skeleton from Object payload
     if (entry.size > 0) {
@@ -175,7 +174,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
         Onyx::Vfs::SliceFile slice(wad.fileSource, entry.offset, entry.size);
         slice.Seek(0, SEEK_SET);
         slice.Read(objBuf.data(), entry.size);
-        scene->skeleton = std::shared_ptr<Onyx::ObjectData>(
+        scene->skeleton = std::shared_ptr<Onyx::Parsers::ObjectData>(
             Onyx::GOW2ObjectParser::Parse(objBuf.data(), entry.size, magic).release());
     }
 
@@ -185,7 +184,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
         if (child.typeId == Onyx::GameTypes::Model) {
             const AssetEntry* model = &child;
             if (model->children.empty()) {
-                // Reference node â€” resolve definition by exact name
+                // Reference node — resolve definition by exact name
                 if (auto resolved = ResolveRef(wad.entries, child.name, Onyx::GameTypes::Model))
                     model = resolved;
             }
@@ -201,7 +200,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
             slice.Read(anmBuf.data(), child.size);
             auto animData = Onyx::GOW2AnimationParser::Parse(anmBuf.data(), child.size);
             if (animData) {
-                scene->animations = std::shared_ptr<Onyx::AnimationData>(animData.release());
+                scene->animations = std::shared_ptr<Onyx::Parsers::AnimationData>(animData.release());
                 LOG_INFO("[ObjectHandler] Parsed animation '%s': %d groups, %d acts",
                          child.name.c_str(), (int)scene->animations->groups.size(),
                          scene->animations->TotalActs());
@@ -217,8 +216,8 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
 
     // 3. Resolve textures: select main layer per material (like Go: 1 texture per material)
     for (const auto& mat : scene->materials) {
-        std::vector<std::unique_ptr<Onyx::TextureData>> matTextures;
-        std::unique_ptr<Onyx::TextureData> texData = nullptr;
+        std::vector<std::unique_ptr<Onyx::Parsers::TextureData>> matTextures;
+        std::unique_ptr<Onyx::Parsers::TextureData> texData = nullptr;
         if (auto* mainLayer = SelectMainLayer(mat)) {
             if (mainLayer->hasTexture && !mainLayer->textureName.empty()) {
                 if (auto* texEntry = FindTexture(wad.entries, mainLayer->textureName)) {
@@ -237,17 +236,17 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
     return scene;
 }
 
-// â”€â”€ Handler classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Handler classes ────────────────────────────────────────────────────────
 
-class ObjectHandlerGOW2 : public Onyx::ITypeHandler {
+class ObjectHandlerGOW2 : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Object; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Object; }
     const char*  GetName()  const override { return "Object"; }
     uint32_t     GetMagic() const override { return 0x00010001; }
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }
     Color4f      GetColor() const override { return {0.55f, 0.9f, 1.0f, 1.0f}; }
 
-    std::unique_ptr<Onyx::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
+    std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         uint32_t actualMagic = 0;
         if (wad.fileSource) {
             wad.fileSource->Seek(entry.offset, SEEK_SET);
@@ -274,3 +273,4 @@ public:
 } // anonymous namespace
 
 REGISTER_TYPE(GOW2, ObjectHandlerGOW2);
+

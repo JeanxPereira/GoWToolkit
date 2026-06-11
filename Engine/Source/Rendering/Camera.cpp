@@ -1,4 +1,4 @@
-﻿#include "Camera.h"
+#include "Camera.h"
 #include "Core/AppConfig.h"
 #include <algorithm>
 #include <cmath>
@@ -42,7 +42,7 @@ void Camera::GetEffectivePlanes(float /*aspect*/, float& outNear, float& outFar)
     // Far plane = distance from camera position to the farthest scene bbox
     // corner, so the whole map (geometry + sky) always renders no matter
     // how the user pans, rotates or zooms. Near plane scales with the orbit
-    // distance to keep the near/far ratio low â€” preserving depth precision
+    // distance to keep the near/far ratio low — preserving depth precision
     // and avoiding Z-fighting that plagued large CXT scenes with the
     // original fixed 0.01..50000 slab.
     float f, n;
@@ -113,7 +113,7 @@ void Camera::ProcessScroll(float delta) {
     UpdatePosition();
 }
 
-void Camera::FocusOn(const BoundingBox& bbox) {
+void Camera::FocusOn(const Domain::BoundingBox& bbox) {
     m_animActive = false;
     m_target = bbox.Center();
     float r = bbox.Radius();
@@ -139,7 +139,7 @@ void Camera::Reset() {
 void Camera::SnapToView(CameraView v) {
     // Top/Bottom: keep current yaw (matches Blender's behaviour where the "up"
     // direction in a top view follows your previous orbit). Pitch is nudged off
-    // the singularity at Â±Ï€/2 so cos(pitch) stays non-zero in UpdatePosition.
+    // the singularity at ±π/2 so cos(pitch) stays non-zero in UpdatePosition.
     constexpr float kPi    = 3.14159265358979323846f;
     constexpr float kEps   = 1e-3f;
     constexpr float kTopP  =  kPi * 0.5f - kEps;
@@ -156,7 +156,7 @@ void Camera::SnapToView(CameraView v) {
         case CameraView::Bottom: targetPitch = kBotP;                              break;
     }
 
-    // Normalize yaw delta to (-Ï€, Ï€] so the tween always takes the short way.
+    // Normalize yaw delta to (-π, π] so the tween always takes the short way.
     float deltaYaw = targetYaw - m_yaw;
     while (deltaYaw >  kPi) deltaYaw -= 2.0f * kPi;
     while (deltaYaw <= -kPi) deltaYaw += 2.0f * kPi;

@@ -1,4 +1,4 @@
-﻿#include "SceneRenderer.h"
+#include "SceneRenderer.h"
 #include "ShaderManager.h"
 #include "Core/AppConfig.h"
 #include "Core/Logger.h"
@@ -14,7 +14,7 @@ namespace Onyx {
 
 // â”€â”€ Texture upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-GLuint SceneRenderer::UploadTexture(const TextureData& tex) {
+GLuint SceneRenderer::UploadTexture(const Parsers::TextureData& tex) {
     GLuint id = 0;
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_2D, id);
@@ -30,9 +30,9 @@ GLuint SceneRenderer::UploadTexture(const TextureData& tex) {
     return id;
 }
 
-// â”€â”€ Build from SceneData â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Build from Parsers::SceneData â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-void SceneRenderer::Build(const SceneData& scene) {
+void SceneRenderer::Build(const Parsers::SceneData& scene) {
     Clear();
 
     m_skeleton = scene.skeleton;
@@ -42,7 +42,7 @@ void SceneRenderer::Build(const SceneData& scene) {
         ? glm::scale(scene.instanceTransform, glm::vec3(1.0f, 1.0f, -1.0f))
         : scene.instanceTransform;
 
-    // Upload textures from SceneData (indexed by materialId, then layer)
+    // Upload textures from Parsers::SceneData (indexed by materialId, then layer)
     std::vector<std::vector<GLuint>> textureIds(scene.textures.size());
     for (size_t i = 0; i < scene.textures.size(); ++i) {
         textureIds[i].reserve(scene.textures[i].size());
@@ -155,7 +155,7 @@ void SceneRenderer::Build(const SceneData& scene) {
     for (auto& batch : m_batches) {
         if (batch.isSky) {
             m_skyBatches.push_back(&batch);
-        } else if (batch.blendMode != BlendMode::Normal || batch.textureLayer > 0) {
+        } else if (batch.blendMode != Parsers::BlendMode::Normal || batch.textureLayer > 0) {
             m_additiveBatches.push_back(&batch);
         } else {
             m_opaqueBatches.push_back(&batch);
@@ -167,10 +167,10 @@ void SceneRenderer::Build(const SceneData& scene) {
              m_skeleton ? "yes" : "no");
 }
 
-// â”€â”€ Build from simple MeshData â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Build from simple Parsers::MeshData â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-void SceneRenderer::BuildFromMeshData(const MeshData& data,
-                                       const std::vector<std::unique_ptr<TextureData>>& textures) {
+void SceneRenderer::BuildFromMeshData(const Parsers::MeshData& data,
+                                       const std::vector<std::unique_ptr<Parsers::TextureData>>& textures) {
     Clear();
 
     // Flip Z axis: GOW2 models face -Z, we want them facing the camera
@@ -227,7 +227,7 @@ void SceneRenderer::BuildFromMeshData(const MeshData& data,
         m_opaqueBatches.push_back(&batch);
     }
 
-    LOG_INFO("[SceneRenderer] Built %zu batches from MeshData. Bounds min=(%.3f,%.3f,%.3f) max=(%.3f,%.3f,%.3f) center=(%.3f,%.3f,%.3f) radius=%.3f",
+    LOG_INFO("[SceneRenderer] Built %zu batches from Parsers::MeshData. Bounds min=(%.3f,%.3f,%.3f) max=(%.3f,%.3f,%.3f) center=(%.3f,%.3f,%.3f) radius=%.3f",
              m_batches.size(),
              boundsMin.x, boundsMin.y, boundsMin.z,
              boundsMax.x, boundsMax.y, boundsMax.z,
@@ -250,7 +250,7 @@ void SceneRenderer::BuildFromMeshData(const MeshData& data,
 // Matrixes1 is parentToJoint in the PS2 VU microcode sense and is NOT the same
 // as the GLTF-equivalent TRS local matrix; using it caused all verts to collapse.
 
-static glm::mat4 BuildLocalTRS(const Onyx::ObjectData& obj, int i) {
+static glm::mat4 BuildLocalTRS(const Onyx::Parsers::ObjectData& obj, int i) {
     // Port exato de obj/export_gltf.go + obj.go GetQuaterionLocalRotationForJoint:
     //
     // GOW2 (obj_gow2.go): IsQuaterion NUNCA Ã© setado â†’ sempre false.
@@ -633,7 +633,7 @@ void SceneRenderer::RenderBatches(const std::vector<RenderBatch*>& batches,
     for (auto* batch : batches) {
         if (!batch->gpuMesh || !batch->isVisible) continue;
 
-        if (batch->blendMode == BlendMode::Additive) {
+        if (batch->blendMode == Parsers::BlendMode::Additive) {
             glBlendFunc(GL_SRC_ALPHA, GL_ONE);
         } else {
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

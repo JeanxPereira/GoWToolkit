@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "TypeId.h"
 #include "GameVersion.h"
 #include "ITypeHandler.h"
@@ -71,6 +71,3 @@ private:
 };
 
 } // namespace Onyx::Types
-
-// Backwards-compat alias
-namespace Onyx { using TypeRegistry = Types::TypeRegistry; }

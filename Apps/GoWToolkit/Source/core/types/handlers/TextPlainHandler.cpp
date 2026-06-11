@@ -1,4 +1,4 @@
-﻿// Plain-text file handler. Routes .txt / .ini / .cfg / .csv / .json / .log
+// Plain-text file handler. Routes .txt / .ini / .cfg / .csv / .json / .log
 // PAK entries (typed by ProfileGOW2's extension switch) to the
 // TextEditorViewer. Registered by TypeId â€” no magic number, so this never
 // enters the magic dispatch map.
@@ -14,9 +14,9 @@
 
 namespace {
 
-class TextPlainHandler : public Onyx::ITypeHandler {
+class TextPlainHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId GetId() const override { return Onyx::GameTypes::TextPlain; }
+    Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::TextPlain; }
     const char* GetName() const override { return "Text"; }
     uint32_t    GetMagic() const override { return 0; } // extension-based
     const char* GetIcon() const override { return ICON_SF_DOCUMENT; }

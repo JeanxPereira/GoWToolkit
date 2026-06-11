@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <glm/glm.hpp>
 
 namespace Onyx::Domain {
@@ -12,5 +12,3 @@ struct BoundingBox {
 
 } // namespace Onyx::Domain
 
-// Backwards-compat alias
-namespace Onyx { using BoundingBox = Domain::BoundingBox; }

@@ -32,7 +32,7 @@ void GpuMesh::Cleanup() {
     m_vao = m_vbo = m_ebo = 0;
 }
 
-void GpuMesh::Upload(const std::vector<GpuVertex>& vertices,
+void GpuMesh::Upload(const std::vector<Domain::GpuVertex>& vertices,
                      const std::vector<uint32_t>& indices) {
     Cleanup();
 
@@ -57,7 +57,7 @@ void GpuMesh::Upload(const std::vector<GpuVertex>& vertices,
     glGenBuffers(1, &m_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
     glBufferData(GL_ARRAY_BUFFER,
-                 vertices.size() * sizeof(GpuVertex),
+                 vertices.size() * sizeof(Domain::GpuVertex),
                  vertices.data(), GL_STATIC_DRAW);
 
     // EBO
@@ -69,38 +69,38 @@ void GpuMesh::Upload(const std::vector<GpuVertex>& vertices,
 
     // Vertex attributes (match shader layout)
     // location 0: position (vec3)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
-                          (void*)offsetof(GpuVertex, position));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Domain::GpuVertex),
+                          (void*)offsetof(Domain::GpuVertex, position));
     glEnableVertexAttribArray(0);
 
     // location 1: normal (vec3)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
-                          (void*)offsetof(GpuVertex, normal));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Domain::GpuVertex),
+                          (void*)offsetof(Domain::GpuVertex, normal));
     glEnableVertexAttribArray(1);
 
     // location 2: uv (vec2)
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
-                          (void*)offsetof(GpuVertex, uv));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Domain::GpuVertex),
+                          (void*)offsetof(Domain::GpuVertex, uv));
     glEnableVertexAttribArray(2);
 
     // location 3: color (vec4)
-    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
-                          (void*)offsetof(GpuVertex, color));
+    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(Domain::GpuVertex),
+                          (void*)offsetof(Domain::GpuVertex, color));
     glEnableVertexAttribArray(3);
 
     // location 4: uv1 (vec2) — secondary UV for env mapping
-    glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
-                          (void*)offsetof(GpuVertex, uv1));
+    glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(Domain::GpuVertex),
+                          (void*)offsetof(Domain::GpuVertex, uv1));
     glEnableVertexAttribArray(4);
 
     // location 5: boneWeights (vec4)
-    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
-                          (void*)offsetof(GpuVertex, boneWeights));
+    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Domain::GpuVertex),
+                          (void*)offsetof(Domain::GpuVertex, boneWeights));
     glEnableVertexAttribArray(5);
 
     // location 6: boneIndices (uvec4) — integer attribute
-    glVertexAttribIPointer(6, 4, GL_UNSIGNED_INT, sizeof(GpuVertex),
-                           (void*)offsetof(GpuVertex, boneIndices));
+    glVertexAttribIPointer(6, 4, GL_UNSIGNED_INT, sizeof(Domain::GpuVertex),
+                           (void*)offsetof(Domain::GpuVertex, boneIndices));
     glEnableVertexAttribArray(6);
 
     glBindVertexArray(0);

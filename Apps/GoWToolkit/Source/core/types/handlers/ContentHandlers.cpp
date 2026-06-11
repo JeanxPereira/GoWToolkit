@@ -28,9 +28,9 @@
 namespace {
 
 // â”€â”€ Animation â”€â”€ magic 0x00000003 (ANIMATIONS_MAGIC)
-class AnimationHandler : public Onyx::ITypeHandler {
+class AnimationHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Animation; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Animation; }
   const char *GetName() const override { return "Animation"; }
   uint32_t GetMagic() const override { return 0x00000003; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; } // play
@@ -49,9 +49,9 @@ public:
 };
 
 // â”€â”€ Script â”€â”€ magic 0x00010004 (SCRIPT_MAGIC)
-class ScriptHandler : public Onyx::ITypeHandler {
+class ScriptHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Script; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Script; }
   const char *GetName() const override { return "Script"; }
   uint32_t GetMagic() const override { return 0x00010004; }
   const char *GetIcon() const override {
@@ -63,9 +63,9 @@ public:
 };
 
 // â”€â”€ Light â”€â”€ magic 0x00000006 (LIGHT_MAGIC)
-class LightHandler : public Onyx::ITypeHandler {
+class LightHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Light; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Light; }
   const char *GetName() const override { return "Light"; }
   uint32_t GetMagic() const override { return 0x00000006; }
   const char *GetIcon() const override { return ICON_SF_SPARKLES; } // sparkle
@@ -75,9 +75,9 @@ public:
 };
 
 // â”€â”€ Sound (GOW2) â”€â”€ magic 0x00000015 (GOW2_SBP_MAGIC)
-class SoundHandlerGOW2 : public Onyx::ITypeHandler {
+class SoundHandlerGOW2 : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Sound; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Sound; }
   const char *GetName() const override { return "Sound"; }
   uint32_t GetMagic() const override { return 0x00000015; }
   const char *GetIcon() const override {
@@ -98,43 +98,43 @@ public:
 };
 
 // â”€â”€ Collision â”€â”€ magic 0x00000011 (COLLISION_MAGIC)
-class CollisionHandler : public Onyx::ITypeHandler {
+class CollisionHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Collision; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Collision; }
   const char *GetName() const override { return "Collision"; }
   uint32_t GetMagic() const override { return 0x00000011; }
   Color4f GetColor() const override { return {0.7f, 0.7f, 0.7f, 1.0f}; }
 };
 
 // â”€â”€ Flipbook (GOW2) â”€â”€ magic 0x0000001B
-class FlipbookHandlerGOW2 : public Onyx::ITypeHandler {
+class FlipbookHandlerGOW2 : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Flipbook; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Flipbook; }
   const char *GetName() const override { return "Flipbook"; }
   uint32_t GetMagic() const override { return 0x0000001B; }
   Color4f GetColor() const override { return {1.0f, 0.6f, 0.9f, 1.0f}; }
 };
 
 // â”€â”€ Chunk â”€â”€ magic 0x80000001 (CHUNK_MAGIC / context)
-class ChunkHandler : public Onyx::ITypeHandler {
+class ChunkHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::Chunk; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Chunk; }
   const char *GetName() const override { return "Chunk"; }
   uint32_t GetMagic() const override { return 0x80000001; }
   Color4f GetColor() const override { return {0.6f, 0.6f, 0.6f, 1.0f}; }
 
-  std::unique_ptr<Onyx::SceneData> BuildSceneData(const AssetEntry &entry,
+  std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry &entry,
                                                  AssetContainer &wad) override {
     // A Chunk aggregates instances. Delegate to InstanceHandler and merge
     // results.
-    auto mergedScene = std::make_unique<Onyx::SceneData>();
+    auto mergedScene = std::make_unique<Onyx::Parsers::SceneData>();
     int instanceCount = 0;
 
     LOG_INFO("[ChunkHandler] BuildSceneData started for chunk '%s'",
              entry.name.c_str());
 
     // Resolve the Instance handler once
-    auto *instHandler = Onyx::TypeRegistry::Get().Resolve(Onyx::GameTypes::Instance);
+    auto *instHandler = Onyx::Types::TypeRegistry::Get().Resolve(Onyx::GameTypes::Instance);
 
     auto findInstances = [&](const std::vector<AssetEntry> &entries,
                              auto &findRef) -> void {
@@ -293,9 +293,9 @@ public:
 
 // â”€â”€ Shader Group â”€â”€ magic 0x00000027 (SHG_MAGIC)
 // Only GOW1
-class ShaderGroupHandler : public Onyx::ITypeHandler {
+class ShaderGroupHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::ShaderContainer; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::ShaderContainer; }
   const char *GetName() const override { return "Shader Group"; }
   uint32_t GetMagic() const override { return 0x00000027; }
   const char *GetIcon() const override {
@@ -305,9 +305,9 @@ public:
 };
 
 // â”€â”€ Audio/Video (File level) â”€â”€
-class VagHandler : public Onyx::ITypeHandler {
+class VagHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::VagAudio; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::VagAudio; }
   const char *GetName() const override { return "VAG Audio"; }
   uint32_t GetMagic() const override {
     return 0x00;
@@ -328,9 +328,9 @@ public:
   }
 };
 
-class VpkHandler : public Onyx::ITypeHandler {
+class VpkHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::VpkVideo; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::VpkVideo; }
   const char *GetName() const override { return "VPK Video"; }
   uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_2_FILL; }
@@ -349,9 +349,9 @@ public:
   }
 };
 
-class PssHandler : public Onyx::ITypeHandler {
+class PssHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::PssVideo; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::PssVideo; }
   const char *GetName() const override { return "PSS Video"; }
   uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }
@@ -369,9 +369,9 @@ public:
   }
 };
 
-class PswHandler : public Onyx::ITypeHandler {
+class PswHandler : public Onyx::Types::ITypeHandler {
 public:
-  Onyx::TypeId GetId() const override { return Onyx::GameTypes::PswVideo; }
+  Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::PswVideo; }
   const char *GetName() const override { return "PSW Video"; }
   uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }
@@ -403,3 +403,4 @@ REGISTER_FILE_TYPE(VagHandler);
 REGISTER_FILE_TYPE(VpkHandler);
 REGISTER_FILE_TYPE(PssHandler);
 REGISTER_FILE_TYPE(PswHandler);
+

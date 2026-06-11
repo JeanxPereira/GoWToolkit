@@ -17,7 +17,7 @@
 namespace Onyx {
 
 int CliApp::Run(int argc, char** argv) {
-    // Populate the type catalog before any parse â€” handles are invalid otherwise.
+    // Populate the type catalog before any parse Ã¢â‚¬â€ handles are invalid otherwise.
     Onyx::GameTypes::RegisterGameTypes();
 
     std::vector<std::string> args;
@@ -61,7 +61,7 @@ void CliApp::PrintHelp() {
         << "  GoWTool inspect game.iso ATHN01.WAD/gohero00\n";
 }
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 static void PrintEntryTree(const AssetEntry& entry, int depth) {
     std::string indent(depth * 2, ' ');
@@ -74,7 +74,7 @@ static void PrintEntryTree(const AssetEntry& entry, int depth) {
         sizeStr = std::to_string(entry.size) + " B";
 
     std::cout << indent << entry.name
-              << "  [" << Onyx::TypeCatalog::Get().Label(entry.typeId) << "]"
+              << "  [" << Onyx::Types::TypeCatalog::Get().Label(entry.typeId) << "]"
               << "  size=" << sizeStr
               << "  off=0x" << std::hex << std::setfill('0') << std::setw(8) << entry.offset << std::dec
               << "\n";
@@ -127,7 +127,7 @@ static const AssetEntry* FindEntryByName(const std::vector<AssetEntry>& entries,
     return nullptr;
 }
 
-static void PrintSceneStats(const SceneData& scene) {
+static void PrintSceneStats(const Parsers::SceneData& scene) {
     std::cout << "\n=== Scene Data ===\n";
     std::cout << "  Mesh parts  : " << scene.meshParts.size() << "\n";
     std::cout << "  Materials   : " << scene.materials.size() << "\n";
@@ -175,7 +175,7 @@ static void PrintSceneStats(const SceneData& scene) {
     }
 }
 
-// â”€â”€ Commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Commands Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 int CliApp::HandleParseWad(const std::vector<std::string>& args) {
     if (args.size() < 2) {
@@ -210,7 +210,7 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
     // Type summary
     std::map<std::string, int> typeCounts;
     std::function<void(const AssetEntry&)> countTypes = [&](const AssetEntry& e) {
-        typeCounts[Onyx::TypeCatalog::Get().Label(e.typeId)]++;
+        typeCounts[Onyx::Types::TypeCatalog::Get().Label(e.typeId)]++;
         for (const auto& c : e.children) countTypes(c);
     };
     for (const auto& e : wad.entries) countTypes(e);
@@ -258,18 +258,18 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
         std::cerr << "[CLI] Entry '" << entryName << "' not found.\n";
         std::cerr << "[CLI] Top-level entries:\n";
         for (const auto& e : wad.entries)
-            std::cerr << "  " << e.name << " [" << Onyx::TypeCatalog::Get().Label(e.typeId) << "]\n";
+            std::cerr << "  " << e.name << " [" << Onyx::Types::TypeCatalog::Get().Label(e.typeId) << "]\n";
         return 1;
     }
 
-    std::cout << "[CLI] Found: '" << entry->name << "' [" << Onyx::TypeCatalog::Get().Label(entry->typeId) << "]"
+    std::cout << "[CLI] Found: '" << entry->name << "' [" << Onyx::Types::TypeCatalog::Get().Label(entry->typeId) << "]"
               << " size=" << entry->size << " offset=0x" << std::hex << entry->offset << std::dec
               << " children=" << entry->children.size() << "\n";
 
-    auto* handler = TypeRegistry::Get().Resolve(entry->typeId);
+    auto* handler = Onyx::Types::TypeRegistry::Get().Resolve(entry->typeId);
     if (!handler) {
         std::cerr << "[CLI] No handler registered for typeId=" << (int)entry->typeId.value
-                  << " (" << Onyx::TypeCatalog::Get().Label(entry->typeId) << ")\n";
+                  << " (" << Onyx::Types::TypeCatalog::Get().Label(entry->typeId) << ")\n";
         return 1;
     }
 

@@ -74,7 +74,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
     // Name â†’ (typeId, offset, size) for resolving zero-sized reference entries.
     // A SERVER_INSTANCE with size=0 is a pointer to a previous definition with the same name.
     // When accessed, we redirect to the real definition's data (same as reference GetNodeById).
-    struct DefInfo { TypeId typeId; int64_t offset; uint32_t size; };
+    struct DefInfo { Types::TypeId typeId; int64_t offset; uint32_t size; };
     std::unordered_map<std::string, DefInfo> nameToDefinition;
 
     while (pos < fileSize) {
@@ -147,13 +147,13 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
             payloadSizeAvailable = 4;
         }
 
-        auto* handler = TypeRegistry::Get().ResolveByTag(GameVersion::GOW2, rawTag.tag, payloadMagic, payloadSizeAvailable);
+        auto* handler = Types::TypeRegistry::Get().ResolveByTag(Types::GameVersion::GOW2, rawTag.tag, payloadMagic, payloadSizeAvailable);
         entry.typeId = handler ? handler->GetId() : GameTypes::Unknown;
 
         // Set schema string for UI display
 
 
-        // Fallback type resolution for types not yet in TypeRegistry
+        // Fallback type resolution for types not yet in Types::TypeRegistry
         if (entry.typeId == GameTypes::Unknown) {
             size_t dotPos = entry.name.find_last_of('.');
             if (dotPos != std::string::npos) {

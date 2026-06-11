@@ -19,7 +19,7 @@ public:
     MaterialViewer(const std::string& name, 
                    std::unique_ptr<GOW2MaterialParser::MaterialData> matData,
                    TextureLookupFn texLookup,
-                   std::vector<std::unique_ptr<TextureData>> textures = {});
+                   std::vector<std::unique_ptr<Parsers::TextureData>> textures = {});
     
     ~MaterialViewer() override;
 
@@ -34,7 +34,7 @@ private:
     TextureLookupFn m_texLookup;
 
     // Owned texture data & GL handles
-    std::vector<std::unique_ptr<TextureData>> m_textures;
+    std::vector<std::unique_ptr<Parsers::TextureData>> m_textures;
     std::vector<GLuint> m_glTextures;         // parallel to m_textures
     int m_selectedLayer = 0;                  // which layer is selected for preview
 };

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <any>
 #include <utility>
 
@@ -25,6 +25,3 @@ public:
 };
 
 } // namespace Onyx::Domain
-
-// Backwards-compat alias
-namespace Onyx { using ProfileTag = Domain::ProfileTag; }

@@ -27,7 +27,7 @@ namespace {
 // We search the full tree since we don't have positional ordering.
 static const AssetEntry* FindEntryByNameAndType(
     const std::vector<AssetEntry>& tree,
-    const std::string& name, Onyx::TypeId type)
+    const std::string& name, Onyx::Types::TypeId type)
 {
     for (const auto& n : tree) {
         if (n.name == name && n.typeId == type)
@@ -54,15 +54,15 @@ static const AssetEntry* FindEntryByName(
 
 // â”€â”€ InstanceHandler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-class InstanceHandler : public Onyx::ITypeHandler {
+class InstanceHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Instance; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Instance; }
     const char*  GetName()  const override { return "Instance"; }
     uint32_t     GetMagic() const override { return 0x00030001; }
     const char*  GetIcon()  const override { return ICON_SF_PERSON_FILL; }
     Color4f      GetColor() const override { return {1.0f, 0.7f, 0.7f, 1.0f}; }
 
-    std::unique_ptr<Onyx::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
+    std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         // 1. Parse instance transform
         auto instData = Onyx::GOW2InstanceParser::Parse(entry, wad.fileSource);
         if (!instData) {
@@ -126,7 +126,7 @@ public:
         }
 
         // 3. Delegate scene building to the child handler
-        auto* handler = Onyx::TypeRegistry::Get().Resolve(objEntry->typeId);
+        auto* handler = Onyx::Types::TypeRegistry::Get().Resolve(objEntry->typeId);
         if (!handler) {
             LOG_WARN("[InstanceHandler] No handler for typeId=%d in '%s'", (int)objEntry->typeId.value, entry.name.c_str());
             return nullptr;
@@ -192,3 +192,4 @@ public:
 } // anonymous namespace
 
 REGISTER_TYPE(GOW2, InstanceHandler);
+

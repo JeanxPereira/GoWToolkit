@@ -54,11 +54,11 @@ void FlattenEntry(const AssetEntry& entry,
                   std::vector<ordered_json>& out) {
     ordered_json e;
     e["name"]        = entry.name;
-    e["typeId"]      = Onyx::TypeCatalog::Get().Label(entry.typeId);
+    e["typeId"]      = Onyx::Types::TypeCatalog::Get().Label(entry.typeId);
     e["size"]        = entry.size;
     e["offset"]      = entry.offset;
     e["childCount"]  = static_cast<uint64_t>(entry.children.size());
-    e["kind"]        = std::string(Onyx::Name(entry.kind));
+    e["kind"]        = std::string(Onyx::Domain::Name(entry.kind));
     if (source && entry.size > 0) {
         e["payloadHash"] = ToHex64(HashEntryPayload(*source, entry.offset, entry.size));
     } else {
@@ -212,7 +212,7 @@ void RunGoldenTest(std::string_view versionTag,
 
     ordered_json expected = LoadGolden(expectedJsonPath);
     REQUIRE_MESSAGE(!expected.is_null(),
-                    "golden JSON missing â€” rerun with GOWTOOLKIT_GOLDEN_UPDATE=1 to create it: "
+                    "golden JSON missing Ã¢â‚¬â€ rerun with GOWTOOLKIT_GOLDEN_UPDATE=1 to create it: "
                     << expectedJsonPath.string());
 
     std::string diff = DiffSnapshots(actual, expected);

@@ -4,6 +4,8 @@
 #include "Core/Types/TypeCatalog.h"
 
 using namespace Onyx;
+using namespace Onyx::Domain;
+using namespace Onyx::Types;
 
 TEST_CASE("Visibility override survives Export/Import by stable value") {
     GameTypes::RegisterGameTypes();
@@ -18,20 +20,20 @@ TEST_CASE("Visibility override survives Export/Import by stable value") {
     vis.ResetAllOverrides();
 
     // GOW2 Mesh defaults to Visible; forcing it Hidden creates a real override.
-    vis.SetUserOverride(GameVersion::GOW2, GameTypes::Mesh, /*visible=*/false);
-    REQUIRE(vis.GetCurrent(GameVersion::GOW2, GameTypes::Mesh) == Visibility::Hidden);
+    vis.SetUserOverride(Types::GameVersion::GOW2, GameTypes::Mesh, /*visible=*/false);
+    REQUIRE(vis.GetCurrent(Types::GameVersion::GOW2, GameTypes::Mesh) == Visibility::Hidden);
 
     auto blob = vis.ExportOverrides();
     REQUIRE(blob.size() == 1);
 
     // Round-trip: clear in-memory state, then reload from the serialized blob.
     vis.ResetAllOverrides();
-    REQUIRE(vis.GetCurrent(GameVersion::GOW2, GameTypes::Mesh) == Visibility::Visible);
+    REQUIRE(vis.GetCurrent(Types::GameVersion::GOW2, GameTypes::Mesh) == Visibility::Visible);
 
     vis.ImportOverrides(blob);
 
-    CHECK(vis.GetCurrent(GameVersion::GOW2, GameTypes::Mesh) == Visibility::Hidden);
-    CHECK(vis.IsVisible(GameVersion::GOW2, GameTypes::Mesh) == false);
+    CHECK(vis.GetCurrent(Types::GameVersion::GOW2, GameTypes::Mesh) == Visibility::Hidden);
+    CHECK(vis.IsVisible(Types::GameVersion::GOW2, GameTypes::Mesh) == false);
 
     // Leave global singleton state clean for other test cases.
     vis.ResetAllOverrides();

@@ -1,4 +1,4 @@
-﻿#include "MeshParser.h"
+#include "MeshParser.h"
 #include "Core/Logger.h"
 #include <cstring>
 #include <algorithm>
@@ -50,7 +50,7 @@ static void GetJointIndexesFromMetaBlock(const uint8_t* block, uint16_t& j0, uin
     j1 = block[12] >> 2;   // byte 12, shifted right 2
 }
 
-static void FlushState(VifUnpackState& state, MeshPart& outPart) {
+static void FlushState(VifUnpackState& state, Parsers::MeshPart& outPart) {
     if (!state.xyzw || state.numXyzw == 0) return;
 
     int vertexCount = state.numXyzw;
@@ -59,12 +59,12 @@ static void FlushState(VifUnpackState& state, MeshPart& outPart) {
     std::vector<bool> skipFlags;
     skipFlags.reserve(vertexCount);
 
-    // 1. Build vertices â€” positions, weights, normals, UVs, colors
+    // 1. Build vertices — positions, weights, normals, UVs, colors
     for (int i = 0; i < vertexCount; ++i) {
-        GpuVertex v;
+        Domain::GpuVertex v;
         v.color = glm::vec4(1.0f);
 
-        // XYZW (16-bit signed integer / GSFixedPoint8) â€” matches dmaVif.go ToPacket()
+        // XYZW (16-bit signed integer / GSFixedPoint8) — matches dmaVif.go ToPacket()
         int16_t x, y, z;
         uint16_t flags;
         std::memcpy(&x, state.xyzw + i * 8 + 0, 2);
@@ -84,7 +84,7 @@ static void FlushState(VifUnpackState& state, MeshPart& outPart) {
         float w1 = float(flags & 0x7fff) / GSFixedPoint24;
         v.boneWeights = glm::vec4(w1, 1.0f - w1, 0.0f, 0.0f);
 
-        // NORM (8-bit signed, / 127.0f) â€” matches dmaVif.go ToPacket()
+        // NORM (8-bit signed, / 127.0f) — matches dmaVif.go ToPacket()
         if (state.norm && i < state.numNorm) {
             int8_t nx = (int8_t)state.norm[i * 3 + 0];
             int8_t ny = (int8_t)state.norm[i * 3 + 1];
@@ -94,7 +94,7 @@ static void FlushState(VifUnpackState& state, MeshPart& outPart) {
             if (len > 0.01f) v.normal /= len;
         }
 
-        // UV â€” matches dmaVif.go ToPacket() uvWidth handling
+        // UV — matches dmaVif.go ToPacket() uvWidth handling
         if (state.uv && i < state.numUv) {
             if (state.uvWidth == 2) {
                 // 16-bit signed / GSFixedPoint24
@@ -113,7 +113,7 @@ static void FlushState(VifUnpackState& state, MeshPart& outPart) {
             }
         }
 
-        // RGBA (8-bit unsigned) â€” matches dmaVif.go ToPacket()
+        // RGBA (8-bit unsigned) — matches dmaVif.go ToPacket()
         if (state.rgba && i < state.numRgba) {
             v.color.r = float(state.rgba[i * 4 + 0]) / 128.0f;
             v.color.g = float(state.rgba[i * 4 + 1]) / 128.0f;
@@ -125,7 +125,7 @@ static void FlushState(VifUnpackState& state, MeshPart& outPart) {
     }
 
     // 2. Decode VertexMeta blocks for Joint Indices mapping
-    // Full port of dmaVif.go ToPacket() â€” including stitch joint handling.
+    // Full port of dmaVif.go ToPacket() — including stitch joint handling.
     //
     // The VertexMeta block format (16 bytes per block):
     //   block[0]  = affected vertex count
@@ -184,10 +184,10 @@ static void FlushState(VifUnpackState& state, MeshPart& outPart) {
     // NOTE: We do NOT remap joint indices here.
     // The Go project stores local joint indices in the packet data and only
     // remaps via JointMappers at the point of consumption (GLTF/FBX export).
-    // Our shader will do: uJoints[jointMap[boneIndices.x]] â€” the remap happens
+    // Our shader will do: uJoints[jointMap[boneIndices.x]] — the remap happens
     // in the shader or in ComputeJointPalette. See SceneRenderer for details.
 
-    LOG_INFO("[FlushState] Flushing %d verts (xyzw) â†’ building triangles", vertexCount);
+    LOG_INFO("[FlushState] Flushing %d verts (xyzw) → building triangles", vertexCount);
 
     // Exact port of Go's triangle strip reconstruction (export_fbx.go).
     //
@@ -217,7 +217,7 @@ static void FlushState(VifUnpackState& state, MeshPart& outPart) {
                 }
             }
             flip = !flip;
-            // NOTE: no flip reset here â€” skip only suspends emission
+            // NOTE: no flip reset here — skip only suspends emission
         }
     }
 
@@ -225,10 +225,10 @@ static void FlushState(VifUnpackState& state, MeshPart& outPart) {
 }
 
 // Parse VIF command stream from allData[start..end]
-// Full port of dmaVif.go ParseVif() â€” handles UNPACK classification
+// Full port of dmaVif.go ParseVif() — handles UNPACK classification
 // using VIF target address and signed flag.
 static bool ParseVifStream(const std::vector<uint8_t>& allData, uint32_t start, uint32_t end,
-                            VifUnpackState& state, MeshPart& outPart) {
+                            VifUnpackState& state, Parsers::MeshPart& outPart) {
     uint32_t p = start;
     while (p + 4 <= end && p + 4 <= allData.size()) {
         p = (p + 3) & ~3u; // align to 4 bytes
@@ -243,7 +243,7 @@ static bool ParseVifStream(const std::vector<uint8_t>& allData, uint32_t start, 
         p += 4;
 
         if (cmd > 0x60) {
-            // UNPACK command â€” matches dmaVif.go ParseVif() unpack branch
+            // UNPACK command — matches dmaVif.go ParseVif() unpack branch
             uint8_t components = ((cmd >> 2) & 0x3) + 1;
             int widthBits;
             switch (cmd & 0x3) {
@@ -271,7 +271,7 @@ static bool ParseVifStream(const std::vector<uint8_t>& allData, uint32_t start, 
             // Go: unpackBuffersBases = []uint32{0, 0x155, 0x2ab}
             bool isBufferBase = (vifTarget == 0x000 || vifTarget == 0x155 || vifTarget == 0x2ab);
 
-            // Classification logic â€” exact port of dmaVif.go ParseVif()
+            // Classification logic — exact port of dmaVif.go ParseVif()
             switch (widthBits) {
             case 32:
                 if (vifIsSigned) {
@@ -314,7 +314,7 @@ static bool ParseVifStream(const std::vector<uint8_t>& allData, uint32_t start, 
                     state.norm = block;
                     state.numNorm = num;
                 } else if (components == 4) {
-                    // V4-8: RGBA (can appear twice for multi-layer â€” Go accepts duplicate)
+                    // V4-8: RGBA (can appear twice for multi-layer — Go accepts duplicate)
                     state.rgba = block;
                     state.numRgba = num;
                 }
@@ -323,7 +323,7 @@ static bool ParseVifStream(const std::vector<uint8_t>& allData, uint32_t start, 
 
             p += blockSize;
         } else if (cmd == VIF_CMD_MSCAL) {
-            // MSCAL triggers VU microprogram execution â€” flush accumulated data
+            // MSCAL triggers VU microprogram execution — flush accumulated data
             FlushState(state, outPart);
         } else if (cmd == VIF_CMD_STROW) {
             p += 16; // STROW data: 4 x 32-bit values
@@ -336,7 +336,7 @@ static bool ParseVifStream(const std::vector<uint8_t>& allData, uint32_t start, 
 // allData = entire mesh blob, objectOffset = object's position within mesh
 // packetOffset = absolute position of DMA tags within allData
 bool GOW2MeshParser::ParseDmaChain(const std::vector<uint8_t>& allData, uint32_t objectOffset,
-                                    uint32_t packetOffset, uint32_t dmaCount, MeshPart& outPart) {
+                                    uint32_t packetOffset, uint32_t dmaCount, Parsers::MeshPart& outPart) {
     if (packetOffset >= allData.size()) return false;
 
     VifUnpackState state;
@@ -345,7 +345,7 @@ bool GOW2MeshParser::ParseDmaChain(const std::vector<uint8_t>& allData, uint32_t
     for (uint32_t i = 0; i < dmaCount; ++i) {
         if (pos + 16 > allData.size()) break;
 
-        // Read DMA tag (64-bit) â€” matches ps2/dma/dma.go
+        // Read DMA tag (64-bit) — matches ps2/dma/dma.go
         uint64_t dmaTag;
         std::memcpy(&dmaTag, &allData[pos], 8);
 
@@ -383,11 +383,11 @@ bool GOW2MeshParser::ParseDmaChain(const std::vector<uint8_t>& allData, uint32_t
 }
 
 // allData = entire mesh blob, objOffset = object's position within mesh
-bool GOW2MeshParser::ParseObject(const std::vector<uint8_t>& allData, uint32_t objOffset, uint32_t objSize, MeshData& outData) {
+bool GOW2MeshParser::ParseObject(const std::vector<uint8_t>& allData, uint32_t objOffset, uint32_t objSize, Parsers::MeshData& outData) {
     if (objOffset + objSize > allData.size()) return false;
     const uint8_t* buffer = &allData[objOffset];
 
-    // GOW2 Object Header (0x20 = 32 bytes) â€” matches gow2.go parseGow2()
+    // GOW2 Object Header (0x20 = 32 bytes) — matches gow2.go parseGow2()
     uint16_t type, unk02, materialId, jointMapCount;
     uint32_t dmaTagsCountPerPacket, instancesCount, flags, flagsMask;
 
@@ -406,7 +406,7 @@ bool GOW2MeshParser::ParseObject(const std::vector<uint8_t>& allData, uint32_t o
     LOG_INFO("[ParseObject] type=0x%04X matId=%u instances=%u layers=%u dmaPerPkt=%u jointMapCnt=%u objOff=0x%X objSize=%u",
              type, materialId, instancesCount, textureLayersCount, dmaTagsCountPerPacket, jointMapCount, objOffset, objSize);
 
-    MeshPart basePart;
+    Parsers::MeshPart basePart;
     basePart.materialId = materialId;
 
     uint32_t dmaCalls = instancesCount * textureLayersCount;
@@ -431,7 +431,7 @@ bool GOW2MeshParser::ParseObject(const std::vector<uint8_t>& allData, uint32_t o
         }
 
         for (uint32_t layer = 0; layer < textureLayersCount; ++layer) {
-            MeshPart instPart = basePart;
+            Parsers::MeshPart instPart = basePart;
             instPart.textureLayer = layer;
             instPart.jointMap = instJointMap;
             instPart.name = "Inst " + std::to_string(inst) + " Layer " + std::to_string(layer);
@@ -450,7 +450,7 @@ bool GOW2MeshParser::ParseObject(const std::vector<uint8_t>& allData, uint32_t o
     return true;
 }
 
-std::unique_ptr<MeshData> GOW2MeshParser::Parse(Vfs::IFile& file, uint32_t offset, uint32_t size) {
+std::unique_ptr<Parsers::MeshData> GOW2MeshParser::Parse(Vfs::IFile& file, uint32_t offset, uint32_t size) {
     if (size < 0x18) return nullptr; // Invalid header
 
     // Read the ENTIRE mesh blob into memory (Go does the same: allb []byte)
@@ -480,7 +480,7 @@ std::unique_ptr<MeshData> GOW2MeshParser::Parse(Vfs::IFile& file, uint32_t offse
     }
     LOG_INFO("[GOW2MeshParser] mesh magic=0x%08X parts=%u mdlCommentStart=0x%X", magic, partsCount, mdlCommentStart);
 
-    auto meshData = std::make_unique<MeshData>();
+    auto data = std::make_unique<Parsers::MeshData>();
     constexpr uint32_t meshHeaderSize = 0x18;
 
     for (uint32_t i = 0; i < partsCount; ++i) {
@@ -532,7 +532,7 @@ std::unique_ptr<MeshData> GOW2MeshParser::Parse(Vfs::IFile& file, uint32_t offse
                 uint32_t objOffset = groupOffset + objOffsetRelative;
                 uint32_t objSize = objEndRelative - objOffsetRelative;
 
-                ParseObject(allData, objOffset, objSize, *meshData);
+                ParseObject(allData, objOffset, objSize, *data);
             }
         }
     }
@@ -540,17 +540,17 @@ std::unique_ptr<MeshData> GOW2MeshParser::Parse(Vfs::IFile& file, uint32_t offse
     // Compute final bounds
     glm::vec3 bmin(100000.0f);
     glm::vec3 bmax(-100000.0f);
-    for (auto& part : meshData->parts) {
+    for (auto& part : data->parts) {
         for (auto& v : part.vertices) {
             bmin = glm::min(bmin, v.position);
             bmax = glm::max(bmax, v.position);
         }
     }
-    meshData->bounds.min = bmin;
-    meshData->bounds.max = bmax;
+    data->bounds.min = bmin;
+    data->bounds.max = bmax;
 
-    LOG_INFO("[GOW2MeshParser] Parsed %zu parts.", meshData->parts.size());
-    return meshData;
+    LOG_INFO("[GOW2MeshParser] Parsed %zu parts.", data->parts.size());
+    return data;
 }
 
 } // namespace Onyx

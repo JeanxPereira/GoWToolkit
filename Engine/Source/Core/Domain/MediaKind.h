@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 
@@ -30,10 +30,3 @@ const char* Name(MediaKind kind);
 const char* Icon(MediaKind kind);
 
 } // namespace Onyx::Domain
-
-// Backwards-compat alias so existing `Onyx::MediaKind` references keep compiling.
-namespace Onyx {
-    using MediaKind = Domain::MediaKind;
-    using Domain::Name;
-    using Domain::Icon;
-} // namespace Onyx

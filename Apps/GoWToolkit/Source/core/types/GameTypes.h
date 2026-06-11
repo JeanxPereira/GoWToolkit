@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Core/Types/TypeId.h"
 
 namespace Onyx::GameTypes {
@@ -6,7 +6,7 @@ namespace Onyx::GameTypes {
 // Named handles for the GoW asset types. Valid after RegisterGameTypes() runs
 // (called once at startup, before any parse). Declared extern; defined in
 // GameTypes.cpp. Names match the legacy TypeId enum values one-for-one.
-extern TypeId Unknown, EntityCount, GroupStart, GroupEnd, HeaderStart, HeaderPop,
+extern Onyx::Types::TypeId Unknown, EntityCount, GroupStart, GroupEnd, HeaderStart, HeaderPop,
     Instance, Object, Model, Mesh, Material, Texture, GfxData, PalData,
     Animation, Script, Light, Sound, Collision, Flipbook, Chunk,
     WadFile, VagAudio, VpkVideo, PssVideo, PswVideo, TextPlain,

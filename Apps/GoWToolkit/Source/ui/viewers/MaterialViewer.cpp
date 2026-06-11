@@ -1,4 +1,4 @@
-﻿#include "MaterialViewer.h"
+#include "MaterialViewer.h"
 #include "Fonts/SFSymbols.h"
 #include "Ui/Widgets.h"
 #include <glad/glad.h>
@@ -10,7 +10,7 @@ MaterialViewer::MaterialViewer(
     const std::string &name,
     std::unique_ptr<GOW2MaterialParser::MaterialData> matData,
     TextureLookupFn texLookup,
-    std::vector<std::unique_ptr<TextureData>> textures)
+    std::vector<std::unique_ptr<Parsers::TextureData>> textures)
     : m_name(name), m_matData(std::move(matData)), m_texLookup(texLookup),
       m_textures(std::move(textures)) {
   UploadTextures();
@@ -52,7 +52,7 @@ void MaterialViewer::Draw() {
     return;
   }
 
-  // â”€â”€ Layout: Preview panel (left) + Table (right) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Layout: Preview panel (left) + Table (right) ──────────────
   float totalWidth = ImGui::GetContentRegionAvail().x;
   float previewWidth = totalWidth * 0.4f;
   if (previewWidth < 180.0f)
@@ -60,7 +60,7 @@ void MaterialViewer::Draw() {
   if (previewWidth > 400.0f)
     previewWidth = 400.0f;
 
-  // â”€â”€ Left: Texture Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Left: Texture Preview ─────────────────────────────────────
   ImGui::BeginChild("##texPreview", ImVec2(previewWidth, 0), true);
   {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Texture Preview");
@@ -121,7 +121,7 @@ void MaterialViewer::Draw() {
 
   ImGui::SameLine();
 
-  // â”€â”€ Right: Material Properties + Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Right: Material Properties + Table ────────────────────────
   ImGui::BeginChild("##matProps", ImVec2(0, 0), false);
   {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Material Summary");

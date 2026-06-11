@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <glm/glm.hpp>
 #include <vector>
 #include <cstdint>
@@ -21,7 +21,7 @@ public:
     GpuMesh(GpuMesh&& other) noexcept;
     GpuMesh& operator=(GpuMesh&& other) noexcept;
 
-    void Upload(const std::vector<GpuVertex>& vertices,
+    void Upload(const std::vector<Domain::GpuVertex>& vertices,
                 const std::vector<uint32_t>& indices);
     void Draw() const;
 
@@ -31,7 +31,7 @@ public:
 
     int GetIndexCount() const { return m_indexCount; }
     int GetVertexCount() const { return m_vertexCount; }
-    BoundingBox GetBounds() const { return m_bounds; }
+    Domain::BoundingBox GetBounds() const { return m_bounds; }
 
 private:
     void Cleanup();
@@ -41,7 +41,7 @@ private:
     GLuint m_ebo = 0;
     int    m_indexCount  = 0;
     int    m_vertexCount = 0;
-    BoundingBox m_bounds;
+    Domain::BoundingBox m_bounds;
     GLuint m_textureId = 0;
 };
 

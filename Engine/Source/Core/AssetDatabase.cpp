@@ -140,7 +140,7 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     }
 
     // Selecionar profile: por hint explÃ­cito ou auto-detect
-    std::shared_ptr<Onyx::IAssetProfile> profile;
+    std::shared_ptr<Onyx::Domain::IAssetProfile> profile;
     if (!gameHint.empty()) {
         profile = Onyx::ProfileManager::Get().FindProfileByHint(gameHint);
     }
@@ -220,7 +220,7 @@ bool AssetDatabase::EnsureNodeData(AssetEntry* e, AssetContainer& parentWad) {
         return false;
     }
 
-    if (auto* handler = Onyx::TypeRegistry::Get().Resolve(e->typeId)) {
+    if (auto* handler = Onyx::Types::TypeRegistry::Get().Resolve(e->typeId)) {
         auto sliceWindow = std::make_shared<Onyx::Vfs::SliceFile>(parentWad.fileSource, e->offset, e->size);
         e->assetNode = handler->Parse(sliceWindow);
     }

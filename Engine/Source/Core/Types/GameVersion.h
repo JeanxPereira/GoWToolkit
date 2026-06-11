@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <cstdint>
 
 namespace Onyx::Types {
@@ -16,6 +16,3 @@ enum class GameVersion : uint8_t {
 };
 
 } // namespace Onyx::Types
-
-// Backwards-compat alias
-namespace Onyx { using GameVersion = Types::GameVersion; }

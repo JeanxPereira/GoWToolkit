@@ -1,4 +1,4 @@
-﻿#include "ui/WadBrowser.h"
+#include "ui/WadBrowser.h"
 #include "UIHelpers.h"
 #include "ui/RoleVisuals.h"   // GOWR role â†’ color/icon (ColorForRole, IconForRole)
 #include "Ui/Widgets.h"
@@ -39,13 +39,13 @@ WadBrowser::~WadBrowser() {
 // Delegates to the centralized AssetVisibility registry which handles both
 // GOW2 (TypeId-based) and GOWR (roleâ†’TypeId mapping) in one code path.
 // Users can toggle visibility per type via the Asset Filters panel.
-static Onyx::GameVersion DetectGameVersion(const AssetEntry& e) {
+static Onyx::Types::GameVersion DetectGameVersion(const AssetEntry& e) {
     // GOWR entries have a classified role via GowrProfileTag
     if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
         if (t->role != Onyx::Gowr::WadEntryRole::Unknown)
-            return Onyx::GameVersion::GOWR;
+            return Onyx::Types::GameVersion::GOWR;
     }
-    return Onyx::GameVersion::GOW2;
+    return Onyx::Types::GameVersion::GOW2;
 }
 
 static bool IsEntryVisible(const AssetEntry& entry) {
@@ -68,10 +68,10 @@ void WadBrowser::Draw() {
 
     static const char* kindNames[]           = {"All",   "Image",    "Mesh",     "Audio",
                                                 "Video", "Material", "Animation"};
-    static const Onyx::MediaKind kindValues[] = {
-        Onyx::MediaKind::Unknown, // All
-        Onyx::MediaKind::Image,   Onyx::MediaKind::Mesh,     Onyx::MediaKind::Audio,
-        Onyx::MediaKind::Video,   Onyx::MediaKind::Material, Onyx::MediaKind::Animation};
+    static const Onyx::Domain::MediaKind kindValues[] = {
+        Onyx::Domain::MediaKind::Unknown, // All
+        Onyx::Domain::MediaKind::Image,   Onyx::Domain::MediaKind::Mesh,     Onyx::Domain::MediaKind::Audio,
+        Onyx::Domain::MediaKind::Video,   Onyx::Domain::MediaKind::Material, Onyx::Domain::MediaKind::Animation};
 
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 130);
     ImGui::InputTextWithHint("##filter", "Filter entries...", m_filter, sizeof(m_filter));
@@ -85,8 +85,8 @@ void WadBrowser::Draw() {
     bool hasFilter = !filterLower.empty();
 
     bool hasKindFilter = (m_kindFilterIndex > 0);
-    Onyx::MediaKind targetKind =
-        hasKindFilter ? kindValues[m_kindFilterIndex] : Onyx::MediaKind::Unknown;
+    Onyx::Domain::MediaKind targetKind =
+        hasKindFilter ? kindValues[m_kindFilterIndex] : Onyx::Domain::MediaKind::Unknown;
 
     std::function<bool(const AssetEntry&)> hasMatchingDescendant;
     hasMatchingDescendant = [&](const AssetEntry& entry) {

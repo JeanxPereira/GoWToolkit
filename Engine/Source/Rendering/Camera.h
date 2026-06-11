@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "Core/Domain/BoundingBox.h"
@@ -25,7 +25,7 @@ public:
     void ProcessMouseDrag(float dx, float dy);
     void ProcessMousePan(float dx, float dy);
     void ProcessScroll(float delta);
-    void FocusOn(const BoundingBox& bbox);
+    void FocusOn(const Domain::BoundingBox& bbox);
     void Reset();
 
     // Animated snap to a canonical orientation (Front/Back/Right/Left/Top/Bottom).
@@ -43,7 +43,7 @@ public:
     glm::vec3 GetSceneMax()    const { return m_sceneMax; }
     float GetSceneRadius()     const { return m_sceneRadius; }
 
-    // â”€â”€ Tuning knobs (exposed to the in-viewport camera widget) â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Tuning knobs (exposed to the in-viewport camera widget) ────────
     float fov     = 55.0f;
     float nearPlane = 0.01f;   // hard lower bound for near (auto or manual)
     float farPlane  = 50000.0f;// hard upper bound for far  (auto or manual)

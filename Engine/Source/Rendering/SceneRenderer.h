@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Core/Parsers/Shared/SceneNode.h"
 #include "ShaderManager.h"
 #include "AnimationPlayer.h"
@@ -24,7 +24,7 @@ struct RenderBatch {
     float                       materialColor[4] = {1,1,1,1};
     float                       layerColor[4]    = {1,1,1,1};
     float                       uvOffset[2]      = {0,0};
-    BlendMode                   blendMode = BlendMode::Normal;
+    Parsers::BlendMode          blendMode = Parsers::BlendMode::Normal;
     uint32_t                    textureLayer = 0;
     std::vector<uint16_t>       jointMap;
     bool                        hasTexture = false;
@@ -36,7 +36,7 @@ struct RenderBatch {
     int                         triangleCount = 0;
 };
 
-/// Owns the GPU representation of a SceneData and renders it.
+/// Owns the GPU representation of a Parsers::SceneData and renders it.
 /// Created once when a viewport loads, destroyed when cleared.
 class SceneRenderer {
 public:
@@ -49,12 +49,12 @@ public:
     SceneRenderer(SceneRenderer&&) = default;
     SceneRenderer& operator=(SceneRenderer&&) = default;
 
-    /// Build GPU resources from parsed SceneData
-    void Build(const SceneData& scene);
+    /// Build GPU resources from parsed Parsers::SceneData
+    void Build(const Parsers::SceneData& scene);
 
-    /// Build from simple MeshData + textures (no materials/skeleton)
-    void BuildFromMeshData(const MeshData& data,
-                           const std::vector<std::unique_ptr<TextureData>>& textures);
+    /// Build from simple Parsers::MeshData + textures (no materials/skeleton)
+    void BuildFromMeshData(const Parsers::MeshData& data,
+                           const std::vector<std::unique_ptr<Parsers::TextureData>>& textures);
 
     /// Render all batches with the specified shading mode
     void Render(const glm::mat4& view, const glm::mat4& proj, ShadingMode mode, int viewportW, int viewportH);
@@ -63,7 +63,7 @@ public:
     /// Call this BEFORE Render() for the main scene.
     void RenderSky(const glm::mat4& view, const glm::mat4& proj, ShadingMode mode);
 
-    /// Render gradient background (static â€” no instance state needed)
+    /// Render gradient background (static — no instance state needed)
     static void RenderBackground(const glm::vec3& topColor, const glm::vec3& bottomColor);
 
     /// Render debug skeleton lines
@@ -74,7 +74,7 @@ public:
     bool IsEmpty() const { return m_batches.empty(); }
     bool HasSkeleton() const { return m_skeleton != nullptr; }
     bool HasSky() const { return m_hasSky; }
-    BoundingBox GetBounds() const { return m_bounds; }
+    Domain::BoundingBox GetBounds() const { return m_bounds; }
 
     int GetTotalVertices() const;
     int GetTotalTriangles() const;
@@ -83,9 +83,9 @@ public:
     bool GetDebugDisableSkin() const { return m_debugDisableSkin; }
     void SetDebugDisableSkin(bool v) { m_debugDisableSkin = v; }
 
-    // â”€â”€ Animation API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Animation API ──────────────────────────────────────────────────
     bool HasAnimations() const { return m_animData != nullptr; }
-    const AnimationData* GetAnimationData() const { return m_animData.get(); }
+    const Parsers::AnimationData* GetAnimationData() const { return m_animData.get(); }
     AnimationPlayer* GetAnimPlayer() { return m_animPlayer.get(); }
 
     /// Start playing a specific animation group/act.
@@ -102,7 +102,7 @@ private:
     void RenderBatches(const std::vector<RenderBatch*>& batches,
                        Shader* shader, const glm::mat4& view, const glm::mat4& proj,
                        ShadingMode mode);
-    GLuint UploadTexture(const TextureData& tex);
+    GLuint UploadTexture(const Parsers::TextureData& tex);
 
     std::vector<RenderBatch>            m_batches;
     std::vector<RenderBatch*>           m_opaqueBatches;
@@ -110,7 +110,7 @@ private:
     std::vector<RenderBatch*>           m_skyBatches;
     bool                                m_hasSky = false;
 
-    std::shared_ptr<ObjectData>         m_skeleton;
+    std::shared_ptr<Parsers::ObjectData>         m_skeleton;
     glm::mat4                           m_instanceTransform {1.0f};
 
     // Precomputed joint palette for current pose
@@ -121,13 +121,13 @@ private:
     // Owned GL textures (cleaned up in Clear())
     std::vector<GLuint>                 m_ownedTextures;
 
-    BoundingBox                         m_bounds;
+    Domain::BoundingBox                         m_bounds;
 
     bool                                m_diagDone = false; // reset on Clear()
     bool                                m_debugDisableSkin = false; // debug toggle
 
     // Animation
-    std::shared_ptr<AnimationData>      m_animData;
+    std::shared_ptr<Parsers::AnimationData>      m_animData;
     std::unique_ptr<AnimationPlayer>    m_animPlayer;
     // Tracks the player time we've last reflected into m_jointPalette so we
     // can detect external SetTime/SetFrame calls while paused and rebuild.

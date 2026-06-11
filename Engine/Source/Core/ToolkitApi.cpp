@@ -1,4 +1,4 @@
-﻿#include "Core/ToolkitApi.h"
+#include "Core/ToolkitApi.h"
 #include "Core/ProfileManager.h"
 #include "Core/Types/TypeRegistry.h"
 #include "Ui/ViewerRegistry.h"
@@ -44,8 +44,8 @@ namespace Onyx::Api {
         return ProfileManager::Get();
     }
 
-    TypeRegistry& Types() {
-        return TypeRegistry::Get();
+    Onyx::Types::TypeRegistry& Types() {
+        return Onyx::Types::TypeRegistry::Get();
     }
 
     ViewerRegistry& Viewers() {

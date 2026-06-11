@@ -5,7 +5,7 @@
 
 namespace Onyx {
 
-class ProfileGOWR : public IAssetProfile {
+class ProfileGOWR : public Domain::IAssetProfile {
 public:
     ProfileGOWR();
     ~ProfileGOWR() override = default;

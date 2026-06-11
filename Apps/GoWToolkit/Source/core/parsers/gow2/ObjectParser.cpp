@@ -65,7 +65,7 @@ static glm::ivec4 ReadIVec4(const uint8_t* buf) {
 
 // â”€â”€ Joint parsing (GOW2 layout) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
+static bool ParseJoints(const uint8_t* data, uint32_t size, Parsers::ObjectData& obj) {
     constexpr uint32_t headerSize = GOW2_HEADER_SIZE;
 
     uint32_t jointCount = ReadU32(data + 0x04);
@@ -201,7 +201,7 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
 
 // â”€â”€ FillJoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Port of obj.go FillJoints() â€” compute ParentToJoint and BindToJointMat
-void GOW2ObjectParser::FillJoints(ObjectData& obj) {
+void GOW2ObjectParser::FillJoints(Parsers::ObjectData& obj) {
     for (size_t i = 0; i < obj.joints.size(); ++i) {
         auto& j = obj.joints[i];
 
@@ -229,7 +229,7 @@ void GOW2ObjectParser::FillJoints(ObjectData& obj) {
 
 // â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-std::unique_ptr<ObjectData> GOW2ObjectParser::Parse(
+std::unique_ptr<Parsers::ObjectData> GOW2ObjectParser::Parse(
     const uint8_t* data, uint32_t size, uint32_t magic)
 {
     if (!data || size < 0x18) return nullptr;
@@ -242,10 +242,10 @@ std::unique_ptr<ObjectData> GOW2ObjectParser::Parse(
     return nullptr;
 }
 
-std::unique_ptr<ObjectData> GOW2ObjectParser::ParseGOW2(const uint8_t* data, uint32_t size) {
+std::unique_ptr<Parsers::ObjectData> GOW2ObjectParser::ParseGOW2(const uint8_t* data, uint32_t size) {
     if (size < GOW2_HEADER_SIZE) return nullptr;
 
-    auto obj = std::make_unique<ObjectData>();
+    auto obj = std::make_unique<Parsers::ObjectData>();
     if (!ParseJoints(data, size, *obj)) {
         return nullptr;
     }
@@ -255,7 +255,7 @@ std::unique_ptr<ObjectData> GOW2ObjectParser::ParseGOW2(const uint8_t* data, uin
     LOG_INFO("[ObjectParser] GOW2: Parsed %zu joints, %zu skinned",
              obj->joints.size(),
              std::count_if(obj->joints.begin(), obj->joints.end(),
-                           [](const Joint& j) { return j.isSkinned; }));
+                           [](const Parsers::Joint& j) { return j.isSkinned; }));
     return obj;
 }
 

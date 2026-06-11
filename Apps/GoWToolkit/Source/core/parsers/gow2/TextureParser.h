@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Core/Parsers/Shared/TextureData.h"
 #include "core/WadTypes.h"
 #include <memory>
@@ -13,7 +13,7 @@ public:
     // txrEntry: the TXR_ parsed entry
     // parentEntries: the sibling entries (from the same MDL group) to find GFX/PAL by name
     // wadFileSource: the file source to read raw data from
-    static std::unique_ptr<TextureData> Parse(
+    static std::unique_ptr<Parsers::TextureData> Parse(
         const AssetEntry& txrEntry,
         const std::vector<AssetEntry>& siblingEntries,
         const std::shared_ptr<Vfs::IFile>& fileSource);

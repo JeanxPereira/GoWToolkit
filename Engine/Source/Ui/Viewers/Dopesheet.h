@@ -20,7 +20,7 @@ public:
     std::string_view getName() const override { return "Dopesheet"; }
 
 private:
-    std::shared_ptr<Onyx::AnimationData> m_animData;
+    std::shared_ptr<Onyx::Parsers::AnimationData> m_animData;
     int  m_selectedGroup = 0;
     int  m_selectedAct   = 0;
     int  m_selectedState = 0;

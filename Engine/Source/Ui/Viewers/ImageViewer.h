@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "IDocumentContent.h"
 #include "Core/Parsers/Shared/TextureData.h"
 #include <imgui.h>
@@ -9,7 +9,7 @@ namespace Onyx {
 
 class ImageViewer : public IDocumentContent {
 public:
-    ImageViewer(const std::string& name, std::unique_ptr<TextureData> texture);
+    ImageViewer(const std::string& name, std::unique_ptr<Parsers::TextureData> texture);
     ~ImageViewer() override;
 
     std::string GetName() const override;
@@ -17,7 +17,7 @@ public:
 
 private:
     std::string m_name;
-    std::unique_ptr<TextureData> m_texture;
+    std::unique_ptr<Parsers::TextureData> m_texture;
     unsigned int m_glTexture = 0;
     bool m_showAlpha = false;
 

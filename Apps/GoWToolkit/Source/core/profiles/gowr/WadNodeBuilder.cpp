@@ -442,7 +442,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
                 if (auto* t = pairNode.profileTag.As<Gowr::GowrProfileTag>()) {
                     auto newTag = *t;
                     newTag.role = WadEntryRole::TexturePair;
-                    pairNode.profileTag = Onyx::ProfileTag::Of(newTag);
+                    pairNode.profileTag = Onyx::Domain::ProfileTag::Of(newTag);
                 }
                 pairNode.displayName = StripTextureHash(e.name);
                 assetsFolder.children.push_back(std::move(pairNode));
@@ -628,7 +628,7 @@ void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
 // Helpers
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-static TypeId RoleToTypeId(WadEntryRole role) {
+static Types::TypeId RoleToTypeId(WadEntryRole role) {
     switch (role) {
         case WadEntryRole::ShaderContainer: return GameTypes::ShaderContainer;
         case WadEntryRole::ShaderVertex: return GameTypes::ShaderVertex;
@@ -667,9 +667,9 @@ AssetEntry WadNodeBuilder::ToNode(const RawEntry& r, const std::string& wadFilen
     e.offset      = r.offset;
     e.wadName     = wadFilename;
     e.typeId      = RoleToTypeId(r.role);
-    e.kind        = KindOf(e.typeId);
+    e.kind        = Types::KindOf(e.typeId);
     e.displayName = r.displayName;
-    e.profileTag  = Onyx::ProfileTag::Of(Gowr::GowrProfileTag{
+    e.profileTag  = Onyx::Domain::ProfileTag::Of(Gowr::GowrProfileTag{
         r.role,
         r.block,
         Onyx::Gowr::WadAssetName::Parse(r.name)
@@ -687,8 +687,8 @@ AssetEntry WadNodeBuilder::MakeFolder(
     f.typeId     = RoleToTypeId(role);
     f.wadName    = m_wadFilename;
     f.offset     = 0;
-    f.kind       = KindOf(f.typeId);
-    f.profileTag = Onyx::ProfileTag::Of(Gowr::GowrProfileTag{
+    f.kind       = Types::KindOf(f.typeId);
+    f.profileTag = Onyx::Domain::ProfileTag::Of(Gowr::GowrProfileTag{
         role,
         block,
         Onyx::Gowr::WadAssetName::Parse(name)

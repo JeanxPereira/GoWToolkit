@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../vfs/IVirtualFileSystem.h"
 #include "../vfs/IFile.h"
 #include "../schema/NodeInstance.h"
@@ -40,6 +40,3 @@ public:
 };
 
 } // namespace Onyx::Domain
-
-// Backwards-compat alias
-namespace Onyx { using IAssetProfile = Domain::IAssetProfile; }

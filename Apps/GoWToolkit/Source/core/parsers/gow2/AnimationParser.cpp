@@ -1,4 +1,4 @@
-﻿// Animation parser â€” port of god_of_war_browser/pack/wad/anm
+// Animation parser — port of god_of_war_browser/pack/wad/anm
 // Handles magic 0x00000003, works for both GOW1 and GOW2.
 
 #include "AnimationParser.h"
@@ -23,7 +23,7 @@ static void hexDump(const char* label, const uint8_t* data, size_t len, size_t m
     LOG_INFO("[HexDump] %s (%zu bytes): %s", label, len, hex.c_str());
 }
 
-// â”€â”€ Safe buffer helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Safe buffer helpers ────────────────────────────────────────────────────
 
 struct SafeBuf {
     const uint8_t* data;
@@ -81,12 +81,12 @@ struct SafeBuf {
     }
 };
 
-// â”€â”€ DataBitMap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parsers::DataBitMap ─────────────────────────────────────────────────────────────
 
 static const uint8_t kDefaultDataBitMap[] = {1, 1, 0, 0, 1, 0, 0, 0};
 
-static DataBitMap NewDataBitMapFromBuf(const SafeBuf& b) {
-    DataBitMap dbm;
+static Parsers::DataBitMap NewDataBitMapFromBuf(const SafeBuf& b) {
+    Parsers::DataBitMap dbm;
     dbm.pairedElementsCount = b.u8(1);
     dbm.dataOffset = b.u16(2);
     uint8_t bitmapCount = b.u8(0);
@@ -111,7 +111,7 @@ static int trailingZeros16(uint16_t v) {
 
 using BitMapCallback = std::function<void(int bitIndex, int iteration)>;
 
-static void IterateDataBitMap(const DataBitMap& dbm, const BitMapCallback& f) {
+static void IterateDataBitMap(const Parsers::DataBitMap& dbm, const BitMapCallback& f) {
     int iteration = 0;
     for (int iWord = 0; iWord < (int)dbm.bitmap.size(); ++iWord) {
         uint16_t bitmask = dbm.bitmap[iWord];
@@ -124,7 +124,7 @@ static void IterateDataBitMap(const DataBitMap& dbm, const BitMapCallback& f) {
     }
 }
 
-// â”€â”€ Shift to coefficient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Shift to coefficient ───────────────────────────────────────────────────
 
 static float shiftToCoeff(int8_t shift) {
     if (shift == 0) return 1.0f;
@@ -132,30 +132,30 @@ static float shiftToCoeff(int8_t shift) {
     return 1.0f / (float)(1 << (uint32_t)shift);
 }
 
-// â”€â”€ BitMap + Shifts helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── BitMap + Shifts helpers ────────────────────────────────────────────────
 
-static SafeBuf getDataBitMapOffset(const AnimStateDescrHeader& descr,
+static SafeBuf getDataBitMapOffset(const Parsers::AnimStateDescrHeader& descr,
                                      const SafeBuf& stateData) {
     if (descr.flagsProbably & 2)
         return stateData;
     return SafeBuf(kDefaultDataBitMap, sizeof(kDefaultDataBitMap));
 }
 
-static DataBitMap GetDataBitMap(const AnimStateDescrHeader& descr,
+static Parsers::DataBitMap GetDataBitMap(const Parsers::AnimStateDescrHeader& descr,
                                 const SafeBuf& stateData) {
     return NewDataBitMapFromBuf(getDataBitMapOffset(descr, stateData));
 }
 
-static std::vector<int8_t> GetShiftsArray(const AnimStateDescrHeader& descr,
+static std::vector<int8_t> GetShiftsArray(const Parsers::AnimStateDescrHeader& descr,
                                            const SafeBuf& stateData) {
-    DataBitMap dbm = GetDataBitMap(descr, stateData);
+    Parsers::DataBitMap dbm = GetDataBitMap(descr, stateData);
     std::vector<int8_t> shifts(dbm.pairedElementsCount);
     if (dbm.pairedElementsCount == 1) {
         // Arithmetic shift right of signed byte. Go does
         //   shifts[0] = int8(descr.FlagsProbably) >> 4
         // which sign-extends the high nibble. C++ must cast to signed FIRST,
         // otherwise (uint8 >> 4) drops the sign bit and we lose ~65536x on
-        // any state whose flags byte has bit 7 set (e.g. 0xC2 â†’ wanted -4, got 12).
+        // any state whose flags byte has bit 7 set (e.g. 0xC2 → wanted -4, got 12).
         shifts[0] = (int8_t)((int8_t)descr.flagsProbably >> 4);
     } else {
         SafeBuf s5Buf = getDataBitMapOffset(descr, stateData).sub(dbm.bitmap.size() * 2 + 4);
@@ -166,11 +166,11 @@ static std::vector<int8_t> GetShiftsArray(const AnimStateDescrHeader& descr,
     return shifts;
 }
 
-// â”€â”€ Parse rotation frames (raw) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parse rotation frames (raw) ────────────────────────────────────────────
 
-static void parseFramesRotationRaw(const SafeBuf& buf, AnimSubstream& sub,
-                                    const DataBitMap& bitMap,
-                                    const AnimStateDescrHeader& descr,
+static void parseFramesRotationRaw(const SafeBuf& buf, Parsers::AnimSubstream& sub,
+                                    const Parsers::DataBitMap& bitMap,
+                                    const Parsers::AnimStateDescrHeader& descr,
                                     bool useAdditionalOffset) {
     sub.isAdditive = false;
     int additionalOffset = 0;
@@ -191,11 +191,11 @@ static void parseFramesRotationRaw(const SafeBuf& buf, AnimSubstream& sub,
     });
 }
 
-// â”€â”€ Parse rotation frames (additive) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parse rotation frames (additive) ───────────────────────────────────────
 
-static void parseFramesRotationAdd(const SafeBuf& buf, AnimSubstream& sub,
-                                    const DataBitMap& bitMap,
-                                    const AnimStateDescrHeader& descr,
+static void parseFramesRotationAdd(const SafeBuf& buf, Parsers::AnimSubstream& sub,
+                                    const Parsers::DataBitMap& bitMap,
+                                    const Parsers::AnimStateDescrHeader& descr,
                                     bool useAdditionalOffset,
                                     const std::vector<int8_t>& shifts) {
     sub.isAdditive = true;
@@ -218,11 +218,11 @@ static void parseFramesRotationAdd(const SafeBuf& buf, AnimSubstream& sub,
     });
 }
 
-// â”€â”€ Parse position frames (raw) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parse position frames (raw) ────────────────────────────────────────────
 
-static void parseFramesPositionRaw(const SafeBuf& buf, AnimSubstream& sub,
-                                    const DataBitMap& bitMap,
-                                    const AnimStateDescrHeader& descr,
+static void parseFramesPositionRaw(const SafeBuf& buf, Parsers::AnimSubstream& sub,
+                                    const Parsers::DataBitMap& bitMap,
+                                    const Parsers::AnimStateDescrHeader& descr,
                                     bool useAdditionalOffset) {
     sub.isAdditive = false;
     int additionalOffset = 0;
@@ -243,11 +243,11 @@ static void parseFramesPositionRaw(const SafeBuf& buf, AnimSubstream& sub,
     });
 }
 
-// â”€â”€ Parse position frames (additive) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parse position frames (additive) ───────────────────────────────────────
 
-static void parseFramesPositionAdd(const SafeBuf& buf, AnimSubstream& sub,
-                                    const DataBitMap& bitMap,
-                                    const AnimStateDescrHeader& descr,
+static void parseFramesPositionAdd(const SafeBuf& buf, Parsers::AnimSubstream& sub,
+                                    const Parsers::DataBitMap& bitMap,
+                                    const Parsers::AnimStateDescrHeader& descr,
                                     bool useAdditionalOffset,
                                     const std::vector<int8_t>& shifts) {
     sub.isAdditive = true;
@@ -270,11 +270,11 @@ static void parseFramesPositionAdd(const SafeBuf& buf, AnimSubstream& sub,
     });
 }
 
-// â”€â”€ Parse rotations for a skinning state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parse rotations for a skinning state ───────────────────────────────────
 // Exact port of AnimState0Skinning.ParseRotations from type0.go
 
 static bool parseSkinningRotations(const SafeBuf& buf, int stateIndex,
-                                    SkinningState& ss) {
+                                    Parsers::SkinningState& ss) {
     SafeBuf stateBuf = buf.sub(stateIndex * 0xc);
     if (!stateBuf.valid(0, 0xc)) return false;
 
@@ -300,7 +300,7 @@ static bool parseSkinningRotations(const SafeBuf& buf, int stateIndex,
         SafeBuf subArrayBuf = stateData.sub(2);
         SafeBuf bitMapOffset = stateData.sub(2 + (int)totalSubCount * 8);
 
-        DataBitMap rotBitMap = GetDataBitMap(ss.header, bitMapOffset);
+        Parsers::DataBitMap rotBitMap = GetDataBitMap(ss.header, bitMapOffset);
 
         // Additive substreams
         ss.rotationSubStreamsAdd.resize(addCount);
@@ -335,7 +335,7 @@ static bool parseSkinningRotations(const SafeBuf& buf, int stateIndex,
         // Single stream mode
         if (ss.rotationStream.manager.count > 4096) return false;
         
-        DataBitMap rotBitMap = GetDataBitMap(ss.header, stateData);
+        Parsers::DataBitMap rotBitMap = GetDataBitMap(ss.header, stateData);
         if ((ss.header.flagsProbably & 1) == 0) {
             parseFramesRotationRaw(stateData, ss.rotationStream, rotBitMap, ss.header, false);
         } else {
@@ -346,14 +346,14 @@ static bool parseSkinningRotations(const SafeBuf& buf, int stateIndex,
     return true;
 }
 
-// â”€â”€ Parse positions for a skinning state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parse positions for a skinning state ───────────────────────────────────
 // Exact port of AnimState0Skinning.ParsePositions from type0.go
 // GOW1: posBase was at rawAct[0x80] (sd[1].OffsetToData with stride 0x14)
 // GOW2: posBase at rawAct[0x78] (sd[1].OffsetToData with stride 0x10)
 // Now passed explicitly to avoid hardcoded offset dependency.
 
 static bool parseSkinningPositions(const SafeBuf& buf, int stateIndex,
-                                    SkinningState& ss, const SafeBuf& rawAct,
+                                    Parsers::SkinningState& ss, const SafeBuf& rawAct,
                                     uint32_t posBase) {
     SafeBuf stateBuf = rawAct.sub(posBase + stateIndex * 0xc);
     if (!stateBuf.valid(0, 0xc)) return false;
@@ -377,7 +377,7 @@ static bool parseSkinningPositions(const SafeBuf& buf, int stateIndex,
         SafeBuf subArrayBuf = stateData.sub(2);
         SafeBuf bitMapOffset = stateData.sub(2 + (int)totalSubCount * 8);
 
-        DataBitMap posBitMap = GetDataBitMap(ss.header, bitMapOffset);
+        Parsers::DataBitMap posBitMap = GetDataBitMap(ss.header, bitMapOffset);
 
         ss.positionSubStreamsAdd.resize(addCount);
         for (int i = 0; i < addCount; ++i) {
@@ -403,7 +403,7 @@ static bool parseSkinningPositions(const SafeBuf& buf, int stateIndex,
             parseFramesPositionRaw(stateBuf, sub, posBitMap, ss.header, true);
         }
     } else {
-        DataBitMap posBitMap = GetDataBitMap(ss.header, stateData);
+        Parsers::DataBitMap posBitMap = GetDataBitMap(ss.header, stateData);
         if ((ss.header.flagsProbably & 1) == 0) {
             parseFramesPositionRaw(stateData, ss.positionStream, posBitMap, ss.header, false);
         } else {
@@ -414,9 +414,9 @@ static bool parseSkinningPositions(const SafeBuf& buf, int stateIndex,
     return true;
 }
 
-// â”€â”€ Main parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main parser ────────────────────────────────────────────────────────────
 
-std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, size_t size) {
+std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, size_t size) {
     SafeBuf buf(data, size);
 
     if (size < 0x18) {
@@ -424,7 +424,7 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
         return nullptr;
     }
 
-    auto anim = std::make_unique<AnimationData>();
+    auto anim = std::make_unique<Parsers::AnimationData>();
 
     uint16_t dataTypeCount = buf.u16(0x10);
     uint16_t groupCount    = buf.u16(0x12);
@@ -497,7 +497,7 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
             
             if (actOffset < 0x30) {
                 // Dummy act: offset points into group header (sentinel for "idle/no action").
-                // Onyx engine uses act[0] as null state â€” real clips start at index 1.
+                // Onyx engine uses act[0] as null state — real clips start at index 1.
                 act.name = "";
                 act.duration = 0.0f;
                 LOG_INFO("[AnimParser]   Act[%u] DUMMY (offset=0x%X < 0x30), skipped", ia, actOffset);
@@ -519,7 +519,7 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
             act.duration    = rawAct.f32(0x14);
             act.name = rawAct.str(0x24, 0x18);  // 24 chars max
 
-            // â”€â”€ Diagnostic: validate act header â”€â”€
+            // ── Diagnostic: validate act header ──
             if (ig <= 1 && ia <= 2) {
                 LOG_INFO("[AnimParser] g[%d].a[%d] actOff=0x%X name='%s' dur=%.4f"
                          " f0x4=%.4f f0xc=%.4f dur@0x14=%.4f dur@0x1C_old=%.6f",
@@ -547,7 +547,7 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
 
                 if (!rawAct.valid(sdOff, SD_STRIDE)) break;
 
-                // â”€â”€ GOW2 AnimActStateDescr binary layout (0x10 bytes) â”€â”€
+                // ── GOW2 AnimActStateDescr binary layout (0x10 bytes) ──
                 //   0x00 (u16): Unk0 (baseTargetDataIndex)
                 //   0x02 (u16): CountOfSomething
                 //   0x04 (u32): OffsetToData
@@ -558,7 +558,7 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
                 uint32_t sdOffsetToData = rawAct.u32(sdOff + 0x4);
                 sd.frameTime = rawAct.f32(sdOff + 0x8);
 
-                // â”€â”€ Diagnostic: hex dump the 0x10-byte state descriptor â”€â”€
+                // ── Diagnostic: hex dump the 0x10-byte state descriptor ──
                 if (ig <= 1 && ia <= 2) {
                     char sdLbl[80];
                     snprintf(sdLbl, sizeof(sdLbl), "g[%d].a[%d].sd[%d] @sdOff=0x%zX", ig, ia, isd, sdOff);
@@ -581,7 +581,7 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
                              isd, rawAct.u32(sdOff + 0xc));
                 }
 
-                // Validate FrameTime â€” should be ~1/30 (0.0333) or ~1/60 (0.0167)
+                // Validate FrameTime — should be ~1/30 (0.0333) or ~1/60 (0.0167)
                 if (sd.frameTime <= 0.0f || sd.frameTime > 1.0f) {
                     LOG_WARN("[AnimParser] sd[%d] frameTime=%.6f looks invalid, clamping to 1/30",
                              isd, sd.frameTime);
@@ -599,7 +599,7 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
                     if (sd.countOfSomething > 1000) sd.countOfSomething = 0; // Sanity check
                     
                     for (int iSkin = 0; iSkin < (int)sd.countOfSomething; ++iSkin) {
-                        SkinningState ss;
+                        Parsers::SkinningState ss;
                         if (!parseSkinningRotations(skinData, iSkin, ss)) break;
                         sd.skinningStates.push_back(std::move(ss));
                     }
@@ -621,7 +621,7 @@ std::unique_ptr<AnimationData> GOW2AnimationParser::Parse(const uint8_t* data, s
                     // GOW1 hardcoded rawAct[0x80] which is now sd[1]'s extra field (=0)
                     SafeBuf posSkinData = rawAct.sub(posOffsetToData);
                     for (int iPos = 0; iPos < (int)posCount; ++iPos) {
-                        SkinningState ss;
+                        Parsers::SkinningState ss;
                         if (!parseSkinningPositions(posSkinData, iPos, ss, rawAct, posOffsetToData)) break;
                         sd.skinningStates.push_back(std::move(ss));
                     }

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <cstdint>
 #include <functional>
 
@@ -15,9 +15,6 @@ struct TypeId {
 };
 
 } // namespace Onyx::Types
-
-// Backwards-compat alias
-namespace Onyx { using TypeId = Types::TypeId; }
 
 template<> struct std::hash<Onyx::Types::TypeId> {
     size_t operator()(const Onyx::Types::TypeId& t) const noexcept {

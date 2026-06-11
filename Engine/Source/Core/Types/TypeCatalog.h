@@ -11,7 +11,7 @@ namespace Onyx::Types {
 struct TypeInfo {
     std::string key;                      // stable id, e.g. "GOW2_MESH"
     std::string label;                    // human-readable
-    MediaKind   media = MediaKind::Unknown;
+    Onyx::Domain::MediaKind   media = Onyx::Domain::MediaKind::Unknown;
     const char* icon  = nullptr;          // UTF-8 codicon; nullptr => default
     float       color[4] = {0.6f,0.6f,0.6f,1.0f};
 };
@@ -29,7 +29,7 @@ public:
 
     TypeId            Find(std::string_view key) const;   // {} if absent
     const TypeInfo&   Info(TypeId id) const;              // Unknown info if absent
-    MediaKind         Media(TypeId id) const { return Info(id).media; }
+    Onyx::Domain::MediaKind         Media(TypeId id) const { return Info(id).media; }
     const char*       Label(TypeId id) const { return Info(id).label.c_str(); }
     const char*       Icon(TypeId id) const;              // default if none
     void              Color(TypeId id, float out[4]) const;
@@ -42,13 +42,7 @@ private:
 };
 
 // Convenience free function preserving the old call sites' spelling.
-inline MediaKind KindOf(TypeId id) { return TypeCatalog::Get().Media(id); }
+inline Onyx::Domain::MediaKind KindOf(TypeId id) { return TypeCatalog::Get().Media(id); }
 
 } // namespace Onyx::Types
 
-// Backwards-compat aliases
-namespace Onyx {
-    using TypeInfo    = Types::TypeInfo;
-    using TypeCatalog = Types::TypeCatalog;
-    using Types::KindOf;
-} // namespace Onyx

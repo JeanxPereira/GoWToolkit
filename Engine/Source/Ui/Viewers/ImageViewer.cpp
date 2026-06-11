@@ -1,4 +1,4 @@
-﻿#include "ImageViewer.h"
+#include "ImageViewer.h"
 #include "Fonts/SFSymbols.h"
 #include "Core/ThemeManager.h"
 #include "Ui/Widgets.h"
@@ -11,7 +11,7 @@
 namespace Onyx {
 
 ImageViewer::ImageViewer(const std::string &name,
-                         std::unique_ptr<TextureData> texture)
+                         std::unique_ptr<Parsers::TextureData> texture)
     : m_name(name), m_texture(std::move(texture)) {
   if (m_texture && m_texture->IsValid()) {
     UploadToGPU();
@@ -63,12 +63,12 @@ void ImageViewer::UploadToGPU() {
       }
       
       // Set swizzle masks for single/dual channel formats
-      // BC4 (RGTC1): single Red channel â†’ display as grayscale (R,R,R,1)
+      // BC4 (RGTC1): single Red channel → display as grayscale (R,R,R,1)
       if (fmt == 0x8DBB || fmt == 0x8DBC) {
           GLint swizzle[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
           glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
       }
-      // BC5 (RGTC2): RG channels â†’ display as normal map (R,G,1,1)
+      // BC5 (RGTC2): RG channels → display as normal map (R,G,1,1)
       else if (fmt == 0x8DBD || fmt == 0x8DBE) {
           GLint swizzle[] = { GL_RED, GL_GREEN, GL_ONE, GL_ONE };
           glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
@@ -101,14 +101,14 @@ void ImageViewer::Draw() {
   const float texW = static_cast<float>(m_texture->width);
   const float texH = static_cast<float>(m_texture->height);
 
-  // â”€â”€ Toolbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Toolbar ──────────────────────────────────────────────────────────
   ImGui::PushStyleColor(ImGuiCol_Button, Onyx::Theme::ToolbarButton());
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Onyx::Theme::ToolbarButtonHover());
 
   ImGui::TextDisabled("%ux%u", m_texture->width, m_texture->height);
   ImGui::SameLine();
 
-  // Defer button actions until we know `avail` (canvas size) â€” the viewport
+  // Defer button actions until we know `avail` (canvas size) — the viewport
   // center anchor needs it. Bool flags carry the intent across.
   const bool zoomInClicked  = Onyx::UI::Widgets::SmallButton(ICON_SF_PLUS_MAGNIFYINGGLASS);
   ImGui::SameLine();
@@ -119,7 +119,7 @@ void ImageViewer::Draw() {
   const bool fitClicked = Onyx::UI::Widgets::SmallButton("Fit");
   ImGui::SameLine();
 
-  // Alpha toggle â€” show alpha channel as grayscale
+  // Alpha toggle — show alpha channel as grayscale
   bool prevAlpha = m_showAlpha;
   ImGui::Checkbox("Alpha", &m_showAlpha);
   const bool alphaChanged = (m_showAlpha != prevAlpha);
@@ -127,7 +127,7 @@ void ImageViewer::Draw() {
   ImGui::PopStyleColor(2);
   ImGui::Separator();
 
-  // â”€â”€ Canvas area (everything below toolbar) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Canvas area (everything below toolbar) ───────────────────────────
   const ImVec2 avail = ImGui::GetContentRegionAvail();
   if (avail.x <= 1.0f || avail.y <= 1.0f) return;
 
@@ -144,7 +144,7 @@ void ImageViewer::Draw() {
   // Anchor in canvas-local coords (matches m_panTarget convention).
   const ImVec2 viewportCenter(avail.x * 0.5f, avail.y * 0.5f);
 
-  // â”€â”€ First-frame init: open in Fit mode (no lerp; nothing to ease from) â”€â”€
+  // ── First-frame init: open in Fit mode (no lerp; nothing to ease from) ──
   if (!m_initialFitDone) {
     m_zoomTarget = fitZoomFor();
     m_panTarget  = centerForZoom(m_zoomTarget);
@@ -153,7 +153,7 @@ void ImageViewer::Draw() {
     m_initialFitDone = true;
   }
 
-  // â”€â”€ Toolbar actions (lerp toward target â€” same path as wheel) â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Toolbar actions (lerp toward target — same path as wheel) ────────
   if (zoomInClicked)   ZoomToAnchored(m_zoomTarget * 1.5f, viewportCenter);
   if (zoomOutClicked)  ZoomToAnchored(m_zoomTarget / 1.5f, viewportCenter);
   if (oneToOneClicked) ZoomToAnchored(1.0f,                 viewportCenter);
@@ -169,7 +169,7 @@ void ImageViewer::Draw() {
   const bool active  = ImGui::IsItemActive();
   ImGuiIO& io = ImGui::GetIO();
 
-  // Cursor-anchored wheel zoom â€” same unified helper.
+  // Cursor-anchored wheel zoom — same unified helper.
   if (hovered && io.MouseWheel != 0.0f) {
     const float factor = std::pow(1.15f, io.MouseWheel);
     ZoomToAnchored(m_zoomTarget * factor,
@@ -224,7 +224,7 @@ void ImageViewer::Draw() {
   const float imgW = texW * m_zoom;
   const float imgH = texH * m_zoom;
 
-  // â”€â”€ Apply alpha swizzle on the GPU texture when toggle changes â”€â”€â”€â”€â”€â”€â”€
+  // ── Apply alpha swizzle on the GPU texture when toggle changes ───────
   if (alphaChanged) {
     glBindTexture(GL_TEXTURE_2D, m_glTexture);
     if (m_showAlpha) {
@@ -252,7 +252,7 @@ void ImageViewer::Draw() {
     glBindTexture(GL_TEXTURE_2D, 0);
   }
 
-  // â”€â”€ Draw the image â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Draw the image ───────────────────────────────────────────────────
   ImDrawList* dl = ImGui::GetWindowDrawList();
   const ImVec2 p0(origin.x + m_pan.x, origin.y + m_pan.y);
   const ImVec2 p1(p0.x + imgW, p0.y + imgH);

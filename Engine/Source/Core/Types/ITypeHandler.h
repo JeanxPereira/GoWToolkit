@@ -16,7 +16,6 @@ namespace Onyx {
 class IDocumentContent;
 } // namespace Onyx
 namespace Onyx::Parsers { struct SceneData; }
-namespace Onyx { using SceneData = Parsers::SceneData; }
 namespace Onyx::Domain { struct AssetEntry; struct AssetContainer; }
 using AssetEntry    = Onyx::Domain::AssetEntry;
 using AssetContainer = Onyx::Domain::AssetContainer;
@@ -69,7 +68,7 @@ public:
 
   /// Extract scene data without generating a viewer (useful for composition
   /// layers like Chunks)
-  virtual std::unique_ptr<Onyx::SceneData>
+  virtual std::unique_ptr<Onyx::Parsers::SceneData>
   BuildSceneData(const AssetEntry &entry, AssetContainer &wad) {
     (void)entry;
     (void)wad;
@@ -79,8 +78,6 @@ public:
 
 } // namespace Onyx::Types
 
-// Backwards-compat alias
-namespace Onyx { using ITypeHandler = Types::ITypeHandler; }
 
 // â”€â”€ Self-registration macro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Usage (at the bottom of a handler .cpp file):
@@ -98,16 +95,16 @@ namespace Onyx { using ITypeHandler = Types::ITypeHandler; }
 #define REGISTER_TYPE(version, HandlerClass)                                   \
   static bool _GOW_REG_CONCAT(_reg_##version##_##HandlerClass##_,              \
                               __LINE__) = [] {                                 \
-    ::Onyx::TypeRegistry::Get().RegisterByMagic(                                \
-        ::Onyx::GameVersion::version, std::make_unique<HandlerClass>());        \
+    ::Onyx::Types::TypeRegistry::Get().RegisterByMagic(                                \
+        ::Onyx::Types::GameVersion::version, std::make_unique<HandlerClass>());        \
     return true;                                                               \
   }()
 
 #define REGISTER_TAG(version, tagNum, HandlerClass)                            \
   static bool _GOW_REG_CONCAT(_reg_tag_##version##_##HandlerClass##_,          \
                               __LINE__) = [] {                                 \
-    ::Onyx::TypeRegistry::Get().RegisterByTag(                                  \
-        ::Onyx::GameVersion::version, tagNum,                                   \
+    ::Onyx::Types::TypeRegistry::Get().RegisterByTag(                                  \
+        ::Onyx::Types::GameVersion::version, tagNum,                                   \
         std::make_unique<HandlerClass>());                                     \
     return true;                                                               \
   }()
@@ -118,11 +115,10 @@ namespace Onyx { using ITypeHandler = Types::ITypeHandler; }
 // PAK/TOC.
 #define REGISTER_FILE_TYPE(HandlerClass)                                       \
   static bool _GOW_REG_CONCAT(_reg_ft_##HandlerClass##_, __LINE__) = [] {      \
-    ::Onyx::TypeRegistry::Get().RegisterByTypeId(                               \
+    ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(                               \
         std::make_unique<HandlerClass>());                                     \
     return true;                                                               \
   }()
 
 // Forward-declare TypeRegistry so the macros compile
 namespace Onyx::Types { class TypeRegistry; }
-namespace Onyx { using TypeRegistry = Types::TypeRegistry; }

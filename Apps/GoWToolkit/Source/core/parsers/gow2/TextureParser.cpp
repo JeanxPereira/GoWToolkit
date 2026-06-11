@@ -1,4 +1,4 @@
-﻿#include "TextureParser.h"
+#include "TextureParser.h"
 #include "Core/Vfs/SliceFile.h"
 #include "Core/Logger.h"
 #include <cstring>
@@ -6,11 +6,11 @@
 
 namespace Onyx {
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // PS2 GS Texture Unswizzle
 // Converts PS2 VRAM block-interleaved coords to linear offset.
 // Direct port from god_of_war_browser/pack/wad/gfx/gfx.go:IndexUnswizzleTexture
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 uint32_t GOW2TextureParser::IndexUnswizzleTexture(uint32_t x, uint32_t y, uint32_t width) {
     uint32_t block_location = (y & ~0xFu) * width + (x & ~0xFu) * 2;
     uint32_t swap_selector  = (((y + 2) >> 2) & 0x1) * 4;
@@ -20,10 +20,10 @@ uint32_t GOW2TextureParser::IndexUnswizzleTexture(uint32_t x, uint32_t y, uint32
     return block_location + column_location + byte_num;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // PS2 CSM1 Palette Swizzle
 // port from gfx.go:IndexSwizzlePalette
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 int GOW2TextureParser::IndexSwizzlePalette(int i) {
     static const int remap[] = { 0, 2, 1, 3 };
     int blockid  = i / 8;
@@ -31,10 +31,10 @@ int GOW2TextureParser::IndexSwizzlePalette(int i) {
     return blockpos + (remap[blockid % 4] + (blockid / 4) * 4) * 8;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // Decode palette from a GFX block containing CLUT data
 // Returns an array of RGBA uint32 values
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 std::vector<uint32_t> GOW2TextureParser::DecodePalette(const GFXData& palGfx, int palIdx) {
     if (palIdx >= (int)palGfx.data.size() || palGfx.data[palIdx].empty()) {
         return {};
@@ -66,9 +66,9 @@ std::vector<uint32_t> GOW2TextureParser::DecodePalette(const GFXData& palGfx, in
     return palette;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // Decode pixel indices from a GFX block (PSMT8 with unswizzle, or PSMT4)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 std::vector<uint8_t> GOW2TextureParser::DecodePixelIndices(const GFXData& gfx, int dataIdx) {
     if (dataIdx >= (int)gfx.data.size() || gfx.data[dataIdx].empty()) {
         return {};
@@ -120,11 +120,11 @@ std::vector<uint8_t> GOW2TextureParser::DecodePixelIndices(const GFXData& gfx, i
     return indices;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // Parse a GFX block from raw bytes
 // GFX header: magic(4) width(4) height(4) encoding(4) bpi(4) dataCount(4) = 24 bytes
 // followed by (width * realHeight * bpi / 8) * dataCount bytes of pixel data
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 std::unique_ptr<GOW2TextureParser::GFXData> GOW2TextureParser::ParseGFX(const uint8_t* buf, uint32_t bufSize) {
     if (bufSize < 24) return nullptr;
     
@@ -166,7 +166,7 @@ std::unique_ptr<GOW2TextureParser::GFXData> GOW2TextureParser::ParseGFX(const ui
     return gfx;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // TXR Tag format (from txr.go):
 //   [0x00] Magic    uint32 (must be 0x07)
 //   [0x04] GfxName  char[24]
@@ -176,7 +176,7 @@ std::unique_ptr<GOW2TextureParser::GFXData> GOW2TextureParser::ParseGFX(const ui
 //   [0x50] LODMult  float32
 //   [0x54] Flags    uint32
 //   Total = 0x58 bytes
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 
 static std::string ReadFixedString(const uint8_t* buf, size_t maxLen) {
     size_t len = strnlen((const char*)buf, maxLen);
@@ -195,7 +195,7 @@ static const AssetEntry* FindSibling(const std::vector<AssetEntry>& siblings, co
     return nullptr;
 }
 
-std::unique_ptr<TextureData> GOW2TextureParser::Parse(
+std::unique_ptr<Parsers::TextureData> GOW2TextureParser::Parse(
     const AssetEntry& txrEntry,
     const std::vector<AssetEntry>& siblingEntries,
     const std::shared_ptr<Vfs::IFile>& fileSource)
@@ -282,7 +282,7 @@ std::unique_ptr<TextureData> GOW2TextureParser::Parse(
     uint32_t w = gfxData->width;
     uint32_t h = gfxData->realHeight;
     
-    auto result = std::make_unique<TextureData>();
+    auto result = std::make_unique<Parsers::TextureData>();
     result->name   = txrEntry.name;
     result->width  = w;
     result->height = h;

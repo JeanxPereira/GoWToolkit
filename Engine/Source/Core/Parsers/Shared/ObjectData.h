@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <algorithm>
 #include <cstdint>
 #include <glm/glm.hpp>
@@ -57,9 +57,3 @@ struct ObjectData {
 };
 
 } // namespace Onyx::Parsers
-
-// Backwards-compat aliases
-namespace Onyx {
-    using Joint      = Parsers::Joint;
-    using ObjectData = Parsers::ObjectData;
-} // namespace Onyx

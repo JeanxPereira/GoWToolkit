@@ -11,18 +11,18 @@ AssetVisibility& AssetVisibility::Get() {
 
 AssetVisibility::AssetVisibility() = default;
 
-void AssetVisibility::SetDefault(GameVersion ver, TypeId id, Visibility vis) {
+void AssetVisibility::SetDefault(Types::GameVersion ver, Types::TypeId id, Visibility vis) {
     m_defaults[MakeKey(ver, id)] = vis;
 }
 
-// â”€â”€ Query â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Query ---------------------------------------------------------------
 
-Visibility AssetVisibility::GetDefault(GameVersion ver, TypeId id) const {
+Visibility AssetVisibility::GetDefault(Types::GameVersion ver, Types::TypeId id) const {
     auto it = m_defaults.find(MakeKey(ver, id));
     return (it != m_defaults.end()) ? it->second : Visibility::Visible;
 }
 
-Visibility AssetVisibility::GetCurrent(GameVersion ver, TypeId id) const {
+Visibility AssetVisibility::GetCurrent(Types::GameVersion ver, Types::TypeId id) const {
     Visibility def = GetDefault(ver, id);
     if (def == Visibility::Internal) return Visibility::Internal;
 
@@ -33,17 +33,17 @@ Visibility AssetVisibility::GetCurrent(GameVersion ver, TypeId id) const {
     return def;
 }
 
-bool AssetVisibility::IsVisible(GameVersion ver, TypeId id) const {
+bool AssetVisibility::IsVisible(Types::GameVersion ver, Types::TypeId id) const {
     return GetCurrent(ver, id) == Visibility::Visible;
 }
 
-bool AssetVisibility::IsVisible(const AssetEntry& entry, GameVersion ver) const {
+bool AssetVisibility::IsVisible(const AssetEntry& entry, Types::GameVersion ver) const {
     return IsVisible(ver, entry.typeId);
 }
 
-// â”€â”€ User overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- User overrides ------------------------------------------------------
 
-void AssetVisibility::SetUserOverride(GameVersion ver, TypeId id, bool visible) {
+void AssetVisibility::SetUserOverride(Types::GameVersion ver, Types::TypeId id, bool visible) {
     Visibility def = GetDefault(ver, id);
     if (def == Visibility::Internal) return; // Cannot override Internal
 
@@ -58,7 +58,7 @@ void AssetVisibility::SetUserOverride(GameVersion ver, TypeId id, bool visible) 
     }
 }
 
-void AssetVisibility::ClearUserOverride(GameVersion ver, TypeId id) {
+void AssetVisibility::ClearUserOverride(Types::GameVersion ver, Types::TypeId id) {
     m_overrides.erase(MakeKey(ver, id));
 }
 
@@ -66,21 +66,21 @@ void AssetVisibility::ResetAllOverrides() {
     m_overrides.clear();
 }
 
-// â”€â”€ FilterPanel data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- FilterPanel data ----------------------------------------------------
 
-std::vector<AssetVisibility::TypeVisInfo> AssetVisibility::GetFilterableTypes(GameVersion ver) const {
+std::vector<AssetVisibility::TypeVisInfo> AssetVisibility::GetFilterableTypes(Types::GameVersion ver) const {
     std::vector<TypeVisInfo> result;
 
     // Walk all registered handlers and include types that have a default
     // of Hidden (filterable) or Visible (togglable to hide).
-    // Skip Internal types â€” those never appear in the UI.
-    const auto& handlers = TypeRegistry::Get().AllHandlers();
+    // Skip Internal types -- those never appear in the UI.
+    const auto& handlers = Types::TypeRegistry::Get().AllHandlers();
 
     for (const auto* handler : handlers) {
-        TypeId id = handler->GetId();
+        Types::TypeId id = handler->GetId();
         Visibility def = GetDefault(ver, id);
 
-        // Skip Internal types â€” not user-toggleable
+        // Skip Internal types -- not user-toggleable
         if (def == Visibility::Internal) continue;
 
         // Skip Unknown type
@@ -100,7 +100,7 @@ std::vector<AssetVisibility::TypeVisInfo> AssetVisibility::GetFilterableTypes(Ga
     return result;
 }
 
-// â”€â”€ Persistence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Persistence ---------------------------------------------------------
 
 std::vector<AssetVisibility::SerializedOverride> AssetVisibility::ExportOverrides() const {
     std::vector<SerializedOverride> result;
@@ -124,8 +124,8 @@ void AssetVisibility::ImportOverrides(const std::vector<SerializedOverride>& dat
     for (const auto& so : data) {
         uint8_t gameVer = (uint8_t)(so.key >> 8);
         uint8_t typeId  = (uint8_t)(so.key & 0xFF);
-        uint32_t key = MakeKey(static_cast<GameVersion>(gameVer),
-                               TypeId{typeId});
+        uint32_t key = MakeKey(static_cast<Types::GameVersion>(gameVer),
+                               Types::TypeId{typeId});
         m_overrides[key] = (so.visible != 0);
     }
 }

@@ -11,7 +11,7 @@
 #include <vector>
 
 AnimCurveView::AnimCurveView() {
-    EventAnimationLoaded::subscribe(this, [this](std::shared_ptr<Onyx::AnimationData> data) {
+    EventAnimationLoaded::subscribe(this, [this](std::shared_ptr<Onyx::Parsers::AnimationData> data) {
         m_animData = std::move(data);
         m_selectedGroup = 0;
         m_selectedAct = 0;
@@ -25,7 +25,7 @@ AnimCurveView::~AnimCurveView() {
 }
 
 // Helper: extract unique joint IDs from a substream's sample keys
-static std::set<int> GetJointIds(const Onyx::AnimSubstream& stream) {
+static std::set<int> GetJointIds(const Onyx::Parsers::AnimSubstream& stream) {
     std::set<int> ids;
     for (auto& [key, _] : stream.samples) {
         if (key < 0) continue; // Skip sentinel keys
@@ -35,7 +35,7 @@ static std::set<int> GetJointIds(const Onyx::AnimSubstream& stream) {
 }
 
 // Helper: plot a single substream component
-static void PlotStreamComponent(const Onyx::AnimSubstream& stream, int jointId,
+static void PlotStreamComponent(const Onyx::Parsers::AnimSubstream& stream, int jointId,
                                  int coordIdx, const char* label, int offset) {
     int key = jointId * 4 + coordIdx;
     auto it = stream.samples.find(key);

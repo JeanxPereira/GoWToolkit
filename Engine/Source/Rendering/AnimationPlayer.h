@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Core/Parsers/Shared/AnimationData.h"
 #include "Core/Parsers/Shared/ObjectData.h"
 #include <glm/glm.hpp>
@@ -30,8 +30,8 @@ class AnimationPlayer {
 public:
     AnimationPlayer() = default;
 
-    void SetAnimation(const AnimationData* anim, int groupIdx, int actIdx,
-                      const ObjectData* skeleton);
+    void SetAnimation(const Parsers::AnimationData* anim, int groupIdx, int actIdx,
+                      const Parsers::ObjectData* skeleton);
 
     bool Update(float dt);
     void Reset();
@@ -76,14 +76,14 @@ public:
     const BakedAnimation* GetBaked() const { return m_currentBaked; }
 
 private:
-    bool HandleSkinningStream(const AnimSubstream& stream,
-                              const AnimSamplesManager& globalMgr,
+    bool HandleSkinningStream(const Parsers::AnimSubstream& stream,
+                              const Parsers::AnimSamplesManager& globalMgr,
                               float prevTime, float newTime,
                               float frameTime,
                               std::vector<glm::vec4>& jointData);
 
-    float ReturnStreamDataIndex(const AnimSamplesManager& manager,
-                                const AnimSamplesManager& globalMgr,
+    float ReturnStreamDataIndex(const Parsers::AnimSamplesManager& manager,
+                                const Parsers::AnimSamplesManager& globalMgr,
                                 float animTime, float frameTime) const;
 
     // Bake the current act if not already cached. Returns the cache entry
@@ -93,7 +93,7 @@ private:
     void ApplyBakedAt(float time);
 
     struct BakeKey {
-        const AnimationData* anim;
+        const Parsers::AnimationData* anim;
         int group;
         int act;
         bool operator==(const BakeKey& o) const {
@@ -112,9 +112,9 @@ private:
     std::unordered_map<BakeKey, std::unique_ptr<BakedAnimation>, BakeKeyHash> m_bakeCache;
     BakedAnimation* m_currentBaked = nullptr;
 
-    const AnimationData* m_anim = nullptr;
-    const AnimAct*       m_currentAct = nullptr;
-    const ObjectData*    m_skeleton = nullptr;
+    const Parsers::AnimationData* m_anim = nullptr;
+    const Parsers::AnimAct*       m_currentAct = nullptr;
+    const Parsers::ObjectData*    m_skeleton = nullptr;
     int                  m_stateIndex = -1;
     int                  m_currentGroupIdx = -1;
     int                  m_currentActIdx = -1;

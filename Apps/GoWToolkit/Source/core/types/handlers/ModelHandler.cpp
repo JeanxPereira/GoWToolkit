@@ -1,4 +1,4 @@
-﻿// Model handler â€” GOW1/2 mesh container (mdl_*)
+// Model handler — GOW1/2 mesh container (mdl_*)
 // Magic: 0x0002000F (MODEL_MAGIC in god_of_war_browser)
 //
 // Resolution follows the Go project (god_of_war_browser):
@@ -31,7 +31,7 @@ namespace {
 
 // Resolve a reference node: find definition with exact name + type + has children
 static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
-                                      const std::string& name, Onyx::TypeId type) {
+                                      const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && !n.children.empty())
             return &n;
@@ -43,7 +43,7 @@ static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
 
 // Resolve a reference node by payload (size > 0)
 static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
-                                          const std::string& name, Onyx::TypeId type) {
+                                          const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& n : tree) {
         if (n.typeId == type && n.name == name && n.size > 0)
             return &n;
@@ -63,12 +63,12 @@ static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const
 }
 
 // Select main texture layer (same priority as Go: StrangeBlended > Usual > first)
-static const Onyx::MaterialInfo::Layer* SelectMainLayer(const Onyx::MaterialInfo& mat) {
-    const Onyx::MaterialInfo::Layer* main = nullptr;
+static const Onyx::Parsers::MaterialInfo::Layer* SelectMainLayer(const Onyx::Parsers::MaterialInfo& mat) {
+    const Onyx::Parsers::MaterialInfo::Layer* main = nullptr;
     for (const auto& layer : mat.layers) {
-        if (layer.blendMode == Onyx::BlendMode::EnvMap) {
+        if (layer.blendMode == Onyx::Parsers::BlendMode::EnvMap) {
             return &layer; // StrangeBlended = highest priority
-        } else if (layer.blendMode == Onyx::BlendMode::Normal && layer.hasTexture) {
+        } else if (layer.blendMode == Onyx::Parsers::BlendMode::Normal && layer.hasTexture) {
             main = &layer; // Usual = second priority
         } else if (!main) {
             main = &layer; // First layer = fallback
@@ -77,9 +77,9 @@ static const Onyx::MaterialInfo::Layer* SelectMainLayer(const Onyx::MaterialInfo
     return main;
 }
 
-class ModelHandler : public Onyx::ITypeHandler {
+class ModelHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Model; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Model; }
     const char*  GetName()  const override { return "Model"; }
     uint32_t     GetMagic() const override { return 0x0002000F; }
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }  // symbol-misc
@@ -92,10 +92,10 @@ public:
         return Onyx::Schema::AssetReader::Parse(*format.Root(), file);
     }
 
-    std::unique_ptr<Onyx::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
+    std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
 
-        // Resolve the Model entry itself â€” if it's a reference, find the definition
+        // Resolve the Model entry itself — if it's a reference, find the definition
         const AssetEntry* model = &entry;
         if (model->children.empty()) {
             if (auto resolved = ResolveRef(wad.entries, entry.name, Onyx::GameTypes::Model))
@@ -104,7 +104,7 @@ public:
         if (model->children.empty()) return nullptr;
 
         // Build SceneData by iterating children (like Go's mdl.Marshal)
-        auto scene = std::make_unique<Onyx::SceneData>();
+        auto scene = std::make_unique<Onyx::Parsers::SceneData>();
 
         std::vector<const AssetEntry*> meshSources;
         std::vector<const AssetEntry*> matEntries;
@@ -124,21 +124,21 @@ public:
 
         uint32_t materialOffset = scene->materials.size();
 
-        // Parse materials â†’ MaterialInfo (store all layers for main layer selection)
+        // Parse materials → MaterialInfo (store all layers for main layer selection)
         for (const auto* mat : matEntries) {
-            Onyx::MaterialInfo matInfo;
+            Onyx::Parsers::MaterialInfo matInfo;
             if (auto matData = Onyx::GOW2MaterialParser::Parse(*mat, wad.fileSource)) {
                 std::memcpy(matInfo.baseColor, matData->baseColor, sizeof(float) * 4);
                 for (const auto& layer : matData->layers) {
-                    Onyx::MaterialInfo::Layer li;
+                    Onyx::Parsers::MaterialInfo::Layer li;
                     li.textureName = layer.textureName;
                     li.hasTexture = layer.hasTexture;
                     std::memcpy(li.blendColor, layer.blendColor, sizeof(float) * 4);
                     switch (layer.renderingMethod) {
-                        case 1:  li.blendMode = Onyx::BlendMode::Additive; break;
-                        case 2:  li.blendMode = Onyx::BlendMode::Subtractive; break;
-                        case 3:  li.blendMode = Onyx::BlendMode::EnvMap; break;
-                        default: li.blendMode = Onyx::BlendMode::Normal; break;
+                        case 1:  li.blendMode = Onyx::Parsers::BlendMode::Additive; break;
+                        case 2:  li.blendMode = Onyx::Parsers::BlendMode::Subtractive; break;
+                        case 3:  li.blendMode = Onyx::Parsers::BlendMode::EnvMap; break;
+                        default: li.blendMode = Onyx::Parsers::BlendMode::Normal; break;
                     }
                     matInfo.layers.push_back(li);
                 }
@@ -166,12 +166,12 @@ public:
 
         if (scene->IsEmpty()) return nullptr;
 
-        // Detect Sky script â€” flag both scene and individual parts so
+        // Detect Sky script — flag both scene and individual parts so
         // SceneRenderer (which reads part.isSky into RenderBatch::isSky) can
         // route them through the sky pass.
         for (const auto& child : model->children) {
             if (child.typeId == Onyx::GameTypes::Script && child.size > 0) {
-                std::string target = Onyx::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
+                std::string target = Onyx::Parsers::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
                 if (target == "SCR_Sky") {
                     scene->isSky = true;
                     for (auto& p : scene->meshParts) {
@@ -186,8 +186,8 @@ public:
 
         // Resolve textures: select main layer per material (like Go: 1 texture per material)
         for (const auto& mat : scene->materials) {
-            std::vector<std::unique_ptr<Onyx::TextureData>> matTextures;
-            std::unique_ptr<Onyx::TextureData> texData = nullptr;
+            std::vector<std::unique_ptr<Onyx::Parsers::TextureData>> matTextures;
+            std::unique_ptr<Onyx::Parsers::TextureData> texData = nullptr;
             if (auto* mainLayer = SelectMainLayer(mat)) {
                 if (mainLayer->hasTexture && !mainLayer->textureName.empty()) {
                     if (auto* texEntry = FindTexture(wad.entries, mainLayer->textureName)) {
@@ -217,3 +217,4 @@ public:
 } // anonymous namespace
 
 REGISTER_TYPE(GOW2, ModelHandler);
+

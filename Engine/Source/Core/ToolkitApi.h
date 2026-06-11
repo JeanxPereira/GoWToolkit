@@ -12,7 +12,6 @@ namespace Onyx {
     class DocumentWindow;
 }
 namespace Onyx::Types { class TypeRegistry; }
-namespace Onyx { using TypeRegistry = Types::TypeRegistry; }
 
 namespace Onyx::Domain { struct AssetEntry; struct AssetContainer; }
 using AssetEntry    = Onyx::Domain::AssetEntry;
@@ -40,7 +39,7 @@ namespace Onyx::Api {
     ProfileManager& Profiles();
 
     /// Access the global TypeRegistry.
-    TypeRegistry& Types();
+    Onyx::Types::TypeRegistry& Types();
 
     /// Access the global ViewerRegistry.
     ViewerRegistry& Viewers();

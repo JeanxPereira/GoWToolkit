@@ -1,4 +1,4 @@
-﻿// Structural WAD tag handlers â€” identified by tag number, not magic.
+// Structural WAD tag handlers â€” identified by tag number, not magic.
 // These have no payload to parse, they just control the WAD tree structure.
 
 #include "Core/Types/TypeRegistry.h"
@@ -8,43 +8,43 @@
 
 namespace {
 
-class EntityCountHandler : public Onyx::ITypeHandler {
+class EntityCountHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::EntityCount; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::EntityCount; }
     const char*  GetName()  const override { return "Entity Count"; }
     uint32_t     GetMagic() const override { return 0; }
     const char*  GetIcon()  const override { return ICON_SF_MINUS; }  // dash
     Color4f      GetColor() const override { return {0.4f, 0.4f, 0.4f, 1.0f}; }
 };
 
-class GroupStartHandler : public Onyx::ITypeHandler {
+class GroupStartHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::GroupStart; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::GroupStart; }
     const char*  GetName()  const override { return "Group"; }
     uint32_t     GetMagic() const override { return 0; }
     const char*  GetIcon()  const override { return ICON_SF_FOLDER_FILL; }  // folder
     Color4f      GetColor() const override { return {0.9f, 0.9f, 0.9f, 1.0f}; }
 };
 
-class GroupEndHandler : public Onyx::ITypeHandler {
+class GroupEndHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::GroupEnd; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::GroupEnd; }
     const char*  GetName()  const override { return "Group End"; }
     uint32_t     GetMagic() const override { return 0; }
     const char*  GetIcon()  const override { return ICON_SF_MINUS; }
     Color4f      GetColor() const override { return {0.4f, 0.4f, 0.4f, 1.0f}; }
 };
 
-class HeaderStartHandler : public Onyx::ITypeHandler {
+class HeaderStartHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::HeaderStart; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::HeaderStart; }
     const char*  GetName()  const override { return "Header Start"; }
     uint32_t     GetMagic() const override { return 0; }
 };
 
-class HeaderPopHandler : public Onyx::ITypeHandler {
+class HeaderPopHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::HeaderPop; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::HeaderPop; }
     const char*  GetName()  const override { return "Header Pop"; }
     uint32_t     GetMagic() const override { return 0; }
 };

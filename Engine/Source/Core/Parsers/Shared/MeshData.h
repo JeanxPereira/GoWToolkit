@@ -10,7 +10,7 @@ namespace Onyx::Parsers {
 // A portion of a mesh using a single material
 struct MeshPart {
     std::string name;                     // Descriptive name for the UI informer (e.g., Part_A)
-    std::vector<Onyx::GpuVertex> vertices;
+    std::vector<Onyx::Domain::GpuVertex> vertices;
     std::vector<uint32_t>  indices;
     uint32_t materialId = 0;
     uint32_t textureLayer = 0;            // which DMA instance/layer this came from
@@ -24,13 +24,7 @@ struct MeshPart {
 // The full CPU-side mesh representation
 struct MeshData {
     std::vector<MeshPart> parts;
-    Onyx::BoundingBox bounds;
+    Onyx::Domain::BoundingBox bounds;
 };
 
 } // namespace Onyx::Parsers
-
-// Backwards-compat aliases
-namespace Onyx {
-    using MeshPart = Parsers::MeshPart;
-    using MeshData = Parsers::MeshData;
-} // namespace Onyx

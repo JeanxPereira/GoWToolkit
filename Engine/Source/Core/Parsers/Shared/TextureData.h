@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <vector>
 #include <cstdint>
 #include <string>
@@ -22,6 +22,3 @@ struct TextureData {
 };
 
 } // namespace Onyx::Parsers
-
-// Backwards-compat alias
-namespace Onyx { using TextureData = Parsers::TextureData; } // namespace Onyx

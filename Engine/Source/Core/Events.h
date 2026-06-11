@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // GOWToolkit Event Catalog
 // All events used across the application.
@@ -13,10 +13,9 @@ using AssetContainer = Onyx::Domain::AssetContainer;
 using AssetEntry     = Onyx::Domain::AssetEntry;
 namespace Onyx { class IDocumentContent; }
 namespace Onyx::Parsers { struct AnimationData; }
-namespace Onyx { using AnimationData = Parsers::AnimationData; }
 class AppConfig;
 
-// â”€â”€ Lifecycle Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Lifecycle Events ───────────────────────────────────────────────────────
 
 /// Fired after App::init() completes and all panels are registered.
 EVENT_DEF(EventStartupFinished);
@@ -24,7 +23,7 @@ EVENT_DEF(EventStartupFinished);
 /// Fired when the application is about to close.
 EVENT_DEF(EventShutdown);
 
-// â”€â”€ WAD / ISO Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WAD / ISO Events ──────────────────────────────────────────────────────
 
 /// Fired after a WAD file has been loaded and parsed.
 /// @param AssetContainer* pointer to the newly opened WAD (valid for the WAD's lifetime)
@@ -41,7 +40,7 @@ EVENT_DEF(EventPakOpened, AssetContainer*);
 /// Fired when all WADs and PAKs are closed.
 EVENT_DEF(EventAllClosed);
 
-// â”€â”€ Asset Selection & Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Asset Selection & Loading ─────────────────────────────────────────────
 
 /// Fired when the user selects an asset in any browser panel.
 /// @param AssetEntry* the selected entry (can be nullptr for deselection)
@@ -57,17 +56,17 @@ EVENT_DEF(EventAssetLoaded, AssetEntry*);
 EVENT_DEF(EventDocumentOpened, Onyx::IDocumentContent*);
 
 /// Fired when animation data is loaded into a scene (e.g. Viewport3D).
-/// @param std::shared_ptr<Onyx::AnimationData> the loaded animation data
-EVENT_DEF(EventAnimationLoaded, std::shared_ptr<Onyx::AnimationData>);
+/// @param std::shared_ptr<Onyx::Parsers::AnimationData> the loaded animation data
+EVENT_DEF(EventAnimationLoaded, std::shared_ptr<Onyx::Parsers::AnimationData>);
 
-// â”€â”€ UI State Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── UI State Events ───────────────────────────────────────────────────────
 
-/// Per-frame tick â€” subscribers that need continuous updates (animations, progress).
+/// Per-frame tick — subscribers that need continuous updates (animations, progress).
 /// Posted near the TOP of the frame, BEFORE panels/documents draw.
 /// Marked NO_LOG to avoid spamming the debug output.
 EVENT_DEF_NO_LOG(EventFrameTick);
 
-/// End-of-frame tick â€” posted AFTER all panels and documents have drawn for the
+/// End-of-frame tick — posted AFTER all panels and documents have drawn for the
 /// frame. Subscribers that must observe per-frame UI mutations (e.g. mirroring a
 /// widget value back to config the same frame the user changed it) belong here.
 /// Marked NO_LOG to avoid spamming the debug output.

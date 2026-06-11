@@ -146,7 +146,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                                    const SubmeshHeader& hdr,
                                    const std::vector<ComponentDesc>& comps,
                                    const std::vector<uint32_t>& bufOffsets,
-                                   MeshPart& part)
+                                   Parsers::MeshPart& part)
 {
     const uint32_t N = hdr.vertCount;
     part.vertices.resize(N);
@@ -186,7 +186,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                                    + (hdr.bufferCount == 1 ? c.byteOffset : 0u);
             gpu->Seek(vertOff, SEEK_SET);
 
-            GpuVertex& v = part.vertices[vi];
+            Domain::GpuVertex& v = part.vertices[vi];
 
             switch (c.semantic) {
 
@@ -400,7 +400,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
 // â”€â”€ ReadIndices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
                                   const SubmeshHeader& hdr,
-                                  MeshPart& part)
+                                  Parsers::MeshPart& part)
 {
     const uint32_t idxCount = hdr.indCount;
     part.indices.resize(idxCount);
@@ -430,7 +430,7 @@ bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
 // â”€â”€ Parse (full geometry pass) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
                             std::shared_ptr<Vfs::IFile> gpuFile,
-                            MeshData& outData)
+                            Parsers::MeshData& outData)
 {
     if (!meshFile || !meshFile->IsValid()) return false;
     if (!gpuFile  || !gpuFile->IsValid())  return false;
@@ -506,7 +506,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
                      hdr.bufferCount, hdr.indicesStride);
         }
 
-        MeshPart part;
+        Parsers::MeshPart part;
         part.materialId = smIdx;
         part.meshHash   = hdr.meshHash;
 
@@ -577,7 +577,7 @@ bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
 bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
                                        std::shared_ptr<Vfs::IFile>    gpuFile,
                                        const LodPackIndex&       lodIdx,
-                                       MeshData&                 outData)
+                                       Parsers::MeshData&                 outData)
 {
     if (!meshFile || !meshFile->IsValid()) return false;
 
@@ -659,7 +659,7 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
             if (c.semantic == Semantic::UV0) { hasUV = true; break; }
         if (!hasUV) { ++skipped; continue; }
 
-        MeshPart part;
+        Parsers::MeshPart part;
         part.materialId = smIdx;
         part.meshHash   = hdr.meshHash;
 

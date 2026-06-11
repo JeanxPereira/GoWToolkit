@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "IDocumentContent.h"
 #include "Rendering/Camera.h"
 #include "Rendering/GridRenderer.h"
@@ -26,8 +26,8 @@ public:
     Viewport3D* GetEmbeddedViewport() override { return this; }
 
     // Load mesh data into the viewport (routes through SceneRenderer)
-    void LoadFromMeshData(const MeshData& data, const std::vector<std::unique_ptr<TextureData>>& textures = {});
-    void LoadScene(std::unique_ptr<SceneData> scene);
+    void LoadFromMeshData(const Parsers::MeshData& data, const std::vector<std::unique_ptr<Parsers::TextureData>>& textures = {});
+    void LoadScene(std::unique_ptr<Parsers::SceneData> scene);
     void ClearScene();
 
     // Accessors for the CameraPanel (renders camera tuning UI as a dock tab
@@ -66,11 +66,11 @@ private:
     GridRenderer m_grid;
     AxisGizmo m_axisGizmo;
 
-    // Unified scene renderer â€” all content goes through here
+    // Unified scene renderer — all content goes through here
     std::unique_ptr<SceneRenderer> m_sceneRenderer;
 
     // Keep scene data around for animation access
-    std::shared_ptr<SceneData> m_sceneData;
+    std::shared_ptr<Parsers::SceneData> m_sceneData;
 
     // FBO state
     unsigned int m_msaaFbo = 0;

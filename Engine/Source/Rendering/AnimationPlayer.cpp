@@ -1,4 +1,4 @@
-﻿// AnimationPlayer â€” runtime skeletal animation evaluator
+// AnimationPlayer — runtime skeletal animation evaluator
 // Port of AnimationObjectSkelet from Animation.js in the Go browser.
 //
 // Decoding strategy: GOW2 streams are delta-encoded, so random-access seek
@@ -19,10 +19,10 @@ namespace Onyx {
 static constexpr float kEps = 1.0f / (1024.0f * 16.0f);
 static constexpr float kQuatToFloat = 1.0f / (1 << 14);
 
-// â”€â”€ SetAnimation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SetAnimation ───────────────────────────────────────────────────────────
 
-void AnimationPlayer::SetAnimation(const AnimationData* anim, int groupIdx, int actIdx,
-                                    const ObjectData* skeleton) {
+void AnimationPlayer::SetAnimation(const Parsers::AnimationData* anim, int groupIdx, int actIdx,
+                                    const Parsers::ObjectData* skeleton) {
     if (!anim || !skeleton) return;
     if (groupIdx < 0 || groupIdx >= (int)anim->groups.size()) return;
 
@@ -57,7 +57,7 @@ void AnimationPlayer::SetAnimation(const AnimationData* anim, int groupIdx, int 
     m_time = 0.0f;
 }
 
-// â”€â”€ Reset / Stop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Reset / Stop ───────────────────────────────────────────────────────────
 
 void AnimationPlayer::Reset() {
     if (!m_skeleton) return;
@@ -92,7 +92,7 @@ void AnimationPlayer::Stop() {
     Reset();
 }
 
-// â”€â”€ Time / Frame helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Time / Frame helpers ───────────────────────────────────────────────────
 
 int AnimationPlayer::GetCurrentFrame() const {
     if (!m_currentBaked || m_currentBaked->frameTime <= 0.0f) return 0;
@@ -112,10 +112,10 @@ void AnimationPlayer::SetFrame(int f) {
     SetTime((float)f * m_currentBaked->frameTime);
 }
 
-// â”€â”€ ReturnStreamDataIndex (unchanged from JS port) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReturnStreamDataIndex (unchanged from JS port) ─────────────────────────
 
-float AnimationPlayer::ReturnStreamDataIndex(const AnimSamplesManager& manager,
-                                              const AnimSamplesManager& globalMgr,
+float AnimationPlayer::ReturnStreamDataIndex(const Parsers::AnimSamplesManager& manager,
+                                              const Parsers::AnimSamplesManager& globalMgr,
                                               float animTime, float frameTime) const {
     float globalFrameCount = (float)(globalMgr.count + globalMgr.offset + globalMgr.datasCount3 - 1);
     float animFrame = animTime / frameTime;
@@ -135,10 +135,10 @@ float AnimationPlayer::ReturnStreamDataIndex(const AnimSamplesManager& manager,
     return streamSampleIdx;
 }
 
-// â”€â”€ HandleSkinningStream (delta accumulator, used by Bake walk only) â”€â”€â”€â”€â”€â”€â”€
+// ── HandleSkinningStream (delta accumulator, used by Bake walk only) ───────
 
-bool AnimationPlayer::HandleSkinningStream(const AnimSubstream& stream,
-                                            const AnimSamplesManager& globalMgr,
+bool AnimationPlayer::HandleSkinningStream(const Parsers::AnimSubstream& stream,
+                                            const Parsers::AnimSamplesManager& globalMgr,
                                             float prevTime, float newTime,
                                             float frameTime,
                                             std::vector<glm::vec4>& jointData) {
@@ -206,12 +206,12 @@ bool AnimationPlayer::HandleSkinningStream(const AnimSubstream& stream,
     return changed;
 }
 
-// â”€â”€ Bake: walk the act frame-by-frame and snapshot the pose â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Bake: walk the act frame-by-frame and snapshot the pose ────────────────
 
 BakedAnimation* AnimationPlayer::EnsureBaked() {
     if (!m_anim || !m_currentAct || !m_skeleton || m_stateIndex < 0) return nullptr;
     if (m_stateIndex >= (int)m_currentAct->stateDescrs.size()) return nullptr;
-    if (m_anim->dataTypes[m_stateIndex].typeId != ANIM_DATATYPE_SKINNING) return nullptr;
+    if (m_anim->dataTypes[m_stateIndex].typeId != Parsers::ANIM_DATATYPE_SKINNING) return nullptr;
 
     BakeKey key{m_anim, m_currentGroupIdx, m_currentActIdx};
     auto it = m_bakeCache.find(key);
@@ -234,7 +234,7 @@ BakedAnimation* AnimationPlayer::EnsureBaked() {
                  ss.positionSubStreamsAdd.size(), ss.positionSubStreamsRough.size());
     }
 
-    // Duration may be 0 for placeholder/idle acts â€” still bake a single frame
+    // Duration may be 0 for placeholder/idle acts — still bake a single frame
     // so the inspector can highlight the bind pose.
     int frameCount = 1;
     if (m_currentAct->duration > 0.0f) {
@@ -264,7 +264,7 @@ BakedAnimation* AnimationPlayer::EnsureBaked() {
 
     // Advance the delta accumulator one frame at a time. HandleSkinningStream
     // already correctly handles single-frame steps; this loop just feeds it
-    // a contiguous prevâ†’next walk and snapshots each result.
+    // a contiguous prev→next walk and snapshots each result.
     float prev = 0.0f;
     for (int f = 1; f < frameCount; ++f) {
         float curr = (float)f * frameTime;
@@ -342,7 +342,7 @@ void AnimationPlayer::ApplyBakedAt(float time) {
 
             bool isQuatJoint = (j < (int)joints.size()) && joints[j].isQuaternion;
             if (isQuatJoint) {
-                // Quaternion path: convert Q14 â†’ normalized quat â†’ slerp â†’ back to Q14 vec4.
+                // Quaternion path: convert Q14 → normalized quat → slerp → back to Q14 vec4.
                 auto toQuat = [](const glm::vec4& v) {
                     glm::quat q(v.w * kQuatToFloat, v.x * kQuatToFloat,
                                 v.y * kQuatToFloat, v.z * kQuatToFloat);
@@ -367,7 +367,7 @@ void AnimationPlayer::ApplyBakedAt(float time) {
     }
 }
 
-// â”€â”€ Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Update ─────────────────────────────────────────────────────────────────
 
 bool AnimationPlayer::Update(float dt) {
     if (!m_playing || !m_currentAct || !m_currentBaked) return false;
@@ -406,7 +406,7 @@ bool AnimationPlayer::Update(float dt) {
     return true;
 }
 
-// â”€â”€ ComputeJointMatrices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ComputeJointMatrices ───────────────────────────────────────────────────
 
 std::vector<glm::mat4> AnimationPlayer::ComputeJointMatrices() const {
     if (!m_skeleton) return {};

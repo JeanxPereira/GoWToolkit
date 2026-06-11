@@ -13,7 +13,7 @@
 
 namespace {
 
-static const AssetEntry* FindEntryWithPayload(const std::vector<AssetEntry>& entries, const std::string& name, Onyx::TypeId type) {
+static const AssetEntry* FindEntryWithPayload(const std::vector<AssetEntry>& entries, const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& entry : entries) {
         if (entry.typeId == type && entry.name == name && entry.size > 0)
             return &entry;
@@ -37,9 +37,9 @@ static const AssetEntry* FindTextureEntry(const std::vector<AssetEntry>& entries
     return nullptr;
 }
 
-class MaterialHandler : public Onyx::ITypeHandler {
+class MaterialHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Material; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Material; }
     const char*  GetName()  const override { return "Material"; }
     uint32_t     GetMagic() const override { return 0x00000008; }
     const char*  GetIcon()  const override { return ICON_SF_PAINTPALETTE_FILL; }  // symbol-color
@@ -58,9 +58,9 @@ public:
 
         if (matData) {
             // Resolve textures for each layer
-            std::vector<std::unique_ptr<Onyx::TextureData>> textures;
+            std::vector<std::unique_ptr<Onyx::Parsers::TextureData>> textures;
             for (const auto& layer : matData->layers) {
-                std::unique_ptr<Onyx::TextureData> texData = nullptr;
+                std::unique_ptr<Onyx::Parsers::TextureData> texData = nullptr;
                 if (layer.hasTexture && !layer.textureName.empty()) {
                     if (auto* texEntry = FindTextureEntry(wad.entries, layer.textureName)) {
                         texData = Onyx::GOW2TextureParser::Parse(*texEntry, wad.entries, wad.fileSource);
@@ -85,4 +85,5 @@ public:
 } // anonymous namespace
 
 REGISTER_TYPE(GOW2, MaterialHandler);
+
 

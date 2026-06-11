@@ -15,7 +15,7 @@ namespace {
 // data, so they line up with what an animator would call a key.
 void CollectKeyFrames(const Onyx::AnimationPlayer& player,
                       std::set<int>& out) {
-    const Onyx::AnimationData* anim = nullptr;
+    const Onyx::Parsers::AnimationData* anim = nullptr;
     int g = player.GetCurrentGroupIndex();
     int a = player.GetCurrentActIndex();
     const Onyx::BakedAnimation* baked = player.GetBaked();

@@ -1,4 +1,4 @@
-﻿// Texture handler â€” texture reference node
+// Texture handler â€” texture reference node
 // Magic: 0x00000007 (TXR_MAGIC in god_of_war_browser)
 
 #include "Core/Types/TypeRegistry.h"
@@ -11,9 +11,9 @@
 
 namespace {
 
-class TextureHandler : public Onyx::ITypeHandler {
+class TextureHandler : public Onyx::Types::ITypeHandler {
 public:
-    Onyx::TypeId  GetId()    const override { return Onyx::GameTypes::Texture; }
+    Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Texture; }
     const char*  GetName()  const override { return "Texture"; }
     uint32_t     GetMagic() const override { return 0x00000007; }
     const char*  GetIcon()  const override { return ICON_SF_PHOTO; }  // file-media
