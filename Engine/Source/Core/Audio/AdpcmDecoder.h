@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace Onyx {
+namespace Onyx::Audio {
 
 class AdpcmDecoder {
 public:
@@ -16,4 +16,4 @@ public:
     static size_t AdpcmSizeToWaveSize(size_t adpcmSize);
 };
 
-} // namespace Onyx
+} // namespace Onyx::Audio

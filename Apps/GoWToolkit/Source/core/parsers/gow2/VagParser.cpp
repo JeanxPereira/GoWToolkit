@@ -51,7 +51,7 @@ std::unique_ptr<GOW2VagParser::VagData> GOW2VagParser::Parse(const std::shared_p
     auto result = std::make_unique<VagData>();
     result->sampleRate = sampleRate;
     result->channels = channels;
-    result->pcmData = AdpcmDecoder::Decode(adpcmData.data(), adpcmData.size());
+    result->pcmData = Onyx::Audio::AdpcmDecoder::Decode(adpcmData.data(), adpcmData.size());
 
     LOG_INFO("[VAG] Decoded %zu PCM samples", result->pcmData.size());
     return result;

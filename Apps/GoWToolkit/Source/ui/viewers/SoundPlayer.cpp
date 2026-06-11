@@ -148,7 +148,7 @@ void SoundPlayer::SelectSound(int index) {
     return;
   }
 
-  m_decodedPcm = AdpcmDecoder::Decode(
+  m_decodedPcm = Onyx::Audio::AdpcmDecoder::Decode(
       m_bankData->bankStreamData.data() + snd.adpcmOffset, snd.adpcmSize);
 
   LOG_INFO("[SoundPlayer] Decoded '%s': %zu PCM samples", snd.name.c_str(),

@@ -56,7 +56,7 @@ std::unique_ptr<GOW2VpkParser::VpkData> GOW2VpkParser::Parse(const std::shared_p
             if (bytesRead == 0) goto done;
             blockData.resize(bytesRead);
 
-            auto decoded = AdpcmDecoder::Decode(blockData.data(), blockData.size());
+            auto decoded = Onyx::Audio::AdpcmDecoder::Decode(blockData.data(), blockData.size());
             channelPcm[ch].insert(channelPcm[ch].end(), decoded.begin(), decoded.end());
         }
 
