@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace Onyx {
+namespace Onyx::Domain {
 
 /// Represents the high-level semantic "kind" of media an asset represents,
 /// regardless of the underlying game version or specific format.
@@ -29,4 +29,11 @@ const char* Name(MediaKind kind);
 /// Returns an SF Symbol icon string for a MediaKind.
 const char* Icon(MediaKind kind);
 
+} // namespace Onyx::Domain
+
+// Backwards-compat alias so existing `Onyx::MediaKind` references keep compiling.
+namespace Onyx {
+    using MediaKind = Domain::MediaKind;
+    using Domain::Name;
+    using Domain::Icon;
 } // namespace Onyx
