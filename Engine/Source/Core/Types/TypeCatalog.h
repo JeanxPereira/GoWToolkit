@@ -6,7 +6,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace Onyx {
+namespace Onyx::Types {
 
 struct TypeInfo {
     std::string key;                      // stable id, e.g. "GOW2_MESH"
@@ -44,4 +44,11 @@ private:
 // Convenience free function preserving the old call sites' spelling.
 inline MediaKind KindOf(TypeId id) { return TypeCatalog::Get().Media(id); }
 
+} // namespace Onyx::Types
+
+// Backwards-compat aliases
+namespace Onyx {
+    using TypeInfo    = Types::TypeInfo;
+    using TypeCatalog = Types::TypeCatalog;
+    using Types::KindOf;
 } // namespace Onyx

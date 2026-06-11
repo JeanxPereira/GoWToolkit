@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <functional>
 
-namespace Onyx {
+namespace Onyx::Types {
 
 // Opaque, runtime-assigned asset-type identity. value 0 == Unknown/invalid.
 // Concrete types live in the app and are registered in the TypeCatalog
@@ -14,10 +14,13 @@ struct TypeId {
     constexpr bool valid() const { return value != 0; }
 };
 
-} // namespace Onyx
+} // namespace Onyx::Types
 
-template<> struct std::hash<Onyx::TypeId> {
-    size_t operator()(const Onyx::TypeId& t) const noexcept {
+// Backwards-compat alias
+namespace Onyx { using TypeId = Types::TypeId; }
+
+template<> struct std::hash<Onyx::Types::TypeId> {
+    size_t operator()(const Onyx::Types::TypeId& t) const noexcept {
         return std::hash<uint32_t>()(t.value);
     }
 };

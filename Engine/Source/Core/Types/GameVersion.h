@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-namespace Onyx {
+namespace Onyx::Types {
 
 /// Game version — used as part of the composite key for type handler dispatch.
 ///
@@ -15,4 +15,7 @@ enum class GameVersion : uint8_t {
     GOWR,  // God of War Ragnarök
 };
 
-} // namespace Onyx
+} // namespace Onyx::Types
+
+// Backwards-compat alias
+namespace Onyx { using GameVersion = Types::GameVersion; }

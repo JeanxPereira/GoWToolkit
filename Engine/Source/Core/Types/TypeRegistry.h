@@ -7,7 +7,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace Onyx {
+namespace Onyx::Types {
 
 /// Central dispatcher for all asset types.
 /// Handlers register themselves at static init time via REGISTER_TYPE / REGISTER_TAG macros.
@@ -70,4 +70,7 @@ private:
     std::unordered_map<uint32_t, ITypeHandler*> m_idMap;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Types
+
+// Backwards-compat alias
+namespace Onyx { using TypeRegistry = Types::TypeRegistry; }

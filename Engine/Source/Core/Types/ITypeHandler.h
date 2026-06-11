@@ -21,7 +21,7 @@ namespace Onyx::Domain { struct AssetEntry; struct AssetContainer; }
 using AssetEntry    = Onyx::Domain::AssetEntry;
 using AssetContainer = Onyx::Domain::AssetContainer;
 
-namespace Onyx {
+namespace Onyx::Types {
 
 /// Abstract handler for a single asset type.
 /// Each concrete handler is a self-contained unit that knows how to
@@ -77,7 +77,10 @@ public:
   }
 };
 
-} // namespace Onyx
+} // namespace Onyx::Types
+
+// Backwards-compat alias
+namespace Onyx { using ITypeHandler = Types::ITypeHandler; }
 
 // â”€â”€ Self-registration macro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Usage (at the bottom of a handler .cpp file):
@@ -121,6 +124,5 @@ public:
   }()
 
 // Forward-declare TypeRegistry so the macros compile
-namespace Onyx {
-class TypeRegistry;
-}
+namespace Onyx::Types { class TypeRegistry; }
+namespace Onyx { using TypeRegistry = Types::TypeRegistry; }

@@ -1,7 +1,7 @@
 ﻿#include "Core/Types/TypeCatalog.h"
 #include "Fonts/SFSymbols.h"
 
-namespace Onyx {
+namespace Onyx::Types {
 
 TypeCatalog& TypeCatalog::Get() { static TypeCatalog inst; return inst; }
 
@@ -41,4 +41,4 @@ void TypeCatalog::Color(TypeId id, float out[4]) const {
     out[0]=c[0]; out[1]=c[1]; out[2]=c[2]; out[3]=c[3];
 }
 
-} // namespace Onyx
+} // namespace Onyx::Types

@@ -8,10 +8,11 @@ class AppConfig;
 
 namespace Onyx {
     class ProfileManager;
-    class TypeRegistry;
     class ViewerRegistry;
     class DocumentWindow;
 }
+namespace Onyx::Types { class TypeRegistry; }
+namespace Onyx { using TypeRegistry = Types::TypeRegistry; }
 
 namespace Onyx::Domain { struct AssetEntry; struct AssetContainer; }
 using AssetEntry    = Onyx::Domain::AssetEntry;

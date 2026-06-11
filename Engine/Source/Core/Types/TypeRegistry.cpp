@@ -2,7 +2,7 @@
 #include "Core/Logger.h"
 #include <cstring>
 
-namespace Onyx {
+namespace Onyx::Types {
 
 TypeRegistry& TypeRegistry::Get() {
     static TypeRegistry instance;
@@ -107,4 +107,4 @@ ITypeHandler* TypeRegistry::Resolve(TypeId id) const {
     return (it != m_idMap.end()) ? it->second : nullptr;
 }
 
-} // namespace Onyx
+} // namespace Onyx::Types
