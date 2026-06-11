@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-namespace Onyx {
+namespace Onyx::Parsers {
 
 // CPU-side decoded texture: always RGBA8 output
 struct TextureData {
@@ -21,4 +21,7 @@ struct TextureData {
     bool IsValid() const { return width > 0 && height > 0 && !pixels.empty(); }
 };
 
-} // namespace Onyx
+} // namespace Onyx::Parsers
+
+// Backwards-compat alias
+namespace Onyx { using TextureData = Parsers::TextureData; } // namespace Onyx

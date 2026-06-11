@@ -12,7 +12,8 @@ namespace Onyx::Domain { struct AssetContainer; struct AssetEntry; }
 using AssetContainer = Onyx::Domain::AssetContainer;
 using AssetEntry     = Onyx::Domain::AssetEntry;
 namespace Onyx { class IDocumentContent; }
-namespace Onyx { struct AnimationData; }
+namespace Onyx::Parsers { struct AnimationData; }
+namespace Onyx { using AnimationData = Parsers::AnimationData; }
 class AppConfig;
 
 // â”€â”€ Lifecycle Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

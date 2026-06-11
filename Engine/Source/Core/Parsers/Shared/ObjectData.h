@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Parsers {
 
 /// A single joint in the skeleton hierarchy.
 struct Joint {
@@ -56,4 +56,10 @@ struct ObjectData {
   bool HasSkeleton() const { return !joints.empty(); }
 };
 
+} // namespace Onyx::Parsers
+
+// Backwards-compat aliases
+namespace Onyx {
+    using Joint      = Parsers::Joint;
+    using ObjectData = Parsers::ObjectData;
 } // namespace Onyx

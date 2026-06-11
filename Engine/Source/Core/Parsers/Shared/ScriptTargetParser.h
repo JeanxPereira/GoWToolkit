@@ -7,7 +7,7 @@
 
 namespace Onyx::Vfs { class IFile; }
 
-namespace Onyx {
+namespace Onyx::Parsers {
 
 class ScriptTargetParser {
 public:
@@ -16,4 +16,7 @@ public:
     static std::string ExtractTargetName(const AssetEntry& entry, std::shared_ptr<Vfs::IFile> file);
 };
 
-} // namespace Onyx
+} // namespace Onyx::Parsers
+
+// Backwards-compat alias
+namespace Onyx { using ScriptTargetParser = Parsers::ScriptTargetParser; } // namespace Onyx

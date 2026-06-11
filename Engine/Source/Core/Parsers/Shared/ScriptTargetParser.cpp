@@ -3,7 +3,7 @@
 #include "Core/Logger.h"
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Parsers {
 
 std::string ScriptTargetParser::ExtractTargetName(const AssetEntry& entry, std::shared_ptr<Vfs::IFile> file) {
     if (!file || !file->IsValid() || entry.size < 0x14) return "";
@@ -22,4 +22,4 @@ std::string ScriptTargetParser::ExtractTargetName(const AssetEntry& entry, std::
     return std::string(buf, strnlen(buf, 16));
 }
 
-} // namespace Onyx
+} // namespace Onyx::Parsers

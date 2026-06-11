@@ -9,7 +9,8 @@
 #include "TextureData.h"
 #include "AnimationData.h"
 
-namespace Onyx {
+namespace Onyx::Parsers {
+
 
 /// Blend mode for a render batch, parsed from mat.go flags
 enum class BlendMode : uint8_t {
@@ -71,4 +72,11 @@ struct SceneData {
     }
 };
 
+} // namespace Onyx::Parsers
+
+// Backwards-compat aliases
+namespace Onyx {
+    using BlendMode    = Parsers::BlendMode;
+    using MaterialInfo = Parsers::MaterialInfo;
+    using SceneData    = Parsers::SceneData;
 } // namespace Onyx

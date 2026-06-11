@@ -14,8 +14,9 @@ class AssetNode;
 } // namespace Onyx::Schema
 namespace Onyx {
 class IDocumentContent;
-class SceneData;
 } // namespace Onyx
+namespace Onyx::Parsers { struct SceneData; }
+namespace Onyx { using SceneData = Parsers::SceneData; }
 namespace Onyx::Domain { struct AssetEntry; struct AssetContainer; }
 using AssetEntry    = Onyx::Domain::AssetEntry;
 using AssetContainer = Onyx::Domain::AssetContainer;
