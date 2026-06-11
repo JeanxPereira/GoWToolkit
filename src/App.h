@@ -9,6 +9,7 @@
 #include "core/AppConfig.h"
 #include "core/RecentFiles.h"
 #include <GLFW/glfw3.h>
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -16,6 +17,16 @@ class App {
 public:
     App();
     void init(GLFWwindow* window, AppConfig* config);
+
+    // Hook the executable uses to register game-specific panels and viewers.
+    // Set before init(); invoked once during init, after the engine's generic
+    // panels are registered. Keeps App game-agnostic — the engine ships no
+    // game wiring of its own.
+    using AppRegistrar = std::function<void(App&)>;
+    void SetRegistrar(AppRegistrar r) { m_registrar = std::move(r); }
+
+    // Minimal accessor the registrar uses to add a (game) panel.
+    void addPanel(std::unique_ptr<IPanel> panel) { m_panels.add(std::move(panel)); }
 
     // Frame phases — called by Window
     void frameBegin();
@@ -26,6 +37,7 @@ public:
 
     // UI Component Getters (for external access)
     AssetDatabase& getDatabase() { return m_db; }
+    AppConfig*     getConfig() { return m_config; }
     Onyx::DocumentWindow& getDocumentWindow() { return m_documentWindow; }
     Onyx::ViewerRegistry& getViewerRegistry() { return m_viewerRegistry; }
 
@@ -48,6 +60,9 @@ private:
     GLFWwindow*           m_window  = nullptr;
     bool                  m_wantClose         = false;
     bool                  m_layoutInitialized = false;
+
+    // Injected game-specific panel/viewer registrar (supplied by the app).
+    AppRegistrar          m_registrar;
 
     // Recents
     RecentFiles           m_recentFiles;

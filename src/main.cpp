@@ -1,4 +1,5 @@
 #include "window/Window.h"
+#include "AppRegistration.h"
 #include "core/ProfileManager.h"
 #include "core/profiles/gow2/ProfileGOW2.h"
 #include "core/profiles/gowr/ProfileGOWR.h"
@@ -45,7 +46,10 @@ int main(int argc, char** argv) {
 
     Window::initNative();
     Window window;
-    window.loop();
+    // Inject the game panel/viewer registrar BEFORE the App initializes — run()
+    // calls App::init(), which invokes the registrar from registerPanels().
+    Onyx::InstallGoWPanels(window.app());
+    window.run();
     return 0;
 }
 

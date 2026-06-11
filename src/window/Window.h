@@ -11,6 +11,11 @@ public:
     Window();
     ~Window();
 
+    // Finalizes App init and enters the frame loop. App init is deferred to
+    // here (not the constructor) so the executable can inject the game
+    // panel/viewer registrar via app() before App::init() runs.
+    void run();
+
     void loop();
     void fullFrame();
 
@@ -18,6 +23,10 @@ public:
     static void initNative();
 
     GLFWwindow* getGLFWwindow() const { return m_window; }
+
+    // Minimal accessor so the executable can install its game-specific
+    // registrar onto the App before run()/init().
+    App& app() { return m_app; }
     
     // Config accessors
     bool isBorderless() const { return !m_config.nativeDecorations; }

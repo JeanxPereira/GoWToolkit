@@ -52,7 +52,14 @@ Window::Window()
 
     // Initialize core systems
     Onyx::TaskManager::init();
+}
 
+// ── run — finalize App and enter the frame loop ──────────────────────────────
+// App init is deferred out of the constructor so the executable can inject the
+// game panel/viewer registrar (via app()) before App::init() — which is what
+// invokes the registrar — runs.
+
+void Window::run() {
     m_app.init(m_window, &m_config);
 
     // 1:1 ImHex: live resize via OS refresh callback
@@ -62,6 +69,8 @@ Window::Window()
     });
 
     glfwSetDropCallback(m_window, [](GLFWwindow*, int, const char**) {});
+
+    loop();
 }
 
 Window::~Window() {

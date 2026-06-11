@@ -9,17 +9,13 @@
 #include "ui/TitleBar.h"
 
 #include "ui/CameraPanel.h"
-#include "ui/Inspector.h"
 #include "ui/IsoBrowser.h"
 #include "ui/PakBrowser.h"
 #include "ui/SettingsWindow.h"
 #include "ui/StatusBar.h"
-#include "ui/WadBrowser.h"
 
 // Viewer headers
 #include "ui/viewers/ImageViewer.h"
-#include "ui/viewers/MaterialViewer.h"
-#include "ui/viewers/SoundPlayer.h"
 #include "ui/viewers/Viewport3D.h"
 #include "ui/viewers/AnimCurveView.h"
 #include "ui/viewers/Dopesheet.h"
@@ -36,16 +32,21 @@
 #include "fonts/SFSymbols.h"
 
 void App::registerPanels() {
+  // ── Generic (engine) panels ────────────────────────────────────────────
   m_panels.add(std::make_unique<IsoBrowser>());
   m_panels.add(std::make_unique<PakBrowser>());
-  m_panels.add(std::make_unique<WadBrowser>());
-  m_panels.add(std::make_unique<Inspector>());
   m_panels.add(std::make_unique<CameraPanel>());
   m_panels.add(std::make_unique<StatusBar>());
   m_panels.add(std::make_unique<SettingsWindow>());
   m_panels.add(std::make_unique<AnimCurveView>());
   m_panels.add(std::make_unique<Dopesheet>());
   m_panels.add(std::make_unique<WadStatsView>());
+
+  // ── Game (app) panels/viewers ──────────────────────────────────────────
+  // Injected by the executable so the engine stays game-agnostic. Supplies
+  // the game browser, inspector, and any game-specific viewer wiring.
+  if (m_registrar)
+    m_registrar(*this);
 
   // Set initial visibility
   if (auto *iso = dynamic_cast<IsoBrowser *>(m_panels.find("ISO Browser")))
@@ -95,9 +96,6 @@ void App::init(GLFWwindow *window, AppConfig *config) {
 
   // WindowDecorator init — icon font is now managed by FontManager
   m_decorator.init(window, nullptr);
-
-  // Restore persisted audio volume
-  Onyx::SoundPlayer::s_volume = config->audioVolume;
 
   // Initialize panels that need config
   registerPanels();
@@ -197,10 +195,7 @@ void App::frame() {
 
 void App::frameEnd() {
   // Font rebuild is now handled by Window::frameEnd() via Onyx::Fonts
-
-  // Sync audio volume back to config so it's saved on exit
-  if (m_config)
-    m_config->audioVolume = Onyx::SoundPlayer::s_volume;
+  // Audio-volume <-> config sync is wired by the app (see AppRegistration).
 }
 
 void App::setupDockLayout(ImGuiID dockspace_id) {
@@ -305,8 +300,7 @@ void App::drawOpenDialog() {
           } else {
             std::string hint = m_openDialogSelectedGame == 0 ? "gow1" : "gow2";
             m_db.LoadWadAsync(p, hint);
-            if (auto *wad =
-                    dynamic_cast<WadBrowser *>(m_panels.find("WAD Browser")))
+            if (auto *wad = m_panels.find("WAD Browser"))
               wad->visible = true;
             ImGui::SetWindowFocus("WAD Browser");
             m_recentFiles.Add(path, hint, "WAD");
@@ -315,8 +309,7 @@ void App::drawOpenDialog() {
         case 2: // GOW2018
         case 3: // Ragnarok
           m_db.LoadWadAsync(p, "ragnarok");
-          if (auto *wad =
-                  dynamic_cast<WadBrowser *>(m_panels.find("WAD Browser")))
+          if (auto *wad = m_panels.find("WAD Browser"))
             wad->visible = true;
           ImGui::SetWindowFocus("WAD Browser");
           m_recentFiles.Add(path, "ragnarok", "WAD");
@@ -348,7 +341,7 @@ void App::openRecentFile(RecentEntry entry) {
     ImGui::SetWindowFocus("PAK Browser");
   } else {
     m_db.LoadWadAsync(p, entry.gameHint);
-    if (auto *wad = dynamic_cast<WadBrowser *>(m_panels.find("WAD Browser")))
+    if (auto *wad = m_panels.find("WAD Browser"))
       wad->visible = true;
     ImGui::SetWindowFocus("WAD Browser");
   }
