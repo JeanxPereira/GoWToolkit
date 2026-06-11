@@ -1,4 +1,4 @@
-﻿#include "ui/Inspector.h"
+#include "ui/Inspector.h"
 #include "UIHelpers.h"
 #include "ui/RoleVisuals.h"   // GOWR role â†’ color/icon (ColorForRole, IconForRole)
 #include "Core/ToolkitApi.h"

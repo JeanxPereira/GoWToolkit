@@ -12,7 +12,7 @@ namespace Onyx::Api {
     static AssetDatabase*       s_database  = nullptr;
     static AppConfig*           s_config    = nullptr;
     static Onyx::ViewerRegistry* s_viewers   = nullptr;
-    static Onyx::DocumentWindow* s_documents = nullptr;
+    static Onyx::Viewers::DocumentWindow* s_documents = nullptr;
 
     static AssetEntry*         s_selectedEntry = nullptr;
     static AssetContainer*             s_selectedWad   = nullptr;
@@ -56,7 +56,7 @@ namespace Onyx::Api {
         return *s_viewers;
     }
 
-    DocumentWindow& Documents() {
+    Viewers::DocumentWindow& Documents() {
         if (!s_documents) {
             fprintf(stderr, "[ToolkitApi] FATAL: Documents() called before Init() or missing param\n");
             std::abort();

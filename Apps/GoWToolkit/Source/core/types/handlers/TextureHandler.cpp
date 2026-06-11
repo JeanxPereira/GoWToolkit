@@ -19,11 +19,11 @@ public:
     const char*  GetIcon()  const override { return ICON_SF_PHOTO; }  // file-media
     Color4f      GetColor() const override { return {1.0f, 0.5f, 0.8f, 1.0f}; }  // rosa
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
+    std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
         auto texData = Onyx::GOW2TextureParser::Parse(entry, wad.entries, wad.fileSource);
         if (texData && texData->IsValid())
-            return std::make_shared<Onyx::ImageViewer>(entry.name, std::move(texData));
+            return std::make_shared<Onyx::Viewers::ImageViewer>(entry.name, std::move(texData));
         return nullptr;
     }
 };

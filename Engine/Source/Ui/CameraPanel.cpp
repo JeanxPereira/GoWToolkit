@@ -47,7 +47,7 @@ void CameraPanel::Draw() {
     // Resolve the active viewport via IDocumentContent::GetEmbeddedViewport,
     // so both bare Viewport3D documents (Object viewer) and composite ones
     // (MapViewer, which wraps a Viewport3D internally) bind correctly.
-    Onyx::Viewport3D* vp = nullptr;
+    Onyx::Viewers::Viewport3D* vp = nullptr;
     if (Onyx::Api::Documents().HasActiveDocument()) {
         auto doc = Onyx::Api::Documents().GetActiveDocument();
         if (doc) vp = doc->GetEmbeddedViewport();

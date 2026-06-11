@@ -10,7 +10,7 @@
 #include <cctype>
 #include <fstream>
 
-namespace Onyx {
+namespace Onyx::Viewers {
 
 TextEditorViewer::TextEditorViewer(std::string name, std::string text)
     : m_name(std::move(name)), m_text(std::move(text)) {
@@ -147,4 +147,4 @@ void TextEditorViewer::Draw() {
     if (mono) ImGui::PopFont();
 }
 
-} // namespace Onyx
+} // namespace Onyx::Viewers

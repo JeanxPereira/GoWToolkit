@@ -9,7 +9,7 @@
 
 namespace Onyx {
 
-class MapViewer : public IDocumentContent {
+class MapViewer : public Onyx::Viewers::IDocumentContent {
 public:
     MapViewer(const std::string& wadName, AssetContainer& wad);
     ~MapViewer() override = default;
@@ -17,16 +17,16 @@ public:
     std::string GetName() const override { return "Map: " + m_wadName; }
     void Draw() override;
     void DrawInspector() override;
-    Viewport3D* GetEmbeddedViewport() override { return m_viewport.get(); }
-    
+    Viewers::Viewport3D* GetEmbeddedViewport() override { return m_viewport.get(); }
+
     // Aggregates all CXT_* entries in the WAD into a single combined SceneData
     void LoadMap();
 
 private:
     std::string m_wadName;
     AssetContainer& m_wad;
-    
-    std::unique_ptr<Viewport3D> m_viewport;
+
+    std::unique_ptr<Viewers::Viewport3D> m_viewport;
     bool m_isLoading = false;
     bool m_isLoaded = false;
     

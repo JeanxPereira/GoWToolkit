@@ -1,4 +1,4 @@
-﻿// Remaining Onyx content type handlers.
+// Remaining Onyx content type handlers.
 // Each registers by magic number for GOW1 and/or GOW2.
 
 #include "core/formats/GOW2AnimationFormat.h"
@@ -85,7 +85,7 @@ public:
   } // unmute
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; } // teal
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+  std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry &entry,
                                                       AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
@@ -280,10 +280,10 @@ public:
     return nullptr;
   }
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+  std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry &entry,
                                                       AssetContainer &wad) override {
     if (auto scene = BuildSceneData(entry, wad)) {
-      auto vp = std::make_shared<Onyx::Viewport3D>(entry.name);
+      auto vp = std::make_shared<Onyx::Viewers::Viewport3D>(entry.name);
       vp->LoadScene(std::move(scene));
       return vp;
     }
@@ -315,7 +315,7 @@ public:
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_3; }
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; }
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+  std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry &entry,
                                                       AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
@@ -336,7 +336,7 @@ public:
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_2_FILL; }
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; }
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+  std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry &entry,
                                                       AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
@@ -359,13 +359,13 @@ public:
     return {0.8f, 0.5f, 0.9f, 1.0f};
   } // purple
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+  std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry &entry,
                                                       AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
     auto slice = std::make_shared<Onyx::Vfs::SliceFile>(wad.fileSource, entry.offset,
                                                   entry.size);
-    return std::make_shared<Onyx::VideoPlayer>(entry.name, slice);
+    return std::make_shared<Onyx::Viewers::VideoPlayer>(entry.name, slice);
   }
 };
 
@@ -377,13 +377,13 @@ public:
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }
   Color4f GetColor() const override { return {0.8f, 0.5f, 0.9f, 1.0f}; }
 
-  std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry &entry,
+  std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry &entry,
                                                       AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
     auto slice = std::make_shared<Onyx::Vfs::SliceFile>(wad.fileSource, entry.offset,
                                                   entry.size);
-    return std::make_shared<Onyx::VideoPlayer>(entry.name, slice);
+    return std::make_shared<Onyx::Viewers::VideoPlayer>(entry.name, slice);
   }
 };
 

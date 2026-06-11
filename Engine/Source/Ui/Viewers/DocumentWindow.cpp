@@ -3,7 +3,7 @@
 #include "Core/Events.h"
 #include "Ui/Widgets.h"
 
-namespace Onyx {
+namespace Onyx::Viewers {
 
 DocumentWindow::DocumentWindow() {
     // Subscribe to EventAssetSelected â€” when an asset is selected in any browser,
@@ -114,4 +114,4 @@ void DocumentWindow::Draw() {
     ImGui::End();
 }
 
-} // namespace Onyx
+} // namespace Onyx::Viewers

@@ -255,14 +255,14 @@ public:
         return BuildSceneFromObjectEntry(entry, wad, actualMagic);
     }
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
+    std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         uint32_t actualMagic = 0;
         if (wad.fileSource) {
             wad.fileSource->Seek(entry.offset, SEEK_SET);
             wad.fileSource->Read(&actualMagic, 4);
         }
         auto scene = BuildSceneFromObjectEntry(entry, wad, actualMagic);
-        auto vp = std::make_shared<Onyx::Viewport3D>(entry.name);
+        auto vp = std::make_shared<Onyx::Viewers::Viewport3D>(entry.name);
         if (scene && !scene->IsEmpty()) {
             vp->LoadScene(std::move(scene));
         }

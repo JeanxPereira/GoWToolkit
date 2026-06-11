@@ -1,4 +1,4 @@
-﻿#include "WadStatsView.h"
+#include "WadStatsView.h"
 
 #include "Core/AssetDatabase.h"
 #include "Core/Events.h"
@@ -11,6 +11,8 @@
 #include "Core/ToolkitApi.h"
 #include "UIHelpers.h"
 
+
+namespace Onyx::Viewers {
 void WadStatsView::computeStats() {
     m_stats.clear();
 
@@ -148,3 +150,6 @@ void WadStatsView::Draw() {
 
     ImGui::End();
 }
+
+
+} // namespace Onyx::Viewers

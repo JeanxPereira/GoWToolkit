@@ -9,6 +9,8 @@ class AppConfig;
 namespace Onyx {
     class ProfileManager;
     class ViewerRegistry;
+}
+namespace Onyx::Viewers {
     class DocumentWindow;
 }
 namespace Onyx::Types { class TypeRegistry; }
@@ -20,10 +22,10 @@ using AssetContainer = Onyx::Domain::AssetContainer;
 namespace Onyx::Api {
 
     struct InitParams {
-        AssetDatabase*       db = nullptr;
-        AppConfig*           config = nullptr;
-        Onyx::ViewerRegistry* viewers = nullptr;
-        Onyx::DocumentWindow* documents = nullptr;
+        AssetDatabase*             db = nullptr;
+        AppConfig*                 config = nullptr;
+        Onyx::ViewerRegistry*      viewers = nullptr;
+        Onyx::Viewers::DocumentWindow* documents = nullptr;
     };
 
     /// Initialize the facade pointers. Call once in App::init().
@@ -45,7 +47,7 @@ namespace Onyx::Api {
     ViewerRegistry& Viewers();
 
     /// Access the global DocumentWindow.
-    DocumentWindow& Documents();
+    Viewers::DocumentWindow& Documents();
 
     /// Access the currently selected entry in the active WAD/PAK.
     AssetEntry* GetSelected();

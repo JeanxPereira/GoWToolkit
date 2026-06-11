@@ -1,4 +1,4 @@
-﻿#include "MapViewer.h"
+#include "MapViewer.h"
 #include <imgui.h>
 #include "Core/Logger.h"
 #include "Core/Types/TypeRegistry.h"
@@ -12,7 +12,7 @@ namespace Onyx {
 
 MapViewer::MapViewer(const std::string& wadName, AssetContainer& wad) 
     : m_wadName(wadName), m_wad(wad) {
-    m_viewport = std::make_unique<Viewport3D>("Map Viewport");
+    m_viewport = std::make_unique<Viewers::Viewport3D>("Map Viewport");
     LoadMap();
 }
 

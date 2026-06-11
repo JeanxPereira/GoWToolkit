@@ -1,6 +1,6 @@
 // Plain-text file handler. Routes .txt / .ini / .cfg / .csv / .json / .log
 // PAK entries (typed by ProfileGOW2's extension switch) to the
-// TextEditorViewer. Registered by TypeId â€” no magic number, so this never
+// Viewers::TextEditorViewer. Registered by TypeId â€” no magic number, so this never
 // enters the magic dispatch map.
 
 #include "Core/Domain/Entry.h"
@@ -22,12 +22,12 @@ public:
     const char* GetIcon() const override { return ICON_SF_DOCUMENT; }
     Color4f     GetColor() const override { return {0.85f, 0.85f, 0.85f, 1.0f}; }
 
-    std::shared_ptr<Onyx::IDocumentContent>
+    std::shared_ptr<Onyx::Viewers::IDocumentContent>
     CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
         auto bytes = wad.fileSource->ReadAll();
         std::string text(reinterpret_cast<const char*>(bytes.data()), bytes.size());
-        return std::make_shared<Onyx::TextEditorViewer>(entry.name, std::move(text));
+        return std::make_shared<Onyx::Viewers::TextEditorViewer>(entry.name, std::move(text));
     }
 };
 

@@ -1,4 +1,4 @@
-﻿#include "AnimCurveView.h"
+#include "AnimCurveView.h"
 
 #include "Core/AssetDatabase.h"
 #include "Core/Events.h"
@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <vector>
 
+
+namespace Onyx::Viewers {
 AnimCurveView::AnimCurveView() {
     EventAnimationLoaded::subscribe(this, [this](std::shared_ptr<Onyx::Parsers::AnimationData> data) {
         m_animData = std::move(data);
@@ -234,3 +236,6 @@ void AnimCurveView::Draw() {
 
     ImGui::End();
 }
+
+
+} // namespace Onyx::Viewers

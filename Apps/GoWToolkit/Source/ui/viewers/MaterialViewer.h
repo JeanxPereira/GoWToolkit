@@ -12,7 +12,7 @@ using GLuint = unsigned int;
 
 namespace Onyx {
 
-class MaterialViewer : public IDocumentContent {
+class MaterialViewer : public Onyx::Viewers::IDocumentContent {
 public:
     using TextureLookupFn = std::function<unsigned int(const std::string&)>;
 

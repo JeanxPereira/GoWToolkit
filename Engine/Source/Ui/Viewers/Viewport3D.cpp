@@ -12,7 +12,7 @@
 #include "Ui/ActiveAnimation.h"
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace Onyx {
+namespace Onyx::Viewers {
 
 Viewport3D::Viewport3D(const std::string& name) : m_name(name) {
     InitFBO();
@@ -783,4 +783,4 @@ void Viewport3D::DrawTransportBar() {
     ImGui::PopStyleColor();
 }
 
-} // namespace Onyx
+} // namespace Onyx::Viewers

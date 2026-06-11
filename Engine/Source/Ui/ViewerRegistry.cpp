@@ -9,7 +9,7 @@ ViewerRegistry::ViewerRegistry() {
         if (handler) {
             return handler->CreateViewer(entry, wad);
         }
-        return std::shared_ptr<IDocumentContent>(nullptr);
+        return std::shared_ptr<Viewers::IDocumentContent>(nullptr);
     };
 
     m_factories[Domain::MediaKind::Image] = defaultLegacyFactory;
@@ -23,7 +23,7 @@ bool ViewerRegistry::CanHandle(Types::TypeId typeId) const {
     return Types::TypeRegistry::Get().Resolve(typeId) != nullptr;
 }
 
-std::shared_ptr<IDocumentContent> ViewerRegistry::Open(const AssetEntry& entry, AssetContainer& wad) const {
+std::shared_ptr<Viewers::IDocumentContent> ViewerRegistry::Open(const AssetEntry& entry, AssetContainer& wad) const {
     // 1. Try TypeRegistry handler first (preferred path)
     auto* handler = Types::TypeRegistry::Get().Resolve(entry.typeId);
     if (handler) {

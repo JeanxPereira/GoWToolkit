@@ -1,4 +1,4 @@
-﻿// Instance handler â€” GOW1/GOW2 game object instances (goarcher00, gohero00, etc.)
+// Instance handler â€” GOW1/GOW2 game object instances (goarcher00, gohero00, etc.)
 // Magic: 0x00030001 (GOW2), 0x00020001 (GOW1)
 //
 // Resolution follows the Go project (god_of_war_browser):
@@ -180,8 +180,8 @@ public:
         return scene;
     }
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
-        auto vp = std::make_shared<Onyx::Viewport3D>(entry.name);
+    std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
+        auto vp = std::make_shared<Onyx::Viewers::Viewport3D>(entry.name);
         if (auto scene = BuildSceneData(entry, wad)) {
             vp->LoadScene(std::move(scene));
         }

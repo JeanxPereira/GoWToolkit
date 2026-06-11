@@ -12,9 +12,9 @@
 namespace Onyx::Schema {
 class AssetNode;
 } // namespace Onyx::Schema
-namespace Onyx {
+namespace Onyx::Viewers {
 class IDocumentContent;
-} // namespace Onyx
+} // namespace Onyx::Viewers
 namespace Onyx::Parsers { struct SceneData; }
 namespace Onyx::Domain { struct AssetEntry; struct AssetContainer; }
 using AssetEntry    = Onyx::Domain::AssetEntry;
@@ -59,7 +59,7 @@ public:
 
   /// Create a viewer (3D viewport, texture preview, audio player, etc.)
   /// for the given entry. Return nullptr if this type has no viewer.
-  virtual std::shared_ptr<IDocumentContent>
+  virtual std::shared_ptr<Viewers::IDocumentContent>
   CreateViewer(const AssetEntry &entry, AssetContainer &wad) {
     (void)entry;
     (void)wad;

@@ -21,7 +21,7 @@ extern "C" {
 #include <string>
 #include <memory>
 
-namespace Onyx {
+namespace Onyx::Viewers {
 
 // â”€â”€â”€ Thread-Safe Queue â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 template <typename T>
@@ -248,4 +248,4 @@ private:
     std::atomic<bool> m_forceFrameUpdate{false};
 };
 
-} // namespace Onyx
+} // namespace Onyx::Viewers

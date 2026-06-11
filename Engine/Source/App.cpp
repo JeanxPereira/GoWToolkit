@@ -38,9 +38,9 @@ void App::registerPanels() {
   m_panels.add(std::make_unique<CameraPanel>());
   m_panels.add(std::make_unique<StatusBar>());
   m_panels.add(std::make_unique<SettingsWindow>());
-  m_panels.add(std::make_unique<AnimCurveView>());
-  m_panels.add(std::make_unique<Dopesheet>());
-  m_panels.add(std::make_unique<WadStatsView>());
+  m_panels.add(std::make_unique<Onyx::Viewers::AnimCurveView>());
+  m_panels.add(std::make_unique<Onyx::Viewers::Dopesheet>());
+  m_panels.add(std::make_unique<Onyx::Viewers::WadStatsView>());
 
   // â”€â”€ Game (app) panels/viewers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Injected by the executable so the engine stays game-agnostic. Supplies
@@ -55,12 +55,12 @@ void App::registerPanels() {
           dynamic_cast<SettingsWindow *>(m_panels.find("Settings")))
     settings->visible = false;
   if (auto *animCurves =
-          dynamic_cast<AnimCurveView *>(m_panels.find("Anim Curves")))
+          dynamic_cast<Onyx::Viewers::AnimCurveView *>(m_panels.find("Anim Curves")))
     animCurves->visible = false;
   if (auto *wadStats =
-          dynamic_cast<WadStatsView *>(m_panels.find("WAD Stats")))
+          dynamic_cast<Onyx::Viewers::WadStatsView *>(m_panels.find("WAD Stats")))
     wadStats->visible = false;
-  if (auto *dope = dynamic_cast<Dopesheet *>(m_panels.find("Dopesheet")))
+  if (auto *dope = dynamic_cast<Onyx::Viewers::Dopesheet *>(m_panels.find("Dopesheet")))
     dope->visible = false;
 }
 

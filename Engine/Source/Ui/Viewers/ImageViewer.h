@@ -1,11 +1,11 @@
-#pragma once
+﻿#pragma once
 #include "IDocumentContent.h"
 #include "Core/Parsers/Shared/TextureData.h"
 #include <imgui.h>
 #include <string>
 #include <memory>
 
-namespace Onyx {
+namespace Onyx::Viewers {
 
 class ImageViewer : public IDocumentContent {
 public:
@@ -36,4 +36,4 @@ private:
     void ZoomToAnchored(float newZoom, ImVec2 anchorScreen);
 };
 
-} // namespace Onyx
+} // namespace Onyx::Viewers

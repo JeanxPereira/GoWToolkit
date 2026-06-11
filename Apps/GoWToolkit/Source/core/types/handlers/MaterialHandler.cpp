@@ -1,4 +1,4 @@
-﻿// Material handler â€” GOW1/2 material definition
+// Material handler â€” GOW1/2 material definition
 // Magic: 0x00000008 (MAT_MAGIC in god_of_war_browser)
 
 #include "Core/Types/TypeRegistry.h"
@@ -45,7 +45,7 @@ public:
     const char*  GetIcon()  const override { return ICON_SF_PAINTPALETTE_FILL; }  // symbol-color
     Color4f      GetColor() const override { return {0.95f, 0.6f, 0.2f, 1.0f}; }  // orange
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
+    std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
         
         const AssetEntry* matEntryToParse = &entry;

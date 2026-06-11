@@ -1,8 +1,10 @@
-﻿#pragma once
+#pragma once
 #include "Ui/IPanel.h"
 #include <vector>
 #include <string>
 #include <cstdint>
+
+namespace Onyx::Viewers {
 
 /// Panel that shows WAD file statistics using ImPlot charts.
 /// Displays: asset type distribution, size breakdown, and top entries.
@@ -24,3 +26,5 @@ private:
     size_t                m_lastWadCount = 0;
     bool                  m_dirty = true;
 };
+
+} // namespace Onyx::Viewers

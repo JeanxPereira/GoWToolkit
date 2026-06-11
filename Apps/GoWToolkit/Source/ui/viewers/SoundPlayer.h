@@ -9,7 +9,7 @@
 
 namespace Onyx {
 
-class SoundPlayer : public IDocumentContent {
+class SoundPlayer : public Onyx::Viewers::IDocumentContent {
 public:
     SoundPlayer(const std::string& name, std::unique_ptr<GOW2SoundParser::SoundBankData> bankData);
     SoundPlayer(const std::string& name, std::vector<int16_t> pcmData, uint32_t sampleRate, uint32_t channels = 1);

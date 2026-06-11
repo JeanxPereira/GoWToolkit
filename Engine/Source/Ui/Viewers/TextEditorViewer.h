@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 #include "IDocumentContent.h"
 #include <TextEditor.h>
 #include <string>
 
-namespace Onyx {
+namespace Onyx::Viewers {
 
 // Read-only text viewer backed by the Goossens fork of ImGuiColorTextEdit.
 // Used for .txt / .ini / .cfg / .csv / .json / .log entries; future Lua / .scp
@@ -34,4 +34,4 @@ private:
     bool        m_showLineNumbers = true;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Viewers

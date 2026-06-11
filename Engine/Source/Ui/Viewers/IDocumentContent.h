@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 #include <string>
 
 
 
-namespace Onyx {
+namespace Onyx::Viewers {
 
 class Viewport3D;
 
@@ -23,7 +23,7 @@ public:
     // composite document like MapViewer that wraps a Viewport3D inside.
     virtual Viewport3D* GetEmbeddedViewport() { return nullptr; }
 
-    // Opcional: para permitir fechar a aba via código
+    // Opcional: para permitir fechar a aba via cÃ³digo
     virtual bool IsOpen() const { return m_isOpen; }
     virtual void SetOpen(bool open) { m_isOpen = open; }
 
@@ -31,4 +31,4 @@ protected:
     bool m_isOpen = true;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Viewers

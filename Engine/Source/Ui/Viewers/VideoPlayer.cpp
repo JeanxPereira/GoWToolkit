@@ -10,7 +10,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-namespace Onyx {
+namespace Onyx::Viewers {
 
 // â”€â”€â”€ Thread-Safe Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Replaces ImGui::GetTime() in background threads to avoid data races on
@@ -969,4 +969,4 @@ void VideoPlayer::Draw() {
   DrawControlBar();
 }
 
-} // namespace Onyx
+} // namespace Onyx::Viewers

@@ -1,8 +1,10 @@
-﻿#pragma once
+#pragma once
 #include "Ui/IPanel.h"
 #include "Core/Parsers/Shared/AnimationData.h"
 #include <memory>
 #include <string>
+
+namespace Onyx::Viewers {
 
 // Dopesheet panel â€” joints down, frames across.
 //
@@ -30,3 +32,5 @@ private:
     float m_rowHeight = 14.0f;
     float m_jointLabelWidth = 80.0f;
 };
+
+} // namespace Onyx::Viewers

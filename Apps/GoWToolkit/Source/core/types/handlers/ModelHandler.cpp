@@ -205,8 +205,8 @@ public:
         return scene;
     }
 
-    std::shared_ptr<Onyx::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
-        auto vp = std::make_shared<Onyx::Viewport3D>(entry.name);
+    std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
+        auto vp = std::make_shared<Onyx::Viewers::Viewport3D>(entry.name);
         if (auto scene = BuildSceneData(entry, wad)) {
             vp->LoadScene(std::move(scene));
         }

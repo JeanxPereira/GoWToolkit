@@ -5,6 +5,8 @@
 #include <string>
 #include <memory>
 
+namespace Onyx::Viewers {
+
 /// Panel that visualizes animation curves (joint rotation/position over time)
 /// using ImPlot. Displays curves from whatever AnimationData is currently available
 /// via the selected asset's SceneData or via the global animation pointer.
@@ -25,3 +27,5 @@ private:
     bool m_showRotation = true;
     bool m_showPosition = true;
 };
+
+} // namespace Onyx::Viewers

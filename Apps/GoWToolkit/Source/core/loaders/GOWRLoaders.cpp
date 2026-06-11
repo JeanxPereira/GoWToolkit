@@ -207,7 +207,7 @@ void InvalidateLodIndex() {
 
 // ── GOWR Mesh Handling ─────────────────────────────────────────────────────
 
-static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry, AssetContainer& wad, bool attachSkeleton) {
+static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry, AssetContainer& wad, bool attachSkeleton) {
     if (!wad.fileSource) return nullptr;
 
     // ── Slice the MESH file ────────────────────────────────────────────
@@ -270,7 +270,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
 
     if (!ok || data.parts.empty()) {
         LOG_WARN("[GOWRLoaders] Parse failed or no parts for '%s'", entry.name.c_str());
-        return std::make_shared<Viewport3D>(entry.name);
+        return std::make_shared<Viewers::Viewport3D>(entry.name);
     }
 
     // ── Find paired MG_<base> file (bone-binding, no _gpu suffix) ─────
@@ -421,7 +421,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
     }
 
     // ── Build Parsers::SceneData and load into viewport ─────────────────────────
-    auto vp = std::make_shared<Viewport3D>(entry.name);
+    auto vp = std::make_shared<Viewers::Viewport3D>(entry.name);
 
     if (skeleton) {
         // ── Skinning resolution (CURRENT: rigid-only fallback) ────────────
@@ -475,15 +475,15 @@ std::shared_ptr<Schema::AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<Vf
     return Schema::AssetReader::Parse(*format.Root(), file);
 }
 
-std::shared_ptr<IDocumentContent> GOWRMeshDefnHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
+std::shared_ptr<Viewers::IDocumentContent> GOWRMeshDefnHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     // MESH_* — render the 3D model without binding to a skeleton.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/false);
 }
-std::shared_ptr<IDocumentContent> GOWRSkinnedMeshHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
+std::shared_ptr<Viewers::IDocumentContent> GOWRSkinnedMeshHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     // GOWR_SKINNED_MESH — attach the rig so bones drive the mesh.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
-std::shared_ptr<IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
+std::shared_ptr<Viewers::IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     // go* instance — load with rig.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
@@ -491,7 +491,7 @@ std::shared_ptr<IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const A
 #include <imgui.h>
 #include "Ui/Viewers/ImageViewer.h"
 
-class GOWRTextureViewer : public IDocumentContent {
+class GOWRTextureViewer : public Viewers::IDocumentContent {
 public:
     GOWRTextureViewer(const AssetEntry& entry) : m_entry(entry), m_name(entry.name) {
         auto lastUs = m_name.find_last_of('_');
@@ -547,7 +547,7 @@ private:
     bool        m_initialized = false;
     const char* m_failReason  = nullptr;
 
-    std::shared_ptr<ImageViewer> m_realViewer;
+    std::shared_ptr<Viewers::ImageViewer> m_realViewer;
 
     uint32_t  m_texW = 0, m_texH = 0;
     uint32_t  m_swMode = 0xFFFF;
@@ -643,15 +643,15 @@ private:
         texData->dataSize = rgba.size();
         texData->pixels = std::move(rgba);
 
-        m_realViewer = std::make_shared<ImageViewer>(m_name, std::move(texData));
+        m_realViewer = std::make_shared<Viewers::ImageViewer>(m_name, std::move(texData));
     }
 };
 
-std::shared_ptr<IDocumentContent> GOWRTextureHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
+std::shared_ptr<Viewers::IDocumentContent> GOWRTextureHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     return std::make_shared<GOWRTextureViewer>(entry);
 }
 
-std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
+std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     if (!wad.fileSource) return nullptr;
 
     // Derive the base name: "goProtofox00" → "fox00"
@@ -746,7 +746,7 @@ REGISTER_FILE_TYPE(GOWRRigHandler);
 
 // ── GOWR Shader Viewer ────────────────────────────────────────────────────
 
-class GOWRShaderViewer : public IDocumentContent {
+class GOWRShaderViewer : public Viewers::IDocumentContent {
 public:
     GOWRShaderViewer(const std::string& name, std::unique_ptr<GOWRShaderData> data)
         : m_name(name), m_data(std::move(data)) {}
@@ -920,7 +920,7 @@ private:
     }
 };
 
-std::shared_ptr<IDocumentContent> GOWRShaderHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
+std::shared_ptr<Viewers::IDocumentContent> GOWRShaderHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     if (!wad.fileSource || entry.size == 0) return nullptr;
 
     auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.offset, entry.size);

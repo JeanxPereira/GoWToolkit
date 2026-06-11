@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "IDocumentContent.h"
 #include "Rendering/Camera.h"
 #include "Rendering/GridRenderer.h"
@@ -13,7 +13,7 @@
 #include <memory>
 #include <imgui.h>
 
-namespace Onyx {
+namespace Onyx::Viewers {
 
 class Viewport3D : public IDocumentContent {
 public:
@@ -66,7 +66,7 @@ private:
     Rendering::GridRenderer m_grid;
     Rendering::AxisGizmo m_axisGizmo;
 
-    // Unified scene renderer — all content goes through here
+    // Unified scene renderer â€” all content goes through here
     std::unique_ptr<Rendering::SceneRenderer> m_sceneRenderer;
 
     // Keep scene data around for animation access
@@ -93,4 +93,4 @@ private:
     bool m_dragToggleValue  = false;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Viewers

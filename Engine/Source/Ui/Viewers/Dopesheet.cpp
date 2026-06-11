@@ -1,4 +1,4 @@
-﻿#include "Dopesheet.h"
+#include "Dopesheet.h"
 
 #include "Core/Events.h"
 #include "Rendering/AnimationPlayer.h"
@@ -9,6 +9,8 @@
 #include <set>
 #include <vector>
 
+
+namespace Onyx::Viewers {
 Dopesheet::Dopesheet() {
     EventAnimationLoaded::subscribe(this, [this](std::shared_ptr<Onyx::Parsers::AnimationData> data) {
         m_animData = std::move(data);
@@ -291,3 +293,6 @@ void Dopesheet::Draw() {
     ImGui::EndChild();
     ImGui::End();
 }
+
+
+} // namespace Onyx::Viewers

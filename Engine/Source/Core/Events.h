@@ -11,7 +11,7 @@
 namespace Onyx::Domain { struct AssetContainer; struct AssetEntry; }
 using AssetContainer = Onyx::Domain::AssetContainer;
 using AssetEntry     = Onyx::Domain::AssetEntry;
-namespace Onyx { class IDocumentContent; }
+namespace Onyx::Viewers { class IDocumentContent; }
 namespace Onyx::Parsers { struct AnimationData; }
 class AppConfig;
 
@@ -53,7 +53,7 @@ EVENT_DEF(EventAssetLoaded, AssetEntry*);
 
 /// Fired when a new document/viewer tab is opened.
 /// @param IDocumentContent* the opened document
-EVENT_DEF(EventDocumentOpened, Onyx::IDocumentContent*);
+EVENT_DEF(EventDocumentOpened, Onyx::Viewers::IDocumentContent*);
 
 /// Fired when animation data is loaded into a scene (e.g. Viewport3D).
 /// @param std::shared_ptr<Onyx::Parsers::AnimationData> the loaded animation data

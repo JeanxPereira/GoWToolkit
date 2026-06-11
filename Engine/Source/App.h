@@ -38,7 +38,7 @@ public:
     // UI Component Getters (for external access)
     AssetDatabase& getDatabase() { return m_db; }
     AppConfig*     getConfig() { return m_config; }
-    Onyx::DocumentWindow& getDocumentWindow() { return m_documentWindow; }
+    Onyx::Viewers::DocumentWindow& getDocumentWindow() { return m_documentWindow; }
     Onyx::ViewerRegistry& getViewerRegistry() { return m_viewerRegistry; }
 
 private:
@@ -53,8 +53,8 @@ private:
 
     AssetDatabase         m_db;
     PanelRegistry         m_panels;
-    Onyx::DocumentWindow   m_documentWindow;
-    Onyx::ViewerRegistry   m_viewerRegistry;
+    Onyx::Viewers::DocumentWindow   m_documentWindow;
+    Onyx::ViewerRegistry            m_viewerRegistry;
     WindowDecorator       m_decorator;
     AppConfig*            m_config  = nullptr;
     GLFWwindow*           m_window  = nullptr;
