@@ -1,9 +1,9 @@
 #include "NodeInstance.h"
 #include "../vfs/IFile.h"
 
-namespace Onyx {
+namespace Onyx::Schema {
 
-bool NodeInstance::ReadFromFile(Vfs::IFile* file) {
+bool NodeInstance::ReadFromFile(Onyx::Vfs::IFile* file) {
     if (!file || !m_def) return false;
     
     size_t sizeToRead = m_def->GetFixedSize();
@@ -17,4 +17,4 @@ bool NodeInstance::ReadFromFile(Vfs::IFile* file) {
     return readCount == sizeToRead;
 }
 
-} // namespace Onyx
+} // namespace Onyx::Schema

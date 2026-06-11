@@ -468,11 +468,11 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
     return vp;
 }
 
-std::shared_ptr<AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<Vfs::IFile> file) {
+std::shared_ptr<Schema::AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<Vfs::IFile> file) {
     if (!file || file->Size() < 64) return nullptr;
     GOWRMeshDefnFormat format;
     format.Initialize();
-    return AssetReader::Parse(*format.Root(), file);
+    return Schema::AssetReader::Parse(*format.Root(), file);
 }
 
 std::shared_ptr<IDocumentContent> GOWRMeshDefnHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {

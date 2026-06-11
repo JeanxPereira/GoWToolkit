@@ -27,7 +27,7 @@ private:
     bool LoadFromArchiveGOW2(std::shared_ptr<Vfs::IVirtualFileSystem> vfs,
                               Vfs::IFile* tocFile, AssetContainer& outWad);
 
-    std::map<std::string, std::shared_ptr<StructDef>> m_schemas;
+    std::map<std::string, std::shared_ptr<Schema::StructDef>> m_schemas;
 };
 
 } // namespace Onyx

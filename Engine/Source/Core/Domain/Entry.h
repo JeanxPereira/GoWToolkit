@@ -86,7 +86,7 @@ struct AssetEntry {
     std::vector<AssetEntry> children;
 
     // Loaded data (on demand)
-    std::shared_ptr<Onyx::AssetNode> assetNode;
+    std::shared_ptr<Onyx::Schema::AssetNode> assetNode;
 
     Onyx::MediaKind kind       = Onyx::MediaKind::Unknown;
     Onyx::ProfileTag profileTag;

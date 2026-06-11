@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <string>
 
-namespace Onyx {
+namespace Onyx::Schema {
 
 // ── AssetFormat ────────────────────────────────────────────────────────────
 // Base class for all binary format definitions.
@@ -245,4 +245,4 @@ private:
     bool m_built = false;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Schema

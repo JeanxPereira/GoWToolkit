@@ -6,7 +6,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace Onyx {
+namespace Onyx::Schema {
 
 // ── AssetReader ────────────────────────────────────────────────────────────
 // Turns binary data + StructDefinition into a tree of AssetNodes.
@@ -38,7 +38,7 @@ public:
 
     // Convenience: parse from an IFile at current position.
     static std::shared_ptr<StructNode> Parse(const StructDefinition& def,
-                                              std::shared_ptr<Vfs::IFile> file) {
+                                              std::shared_ptr<Onyx::Vfs::IFile> file) {
         if (!file) return nullptr;
         std::vector<uint8_t> buf(def.size);
         file->Seek(0, SEEK_SET);
@@ -49,7 +49,7 @@ public:
 
     // Parse from an IFile at a specific offset.
     static std::shared_ptr<StructNode> Parse(const StructDefinition& def,
-                                              std::shared_ptr<Vfs::IFile> file,
+                                              std::shared_ptr<Onyx::Vfs::IFile> file,
                                               int64_t offset, size_t size) {
         if (!file) return nullptr;
         size_t readSize = std::min((size_t)def.size, size);
@@ -207,4 +207,4 @@ private:
     }
 };
 
-} // namespace Onyx
+} // namespace Onyx::Schema

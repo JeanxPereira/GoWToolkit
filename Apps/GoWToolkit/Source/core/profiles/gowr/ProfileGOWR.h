@@ -22,7 +22,7 @@ public:
 
     bool IsContainerEntry(const AssetEntry& entry) const override;
 private:
-    std::map<std::string, std::shared_ptr<StructDef>> m_schemas;
+    std::map<std::string, std::shared_ptr<Schema::StructDef>> m_schemas;
 };
 
 } // namespace Onyx

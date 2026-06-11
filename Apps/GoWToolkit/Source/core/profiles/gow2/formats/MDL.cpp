@@ -4,8 +4,8 @@ namespace Onyx {
 namespace Formats {
 namespace GOW2 {
 
-std::unique_ptr<StructDef> MDL::CreateSchema() {
-    auto schema = std::make_unique<StructDef>("GOW2_MDL");
+std::unique_ptr<Onyx::Schema::StructDef> MDL::CreateSchema() {
+    auto schema = std::make_unique<Onyx::Schema::StructDef>("GOW2_MDL");
     schema->AddUInt32("Magic")
            .AddUInt32("Version")
            .AddUInt32("VertexCount")

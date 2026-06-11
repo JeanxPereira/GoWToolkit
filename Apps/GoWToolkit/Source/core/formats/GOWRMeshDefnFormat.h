@@ -4,13 +4,13 @@
 namespace Onyx {
 
 // â”€â”€ GOWR Mesh Definition â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-class GOWRMeshDefnFormat : public AssetFormat {
+class GOWRMeshDefnFormat : public Schema::AssetFormat {
 protected:
     void Build() override {
         Struct("GOWRMeshDefn", 64, // minimal coverage of main header
             Key("magic", 0x0),
             UInt16("submeshCount", 0x10),
-            Array("submeshOffsets", DataType::UInt32, 0x40, 0x10)
+            Array("submeshOffsets", Schema::DataType::UInt32, 0x40, 0x10)
         );
 
         Struct("SubmeshHeader", 0x84,
@@ -22,7 +22,7 @@ protected:
             UInt("indCount", 0x5C),
             UInt("componentOffset", 0x60),
             UInt("bufOffsetsOffset", 0x64),
-            UInt64("meshHash", 0x68, DisplayHint::Hex),
+            UInt64("meshHash", 0x68, Schema::DisplayHint::Hex),
             UInt8("bufferCount", 0x80),
             UInt8("indicesStride", 0x81),
             UInt8("bytesPerVertex", 0x82),

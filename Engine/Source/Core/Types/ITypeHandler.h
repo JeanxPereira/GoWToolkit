@@ -9,8 +9,10 @@
 #include <memory>
 
 // Forward declarations
-namespace Onyx {
+namespace Onyx::Schema {
 class AssetNode;
+} // namespace Onyx::Schema
+namespace Onyx {
 class IDocumentContent;
 class SceneData;
 } // namespace Onyx
@@ -49,7 +51,7 @@ public:
 
   /// Parse raw payload bytes into a structured AssetNode tree for InfoTab
   /// display. Return nullptr if this type has no structured properties to show.
-  virtual std::shared_ptr<AssetNode> Parse(std::shared_ptr<Vfs::IFile> file) {
+  virtual std::shared_ptr<Schema::AssetNode> Parse(std::shared_ptr<Vfs::IFile> file) {
     (void)file;
     return nullptr;
   }

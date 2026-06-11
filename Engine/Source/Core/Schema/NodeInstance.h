@@ -8,7 +8,7 @@
 
 namespace Onyx::Vfs { class IFile; }
 
-namespace Onyx {
+namespace Onyx::Schema {
 
 class NodeInstance {
 public:
@@ -38,11 +38,11 @@ public:
     }
 
     // Leitura a partir de um File Stream (raw reading for fixed size structs)
-    bool ReadFromFile(Vfs::IFile* file);
+    bool ReadFromFile(Onyx::Vfs::IFile* file);
 
 private:
     std::shared_ptr<StructDef> m_def;
     std::vector<uint8_t> m_data;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Schema

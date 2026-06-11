@@ -5,7 +5,7 @@ namespace Onyx {
 
 // â”€â”€ GOW2 Instance Format â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Magic: 0x00030001
-class GOW2InstanceFormat : public AssetFormat {
+class GOW2InstanceFormat : public Schema::AssetFormat {
 protected:
     void Build() override {
         Struct("GOW2Instance", 76,

@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Schema {
 
 enum class FieldType {
     Int8,
@@ -53,4 +53,4 @@ inline size_t GetFieldTypeSize(FieldType type) {
     return 0;
 }
 
-} // namespace Onyx
+} // namespace Onyx::Schema

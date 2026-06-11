@@ -1,15 +1,15 @@
-﻿#include "Ui/AssetNodeRenderer.h"
+#include "Ui/AssetNodeRenderer.h"
 #include "imgui.h"
 #include <cstdio>
 
 namespace Onyx {
 
-// â”€â”€ Forward declaration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-static void RenderAssetNodeRow(const AssetNode& node);
+// ── Forward declaration ────────────────────────────────────────────────────
+static void RenderAssetNodeRow(const Schema::AssetNode& node);
 
-// â”€â”€ Render an entire AssetNode tree â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-void RenderAssetNode(const AssetNode& node) {
-    if (node.Kind() == NodeKind::Struct || node.Kind() == NodeKind::Array) {
+// ── Render an entire AssetNode tree ──────────────────────────────────────────
+void RenderAssetNode(const Schema::AssetNode& node) {
+    if (node.Kind() == Schema::NodeKind::Struct || node.Kind() == Schema::NodeKind::Array) {
         for (auto& child : node.children)
             RenderAssetNodeRow(*child);
         return;
@@ -17,15 +17,15 @@ void RenderAssetNode(const AssetNode& node) {
     RenderAssetNodeRow(node);
 }
 
-// â”€â”€ Render a single node row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-static void RenderAssetNodeRow(const AssetNode& node) {
+// ── Render a single node row ──────────────────────────────────────────────────
+static void RenderAssetNodeRow(const Schema::AssetNode& node) {
     ImGui::PushID(node.binaryOffset);
 
     switch (node.Kind()) {
 
-        // â”€â”€ Struct (treenode with children) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        case NodeKind::Struct: {
-            auto& n = static_cast<const StructNode&>(node);
+        // ── Struct (treenode with children) ─────────────────────────────────
+        case Schema::NodeKind::Struct: {
+            auto& n = static_cast<const Schema::StructNode&>(node);
             char label[256];
             snprintf(label, sizeof(label), "%s  [%s]", n.name.c_str(), n.typeName.c_str());
             if (ImGui::TreeNodeEx(label, ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -36,9 +36,9 @@ static void RenderAssetNodeRow(const AssetNode& node) {
             break;
         }
 
-        // â”€â”€ Array â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        case NodeKind::Array: {
-            auto& n = static_cast<const ArrayNode&>(node);
+        // ── Array ────────────────────────────────────────────────────────────
+        case Schema::NodeKind::Array: {
+            auto& n = static_cast<const Schema::ArrayNode&>(node);
             char label[256];
             snprintf(label, sizeof(label), "%s  [%zu items]",
                      n.name.c_str(), n.children.size());
@@ -53,9 +53,9 @@ static void RenderAssetNodeRow(const AssetNode& node) {
             break;
         }
 
-        // â”€â”€ Bool (checkbox) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        case NodeKind::Bool: {
-            auto& n = static_cast<const BoolNode&>(node);
+        // ── Bool (checkbox) ──────────────────────────────────────────────────
+        case Schema::NodeKind::Bool: {
+            auto& n = static_cast<const Schema::BoolNode&>(node);
             bool v = n.value;
             ImGui::BeginDisabled();
             ImGui::Checkbox(n.name.c_str(), &v);
@@ -63,12 +63,12 @@ static void RenderAssetNodeRow(const AssetNode& node) {
             break;
         }
 
-        // â”€â”€ Vector (drag floats or color square) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        case NodeKind::Vector: {
-            auto& n = static_cast<const VectorNode&>(node);
+        // ── Vector (drag floats or color square) ─────────────────────────────
+        case Schema::NodeKind::Vector: {
+            auto& n = static_cast<const Schema::VectorNode&>(node);
             float v[4] = {n.x, n.y, n.z, n.w};
 
-            if (n.display == DisplayHint::Color) {
+            if (n.display == Schema::DisplayHint::Color) {
                 if (n.componentCount >= 4)
                     ImGui::ColorEdit4(n.name.c_str(), v,
                         ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoPicker);
@@ -88,17 +88,17 @@ static void RenderAssetNodeRow(const AssetNode& node) {
             break;
         }
 
-        // â”€â”€ Enum â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        case NodeKind::Enum: {
-            auto& n = static_cast<const EnumNode&>(node);
+        // ── Enum ─────────────────────────────────────────────────────────────
+        case Schema::NodeKind::Enum: {
+            auto& n = static_cast<const Schema::EnumNode&>(node);
             ImGui::LabelText(n.name.c_str(), "%s", n.DisplayValue().c_str());
             break;
         }
 
-        // â”€â”€ Number â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        case NodeKind::Number: {
-            auto& n = static_cast<const NumberNode&>(node);
-            if (n.originalType == DataType::Float) {
+        // ── Number ───────────────────────────────────────────────────────────
+        case Schema::NodeKind::Number: {
+            auto& n = static_cast<const Schema::NumberNode&>(node);
+            if (n.originalType == Schema::DataType::Float) {
                 float v = n.AsFloat();
                 ImGui::BeginDisabled();
                 ImGui::DragFloat(n.name.c_str(), &v, 0, 0, 0, "%.4f");
@@ -109,16 +109,16 @@ static void RenderAssetNodeRow(const AssetNode& node) {
             break;
         }
 
-        // â”€â”€ String â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        case NodeKind::String: {
-            auto& n = static_cast<const StringNode&>(node);
+        // ── String ───────────────────────────────────────────────────────────
+        case Schema::NodeKind::String: {
+            auto& n = static_cast<const Schema::StringNode&>(node);
             ImGui::LabelText(n.name.c_str(), "%s", n.value.c_str());
             break;
         }
 
-        // â”€â”€ Hex Dump (collapsed tree) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        case NodeKind::Hex: {
-            auto& n = static_cast<const HexNode&>(node);
+        // ── Hex Dump (collapsed tree) ────────────────────────────────────────
+        case Schema::NodeKind::Hex: {
+            auto& n = static_cast<const Schema::HexNode&>(node);
             if (ImGui::TreeNode(n.name.c_str())) {
                 // Render hex dump in rows of 16 bytes
                 const size_t rowSize = 16;
@@ -135,8 +135,8 @@ static void RenderAssetNodeRow(const AssetNode& node) {
             break;
         }
 
-        // â”€â”€ Null â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        case NodeKind::Null: {
+        // ── Null ─────────────────────────────────────────────────────────────
+        case Schema::NodeKind::Null: {
             ImGui::LabelText(node.name.c_str(), "(null)");
             break;
         }
@@ -147,12 +147,12 @@ static void RenderAssetNodeRow(const AssetNode& node) {
         ImGui::BeginTooltip();
         ImGui::TextDisabled("offset: 0x%04X  |  %s",
                             node.binaryOffset,
-                            DataTypeName(
-                                node.Kind() == NodeKind::Number
-                                    ? static_cast<const NumberNode&>(node).originalType
-                                    : node.Kind() == NodeKind::Vector ? DataType::Vec3
-                                    : node.Kind() == NodeKind::Bool   ? DataType::Bool
-                                    : DataType::String));
+                            Schema::DataTypeName(
+                                node.Kind() == Schema::NodeKind::Number
+                                    ? static_cast<const Schema::NumberNode&>(node).originalType
+                                    : node.Kind() == Schema::NodeKind::Vector ? Schema::DataType::Vec3
+                                    : node.Kind() == Schema::NodeKind::Bool   ? Schema::DataType::Bool
+                                    : Schema::DataType::String));
         ImGui::EndTooltip();
     }
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <memory>
 
-namespace Onyx {
+namespace Onyx::Schema {
 
 class StructDef {
 public:
@@ -36,4 +36,4 @@ private:
     std::vector<SchemaField> m_fields;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Schema

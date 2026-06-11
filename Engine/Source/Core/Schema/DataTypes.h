@@ -4,7 +4,7 @@
 #include <vector>
 #include <utility>
 
-namespace Onyx {
+namespace Onyx::Schema {
 
 // ── Data Types ─────────────────────────────────────────────────────────────
 // All supported binary field types for Onyx format reflection.
@@ -129,4 +129,4 @@ inline const char* DataTypeName(DataType t) {
     }
 }
 
-} // namespace Onyx
+} // namespace Onyx::Schema

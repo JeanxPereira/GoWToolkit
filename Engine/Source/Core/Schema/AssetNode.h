@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <cstring>
 
-namespace Onyx {
+namespace Onyx::Schema {
 
 // ── Node types ─────────────────────────────────────────────────────────────
 enum class NodeKind : uint8_t {
@@ -199,4 +199,4 @@ public:
     std::string DisplayValue() const override { return "(null)"; }
 };
 
-} // namespace Onyx
+} // namespace Onyx::Schema

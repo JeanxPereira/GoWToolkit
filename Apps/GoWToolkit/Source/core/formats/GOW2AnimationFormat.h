@@ -5,7 +5,7 @@ namespace Onyx {
 
 // â”€â”€ GOW2 Animation Format â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Magic: 0x00000003
-class GOW2AnimationFormat : public AssetFormat {
+class GOW2AnimationFormat : public Schema::AssetFormat {
 protected:
     void Build() override {
         Struct("GOW2Animation", 32, // Minimal header mapping

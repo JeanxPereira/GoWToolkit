@@ -10,7 +10,7 @@ public:
     TypeId  GetId()    const override { return GameTypes::MeshDefn; }
     const char*  GetName()  const override { return "GOWR Mesh Defn"; }
     uint32_t     GetMagic() const override { return 0x00; }
-    std::shared_ptr<AssetNode> Parse(std::shared_ptr<Vfs::IFile> file) override;
+    std::shared_ptr<Schema::AssetNode> Parse(std::shared_ptr<Vfs::IFile> file) override;
     std::shared_ptr<IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
 };
 

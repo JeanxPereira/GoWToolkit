@@ -1,6 +1,6 @@
 #include "StructDef.h"
 
-namespace Onyx {
+namespace Onyx::Schema {
 
 size_t StructDef::GetFixedSize() const {
     size_t size = 0;
@@ -10,4 +10,4 @@ size_t StructDef::GetFixedSize() const {
     return size;
 }
 
-} // namespace Onyx
+} // namespace Onyx::Schema

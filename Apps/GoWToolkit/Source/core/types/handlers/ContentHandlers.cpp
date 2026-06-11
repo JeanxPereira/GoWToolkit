@@ -38,13 +38,13 @@ public:
     return {1.0f, 0.8f, 0.3f, 1.0f};
   } // amarelo
 
-  std::shared_ptr<Onyx::AssetNode>
+  std::shared_ptr<Onyx::Schema::AssetNode>
   Parse(std::shared_ptr<Onyx::Vfs::IFile> file) override {
     if (!file || file->Size() < 32)
       return nullptr;
     Onyx::GOW2AnimationFormat format;
     format.Initialize();
-    return Onyx::AssetReader::Parse(*format.Root(), file);
+    return Onyx::Schema::AssetReader::Parse(*format.Root(), file);
   }
 };
 

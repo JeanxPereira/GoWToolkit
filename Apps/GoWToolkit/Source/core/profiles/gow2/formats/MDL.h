@@ -9,7 +9,7 @@ namespace GOW2 {
 class MDL {
 public:
     // Factory que retorna a definiÃ§Ã£o reflexiva de dados para uma Malha (MDL) de GOW2
-    static std::unique_ptr<StructDef> CreateSchema();
+    static std::unique_ptr<Onyx::Schema::StructDef> CreateSchema();
 };
 
 } // namespace GOW2
