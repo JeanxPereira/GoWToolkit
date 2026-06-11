@@ -13,8 +13,9 @@ namespace Onyx {
     class DocumentWindow;
 }
 
-struct AssetEntry;
-struct AssetContainer;
+namespace Onyx::Domain { struct AssetEntry; struct AssetContainer; }
+using AssetEntry    = Onyx::Domain::AssetEntry;
+using AssetContainer = Onyx::Domain::AssetContainer;
 
 namespace Onyx::Api {
 

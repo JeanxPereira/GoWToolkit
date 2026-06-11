@@ -5,7 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
-struct AssetEntry;
+namespace Onyx::Domain { struct AssetEntry; }
+using AssetEntry = Onyx::Domain::AssetEntry;
 
 namespace Onyx {
 

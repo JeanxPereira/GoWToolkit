@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // `AssetContainer` aggregates everything an opened WAD exposes to the rest of
 // the toolkit: source filename, file handle, owning profile, and the
@@ -12,20 +12,24 @@
 
 #include "Core/Domain/Entry.h"
 
-namespace Onyx {
+namespace Onyx::Domain {
     class IAssetProfile;
 }
 namespace Onyx::Vfs {
     class IFile;
 }
 
-// NOTE: `AssetContainer` lives at global scope to match the legacy layout in
-// `core/WadTypes.h`. The fields it owns are scoped under `Onyx::`. It
-// will move into the namespace in a later milestone.
+namespace Onyx::Domain {
+
 struct AssetContainer {
     std::string                        filename;
     std::string                        fullPath;
-    std::shared_ptr<Onyx::IAssetProfile> profile;
+    std::shared_ptr<Onyx::Domain::IAssetProfile> profile;
     std::shared_ptr<Onyx::Vfs::IFile>   fileSource;
     std::vector<AssetEntry>           entries;
 };
+
+} // namespace Onyx::Domain
+
+// Backwards-compat alias — keep existing call sites compiling at global scope.
+using AssetContainer = Onyx::Domain::AssetContainer;

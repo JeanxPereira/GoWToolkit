@@ -11,7 +11,7 @@
 #include "../types/GameVersion.h"
 #include "../types/TypeId.h"
 
-namespace Onyx {
+namespace Onyx::Domain {
 
 class IAssetProfile {
 public:
@@ -39,4 +39,7 @@ public:
 
 };
 
-} // namespace Onyx
+} // namespace Onyx::Domain
+
+// Backwards-compat alias
+namespace Onyx { using IAssetProfile = Domain::IAssetProfile; }

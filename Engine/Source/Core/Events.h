@@ -8,8 +8,9 @@
 
 // Forward declarations
 #include <memory>
-struct AssetContainer;
-struct AssetEntry;
+namespace Onyx::Domain { struct AssetContainer; struct AssetEntry; }
+using AssetContainer = Onyx::Domain::AssetContainer;
+using AssetEntry     = Onyx::Domain::AssetEntry;
 namespace Onyx { class IDocumentContent; }
 namespace Onyx { struct AnimationData; }
 class AppConfig;

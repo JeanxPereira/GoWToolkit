@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 
-namespace Onyx {
+namespace Onyx::Domain {
 
 struct BoundingBox {
     glm::vec3 min{0.0f};
@@ -10,4 +10,7 @@ struct BoundingBox {
     float Radius() const { return glm::length(max - min) * 0.5f; }
 };
 
-} // namespace Onyx
+} // namespace Onyx::Domain
+
+// Backwards-compat alias
+namespace Onyx { using BoundingBox = Domain::BoundingBox; }

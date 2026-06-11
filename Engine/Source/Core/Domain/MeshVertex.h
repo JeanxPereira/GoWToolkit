@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 
-namespace Onyx {
+namespace Onyx::Domain {
 
 /// CPU-side vertex used by mesh parsers and uploaded to the GPU as-is.
 /// POD layout — `offsetof` is relied on by `rendering/GpuMesh.cpp` for
@@ -18,4 +18,7 @@ struct GpuVertex {
     glm::uvec4 boneIndices {0u};
 };
 
-} // namespace Onyx
+} // namespace Onyx::Domain
+
+// Backwards-compat alias
+namespace Onyx { using GpuVertex = Domain::GpuVertex; }

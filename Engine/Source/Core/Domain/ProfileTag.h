@@ -2,7 +2,7 @@
 #include <any>
 #include <utility>
 
-namespace Onyx {
+namespace Onyx::Domain {
 
 // Type-safe wrapper for opaque profile-specific tag data attached to AssetEntry.
 class ProfileTag {
@@ -24,4 +24,7 @@ public:
     }
 };
 
-} // namespace Onyx
+} // namespace Onyx::Domain
+
+// Backwards-compat alias
+namespace Onyx { using ProfileTag = Domain::ProfileTag; }
