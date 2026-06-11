@@ -50,7 +50,7 @@ static uint32_t ElementSize(GOWRMeshParser::AttrFormat fmt, uint8_t compCount) {
 }
 
 // â”€â”€ ReadSubmeshHeader â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<IFile>& f,
+bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
                                        uint32_t base,
                                        SubmeshHeader& h)
 {
@@ -106,7 +106,7 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<IFile>& f,
 }
 
 // â”€â”€ ReadComponents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-bool GOWRMeshParser::ReadComponents(std::shared_ptr<IFile>& f,
+bool GOWRMeshParser::ReadComponents(std::shared_ptr<Vfs::IFile>& f,
                                      const SubmeshHeader& hdr,
                                      std::vector<ComponentDesc>& out)
 {
@@ -130,7 +130,7 @@ bool GOWRMeshParser::ReadComponents(std::shared_ptr<IFile>& f,
 }
 
 // â”€â”€ ReadBufferOffsets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-bool GOWRMeshParser::ReadBufferOffsets(std::shared_ptr<IFile>& f,
+bool GOWRMeshParser::ReadBufferOffsets(std::shared_ptr<Vfs::IFile>& f,
                                         const SubmeshHeader& hdr,
                                         std::vector<uint32_t>& out)
 {
@@ -142,7 +142,7 @@ bool GOWRMeshParser::ReadBufferOffsets(std::shared_ptr<IFile>& f,
 }
 
 // â”€â”€ ReadVertices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-bool GOWRMeshParser::ReadVertices(std::shared_ptr<IFile>& gpu,
+bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                                    const SubmeshHeader& hdr,
                                    const std::vector<ComponentDesc>& comps,
                                    const std::vector<uint32_t>& bufOffsets,
@@ -398,7 +398,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<IFile>& gpu,
 }
 
 // â”€â”€ ReadIndices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-bool GOWRMeshParser::ReadIndices(std::shared_ptr<IFile>& gpu,
+bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
                                   const SubmeshHeader& hdr,
                                   MeshPart& part)
 {
@@ -428,8 +428,8 @@ bool GOWRMeshParser::ReadIndices(std::shared_ptr<IFile>& gpu,
 }
 
 // â”€â”€ Parse (full geometry pass) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-bool GOWRMeshParser::Parse(std::shared_ptr<IFile> meshFile,
-                            std::shared_ptr<IFile> gpuFile,
+bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
+                            std::shared_ptr<Vfs::IFile> gpuFile,
                             MeshData& outData)
 {
     if (!meshFile || !meshFile->IsValid()) return false;
@@ -535,8 +535,8 @@ bool GOWRMeshParser::Parse(std::shared_ptr<IFile> meshFile,
 }
 
 // â”€â”€ ParseMeshDefn (header-only, for tree inspector + lodpack lookup) â”€â”€â”€â”€â”€â”€â”€
-bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<IFile> defFile,
-                                    std::shared_ptr<IFile> /*lodpackFile*/,
+bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
+                                    std::shared_ptr<Vfs::IFile> /*lodpackFile*/,
                                     std::vector<std::shared_ptr<GpuMesh>>& /*outMeshes*/)
 {
     if (!defFile || !defFile->IsValid()) return false;
@@ -574,8 +574,8 @@ bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<IFile> defFile,
 // It mirrors the C# Main() loop: for each submesh, looks up the LOD blob in
 // the lodpack, wraps it in a MemoryFile, and calls the standard ReadVertices/
 // ReadIndices pipeline.
-bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<IFile>    meshFile,
-                                       std::shared_ptr<IFile>    gpuFile,
+bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
+                                       std::shared_ptr<Vfs::IFile>    gpuFile,
                                        const LodPackIndex&       lodIdx,
                                        MeshData&                 outData)
 {
@@ -613,7 +613,7 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<IFile>    meshFile,
         // â”€â”€ LOD source selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // meshHash == 0 â†’ data is embedded in the GPU file (internal LOD)
         // meshHash != 0 â†’ look up in lodpack
-        std::shared_ptr<IFile> lodFile;
+        std::shared_ptr<Vfs::IFile> lodFile;
 
         if (hdr.meshHash == 0) {
             // Internal: use the gpuFile as-is (it IS the LOD blob)
@@ -639,7 +639,7 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<IFile>    meshFile,
                      smIdx, entry->packIdx,
                      (unsigned long long)entry->offset, entry->size);
 
-            lodFile = std::make_shared<MemoryFile>(std::move(blob));
+            lodFile = std::make_shared<Vfs::MemoryFile>(std::move(blob));
         }
 
         std::vector<ComponentDesc> comps;

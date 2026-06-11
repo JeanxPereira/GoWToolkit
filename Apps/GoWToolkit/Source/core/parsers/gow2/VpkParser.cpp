@@ -9,7 +9,7 @@ static uint32_t ReadU32LE(const uint8_t* p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-std::unique_ptr<GOW2VpkParser::VpkData> GOW2VpkParser::Parse(const std::shared_ptr<IFile>& file) {
+std::unique_ptr<GOW2VpkParser::VpkData> GOW2VpkParser::Parse(const std::shared_ptr<Vfs::IFile>& file) {
     if (!file || !file->IsValid()) return nullptr;
 
     // VPK header is 0x20 (32) bytes

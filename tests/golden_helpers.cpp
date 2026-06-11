@@ -39,7 +39,7 @@ std::string ToHex64(uint64_t value) {
 
 // Reads up to `kPayloadHashLimit` bytes at `offset` from `source` and returns
 // xxhash64 of the slice (0 when the entry has no payload).
-uint64_t HashEntryPayload(Onyx::IFile& source, uint64_t offset, uint64_t size) {
+uint64_t HashEntryPayload(Onyx::Vfs::IFile& source, uint64_t offset, uint64_t size) {
     if (size == 0) return 0;
     size_t toRead = static_cast<size_t>(std::min<uint64_t>(size, kPayloadHashLimit));
     std::vector<uint8_t> buf(toRead);
@@ -50,7 +50,7 @@ uint64_t HashEntryPayload(Onyx::IFile& source, uint64_t offset, uint64_t size) {
 }
 
 void FlattenEntry(const AssetEntry& entry,
-                  Onyx::IFile* source,
+                  Onyx::Vfs::IFile* source,
                   std::vector<ordered_json>& out) {
     ordered_json e;
     e["name"]        = entry.name;
@@ -178,7 +178,7 @@ void RunGoldenTest(std::string_view versionTag,
     REQUIRE_MESSAGE(fs::exists(wadPath),
                     "fixture WAD not found: " << wadPath.string());
 
-    auto file = std::make_shared<Onyx::OsFile>(wadPath.string());
+    auto file = std::make_shared<Onyx::Vfs::OsFile>(wadPath.string());
     REQUIRE_MESSAGE(file->IsValid(),
                     "failed to open fixture WAD: " << wadPath.string());
 

@@ -16,7 +16,7 @@ public:
     static std::unique_ptr<TextureData> Parse(
         const AssetEntry& txrEntry,
         const std::vector<AssetEntry>& siblingEntries,
-        const std::shared_ptr<IFile>& fileSource);
+        const std::shared_ptr<Vfs::IFile>& fileSource);
 
     // Parse a raw GFX block directly (lower level)
     struct GFXData {

@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <algorithm>
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 // Encapsula outro IFile garantindo que não passemos do offset inicial + tamanho.
 // Essencial para ler WADs e entradas contíguas numa ISO.
@@ -66,4 +66,4 @@ private:
     size_t m_pos;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

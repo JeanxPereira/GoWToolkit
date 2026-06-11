@@ -85,7 +85,7 @@ public:
     const char*  GetIcon()  const override { return ICON_SF_CUBE_FILL; }  // symbol-misc
     Color4f      GetColor() const override { return {0.4f, 0.8f, 1.0f, 1.0f}; }  // azul
 
-    std::shared_ptr<Onyx::AssetNode> Parse(std::shared_ptr<Onyx::IFile> file) override {
+    std::shared_ptr<Onyx::AssetNode> Parse(std::shared_ptr<Onyx::Vfs::IFile> file) override {
         if (!file || file->Size() < 24) return nullptr;
         Onyx::GOW2ModelFormat format;
         format.Initialize();
@@ -155,7 +155,7 @@ public:
 
         // Parse mesh geometry
         for (const auto* src : meshSources) {
-            Onyx::SliceFile slice(wad.fileSource, src->offset, src->size);
+            Onyx::Vfs::SliceFile slice(wad.fileSource, src->offset, src->size);
             if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->size)) {
                 for (auto& p : data->parts) {
                     p.materialId += materialOffset;

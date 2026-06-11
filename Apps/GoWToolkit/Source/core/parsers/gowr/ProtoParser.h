@@ -12,7 +12,7 @@ namespace Onyx {
 // the inverse of renderMat as bindToJointMat for skinning.
 class GOWRProtoParser {
 public:
-    static std::shared_ptr<ObjectData> Parse(std::shared_ptr<IFile> file);
+    static std::shared_ptr<ObjectData> Parse(std::shared_ptr<Vfs::IFile> file);
 };
 
 } // namespace Onyx

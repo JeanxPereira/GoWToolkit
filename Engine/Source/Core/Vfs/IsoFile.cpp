@@ -1,6 +1,6 @@
 #include "IsoFile.h"
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 IsoFile::IsoFile(const std::string& isoPath, uint64_t startOffset, size_t size) 
     : m_startOffset(startOffset), m_size(size), m_pos(0) 
@@ -61,4 +61,4 @@ bool IsoFile::IsEOF() const {
     return static_cast<size_t>(m_pos) >= m_size;
 }
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

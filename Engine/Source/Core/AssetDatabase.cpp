@@ -64,7 +64,7 @@ bool AssetDatabase::LoadWadFromPakEntry(AssetEntry* e, AssetContainer& parentPak
         e->wadName,
     };
 
-    std::unique_ptr<Onyx::IFile> partFile;
+    std::unique_ptr<Onyx::Vfs::IFile> partFile;
     for (auto& p : tryPaths) {
         partFile = vfs->OpenFile(p);
         if (partFile && partFile->IsValid()) {
@@ -80,7 +80,7 @@ bool AssetDatabase::LoadWadFromPakEntry(AssetEntry* e, AssetContainer& parentPak
     }
 
     // Criar um slice para o offset/size deste entry dentro do PAK
-    auto slice = std::make_shared<Onyx::SliceFile>(std::move(partFile), e->offset, e->size);
+    auto slice = std::make_shared<Onyx::Vfs::SliceFile>(std::move(partFile), e->offset, e->size);
 
     AssetContainer result;
     result.filename = e->name;
@@ -103,7 +103,7 @@ bool AssetDatabase::LoadWadFromPakEntry(AssetEntry* e, AssetContainer& parentPak
 
 // â”€â”€ OpenPakEntryAsFile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Returns a SliceFile for a PAK entry without parsing as WAD
-std::shared_ptr<Onyx::IFile> AssetDatabase::OpenPakEntryAsFile(AssetEntry* e, AssetContainer& parentPak) {
+std::shared_ptr<Onyx::Vfs::IFile> AssetDatabase::OpenPakEntryAsFile(AssetEntry* e, AssetContainer& parentPak) {
     if (!e || !parentPak.profile) return nullptr;
 
     auto vfs = parentPak.profile->MountArchive(parentPak.fullPath);
@@ -113,7 +113,7 @@ std::shared_ptr<Onyx::IFile> AssetDatabase::OpenPakEntryAsFile(AssetEntry* e, As
     }
 
     std::vector<std::string> tryPaths = { "/" + e->wadName, e->wadName };
-    std::unique_ptr<Onyx::IFile> partFile;
+    std::unique_ptr<Onyx::Vfs::IFile> partFile;
     for (auto& p : tryPaths) {
         partFile = vfs->OpenFile(p);
         if (partFile && partFile->IsValid()) break;
@@ -125,7 +125,7 @@ std::shared_ptr<Onyx::IFile> AssetDatabase::OpenPakEntryAsFile(AssetEntry* e, As
         return nullptr;
     }
 
-    return std::make_shared<Onyx::SliceFile>(std::move(partFile), e->offset, e->size);
+    return std::make_shared<Onyx::Vfs::SliceFile>(std::move(partFile), e->offset, e->size);
 }
 
 // â”€â”€ LoadWad â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -164,7 +164,7 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     wad.fullPath = path.string();
     wad.profile  = profile;
 
-    auto file = std::make_shared<Onyx::OsFile>(path.string());
+    auto file = std::make_shared<Onyx::Vfs::OsFile>(path.string());
     if (!file->IsValid()) return false;
 
     wad.fileSource = file;
@@ -197,7 +197,7 @@ void AssetDatabase::CloseAll() {
 // â”€â”€ ISO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 bool AssetDatabase::LoadIso(const fs::path& path) {
     if (!fs::exists(path)) return false;
-    auto vfs = std::make_shared<Onyx::IsoFileSystem>(path.string());
+    auto vfs = std::make_shared<Onyx::Vfs::IsoFileSystem>(path.string());
     if (vfs->Initialize()) {
         isos.push_back(vfs);
         return true;
@@ -221,7 +221,7 @@ bool AssetDatabase::EnsureNodeData(AssetEntry* e, AssetContainer& parentWad) {
     }
 
     if (auto* handler = Onyx::TypeRegistry::Get().Resolve(e->typeId)) {
-        auto sliceWindow = std::make_shared<Onyx::SliceFile>(parentWad.fileSource, e->offset, e->size);
+        auto sliceWindow = std::make_shared<Onyx::Vfs::SliceFile>(parentWad.fileSource, e->offset, e->size);
         e->assetNode = handler->Parse(sliceWindow);
     }
 

@@ -27,7 +27,7 @@ struct InstanceData {
 
 class GOW2InstanceParser {
 public:
-    static std::shared_ptr<InstanceData> Parse(const AssetEntry& entry, std::shared_ptr<IFile> parentFile);
+    static std::shared_ptr<InstanceData> Parse(const AssetEntry& entry, std::shared_ptr<Vfs::IFile> parentFile);
 };
 
 } // namespace Onyx

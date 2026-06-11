@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 class OsFile : public IFile {
 public:
@@ -23,4 +23,4 @@ private:
     size_t m_size = 0;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

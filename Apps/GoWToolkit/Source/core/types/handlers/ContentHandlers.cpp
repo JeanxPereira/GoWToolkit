@@ -39,7 +39,7 @@ public:
   } // amarelo
 
   std::shared_ptr<Onyx::AssetNode>
-  Parse(std::shared_ptr<Onyx::IFile> file) override {
+  Parse(std::shared_ptr<Onyx::Vfs::IFile> file) override {
     if (!file || file->Size() < 32)
       return nullptr;
     Onyx::GOW2AnimationFormat format;
@@ -363,7 +363,7 @@ public:
                                                       AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
-    auto slice = std::make_shared<Onyx::SliceFile>(wad.fileSource, entry.offset,
+    auto slice = std::make_shared<Onyx::Vfs::SliceFile>(wad.fileSource, entry.offset,
                                                   entry.size);
     return std::make_shared<Onyx::VideoPlayer>(entry.name, slice);
   }
@@ -381,7 +381,7 @@ public:
                                                       AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
-    auto slice = std::make_shared<Onyx::SliceFile>(wad.fileSource, entry.offset,
+    auto slice = std::make_shared<Onyx::Vfs::SliceFile>(wad.fileSource, entry.offset,
                                                   entry.size);
     return std::make_shared<Onyx::VideoPlayer>(entry.name, slice);
   }

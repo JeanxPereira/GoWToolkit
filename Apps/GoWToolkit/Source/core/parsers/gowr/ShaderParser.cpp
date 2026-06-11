@@ -130,7 +130,7 @@ static bool ParseSignature(const uint8_t* data, uint32_t size,
 
 // â”€â”€ Main parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<IFile> file) {
+std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file) {
     if (!file || file->Size() < 0x1C + 4) return nullptr;
 
     auto shader = std::make_unique<GOWRShaderData>();

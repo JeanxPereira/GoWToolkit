@@ -21,7 +21,7 @@
 
 namespace Onyx {
 
-bool GOWRMgParser::Parse(std::shared_ptr<IFile> file,
+bool GOWRMgParser::Parse(std::shared_ptr<Vfs::IFile> file,
                          uint32_t meshSubmeshCount,
                          std::vector<uint16_t>& outParentBone) {
     outParentBone.assign(meshSubmeshCount, 0xFFFF);

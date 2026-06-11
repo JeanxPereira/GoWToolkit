@@ -14,7 +14,7 @@ public:
         uint8_t channels = 1;
     };
 
-    static std::unique_ptr<VagData> Parse(const std::shared_ptr<IFile>& file);
+    static std::unique_ptr<VagData> Parse(const std::shared_ptr<Vfs::IFile>& file);
 };
 
 } // namespace Onyx

@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 class IFile {
 public:
@@ -26,4 +26,4 @@ public:
     }
 };
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

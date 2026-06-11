@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 #include "types/GameVersion.h"
 #include "types/TypeId.h"
 
-namespace Onyx {
+namespace Onyx::Vfs {
     class IsoFileSystem;
 }
 
@@ -27,7 +27,7 @@ public:
     bool LoadWadFromPakEntry(AssetEntry* e, AssetContainer& parentPak);
 
     // Get a file handle for a PAK entry without parsing as WAD
-    std::shared_ptr<Onyx::IFile> OpenPakEntryAsFile(AssetEntry* e, AssetContainer& parentPak);
+    std::shared_ptr<Onyx::Vfs::IFile> OpenPakEntryAsFile(AssetEntry* e, AssetContainer& parentPak);
 
     // Carrega WAD solto de disco (gameHint: "ragnarok", "gow2", etc.)
     bool LoadWad(const fs::path& path, const std::string& gameHint = "");
@@ -55,6 +55,6 @@ public:
     // ── Data ──
     std::vector<AssetContainer> paks;  // TOC entries (arquivos dentro de ISOs/PAKs)
     std::vector<AssetContainer> wads;  // WAD internals (tags parseadas de um .WAD)
-    std::vector<std::shared_ptr<Onyx::IsoFileSystem>> isos;
+    std::vector<std::shared_ptr<Onyx::Vfs::IsoFileSystem>> isos;
 };
 

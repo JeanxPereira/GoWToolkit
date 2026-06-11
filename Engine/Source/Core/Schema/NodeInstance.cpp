@@ -3,7 +3,7 @@
 
 namespace Onyx {
 
-bool NodeInstance::ReadFromFile(IFile* file) {
+bool NodeInstance::ReadFromFile(Vfs::IFile* file) {
     if (!file || !m_def) return false;
     
     size_t sizeToRead = m_def->GetFixedSize();

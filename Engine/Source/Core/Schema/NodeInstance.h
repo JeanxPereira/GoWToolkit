@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <cstring>
 
+namespace Onyx::Vfs { class IFile; }
+
 namespace Onyx {
 
 class NodeInstance {
@@ -36,7 +38,7 @@ public:
     }
 
     // Leitura a partir de um File Stream (raw reading for fixed size structs)
-    bool ReadFromFile(class IFile* file);
+    bool ReadFromFile(Vfs::IFile* file);
 
 private:
     std::shared_ptr<StructDef> m_def;

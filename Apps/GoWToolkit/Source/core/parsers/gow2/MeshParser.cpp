@@ -450,7 +450,7 @@ bool GOW2MeshParser::ParseObject(const std::vector<uint8_t>& allData, uint32_t o
     return true;
 }
 
-std::unique_ptr<MeshData> GOW2MeshParser::Parse(IFile& file, uint32_t offset, uint32_t size) {
+std::unique_ptr<MeshData> GOW2MeshParser::Parse(Vfs::IFile& file, uint32_t offset, uint32_t size) {
     if (size < 0x18) return nullptr; // Invalid header
 
     // Read the ENTIRE mesh blob into memory (Go does the same: allb []byte)

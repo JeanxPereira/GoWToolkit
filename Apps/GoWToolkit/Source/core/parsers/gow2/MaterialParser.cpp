@@ -17,14 +17,14 @@ static float ReadFloat(const uint8_t* buf, size_t offset) {
     return *reinterpret_cast<float*>(&val);
 }
 
-std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(const AssetEntry& matEntry, const std::shared_ptr<IFile>& fileSource) {
+std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(const AssetEntry& matEntry, const std::shared_ptr<Vfs::IFile>& fileSource) {
     if (!fileSource) return nullptr;
 
     // Header MAT tem 0x38 bytes
     if (matEntry.size < 0x38) return nullptr;
 
     std::vector<uint8_t> buf(matEntry.size);
-    SliceFile slice(fileSource, matEntry.offset, matEntry.size);
+    Vfs::SliceFile slice(fileSource, matEntry.offset, matEntry.size);
     slice.Seek(0, SEEK_SET);
     slice.Read(buf.data(), matEntry.size);
 

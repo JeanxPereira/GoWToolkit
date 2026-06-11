@@ -36,7 +36,7 @@ public:
     // indexed yet â€” caller should poll until `IsLoaded()` is true.
     bool FindTexture(uint64_t hash, TexpackEntry& outEntry);
 
-    std::shared_ptr<IFile> GetFile(uint32_t packIdx);
+    std::shared_ptr<Vfs::IFile> GetFile(uint32_t packIdx);
 
     void SetLoaded() { m_loaded = true; }
     bool IsLoaded() const { return m_loaded; }
@@ -53,7 +53,7 @@ private:
     struct PackInfo {
         std::filesystem::path tocPath;
         std::filesystem::path texpackPath;
-        std::shared_ptr<IFile> file;
+        std::shared_ptr<Vfs::IFile> file;
         bool indexed = false;
     };
 

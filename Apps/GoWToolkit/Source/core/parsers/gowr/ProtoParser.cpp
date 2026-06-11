@@ -30,7 +30,7 @@
 
 namespace Onyx {
 
-std::shared_ptr<ObjectData> GOWRProtoParser::Parse(std::shared_ptr<IFile> file) {
+std::shared_ptr<ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs::IFile> file) {
     if (!file || !file->IsValid()) return nullptr;
 
     auto obj = std::make_shared<ObjectData>();

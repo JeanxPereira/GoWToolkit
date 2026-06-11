@@ -286,7 +286,7 @@ bool TexPackIndex::IndexPack(uint32_t packIdx) {
         indexed++;
     }
 
-    auto file = std::make_shared<OsFile>(texpackPath.string());
+    auto file = std::make_shared<Vfs::OsFile>(texpackPath.string());
 
     // Brief lock to publish results.
     {
@@ -314,7 +314,7 @@ bool TexPackIndex::FindTexture(uint64_t hash, TexpackEntry& outEntry) {
     return true;
 }
 
-std::shared_ptr<IFile> TexPackIndex::GetFile(uint32_t packIdx) {
+std::shared_ptr<Vfs::IFile> TexPackIndex::GetFile(uint32_t packIdx) {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (packIdx >= m_packs.size()) return nullptr;
     return m_packs[packIdx].file;

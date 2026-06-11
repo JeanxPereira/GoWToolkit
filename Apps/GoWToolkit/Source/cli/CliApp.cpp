@@ -86,7 +86,7 @@ static void PrintEntryTree(const AssetEntry& entry, int depth) {
 static bool OpenWadFromFile(const std::filesystem::path& path,
                              const std::string& gameHint,
                              AssetContainer& wad,
-                             std::shared_ptr<IFile>& fileOut)
+                             std::shared_ptr<Vfs::IFile>& fileOut)
 {
     auto profile = gameHint.empty()
         ? ProfileManager::Get().DetectProfileForFile(path)
@@ -102,7 +102,7 @@ static bool OpenWadFromFile(const std::filesystem::path& path,
         return false;
     }
 
-    auto file = std::make_shared<OsFile>(path.string());
+    auto file = std::make_shared<Vfs::OsFile>(path.string());
     if (!file->IsValid()) { std::cerr << "[CLI] Cannot open file.\n"; return false; }
     fileOut = file;
 
@@ -197,7 +197,7 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
     }
 
     AssetContainer wad;
-    std::shared_ptr<IFile> file;
+    std::shared_ptr<Vfs::IFile> file;
     if (!OpenWadFromFile(path, gameHint, wad, file))
         return 1;
 
@@ -246,7 +246,7 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
     const std::string& entryName = args[2];
 
     AssetContainer wad;
-    std::shared_ptr<IFile> file;
+    std::shared_ptr<Vfs::IFile> file;
     if (!OpenWadFromFile(path, gameHint, wad, file))
         return 1;
 

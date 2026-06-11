@@ -26,7 +26,7 @@ public:
 
     static std::unique_ptr<SoundBankData> Parse(
         const AssetEntry& entry,
-        const std::shared_ptr<IFile>& fileSource);
+        const std::shared_ptr<Vfs::IFile>& fileSource);
 
 private:
     static constexpr uint32_t GOW2_SBP_MAGIC = 0x15;

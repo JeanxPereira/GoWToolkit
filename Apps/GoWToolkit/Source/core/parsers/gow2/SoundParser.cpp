@@ -21,7 +21,7 @@ static uint16_t ReadU16LE(const uint8_t* p) {
 
 std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     const AssetEntry& entry,
-    const std::shared_ptr<IFile>& fileSource)
+    const std::shared_ptr<Vfs::IFile>& fileSource)
 {
     if (!fileSource) {
         LOG_ERR("[GOW2Sound] fileSource is null for SFX %s", entry.name.c_str());
@@ -34,7 +34,7 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
 
     // Read entire entry data
     std::vector<uint8_t> buf(entry.size);
-    SliceFile slice(fileSource, entry.offset, entry.size);
+    Vfs::SliceFile slice(fileSource, entry.offset, entry.size);
     slice.Seek(0, SEEK_SET);
     size_t bytesRead = slice.Read(buf.data(), entry.size);
     if (bytesRead < 8) {

@@ -36,14 +36,14 @@ bool ProfileGOWR::Detect(const std::filesystem::path& path) const {
     return magic == 0x434F5457 || magic == 0x184D2204;
 }
 
-std::shared_ptr<IVirtualFileSystem> ProfileGOWR::MountArchive(
+std::shared_ptr<Vfs::IVirtualFileSystem> ProfileGOWR::MountArchive(
     const std::filesystem::path& path)
 {
     // RagnarÃ¶k doesn't use ISO mounting
     return nullptr;
 }
 
-bool ProfileGOWR::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) {
+bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContainer& outWad) {
     if (!file || !file->IsValid()) return false;
 
     file->Seek(0, SEEK_END);
@@ -53,7 +53,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
     uint32_t initialMagic = 0;
     file->Read(&initialMagic, 4);
 
-    std::shared_ptr<IFile> parsedFile = file;
+    std::shared_ptr<Vfs::IFile> parsedFile = file;
 
     // â”€â”€ LZ4 decompression â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (initialMagic == 0x184D2204) {
@@ -83,7 +83,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
         LZ4F_decompress(ctx, dst.data(), &outSize, src.data(), &srcSize, &opn);
         LZ4F_freeDecompressionContext(ctx);
 
-        parsedFile = std::make_shared<Onyx::MemoryFile>(std::move(dst));
+        parsedFile = std::make_shared<Onyx::Vfs::MemoryFile>(std::move(dst));
         fileSize   = static_cast<int64_t>(outSize);
         LOG_INFO("[GOWR] Decompressed to %lld bytes.", fileSize);
     }
@@ -213,7 +213,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
 }
 
 bool ProfileGOWR::LoadFromArchive(
-    std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad)
+    std::shared_ptr<Vfs::IVirtualFileSystem> vfs, AssetContainer& outWad)
 {
     // RagnarÃ¶k doesn't use ISO archives
     return false;

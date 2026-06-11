@@ -14,6 +14,8 @@
 
 namespace Onyx {
     class IAssetProfile;
+}
+namespace Onyx::Vfs {
     class IFile;
 }
 
@@ -24,6 +26,6 @@ struct AssetContainer {
     std::string                        filename;
     std::string                        fullPath;
     std::shared_ptr<Onyx::IAssetProfile> profile;
-    std::shared_ptr<Onyx::IFile>        fileSource;
+    std::shared_ptr<Onyx::Vfs::IFile>   fileSource;
     std::vector<AssetEntry>           entries;
 };

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 class IVirtualFileSystem {
 public:
@@ -23,4 +23,4 @@ public:
     virtual bool Exists(const std::string& path) = 0;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

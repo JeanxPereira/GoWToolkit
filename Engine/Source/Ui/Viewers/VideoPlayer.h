@@ -118,7 +118,7 @@ enum class PlayState {
 // â”€â”€â”€ VideoPlayer 2.0 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class VideoPlayer : public IDocumentContent {
 public:
-    VideoPlayer(const std::string& name, std::shared_ptr<IFile> file);
+    VideoPlayer(const std::string& name, std::shared_ptr<Vfs::IFile> file);
     ~VideoPlayer() override;
 
     std::string GetName() const override { return m_name; }
@@ -152,7 +152,7 @@ private:
 
 private:
     std::string m_name;
-    std::shared_ptr<IFile> m_ifile;
+    std::shared_ptr<Vfs::IFile> m_ifile;
     bool m_isOpen = false;
 
     // FFmpeg Contexts

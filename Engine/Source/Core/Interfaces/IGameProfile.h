@@ -24,14 +24,14 @@ public:
     virtual bool Detect(const std::filesystem::path& path) const = 0;
 
     // Monta uma ISO inteira em um sistema de diretórios navegável
-    virtual std::shared_ptr<IVirtualFileSystem> MountArchive(const std::filesystem::path& path) = 0;
+    virtual std::shared_ptr<Vfs::IVirtualFileSystem> MountArchive(const std::filesystem::path& path) = 0;
 
     // Abre uma WAD/Pak do jogo e povoa a AssetContainer com o conteúdo / nós base disponíveis
-    virtual bool ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) = 0;
+    virtual bool ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContainer& outWad) = 0;
 
     // Dado um VFS (ex: ISO montada), o profile procura por seus arquivos base (TOC/PAK)
     // e popula a estrutura do jogo no AssetContainer
-    virtual bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) = 0;
+    virtual bool LoadFromArchive(std::shared_ptr<Vfs::IVirtualFileSystem> vfs, AssetContainer& outWad) = 0;
 
     // True if this entry represents an openable container (e.g. a WAD/archive
     // node the user can drill into). Default: false. Profiles override.

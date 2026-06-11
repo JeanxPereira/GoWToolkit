@@ -148,7 +148,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
 
     // Parse mesh geometry
     for (const auto* src : meshSources) {
-        Onyx::SliceFile slice(wad.fileSource, src->offset, src->size);
+        Onyx::Vfs::SliceFile slice(wad.fileSource, src->offset, src->size);
         if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->size)) {
             for (auto& p : data->parts) {
                 LOG_INFO("[ProcessModel]   part '%s' materialId=%d (raw) â†’ %d (offset)",
@@ -172,7 +172,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
     // 1. Parse skeleton from Object payload
     if (entry.size > 0) {
         std::vector<uint8_t> objBuf(entry.size);
-        Onyx::SliceFile slice(wad.fileSource, entry.offset, entry.size);
+        Onyx::Vfs::SliceFile slice(wad.fileSource, entry.offset, entry.size);
         slice.Seek(0, SEEK_SET);
         slice.Read(objBuf.data(), entry.size);
         scene->skeleton = std::shared_ptr<Onyx::ObjectData>(
@@ -195,7 +195,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
         }
         // 2b. Parse Animation child (like Go's obj.Marshal case *anm.Animations)
         else if (child.typeId == Onyx::GameTypes::Animation && child.size > 0) {
-            Onyx::SliceFile slice(wad.fileSource, child.offset, child.size);
+            Onyx::Vfs::SliceFile slice(wad.fileSource, child.offset, child.size);
             std::vector<uint8_t> anmBuf(child.size);
             slice.Seek(0, SEEK_SET);
             slice.Read(anmBuf.data(), child.size);

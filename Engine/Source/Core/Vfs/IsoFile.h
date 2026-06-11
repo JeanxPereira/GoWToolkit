@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 class IsoFile : public IFile {
 public:
@@ -25,4 +25,4 @@ private:
     int64_t m_pos; // Logical position within the subfile
 };
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

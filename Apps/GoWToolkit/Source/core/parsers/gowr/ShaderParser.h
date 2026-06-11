@@ -94,6 +94,6 @@ struct GOWRShaderData {
 };
 
 // Parse a GOWR shader file (28-byte Onyx header + DXBC container)
-std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<IFile> file);
+std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file);
 
 } // namespace Onyx

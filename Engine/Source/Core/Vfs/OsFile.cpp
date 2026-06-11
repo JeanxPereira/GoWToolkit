@@ -1,7 +1,7 @@
 #include "OsFile.h"
 #include <filesystem>
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 OsFile::OsFile(const std::string& path) {
     if (std::filesystem::exists(path)) {
@@ -51,4 +51,4 @@ bool OsFile::IsEOF() const {
     return m_stream.eof();
 }
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

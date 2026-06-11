@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cstring>
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 class MemoryFile : public IFile {
 public:
@@ -47,4 +47,4 @@ private:
     size_t m_pos;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

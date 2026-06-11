@@ -24,7 +24,7 @@ double VideoPlayer::GetSteadyTimeSec() {
 
 // â”€â”€â”€ FFmpeg Custom IO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static int avioRead(void *opaque, uint8_t *buf, int buf_size) {
-  auto *ctx = static_cast<IFile *>(opaque);
+  auto *ctx = static_cast<Vfs::IFile *>(opaque);
   if (!ctx)
     return AVERROR_EOF;
   size_t r = ctx->Read(buf, buf_size);
@@ -34,7 +34,7 @@ static int avioRead(void *opaque, uint8_t *buf, int buf_size) {
 }
 
 static int64_t avioSeek(void *opaque, int64_t offset, int whence) {
-  auto *ctx = static_cast<IFile *>(opaque);
+  auto *ctx = static_cast<Vfs::IFile *>(opaque);
   if (!ctx)
     return AVERROR_EOF;
   if (whence == AVSEEK_SIZE)
@@ -97,7 +97,7 @@ size_t AudioRingBuffer::size() const {
 
 // â”€â”€â”€ VideoPlayer Implementation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-VideoPlayer::VideoPlayer(const std::string &name, std::shared_ptr<IFile> file)
+VideoPlayer::VideoPlayer(const std::string &name, std::shared_ptr<Vfs::IFile> file)
     : m_name(name), m_ifile(std::move(file)) {
   m_isOpen = FinishOpen();
   if (!m_isOpen) {

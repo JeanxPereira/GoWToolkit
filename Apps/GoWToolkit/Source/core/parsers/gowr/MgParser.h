@@ -18,7 +18,7 @@ public:
     // outParentBone[meshSubmeshIdx] = bone index that owns that submesh, or
     // 0xFFFF if the submesh wasn't referenced by any MG-def.
     // meshSubmeshCount sets the output vector size (= number of MESH submeshes).
-    static bool Parse(std::shared_ptr<IFile> mgFile,
+    static bool Parse(std::shared_ptr<Vfs::IFile> mgFile,
                       uint32_t meshSubmeshCount,
                       std::vector<uint16_t>& outParentBone);
 };

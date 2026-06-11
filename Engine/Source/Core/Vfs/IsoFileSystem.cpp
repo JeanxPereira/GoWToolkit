@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 IsoFileSystem::IsoFileSystem(const std::string& isoPath) : m_path(isoPath) {
 }
@@ -161,4 +161,4 @@ bool IsoFileSystem::Exists(const std::string& path) {
     return m_entries.find(norm) != m_entries.end();
 }
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 
-namespace Onyx {
+namespace Onyx::Vfs {
 
 struct IsoEntry {
     std::string name;
@@ -36,4 +36,4 @@ private:
     std::map<std::string, IsoEntry> m_entries;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Vfs

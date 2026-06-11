@@ -21,22 +21,22 @@ public:
 
     // Full parse from a pre-resolved GPU file (hash=0 submeshes, or already
     // externally resolved LOD blobs). Does NOT do lodpack lookup.
-    static bool Parse(std::shared_ptr<IFile> meshFile,
-                      std::shared_ptr<IFile> gpuFile,
+    static bool Parse(std::shared_ptr<Vfs::IFile> meshFile,
+                      std::shared_ptr<Vfs::IFile> gpuFile,
                       MeshData& outData);
 
     // Full parse with lodpack lookup.
     // For each submesh: if meshHash != 0 â†’ reads blob from lodIdx;
     //                   if meshHash == 0 â†’ uses gpuFile directly.
     // This is the primary production entry point.
-    static bool ParseWithLodPack(std::shared_ptr<IFile>    meshFile,
-                                  std::shared_ptr<IFile>    gpuFile,
+    static bool ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
+                                  std::shared_ptr<Vfs::IFile>    gpuFile,
                                   const LodPackIndex&       lodIdx,
                                   MeshData&                 outData);
 
     // Header-only parse (no GPU read, for tree inspection)
-    static bool ParseMeshDefn(std::shared_ptr<IFile> defFile,
-                               std::shared_ptr<IFile> lodpackFile,
+    static bool ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
+                               std::shared_ptr<Vfs::IFile> lodpackFile,
                                std::vector<std::shared_ptr<GpuMesh>>& outMeshes);
 
     // â”€â”€ Public enums â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -94,25 +94,25 @@ private:
 
     // â”€â”€ Private helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    static bool ReadSubmeshHeader(std::shared_ptr<IFile>& meshFile,
+    static bool ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& meshFile,
                                   uint32_t submeshBase,
                                   SubmeshHeader& out);
 
-    static bool ReadComponents(std::shared_ptr<IFile>& meshFile,
+    static bool ReadComponents(std::shared_ptr<Vfs::IFile>& meshFile,
                                const SubmeshHeader& hdr,
                                std::vector<ComponentDesc>& out);
 
-    static bool ReadBufferOffsets(std::shared_ptr<IFile>& meshFile,
+    static bool ReadBufferOffsets(std::shared_ptr<Vfs::IFile>& meshFile,
                                   const SubmeshHeader& hdr,
                                   std::vector<uint32_t>& out);
 
-    static bool ReadVertices(std::shared_ptr<IFile>& gpuFile,
+    static bool ReadVertices(std::shared_ptr<Vfs::IFile>& gpuFile,
                              const SubmeshHeader& hdr,
                              const std::vector<ComponentDesc>& comps,
                              const std::vector<uint32_t>& bufOffsets,
                              MeshPart& outPart);
 
-    static bool ReadIndices(std::shared_ptr<IFile>& gpuFile,
+    static bool ReadIndices(std::shared_ptr<Vfs::IFile>& gpuFile,
                             const SubmeshHeader& hdr,
                             MeshPart& outPart);
 };

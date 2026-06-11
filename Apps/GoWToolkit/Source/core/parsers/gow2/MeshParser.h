@@ -9,7 +9,7 @@ namespace Onyx {
 class GOW2MeshParser {
 public:
     // Parse an MDL mesh block into a CPU-side MeshData structure
-    static std::unique_ptr<MeshData> Parse(IFile& file, uint32_t offset, uint32_t size);
+    static std::unique_ptr<MeshData> Parse(Vfs::IFile& file, uint32_t offset, uint32_t size);
 
 private:
     // allData = entire mesh blob, objOffset = object's position within mesh

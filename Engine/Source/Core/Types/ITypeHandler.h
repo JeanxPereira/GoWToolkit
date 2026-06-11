@@ -49,7 +49,7 @@ public:
 
   /// Parse raw payload bytes into a structured AssetNode tree for InfoTab
   /// display. Return nullptr if this type has no structured properties to show.
-  virtual std::shared_ptr<AssetNode> Parse(std::shared_ptr<IFile> file) {
+  virtual std::shared_ptr<AssetNode> Parse(std::shared_ptr<Vfs::IFile> file) {
     (void)file;
     return nullptr;
   }

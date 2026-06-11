@@ -26,8 +26,8 @@ bool ProfileGOW2::Detect(const std::filesystem::path& path) const {
     return (ext == ".iso" || ext == ".wad");
 }
 
-std::shared_ptr<IVirtualFileSystem> ProfileGOW2::MountArchive(const std::filesystem::path& path) {
-    auto vfs = std::make_shared<IsoFileSystem>(path.string());
+std::shared_ptr<Vfs::IVirtualFileSystem> ProfileGOW2::MountArchive(const std::filesystem::path& path) {
+    auto vfs = std::make_shared<Vfs::IsoFileSystem>(path.string());
     if (vfs->Initialize()) {
         LOG_INFO("[GOW2] Successfully mounted ISO: %s", path.string().c_str());
         return vfs;
@@ -53,7 +53,7 @@ static constexpr uint16_t WADTAG_HEADER_POP    = 19;
 static constexpr uint16_t WADTAG_HEADER_START  = 21;
 // Tags 11-16 are TT_* (tweak template) nodes â€” added as leaves, no group semantics
 
-bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) {
+bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContainer& outWad) {
     if (!file || !file->IsValid()) return false;
 
     file->Seek(0, SEEK_END);
@@ -302,8 +302,8 @@ struct RawTocEntryGOW2 {
 };
 #pragma pack(pop)
 
-bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
-                                        IFile* tocFile, AssetContainer& outWad) {
+bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<Vfs::IVirtualFileSystem> vfs,
+                                        Vfs::IFile* tocFile, AssetContainer& outWad) {
     LOG_INFO("[GOW2] Parsing TOC... size: %zu bytes.", (size_t)tocFile->Size());
 
     uint32_t numFiles = 0;
@@ -357,7 +357,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
 }
 
 // â”€â”€ LoadFromArchive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) {
+bool ProfileGOW2::LoadFromArchive(std::shared_ptr<Vfs::IVirtualFileSystem> vfs, AssetContainer& outWad) {
     // Try GOW2.TOC first (some builds use this name)
     auto tocFile = vfs->OpenFile("/GOW2.TOC");
 

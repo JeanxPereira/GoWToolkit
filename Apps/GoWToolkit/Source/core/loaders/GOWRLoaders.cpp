@@ -211,7 +211,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
     if (!wad.fileSource) return nullptr;
 
     // â”€â”€ Slice the MESH file â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    auto meshFile = std::make_shared<SliceFile>(
+    auto meshFile = std::make_shared<Vfs::SliceFile>(
         wad.fileSource, entry.offset, entry.size);
 
     // â”€â”€ Find the paired MG_GPU sibling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -223,7 +223,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
     auto dashPos = base.rfind("---");
     if (dashPos != std::string::npos) base = base.substr(0, dashPos);
 
-    std::shared_ptr<IFile> gpuFile;
+    std::shared_ptr<Vfs::IFile> gpuFile;
 
     std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findGpu;
     findGpu = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
@@ -248,7 +248,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
 
     const AssetEntry* gpuEntry = findGpu(wad.entries);
     if (gpuEntry) {
-        gpuFile = std::make_shared<SliceFile>(
+        gpuFile = std::make_shared<Vfs::SliceFile>(
             wad.fileSource, gpuEntry->offset, gpuEntry->size);
         LOG_INFO("[GOWRLoaders] GPU: %s (size=%u)",
                  gpuEntry->name.c_str(), gpuEntry->size);
@@ -274,7 +274,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
     }
 
     // â”€â”€ Find paired MG_<base> file (bone-binding, no _gpu suffix) â”€â”€â”€â”€â”€
-    std::shared_ptr<IFile> mgFile;
+    std::shared_ptr<Vfs::IFile> mgFile;
     std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findMg;
     findMg = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
         for (const auto& e : entries) {
@@ -297,7 +297,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
 
     const AssetEntry* mgEntry = findMg(wad.entries);
     if (mgEntry) {
-        mgFile = std::make_shared<SliceFile>(
+        mgFile = std::make_shared<Vfs::SliceFile>(
             wad.fileSource, mgEntry->offset, mgEntry->size);
         LOG_INFO("[GOWRLoaders] MG bone-binding: %s (size=%u)",
                  mgEntry->name.c_str(), mgEntry->size);
@@ -407,7 +407,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
 
         const AssetEntry* protoEntry = findProto(wad.entries);
         if (protoEntry) {
-            auto protoFile = std::make_shared<SliceFile>(
+            auto protoFile = std::make_shared<Vfs::SliceFile>(
                 wad.fileSource, protoEntry->offset, protoEntry->size);
             skeleton = GOWRProtoParser::Parse(protoFile);
             if (skeleton) {
@@ -468,7 +468,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
     return vp;
 }
 
-std::shared_ptr<AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<IFile> file) {
+std::shared_ptr<AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<Vfs::IFile> file) {
     if (!file || file->Size() < 64) return nullptr;
     GOWRMeshDefnFormat format;
     format.Initialize();
@@ -923,7 +923,7 @@ private:
 std::shared_ptr<IDocumentContent> GOWRShaderHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     if (!wad.fileSource || entry.size == 0) return nullptr;
 
-    auto file = std::make_shared<SliceFile>(wad.fileSource, entry.offset, entry.size);
+    auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.offset, entry.size);
     auto data = GOWRShaderParse(file);
     if (!data) return nullptr;
 

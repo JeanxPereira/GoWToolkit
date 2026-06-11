@@ -14,11 +14,11 @@ public:
 
     bool Detect(const std::filesystem::path& path) const override;
     
-    std::shared_ptr<IVirtualFileSystem> MountArchive(const std::filesystem::path& path) override;
-    
-    bool ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) override;
-    
-    bool LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) override;
+    std::shared_ptr<Vfs::IVirtualFileSystem> MountArchive(const std::filesystem::path& path) override;
+
+    bool ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContainer& outWad) override;
+
+    bool LoadFromArchive(std::shared_ptr<Vfs::IVirtualFileSystem> vfs, AssetContainer& outWad) override;
 
     bool IsContainerEntry(const AssetEntry& entry) const override;
 private:

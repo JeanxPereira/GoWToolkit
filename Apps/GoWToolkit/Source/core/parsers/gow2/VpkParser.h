@@ -14,7 +14,7 @@ public:
         uint32_t channels = 1;
     };
 
-    static std::unique_ptr<VpkData> Parse(const std::shared_ptr<IFile>& file);
+    static std::unique_ptr<VpkData> Parse(const std::shared_ptr<Vfs::IFile>& file);
 };
 
 } // namespace Onyx

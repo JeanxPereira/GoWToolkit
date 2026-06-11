@@ -198,7 +198,7 @@ static const AssetEntry* FindSibling(const std::vector<AssetEntry>& siblings, co
 std::unique_ptr<TextureData> GOW2TextureParser::Parse(
     const AssetEntry& txrEntry,
     const std::vector<AssetEntry>& siblingEntries,
-    const std::shared_ptr<IFile>& fileSource)
+    const std::shared_ptr<Vfs::IFile>& fileSource)
 {
     if (!fileSource || txrEntry.size < 0x58) {
         LOG_ERR("[GOW2Texture] TXR entry too small: %u bytes", txrEntry.size);
@@ -207,7 +207,7 @@ std::unique_ptr<TextureData> GOW2TextureParser::Parse(
     
     // Read TXR tag data
     std::vector<uint8_t> txrBuf(txrEntry.size);
-    SliceFile txrSlice(fileSource, txrEntry.offset, txrEntry.size);
+    Vfs::SliceFile txrSlice(fileSource, txrEntry.offset, txrEntry.size);
     txrSlice.Seek(0, SEEK_SET);
     txrSlice.Read(txrBuf.data(), txrEntry.size);
     
@@ -242,7 +242,7 @@ std::unique_ptr<TextureData> GOW2TextureParser::Parse(
     
     // Read and parse GFX (pixel data)
     std::vector<uint8_t> gfxBuf(gfxEntry->size);
-    SliceFile gfxSlice(fileSource, gfxEntry->offset, gfxEntry->size);
+    Vfs::SliceFile gfxSlice(fileSource, gfxEntry->offset, gfxEntry->size);
     gfxSlice.Seek(0, SEEK_SET);
     gfxSlice.Read(gfxBuf.data(), gfxEntry->size);
     
@@ -254,7 +254,7 @@ std::unique_ptr<TextureData> GOW2TextureParser::Parse(
     
     // Read and parse PAL (palette data)
     std::vector<uint8_t> palBuf(palEntry->size);
-    SliceFile palSlice(fileSource, palEntry->offset, palEntry->size);
+    Vfs::SliceFile palSlice(fileSource, palEntry->offset, palEntry->size);
     palSlice.Seek(0, SEEK_SET);
     palSlice.Read(palBuf.data(), palEntry->size);
     
