@@ -196,6 +196,11 @@ void App::frame() {
 void App::frameEnd() {
   // Font rebuild is now handled by Window::frameEnd() via Onyx::Fonts
   // Audio-volume <-> config sync is wired by the app (see AppRegistration).
+
+  // Post-draw tick — runs AFTER frame()'s panels/document draw for this frame,
+  // matching the old frameEnd() timing. Subscribers (e.g. the audio-volume
+  // write-back) can observe same-frame UI mutations here.
+  EventFrameEnd::post();
 }
 
 void App::setupDockLayout(ImGuiID dockspace_id) {

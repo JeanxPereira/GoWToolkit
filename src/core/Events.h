@@ -61,8 +61,15 @@ EVENT_DEF(EventAnimationLoaded, std::shared_ptr<Onyx::AnimationData>);
 // ── UI State Events ───────────────────────────────────────────────────────
 
 /// Per-frame tick — subscribers that need continuous updates (animations, progress).
+/// Posted near the TOP of the frame, BEFORE panels/documents draw.
 /// Marked NO_LOG to avoid spamming the debug output.
 EVENT_DEF_NO_LOG(EventFrameTick);
+
+/// End-of-frame tick — posted AFTER all panels and documents have drawn for the
+/// frame. Subscribers that must observe per-frame UI mutations (e.g. mirroring a
+/// widget value back to config the same frame the user changed it) belong here.
+/// Marked NO_LOG to avoid spamming the debug output.
+EVENT_DEF_NO_LOG(EventFrameEnd);
 
 /// Fired when the AppConfig is modified (settings changed).
 EVENT_DEF(EventConfigChanged);
