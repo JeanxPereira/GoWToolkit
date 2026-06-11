@@ -1,10 +1,10 @@
-#include <doctest/doctest.h>
+﻿#include <doctest/doctest.h>
 
 #include <mutex>
 #include <string>
 #include <vector>
 
-#include "core/Logger.h"
+#include "Core/Logger.h"
 
 namespace L = Onyx::Log;
 

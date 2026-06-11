@@ -1,9 +1,9 @@
-#pragma once
-#include "core/schema/AssetFormat.h"
+﻿#pragma once
+#include "Core/Schema/AssetFormat.h"
 
 namespace Onyx {
 
-// ── GOW2 Animation Format ──────────────────────────────────────────────────
+// â”€â”€ GOW2 Animation Format â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Magic: 0x00000003
 class GOW2AnimationFormat : public AssetFormat {
 protected:

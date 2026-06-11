@@ -1,13 +1,13 @@
-// Texture handler — texture reference node
+﻿// Texture handler â€” texture reference node
 // Magic: 0x00000007 (TXR_MAGIC in god_of_war_browser)
 
-#include "core/types/TypeRegistry.h"
-#include "core/types/ITypeHandler.h"
+#include "Core/Types/TypeRegistry.h"
+#include "Core/Types/ITypeHandler.h"
 #include "core/types/GameTypes.h"
 
-#include "ui/viewers/ImageViewer.h"
+#include "Ui/Viewers/ImageViewer.h"
 #include "core/parsers/gow2/TextureParser.h"
-#include "fonts/SFSymbols.h"
+#include "Fonts/SFSymbols.h"
 
 namespace {
 

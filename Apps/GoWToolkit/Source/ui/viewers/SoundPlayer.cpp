@@ -1,9 +1,9 @@
-#include "SoundPlayer.h"
-#include "core/Logger.h"
-#include "core/ThemeManager.h"
-#include "ui/Widgets.h"
-#include "core/audio/AdpcmDecoder.h"
-#include "fonts/SFSymbols.h"
+﻿#include "SoundPlayer.h"
+#include "Core/Logger.h"
+#include "Core/ThemeManager.h"
+#include "Ui/Widgets.h"
+#include "Core/Audio/AdpcmDecoder.h"
+#include "Fonts/SFSymbols.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -21,7 +21,7 @@ struct SoundPlayer::AudioDevice {
   bool initialized = false;
 };
 
-// ── Audio callback (runs on audio thread) ─────────────────────────────────
+// â”€â”€ Audio callback (runs on audio thread) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 static void ma_data_callback(ma_device *pDevice, void *pOutput,
                              const void * /*pInput*/, ma_uint32 frameCount) {
@@ -62,7 +62,7 @@ void SoundPlayer::FillAudioBuffer(int16_t *output, uint32_t frameCount) {
   }
 }
 
-// ── Constructor / Destructor ──────────────────────────────────────────────
+// â”€â”€ Constructor / Destructor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 SoundPlayer::SoundPlayer(
     const std::string &name,
@@ -97,7 +97,7 @@ SoundPlayer::~SoundPlayer() { ShutdownAudioDevice(); }
 
 std::string SoundPlayer::GetName() const { return m_name; }
 
-// ── Audio device management ───────────────────────────────────────────────
+// â”€â”€ Audio device management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void SoundPlayer::InitAudioDevice() {
   ma_device_config config = ma_device_config_init(ma_device_type_playback);
@@ -122,7 +122,7 @@ void SoundPlayer::ShutdownAudioDevice() {
   }
 }
 
-// ── Playback controls ─────────────────────────────────────────────────────
+// â”€â”€ Playback controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void SoundPlayer::SelectSound(int index) {
   if (index < 0 || index >= (int)m_bankData->sounds.size())
@@ -184,7 +184,7 @@ void SoundPlayer::Stop() {
     ma_device_stop(&m_audio->device);
 }
 
-// ── Drawing ───────────────────────────────────────────────────────────────
+// â”€â”€ Drawing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void SoundPlayer::Draw() {
   if (!m_bankData && !m_singleSoundMode) {

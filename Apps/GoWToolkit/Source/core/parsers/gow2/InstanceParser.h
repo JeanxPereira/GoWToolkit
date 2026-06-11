@@ -1,10 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <vector>
 #include <memory>
 #include "core/WadTypes.h"
-#include "core/vfs/IFile.h"
+#include "Core/Vfs/IFile.h"
 
 namespace Onyx {
 

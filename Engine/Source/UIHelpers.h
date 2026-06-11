@@ -1,26 +1,26 @@
-#pragma once
+﻿#pragma once
 
-// ── Umbrella header ───────────────────────────────────────────────────────
+// â”€â”€ Umbrella header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Provides all UI helper functions through focused sub-headers.
 // Existing #include "UIHelpers.h" call sites continue to work unchanged.
 
 // Formatting utilities (HashHex, FormatBytes, FormatNum, MatchesFilter)
-#include "ui/Formatting.h"
+#include "Ui/Formatting.h"
 // Bring Onyx:: formatting helpers into global scope for backward compatibility
 using Onyx::HashHex;
 using Onyx::FormatBytes;
 using Onyx::FormatNum;
 using Onyx::MatchesFilter;
 
-// TypeId → visual mapping (TypeName, ColorForType, IconForType, SkinModeName)
-#include "ui/TypeVisuals.h"
+// TypeId â†’ visual mapping (TypeName, ColorForType, IconForType, SkinModeName)
+#include "Ui/TypeVisuals.h"
 
-// NOTE: Role → visual mapping (ColorForRole/IconForRole) is GOWR-specific and
-// lives in the app (ui/RoleVisuals.h). It is deliberately NOT pulled in here —
+// NOTE: Role â†’ visual mapping (ColorForRole/IconForRole) is GOWR-specific and
+// lives in the app (ui/RoleVisuals.h). It is deliberately NOT pulled in here â€”
 // this umbrella is engine-side and must stay game-agnostic. App TUs that need
 // role visuals include "ui/RoleVisuals.h" directly.
 
-// ── Platform dialogs ──────────────────────────────────────────────────────
+// â”€â”€ Platform dialogs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 #include <string>
 
 std::string SystemOpenFileDialog();

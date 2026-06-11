@@ -1,13 +1,13 @@
-#include "ui/Inspector.h"
+﻿#include "ui/Inspector.h"
 #include "UIHelpers.h"
-#include "ui/RoleVisuals.h"   // GOWR role → color/icon (ColorForRole, IconForRole)
-#include "core/ToolkitApi.h"
+#include "ui/RoleVisuals.h"   // GOWR role â†’ color/icon (ColorForRole, IconForRole)
+#include "Core/ToolkitApi.h"
 #include "core/profiles/gowr/GowrProfileTag.h"
-#include "fonts/SFSymbols.h"
+#include "Fonts/SFSymbols.h"
 #include "imgui.h"
 
-#include "ui/viewers/DocumentWindow.h"
-#include "ui/viewers/IDocumentContent.h"
+#include "Ui/Viewers/DocumentWindow.h"
+#include "Ui/Viewers/IDocumentContent.h"
 
 void Inspector::Draw() {
     if (!visible) return;
@@ -23,7 +23,7 @@ void Inspector::Draw() {
         return;
     }
 
-    // ── Header — always visible ─────────────────────────────────────────
+    // â”€â”€ Header â€” always visible â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ImGui::PushID("InspectorHeader");
 
     const char* icon = IconForType(entry->typeId);
@@ -41,7 +41,7 @@ void Inspector::Draw() {
     ImGui::TextDisabled("%s  |  %s", entry->wadName.c_str(),
                         FormatBytes(entry->size).c_str());
 
-    // ── Context menu on header ──────────────────────────────────────────
+    // â”€â”€ Context menu on header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (ImGui::BeginPopupContextItem("InspectorHeaderCtx")) {
         if (ImGui::MenuItem(ICON_SF_DOCUMENT_ON_DOCUMENT "  Copy Name")) {
             ImGui::SetClipboardText(entry->name.c_str());
@@ -64,7 +64,7 @@ void Inspector::Draw() {
     ImGui::PopID();
     ImGui::Separator();
 
-    // ── Viewer Inspector section — if a document viewer is active ────────
+    // â”€â”€ Viewer Inspector section â€” if a document viewer is active â”€â”€â”€â”€â”€â”€â”€â”€
     if (Onyx::Api::Documents().HasActiveDocument()) {
         auto doc = Onyx::Api::Documents().GetActiveDocument();
         if (doc) {
@@ -73,7 +73,7 @@ void Inspector::Draw() {
         }
     }
 
-    // ── Properties section — always shown (collapsible) ─────────────────
+    // â”€â”€ Properties section â€” always shown (collapsible) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (ImGui::CollapsingHeader("Properties", ImGuiTreeNodeFlags_DefaultOpen)) {
         m_info_tab.Draw(Onyx::Api::Database(), entry);
     }

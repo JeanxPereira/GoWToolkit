@@ -1,11 +1,11 @@
-// GFX handler — raw GS pixel data
+﻿// GFX handler â€” raw GS pixel data
 // Magic: 0x0C
 
-#include "core/types/ITypeHandler.h"
-#include "core/types/TypeRegistry.h"
+#include "Core/Types/ITypeHandler.h"
+#include "Core/Types/TypeRegistry.h"
 #include "core/types/GameTypes.h"
 
-#include "fonts/SFSymbols.h"
+#include "Fonts/SFSymbols.h"
 
 namespace {
 

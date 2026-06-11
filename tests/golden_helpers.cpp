@@ -1,4 +1,4 @@
-#include "golden_helpers.h"
+﻿#include "golden_helpers.h"
 
 #include <doctest/doctest.h>
 
@@ -11,11 +11,11 @@
 
 #include "core/profiles/gow2/ProfileGOW2.h"
 #include "core/profiles/gowr/ProfileGOWR.h"
-#include "core/types/TypeId.h"
+#include "Core/Types/TypeId.h"
 #include "core/types/GameTypes.h"
-#include "core/types/TypeCatalog.h"
-#include "core/vfs/MemoryFile.h"
-#include "core/vfs/OsFile.h"
+#include "Core/Types/TypeCatalog.h"
+#include "Core/Vfs/MemoryFile.h"
+#include "Core/Vfs/OsFile.h"
 
 #define XXH_INLINE_ALL
 #include "xxhash.h"
@@ -212,7 +212,7 @@ void RunGoldenTest(std::string_view versionTag,
 
     ordered_json expected = LoadGolden(expectedJsonPath);
     REQUIRE_MESSAGE(!expected.is_null(),
-                    "golden JSON missing — rerun with GOWTOOLKIT_GOLDEN_UPDATE=1 to create it: "
+                    "golden JSON missing â€” rerun with GOWTOOLKIT_GOLDEN_UPDATE=1 to create it: "
                     << expectedJsonPath.string());
 
     std::string diff = DiffSnapshots(actual, expected);

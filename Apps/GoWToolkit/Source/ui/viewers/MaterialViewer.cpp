@@ -1,6 +1,6 @@
-#include "MaterialViewer.h"
-#include "fonts/SFSymbols.h"
-#include "ui/Widgets.h"
+﻿#include "MaterialViewer.h"
+#include "Fonts/SFSymbols.h"
+#include "Ui/Widgets.h"
 #include <glad/glad.h>
 #include <imgui.h>
 
@@ -52,7 +52,7 @@ void MaterialViewer::Draw() {
     return;
   }
 
-  // ── Layout: Preview panel (left) + Table (right) ──────────────
+  // â”€â”€ Layout: Preview panel (left) + Table (right) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   float totalWidth = ImGui::GetContentRegionAvail().x;
   float previewWidth = totalWidth * 0.4f;
   if (previewWidth < 180.0f)
@@ -60,7 +60,7 @@ void MaterialViewer::Draw() {
   if (previewWidth > 400.0f)
     previewWidth = 400.0f;
 
-  // ── Left: Texture Preview ─────────────────────────────────────
+  // â”€â”€ Left: Texture Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ImGui::BeginChild("##texPreview", ImVec2(previewWidth, 0), true);
   {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Texture Preview");
@@ -121,7 +121,7 @@ void MaterialViewer::Draw() {
 
   ImGui::SameLine();
 
-  // ── Right: Material Properties + Table ────────────────────────
+  // â”€â”€ Right: Material Properties + Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ImGui::BeginChild("##matProps", ImVec2(0, 0), false);
   {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Material Summary");

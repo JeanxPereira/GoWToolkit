@@ -1,11 +1,11 @@
-#include "ShaderParser.h"
-#include "core/Logger.h"
+﻿#include "ShaderParser.h"
+#include "Core/Logger.h"
 #include <cstring>
 #include <algorithm>
 
 namespace Onyx {
 
-// ── Display helpers ────────────────────────────────────────────────────────
+// â”€â”€ Display helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const char* GOWRShaderData::StageName() const {
     if (stageTag == "vs") return "Vertex Shader";
@@ -63,7 +63,7 @@ std::string GOWRShaderData::MaskString(uint8_t mask) {
     return s.empty() ? "none" : s;
 }
 
-// ── Signature parser (ISG1 / OSG1 / PSG1) ─────────────────────────────────
+// â”€â”€ Signature parser (ISG1 / OSG1 / PSG1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Layout: uint32 elementCount, uint32 headerSize (always 8),
 //         then per element: 6 dwords (24 bytes) for ISGN/OSGN,
 //         or 8 dwords (32 bytes) for ISG1/OSG1 (has stream field).
@@ -128,7 +128,7 @@ static bool ParseSignature(const uint8_t* data, uint32_t size,
     return true;
 }
 
-// ── Main parser ────────────────────────────────────────────────────────────
+// â”€â”€ Main parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<IFile> file) {
     if (!file || file->Size() < 0x1C + 4) return nullptr;
@@ -136,7 +136,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<IFile> file) {
     auto shader = std::make_unique<GOWRShaderData>();
     file->Seek(0, 0);
 
-    // ── Onyx custom header (28 bytes) ───────────────────────────────────
+    // â”€â”€ Onyx custom header (28 bytes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     file->Read(&shader->formatVersion, 2);
     file->Read(&shader->subVersion, 2);
 
@@ -152,7 +152,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<IFile> file) {
 
     file->Read(&shader->variantId, 4);
 
-    // ── DXBC container ─────────────────────────────────────────────────
+    // â”€â”€ DXBC container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     char magic[4] = {};
     file->Read(magic, 4);
     if (magic[0] != 'D' || magic[1] != 'X' || magic[2] != 'B' || magic[3] != 'C') {

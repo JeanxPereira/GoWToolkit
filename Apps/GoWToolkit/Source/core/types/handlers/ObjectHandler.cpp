@@ -1,31 +1,31 @@
-// Object handler — GOW2 skeleton/joints container
+﻿// Object handler â€” GOW2 skeleton/joints container
 // Magic: 0x00010001 (GOW2), 0x00040001 (GOW1)
 //
 // Resolution follows the Go project (god_of_war_browser):
 //   Object iterates children by type (Model, Collision, Animation...)
 //   If a child is a reference (no children), resolve by exact name in WAD.
 
-#include "core/types/TypeRegistry.h"
-#include "core/interfaces/IGameProfile.h"
-#include "core/types/ITypeHandler.h"
+#include "Core/Types/TypeRegistry.h"
+#include "Core/Interfaces/IGameProfile.h"
+#include "Core/Types/ITypeHandler.h"
 #include "core/types/GameTypes.h"
 #include "core/parsers/gow2/ObjectParser.h"
 #include "core/parsers/gow2/MeshParser.h"
 #include "core/parsers/gow2/MaterialParser.h"
 #include "core/parsers/gow2/TextureParser.h"
 #include "core/parsers/gow2/AnimationParser.h"
-#include "core/parsers/shared/SceneNode.h"
-#include "core/parsers/shared/ScriptTargetParser.h"
-#include "core/vfs/SliceFile.h"
-#include "core/Logger.h"
-#include "ui/viewers/Viewport3D.h"
+#include "Core/Parsers/Shared/SceneNode.h"
+#include "Core/Parsers/Shared/ScriptTargetParser.h"
+#include "Core/Vfs/SliceFile.h"
+#include "Core/Logger.h"
+#include "Ui/Viewers/Viewport3D.h"
 #include <cstring>
 #include <functional>
-#include "fonts/SFSymbols.h"
+#include "Fonts/SFSymbols.h"
 
 namespace {
 
-// ── Resolve reference: find a node with exact name + type that has children ──
+// â”€â”€ Resolve reference: find a node with exact name + type that has children â”€â”€
 // Mirrors Go's GetNodeByName: when a child node is a reference (no children/no payload),
 // the real definition with the same name exists elsewhere in the WAD tree.
 static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
@@ -51,7 +51,7 @@ static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
     return nullptr;
 }
 
-// Find texture by exact name (Material → Texture uses name lookup, same as Go)
+// Find texture by exact name (Material â†’ Texture uses name lookup, same as Go)
 static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const std::string& name) {
     for (const auto& c : nodes) {
         if (c.typeId == Onyx::GameTypes::Texture && c.name == name) return &c;
@@ -60,7 +60,7 @@ static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const
     return nullptr;
 }
 
-// ── Select main texture layer (same priority as Go: StrangeBlended > Usual > first) ──
+// â”€â”€ Select main texture layer (same priority as Go: StrangeBlended > Usual > first) â”€â”€
 static const Onyx::MaterialInfo::Layer* SelectMainLayer(const Onyx::MaterialInfo& mat) {
     const Onyx::MaterialInfo::Layer* main = nullptr;
     for (const auto& layer : mat.layers) {
@@ -75,7 +75,7 @@ static const Onyx::MaterialInfo::Layer* SelectMainLayer(const Onyx::MaterialInfo
     return main;
 }
 
-// ── Process a single Model node: extract meshes + materials ─────────────────
+// â”€â”€ Process a single Model node: extract meshes + materials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
                           Onyx::SceneData& scene) {
     std::vector<const AssetEntry*> meshSources;
@@ -113,7 +113,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
     LOG_INFO("[ProcessModel] Model '%s': %zu mesh children, %zu material children, materialOffset=%u",
              model.name.c_str(), meshSources.size(), matEntries.size(), materialOffset);
 
-    // Parse materials → MaterialInfo (store all layers for main layer selection)
+    // Parse materials â†’ MaterialInfo (store all layers for main layer selection)
     for (size_t mi = 0; mi < matEntries.size(); ++mi) {
         const auto* mat = matEntries[mi];
         Onyx::MaterialInfo matInfo;
@@ -151,7 +151,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
         Onyx::SliceFile slice(wad.fileSource, src->offset, src->size);
         if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->size)) {
             for (auto& p : data->parts) {
-                LOG_INFO("[ProcessModel]   part '%s' materialId=%d (raw) → %d (offset)",
+                LOG_INFO("[ProcessModel]   part '%s' materialId=%d (raw) â†’ %d (offset)",
                          p.name.c_str(), p.materialId, p.materialId + (int)materialOffset);
                 p.materialId += materialOffset;
                 p.isSky = isModelSky;
@@ -161,7 +161,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
     }
 }
 
-// ── Build SceneData from Object entry ──────────────────────────────────────
+// â”€â”€ Build SceneData from Object entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
     const AssetEntry& entry, AssetContainer& wad, uint32_t magic)
@@ -185,7 +185,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
         if (child.typeId == Onyx::GameTypes::Model) {
             const AssetEntry* model = &child;
             if (model->children.empty()) {
-                // Reference node — resolve definition by exact name
+                // Reference node â€” resolve definition by exact name
                 if (auto resolved = ResolveRef(wad.entries, child.name, Onyx::GameTypes::Model))
                     model = resolved;
             }
@@ -237,7 +237,7 @@ static std::unique_ptr<Onyx::SceneData> BuildSceneFromObjectEntry(
     return scene;
 }
 
-// ── Handler classes ────────────────────────────────────────────────────────
+// â”€â”€ Handler classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class ObjectHandlerGOW2 : public Onyx::ITypeHandler {
 public:

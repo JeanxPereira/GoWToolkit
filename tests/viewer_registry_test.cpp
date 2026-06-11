@@ -1,10 +1,10 @@
-#include <doctest/doctest.h>
-#include "ui/ViewerRegistry.h"
-#include "core/domain/MediaKind.h"
+﻿#include <doctest/doctest.h>
+#include "Ui/ViewerRegistry.h"
+#include "Core/Domain/MediaKind.h"
 #include "core/WadTypes.h"
-#include "core/types/TypeId.h"
+#include "Core/Types/TypeId.h"
 #include "core/types/GameTypes.h"
-#include "ui/viewers/IDocumentContent.h"
+#include "Ui/Viewers/IDocumentContent.h"
 
 using namespace Onyx;
 

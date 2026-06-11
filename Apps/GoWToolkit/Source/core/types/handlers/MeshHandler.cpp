@@ -1,11 +1,11 @@
-// Mesh handler — raw GPU geometry data
+﻿// Mesh handler â€” raw GPU geometry data
 // Magic: 0x0001000F (MESH_MAGIC in god_of_war_browser)
 // Also handles GMDL_MAGIC = 0x0003000F
 
-#include "core/types/TypeRegistry.h"
-#include "core/types/ITypeHandler.h"
+#include "Core/Types/TypeRegistry.h"
+#include "Core/Types/ITypeHandler.h"
 #include "core/types/GameTypes.h"
-#include "fonts/SFSymbols.h"
+#include "Fonts/SFSymbols.h"
 
 namespace {
 

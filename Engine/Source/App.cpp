@@ -1,38 +1,38 @@
-#define IMGUI_DEFINE_MATH_OPERATORS
+﻿#define IMGUI_DEFINE_MATH_OPERATORS
 #include "App.h"
 #include "UIHelpers.h"
 #include "imgui_internal.h" // DockBuilder
 
-#include "ui/IPanel.h"
-#include "ui/NativeMenuBar.h"
-#include "ui/NativeWindow.h"
-#include "ui/TitleBar.h"
+#include "Ui/IPanel.h"
+#include "Ui/NativeMenuBar.h"
+#include "Ui/NativeWindow.h"
+#include "Ui/TitleBar.h"
 
-#include "ui/CameraPanel.h"
-#include "ui/IsoBrowser.h"
-#include "ui/PakBrowser.h"
-#include "ui/SettingsWindow.h"
-#include "ui/StatusBar.h"
+#include "Ui/CameraPanel.h"
+#include "Ui/IsoBrowser.h"
+#include "Ui/PakBrowser.h"
+#include "Ui/SettingsWindow.h"
+#include "Ui/StatusBar.h"
 
 // Viewer headers
-#include "ui/viewers/ImageViewer.h"
-#include "ui/viewers/Viewport3D.h"
-#include "ui/viewers/AnimCurveView.h"
-#include "ui/viewers/Dopesheet.h"
-#include "ui/viewers/WadStatsView.h"
+#include "Ui/Viewers/ImageViewer.h"
+#include "Ui/Viewers/Viewport3D.h"
+#include "Ui/Viewers/AnimCurveView.h"
+#include "Ui/Viewers/Dopesheet.h"
+#include "Ui/Viewers/WadStatsView.h"
 
 // Core subsystems
-#include "core/Events.h"
-#include "core/TaskManager.h"
-#include "core/ToolkitApi.h"
+#include "Core/Events.h"
+#include "Core/TaskManager.h"
+#include "Core/ToolkitApi.h"
 
-#include "core/Logger.h"
-#include "core/PathUtils.h"
-#include "core/FontManager.h"
-#include "fonts/SFSymbols.h"
+#include "Core/Logger.h"
+#include "Core/PathUtils.h"
+#include "Core/FontManager.h"
+#include "Fonts/SFSymbols.h"
 
 void App::registerPanels() {
-  // ── Generic (engine) panels ────────────────────────────────────────────
+  // â”€â”€ Generic (engine) panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   m_panels.add(std::make_unique<IsoBrowser>());
   m_panels.add(std::make_unique<PakBrowser>());
   m_panels.add(std::make_unique<CameraPanel>());
@@ -42,7 +42,7 @@ void App::registerPanels() {
   m_panels.add(std::make_unique<Dopesheet>());
   m_panels.add(std::make_unique<WadStatsView>());
 
-  // ── Game (app) panels/viewers ──────────────────────────────────────────
+  // â”€â”€ Game (app) panels/viewers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Injected by the executable so the engine stays game-agnostic. Supplies
   // the game browser, inspector, and any game-specific viewer wiring.
   if (m_registrar)
@@ -94,7 +94,7 @@ void App::init(GLFWwindow *window, AppConfig *config) {
   m_decorator.borderless = true;
 #endif
 
-  // WindowDecorator init — icon font is now managed by FontManager
+  // WindowDecorator init â€” icon font is now managed by FontManager
   m_decorator.init(window, nullptr);
 
   // Initialize panels that need config
@@ -112,7 +112,7 @@ void App::init(GLFWwindow *window, AppConfig *config) {
   EventStartupFinished::post();
 }
 
-// ── Frame Phases ────────────────────────────────────────────────────────────
+// â”€â”€ Frame Phases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void App::frameBegin() {
   // Pass menubar height to native window for NCHITTEST
@@ -129,7 +129,7 @@ void App::frame() {
   // Per-frame tick event for animations, progress bars, etc.
   EventFrameTick::post();
 
-  // ── Host window fullscreen ─────────────────────────────────────────────
+  // â”€â”€ Host window fullscreen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ImGuiViewport *vp = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(vp->WorkPos);
   ImGui::SetNextWindowSize(vp->WorkSize);
@@ -154,7 +154,7 @@ void App::frame() {
   ImGui::Begin("##HostWindow", nullptr, host_flags);
   ImGui::PopStyleVar(2);
 
-  // ── Global Keyboard Shortcuts ──────────────────────────────────────────
+  // â”€â”€ Global Keyboard Shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ImGuiIO &io = ImGui::GetIO();
   if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_O, false)) {
     m_showOpenDialog = true;
@@ -171,7 +171,7 @@ void App::frame() {
 
   ImGui::PopStyleVar(); // Pop FramePadding
 
-  // ── DockSpace ──────────────────────────────────────────────────────────
+  // â”€â”€ DockSpace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ImGuiID dockspace_id = ImGui::GetID("GoWToolDockSpace");
 
   if (!m_layoutInitialized) {
@@ -182,14 +182,14 @@ void App::frame() {
   ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
   ImGui::End();
 
-  // ── Draw all registered panels ─────────────────────────────────────────
-  // ── Draw all registered panels ─────────────────────────────────────────
+  // â”€â”€ Draw all registered panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Draw all registered panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   m_panels.DrawAll();
 
-  // ── Document Window (tab host) ─────────────────────────────────────────
+  // â”€â”€ Document Window (tab host) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   m_documentWindow.Draw();
 
-  // ── All popups / modals ────────────────────────────────────────────────
+  // â”€â”€ All popups / modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   drawPopups();
 }
 
@@ -197,7 +197,7 @@ void App::frameEnd() {
   // Font rebuild is now handled by Window::frameEnd() via Onyx::Fonts
   // Audio-volume <-> config sync is wired by the app (see AppRegistration).
 
-  // Post-draw tick — runs AFTER frame()'s panels/document draw for this frame,
+  // Post-draw tick â€” runs AFTER frame()'s panels/document draw for this frame,
   // matching the old frameEnd() timing. Subscribers (e.g. the audio-volume
   // write-back) can observe same-frame UI mutations here.
   EventFrameEnd::post();
@@ -365,14 +365,14 @@ void App::drawMenuBar() {
   if (!ImGui::BeginMenuBar())
     return;
 
-  // ── Phase 1: Backdrop first so menu items render on top of it ─────────
+  // â”€â”€ Phase 1: Backdrop first so menu items render on top of it â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (m_window)
     TitleBar::drawBackDrop();
 
-  // ── Phase 2: Menu items ─────────────────────────────────────────────
+  // â”€â”€ Phase 2: Menu items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // On macOS with native decorations, menus go to the system menu bar.
   // On Windows/Linux (or macOS borderless), menus render in ImGui.
-  // NativeMenuBar::enable() persists across frames — only call it to
+  // NativeMenuBar::enable() persists across frames â€” only call it to
   // set state, never toggle on/off per frame (which would clear NSMenu).
 
 #if defined(GOWTOOL_OS_MACOS)
@@ -389,12 +389,12 @@ void App::drawMenuBar() {
     NativeMenuBar::endMainMenuBar();
 #endif
 
-  // ── Phase 3: Titlebar buttons + centered title ──────────────────────
+  // â”€â”€ Phase 3: Titlebar buttons + centered title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (m_window)
     m_wantClose =
         TitleBar::draw(m_window, "God Of War Toolkit", m_decorator.borderless);
 
-  // ── Phase 4: macOS borderless drag ──────────────────────────────────
+  // â”€â”€ Phase 4: macOS borderless drag â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 #if defined(GOWTOOL_OS_MACOS)
   if (m_decorator.borderless) {
     const ImVec2 windowSize = ImGui::GetWindowSize();
@@ -437,13 +437,13 @@ void App::drawMenuItems() {
 
     NativeMenuBar::separator();
 
-    // ── Recents submenu ─────────────────────────────────────────────
+    // â”€â”€ Recents submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (NativeMenuBar::beginMenu("Recent Files", !m_recentFiles.Empty())) {
       RecentEntry entryToOpen;
       bool shouldOpen = false;
 
       for (const auto &entry : m_recentFiles.Entries()) {
-        // Build label: "filename.iso  [GOW2 · ISO]"
+        // Build label: "filename.iso  [GOW2 Â· ISO]"
         std::string gameLabel;
         if (entry.gameHint == "gow1")
           gameLabel = "GOW1";

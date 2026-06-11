@@ -1,18 +1,18 @@
-#include "ui/WadBrowser.h"
+﻿#include "ui/WadBrowser.h"
 #include "UIHelpers.h"
-#include "ui/RoleVisuals.h"   // GOWR role → color/icon (ColorForRole, IconForRole)
-#include "ui/Widgets.h"
-#include "core/AssetDatabase.h"
-#include "core/AssetVisibility.h"
-#include "core/Events.h"
-#include "core/Logger.h"
-#include "core/ToolkitApi.h"
+#include "ui/RoleVisuals.h"   // GOWR role â†’ color/icon (ColorForRole, IconForRole)
+#include "Ui/Widgets.h"
+#include "Core/AssetDatabase.h"
+#include "Core/AssetVisibility.h"
+#include "Core/Events.h"
+#include "Core/Logger.h"
+#include "Core/ToolkitApi.h"
 #include "core/WadTypes.h"
 #include "core/types/GameTypes.h"
-#include "fonts/SFSymbols.h"
+#include "Fonts/SFSymbols.h"
 #include "imgui.h"
-#include "ui/ViewerRegistry.h"
-#include "ui/viewers/DocumentWindow.h"
+#include "Ui/ViewerRegistry.h"
+#include "Ui/Viewers/DocumentWindow.h"
 #include "ui/viewers/MapViewer.h"
 #include <functional>
 #include <string>
@@ -34,10 +34,10 @@ WadBrowser::~WadBrowser() {
     EventWadOpened::unsubscribe(this);
 }
 
-// ── Asset visibility ──────────────────────────────────────────────────────
+// â”€â”€ Asset visibility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Determines whether an entry should appear in the browser tree.
 // Delegates to the centralized AssetVisibility registry which handles both
-// GOW2 (TypeId-based) and GOWR (role→TypeId mapping) in one code path.
+// GOW2 (TypeId-based) and GOWR (roleâ†’TypeId mapping) in one code path.
 // Users can toggle visibility per type via the Asset Filters panel.
 static Onyx::GameVersion DetectGameVersion(const AssetEntry& e) {
     // GOWR entries have a classified role via GowrProfileTag
@@ -162,7 +162,7 @@ void WadBrowser::Draw() {
                     }
                 }
 
-                // ── Asset visibility filter (GOW2 + GOWR) ───────────
+                // â”€â”€ Asset visibility filter (GOW2 + GOWR) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 // Delegates to AssetVisibility registry. Users can toggle
                 // types on/off via the Asset Filters panel.
                 if (!IsEntryVisible(entry)) {
@@ -172,7 +172,7 @@ void WadBrowser::Draw() {
                 ImGui::PushID(idx);
                 bool has_children = !entry.children.empty();
 
-                // ── Flags ────────────────────────────────────────────
+                // â”€â”€ Flags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
                 if (!has_children) {
                     flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -182,7 +182,7 @@ void WadBrowser::Draw() {
                 if (hasFilter) flags |= ImGuiTreeNodeFlags_DefaultOpen;
                 if (Onyx::Api::GetSelected() == &entry) flags |= ImGuiTreeNodeFlags_Selected;
 
-                // ── Icon + color (prefer role-based for GOWR entries) ────
+                // â”€â”€ Icon + color (prefer role-based for GOWR entries) â”€â”€â”€â”€
                 const char* icon;
                 ImVec4 color;
                 auto role = GetRole(entry);
@@ -198,17 +198,17 @@ void WadBrowser::Draw() {
                 const std::string& label_name =
                     entry.displayName.empty() ? entry.name : entry.displayName;
 
-                // ── TreeNode with formatted label ────────────────────
+                // â”€â”€ TreeNode with formatted label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 bool isSelected = (Onyx::Api::GetSelected() == &entry);
                 bool node_open = Onyx::UI::Widgets::ColoredTreeNode("", label_name.c_str(), icon, color, flags, isSelected);
 
-                // ── Selection (single click) — via Api::SetSelected ──
+                // â”€â”€ Selection (single click) â€” via Api::SetSelected â”€â”€
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
                     db.EnsureNodeData(&entry, wad);
                     Onyx::Api::SetSelected(&entry, &wad);
                 }
 
-                // ── Double-click action ────────────────────────────────
+                // â”€â”€ Double-click action â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     if (wad.fileSource) {
                         auto viewer = Onyx::Api::Viewers().Open(entry, wad);
@@ -216,7 +216,7 @@ void WadBrowser::Draw() {
                     }
                 }
 
-                // ── Tooltip on hover ─────────────────────────────────
+                // â”€â”€ Tooltip on hover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
                     ImGui::BeginTooltip();
                     ImGui::Text("Type: %s", TypeName(entry.typeId));
@@ -225,7 +225,7 @@ void WadBrowser::Draw() {
                     ImGui::EndTooltip();
                 }
 
-                // ── Right-click Context Menu ─────────────────────────
+                // â”€â”€ Right-click Context Menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 if (ImGui::BeginPopupContextItem()) {
                     ImGui::TextDisabled("%s", entry.name.c_str());
                     ImGui::TextDisabled("%s  |  %s", TypeName(entry.typeId),

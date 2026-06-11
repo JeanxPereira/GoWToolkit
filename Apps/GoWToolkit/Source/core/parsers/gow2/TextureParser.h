@@ -1,5 +1,5 @@
-#pragma once
-#include "core/parsers/shared/TextureData.h"
+﻿#pragma once
+#include "Core/Parsers/Shared/TextureData.h"
 #include "core/WadTypes.h"
 #include <memory>
 #include <vector>

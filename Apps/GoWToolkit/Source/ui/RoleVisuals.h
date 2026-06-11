@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 #include "core/profiles/gowr/GowrTaxonomy.h"
-#include "fonts/SFSymbols.h"
+#include "Fonts/SFSymbols.h"
 #include "imgui.h"
 
-// ── Role-based color / icon (GOWR WAD entries) ────────────────────────────
+// â”€â”€ Role-based color / icon (GOWR WAD entries) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 inline ImVec4 ColorForRole(Onyx::Gowr::WadEntryRole role) {
   switch (role) {

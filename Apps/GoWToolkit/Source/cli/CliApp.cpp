@@ -1,12 +1,12 @@
-#include "CliApp.h"
-#include "core/ProfileManager.h"
+﻿#include "CliApp.h"
+#include "Core/ProfileManager.h"
 #include "core/WadTypes.h"
-#include "core/vfs/OsFile.h"
-#include "core/types/TypeRegistry.h"
-#include "core/types/ITypeHandler.h"
-#include "core/types/TypeCatalog.h"
+#include "Core/Vfs/OsFile.h"
+#include "Core/Types/TypeRegistry.h"
+#include "Core/Types/ITypeHandler.h"
+#include "Core/Types/TypeCatalog.h"
 #include "core/types/GameTypes.h"
-#include "core/parsers/shared/SceneNode.h"
+#include "Core/Parsers/Shared/SceneNode.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -17,7 +17,7 @@
 namespace Onyx {
 
 int CliApp::Run(int argc, char** argv) {
-    // Populate the type catalog before any parse — handles are invalid otherwise.
+    // Populate the type catalog before any parse â€” handles are invalid otherwise.
     Onyx::GameTypes::RegisterGameTypes();
 
     std::vector<std::string> args;
@@ -61,7 +61,7 @@ void CliApp::PrintHelp() {
         << "  GoWTool inspect game.iso ATHN01.WAD/gohero00\n";
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 static void PrintEntryTree(const AssetEntry& entry, int depth) {
     std::string indent(depth * 2, ' ');
@@ -175,7 +175,7 @@ static void PrintSceneStats(const SceneData& scene) {
     }
 }
 
-// ── Commands ─────────────────────────────────────────────────────────────────
+// â”€â”€ Commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 int CliApp::HandleParseWad(const std::vector<std::string>& args) {
     if (args.size() < 2) {

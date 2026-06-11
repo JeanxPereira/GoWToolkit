@@ -1,8 +1,8 @@
-#include <doctest/doctest.h>
+﻿#include <doctest/doctest.h>
 #include <string>
-#include "core/domain/MediaKind.h"
+#include "Core/Domain/MediaKind.h"
 #include "core/types/GameTypes.h"
-#include "core/types/TypeCatalog.h"
+#include "Core/Types/TypeCatalog.h"
 
 using namespace Onyx;
 

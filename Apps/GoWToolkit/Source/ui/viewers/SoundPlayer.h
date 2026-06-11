@@ -1,5 +1,5 @@
-#pragma once
-#include "ui/viewers/IDocumentContent.h"
+﻿#pragma once
+#include "Ui/Viewers/IDocumentContent.h"
 #include "core/parsers/gow2/SoundParser.h"
 #include <string>
 #include <memory>

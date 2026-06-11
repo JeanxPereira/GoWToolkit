@@ -1,9 +1,9 @@
-#include "ProfileGOW2.h"
+﻿#include "ProfileGOW2.h"
 #include "formats/MDL.h"
-#include "core/vfs/IsoFileSystem.h"
-#include "core/Logger.h"
-#include "core/types/TypeRegistry.h"
-#include "core/types/TypeCatalog.h"
+#include "Core/Vfs/IsoFileSystem.h"
+#include "Core/Logger.h"
+#include "Core/Types/TypeRegistry.h"
+#include "Core/Types/TypeCatalog.h"
 #include "core/types/GameTypes.h"
 #include <iostream>
 #include <set>
@@ -17,7 +17,7 @@ ProfileGOW2::ProfileGOW2() {
 }
 
 void ProfileGOW2::RegisterSchemas() {
-    // Obsolete — handled by individual TypeHandlers and NodeInstance::Parse
+    // Obsolete â€” handled by individual TypeHandlers and NodeInstance::Parse
 }
 
 bool ProfileGOW2::Detect(const std::filesystem::path& path) const {
@@ -51,7 +51,7 @@ static constexpr uint16_t WADTAG_GROUP_START   = 2;
 static constexpr uint16_t WADTAG_GROUP_END     = 3;
 static constexpr uint16_t WADTAG_HEADER_POP    = 19;
 static constexpr uint16_t WADTAG_HEADER_START  = 21;
-// Tags 11-16 are TT_* (tweak template) nodes — added as leaves, no group semantics
+// Tags 11-16 are TT_* (tweak template) nodes â€” added as leaves, no group semantics
 
 bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& outWad) {
     if (!file || !file->IsValid()) return false;
@@ -71,7 +71,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
     bool newGroupTag = false;
     int totalTags = 0;
 
-    // Name → (typeId, offset, size) for resolving zero-sized reference entries.
+    // Name â†’ (typeId, offset, size) for resolving zero-sized reference entries.
     // A SERVER_INSTANCE with size=0 is a pointer to a previous definition with the same name.
     // When accessed, we redirect to the real definition's data (same as reference GetNodeById).
     struct DefInfo { TypeId typeId; int64_t offset; uint32_t size; };
@@ -86,7 +86,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
         pos += sizeof(RawWadTag);
         if (rawTag.tag == WADTAG_ENTITY_COUNT) rawTag.size = 0;
 
-        // ── Handle structural tags that affect the stack but don't produce nodes ──
+        // â”€â”€ Handle structural tags that affect the stack but don't produce nodes â”€â”€
         if (rawTag.tag == WADTAG_GROUP_START) {
             newGroupTag = true;
             if (rawTag.size > 0) {
@@ -109,7 +109,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
             }
             continue;
         }
-        // Entity count and header pop are metadata — skip silently (reference: default → NOP)
+        // Entity count and header pop are metadata â€” skip silently (reference: default â†’ NOP)
         if (rawTag.tag == WADTAG_ENTITY_COUNT || rawTag.tag == WADTAG_HEADER_POP) {
             if (rawTag.size > 0) {
                 pos += rawTag.size;
@@ -119,7 +119,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
             continue;
         }
         // Only SERVER_INSTANCE (1), TT_* (11-16) and HEADER_START (21) reach the tree.
-        // Any other unknown structural tag is silently ignored (reference: default → NOP).
+        // Any other unknown structural tag is silently ignored (reference: default â†’ NOP).
         bool addToTree = (rawTag.tag == WADTAG_SERVER_INST) ||
                          (rawTag.tag >= 11 && rawTag.tag <= 16) ||
                          (rawTag.tag == WADTAG_HEADER_START);
@@ -138,7 +138,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
         entry.offset = pos;
         entry.wadName = outWad.filename;
 
-        // ── Type Identification ──
+        // â”€â”€ Type Identification â”€â”€
         uint8_t payloadMagic[4] = {0};
         size_t payloadSizeAvailable = 0;
         if (rawTag.size >= 4) {
@@ -194,7 +194,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
             }
         }
 
-        // ── Zero-sized reference resolution ──
+        // â”€â”€ Zero-sized reference resolution â”€â”€
         // A SERVER_INSTANCE with size=0 is a pointer to a previous definition with the same name.
         // Resolve it to the real data so viewers can read it (mirrors reference GetNodeById lazy resolution).
         if (rawTag.tag == WADTAG_SERVER_INST && rawTag.size == 0) {
@@ -212,14 +212,14 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
 
         entry.kind = KindOf(entry.typeId);
 
-        // ── Add node to tree ──
+        // â”€â”€ Add node to tree â”€â”€
         std::vector<AssetEntry>* currentLevel = stack.back();
         currentLevel->push_back(std::move(entry));
         totalTags++;
 
         // Only SERVER_INSTANCE (tag=1) can become the new parent after a GroupStart.
         // HeaderStart (tag=21) and TT_* (tags 11-16) are added as flat siblings without
-        // group semantics — matches reference gow2parseTag exactly.
+        // group semantics â€” matches reference gow2parseTag exactly.
         if (newGroupTag && rawTag.tag == WADTAG_SERVER_INST) {
             newGroupTag = false;
             stack.push_back(&(currentLevel->back().children));
@@ -255,7 +255,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<IFile> file, AssetContainer& ou
     return true;
 }
 
-// ── Shared helper ──────────────────────────────────────────────────────────
+// â”€â”€ Shared helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 static void assignSchemaType(AssetEntry& entry) {
     size_t dot = entry.name.find_last_of('.');
@@ -284,15 +284,15 @@ static void assignSchemaType(AssetEntry& entry) {
     entry.kind = KindOf(entry.typeId);
 }
 
-// ── GOW2 TOC parser ────────────────────────────────────────────────────────
-// Format: uint32 fileCount, then fileCount×36-byte entries, then offset array
+// â”€â”€ GOW2 TOC parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Format: uint32 fileCount, then fileCountÃ—36-byte entries, then offset array
 //   [0:24]  filename (null-padded)
 //   [24:28] file size in bytes
 //   [28:32] encounter count (number of copies/locations)
 //   [32:36] encounter start index into the offset array
 // Each offset value:
-//   if >= 10000000 → dual-layer disc; pakIndex = value / 10M, sector = value % 10M
-//   else           → single-layer rip; all data in PART1.PAK at that sector
+//   if >= 10000000 â†’ dual-layer disc; pakIndex = value / 10M, sector = value % 10M
+//   else           â†’ single-layer rip; all data in PART1.PAK at that sector
 #pragma pack(push, 1)
 struct RawTocEntryGOW2 {
     char     name[24];
@@ -337,7 +337,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
 
         if (!pakExists(pakName)) {
             if (warnedMissingPaks.insert(pakName).second)
-                LOG_WARN("[GOW2] '%s' not found in ISO — skipping its entries. "
+                LOG_WARN("[GOW2] '%s' not found in ISO â€” skipping its entries. "
                          "(Dual-layer ISOs may need both layers merged.)", pakName.c_str());
             continue;
         }
@@ -356,7 +356,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<IVirtualFileSystem> vfs,
     return !outWad.entries.empty();
 }
 
-// ── LoadFromArchive ───────────────────────────────────────────────────────
+// â”€â”€ LoadFromArchive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 bool ProfileGOW2::LoadFromArchive(std::shared_ptr<IVirtualFileSystem> vfs, AssetContainer& outWad) {
     // Try GOW2.TOC first (some builds use this name)
     auto tocFile = vfs->OpenFile("/GOW2.TOC");

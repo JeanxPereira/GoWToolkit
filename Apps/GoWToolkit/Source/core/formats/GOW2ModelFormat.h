@@ -1,9 +1,9 @@
-#pragma once
-#include "core/schema/AssetFormat.h"
+﻿#pragma once
+#include "Core/Schema/AssetFormat.h"
 
 namespace Onyx {
 
-// ── GOW2 Model Format ──────────────────────────────────────────────────────
+// â”€â”€ GOW2 Model Format â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Used to map the headers of mdl_ files into the InfoTab properties grid.
 // Magic: 0x000F (typically 0x0002000F or 0x0001000F)
 class GOW2ModelFormat : public AssetFormat {

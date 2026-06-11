@@ -1,5 +1,5 @@
-#pragma once
-#include "core/parsers/shared/ObjectData.h"
+﻿#pragma once
+#include "Core/Parsers/Shared/ObjectData.h"
 #include <memory>
 #include <cstdint>
 

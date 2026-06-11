@@ -1,15 +1,15 @@
-// ObjectParser — GOW1/GOW2 skeleton/joints parser
+﻿// ObjectParser â€” GOW1/GOW2 skeleton/joints parser
 // Port of god_of_war_browser/pack/wad/obj/obj.go + obj_gow2.go
 //
 // Magic numbers:
-//   GOW1: 0x00040001 — header 0x2C bytes, joint entry at HEADER + i*0x10, name at HEADER + N*0x10 + i*0x18
-//   GOW2: 0x00010001 — header 0x14 bytes, joint entry at 0x14 + i*0x10, name at 0x14 + N*0x10 + i*0x18
+//   GOW1: 0x00040001 â€” header 0x2C bytes, joint entry at HEADER + i*0x10, name at HEADER + N*0x10 + i*0x18
+//   GOW2: 0x00010001 â€” header 0x14 bytes, joint entry at 0x14 + i*0x10, name at 0x14 + N*0x10 + i*0x18
 //
 // Data section (at dataOffset): 0x30-byte header with matrix counts and offsets,
 // followed by matrix arrays (Matrixes1, Matrixes2, Matrixes3) and vector arrays (Vectors4-7).
 
 #include "ObjectParser.h"
-#include "core/Logger.h"
+#include "Core/Logger.h"
 #include <cstring>
 #include <cmath>
 
@@ -20,7 +20,7 @@ static const uint32_t DATA_HEADER_SIZE = 0x30;
 static const uint32_t GOW2_HEADER_SIZE = 0x14;
 static const uint32_t MAGIC_GOW2       = 0x00010001;
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 static std::string ReadFixedString(const uint8_t* buf, size_t maxLen) {
     size_t len = strnlen(reinterpret_cast<const char*>(buf), maxLen);
@@ -46,7 +46,7 @@ static float ReadF32(const uint8_t* buf) {
 static glm::mat4 ReadMat4(const uint8_t* buf) {
     glm::mat4 m;
     // glm stores column-major, PS2 data is also column-major (row in memory = column for glm)
-    // Read 16 floats directly — glm::mat4 has 16 contiguous floats
+    // Read 16 floats directly â€” glm::mat4 has 16 contiguous floats
     std::memcpy(&m[0][0], buf, 64);
     return m;
 }
@@ -63,7 +63,7 @@ static glm::ivec4 ReadIVec4(const uint8_t* buf) {
     return v;
 }
 
-// ── Joint parsing (GOW2 layout) ──────────────────────────────────────────
+// â”€â”€ Joint parsing (GOW2 layout) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
     constexpr uint32_t headerSize = GOW2_HEADER_SIZE;
@@ -83,7 +83,7 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
         return false;
     }
 
-    // ── Parse joint entries ──────────────────────────────────────────────
+    // â”€â”€ Parse joint entries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     obj.joints.resize(jointCount);
     int16_t invId = 0;
 
@@ -115,7 +115,7 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
         // Render code in obj_gow2 reference checks `joint.Flags & 0x8000` per-joint
         // to pick quaternion vs Euler decoding of vectors5 / animation samples.
         // Forcing every GOW2 joint into the Euler path turned Q.14 quaternion-looking
-        // values into 100°+ Euler angles, contorting the skeleton mid-anim.
+        // values into 100Â°+ Euler angles, contorting the skeleton mid-anim.
         j.isQuaternion = (flags & 0x8000) != 0;
         if (i < 12) {
             LOG_INFO("[JointFlags] j[%u] flags=0x%08X skinned=%d external=%d quat=%d name='%s'",
@@ -129,7 +129,7 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
         }
     }
 
-    // ── Parse data section header ────────────────────────────────────────
+    // â”€â”€ Parse data section header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const uint8_t* matdata = data + dataOffset;
 
     uint32_t mat1count   = ReadU32(matdata + 0x00);
@@ -150,7 +150,7 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
     LOG_INFO("[ObjectParser] mat1=%u mat2=%u mat3=%u joints=%u",
              mat1count, mat2count, mat3count, jointCount);
 
-    // ── Read matrix arrays ────────────────────────────────────────────────
+    // â”€â”€ Read matrix arrays â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     auto readMatArray = [&](uint32_t offset, uint32_t count) -> std::vector<glm::mat4> {
         std::vector<glm::mat4> result(count);
         uint32_t absOffset = dataOffset + offset;
@@ -199,8 +199,8 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, ObjectData& obj) {
     return true;
 }
 
-// ── FillJoints ───────────────────────────────────────────────────────────
-// Port of obj.go FillJoints() — compute ParentToJoint and BindToJointMat
+// â”€â”€ FillJoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Port of obj.go FillJoints() â€” compute ParentToJoint and BindToJointMat
 void GOW2ObjectParser::FillJoints(ObjectData& obj) {
     for (size_t i = 0; i < obj.joints.size(); ++i) {
         auto& j = obj.joints[i];
@@ -227,7 +227,7 @@ void GOW2ObjectParser::FillJoints(ObjectData& obj) {
     }
 }
 
-// ── Public API ───────────────────────────────────────────────────────────
+// â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 std::unique_ptr<ObjectData> GOW2ObjectParser::Parse(
     const uint8_t* data, uint32_t size, uint32_t magic)

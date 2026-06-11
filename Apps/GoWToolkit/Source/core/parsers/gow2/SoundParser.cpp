@@ -1,6 +1,6 @@
-#include "SoundParser.h"
-#include "core/vfs/SliceFile.h"
-#include "core/Logger.h"
+﻿#include "SoundParser.h"
+#include "Core/Vfs/SliceFile.h"
+#include "Core/Logger.h"
 #include <cstring>
 #include <algorithm>
 

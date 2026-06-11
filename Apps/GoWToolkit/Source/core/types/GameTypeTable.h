@@ -1,7 +1,7 @@
-#pragma once
-#include "core/types/TypeId.h"        // still the enum at this point
-#include "core/domain/MediaKind.h"
-#include "fonts/SFSymbols.h"
+﻿#pragma once
+#include "Core/Types/TypeId.h"        // still the enum at this point
+#include "Core/Domain/MediaKind.h"
+#include "Fonts/SFSymbols.h"
 #include <cstdint>
 
 namespace Onyx {

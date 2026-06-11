@@ -1,5 +1,5 @@
-#pragma once
-#include "core/vfs/IFile.h"
+﻿#pragma once
+#include "Core/Vfs/IFile.h"
 #include <memory>
 #include <vector>
 #include <cstdint>
@@ -10,7 +10,7 @@ namespace Onyx {
 //
 // Each MG-def groups one or more MESH submeshes that all rigidly belong to one
 // skeleton bone. This parser collapses that into a flat map:
-//   meshSubmeshIdx → parentBoneIdx
+//   meshSubmeshIdx â†’ parentBoneIdx
 //
 // Port of GOWTool MG::Parse (Formats.cpp:165-220).
 class GOWRMgParser {

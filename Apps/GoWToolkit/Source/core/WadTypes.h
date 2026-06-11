@@ -1,6 +1,6 @@
-#pragma once
+﻿#pragma once
 
-// ── Legacy umbrella header ────────────────────────────────────────────────
+// â”€â”€ Legacy umbrella header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // `WadTypes.h` historically held `WadAssetName`, `WadEntryRole`,
 // `WadBlock`, `AssetEntry`, `AssetContainer`, and type-string helpers. M1.T1
@@ -11,8 +11,8 @@
 //
 // Will be deleted entirely in M4.T5.
 
-#include "core/domain/Entry.h"
-#include "core/domain/Wad.h"
+#include "Core/Domain/Entry.h"
+#include "Core/Domain/Wad.h"
 #include "core/domain/WadEntryRoleLegacy.h"
-#include "core/types/GameVersion.h"
-#include "core/types/TypeId.h"
+#include "Core/Types/GameVersion.h"
+#include "Core/Types/TypeId.h"

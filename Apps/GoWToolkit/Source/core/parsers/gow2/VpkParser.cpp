@@ -1,6 +1,6 @@
-#include "VpkParser.h"
-#include "core/audio/AdpcmDecoder.h"
-#include "core/Logger.h"
+﻿#include "VpkParser.h"
+#include "Core/Audio/AdpcmDecoder.h"
+#include "Core/Logger.h"
 #include <cstring>
 
 namespace Onyx {

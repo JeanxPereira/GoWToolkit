@@ -1,6 +1,6 @@
-#pragma once
-#include "ui/IPanel.h"
-#include "ui/InfoTab.h"
+﻿#pragma once
+#include "Ui/IPanel.h"
+#include "Ui/InfoTab.h"
 
 class Inspector : public IPanel {
 public:

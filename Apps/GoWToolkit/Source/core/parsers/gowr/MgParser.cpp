@@ -1,21 +1,21 @@
-#include "MgParser.h"
-#include "core/Logger.h"
+﻿#include "MgParser.h"
+#include "Core/Logger.h"
 
-// ── MgParser.cpp ───────────────────────────────────────────────────────────
+// â”€â”€ MgParser.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MG-file layout (port of GOWTool Formats.cpp::MG::Parse):
 //
 //   +0x30  uint16  defCount         (number of mg-defs / "bone groups")
-//   +0x44  uint32[defCount]         relative-offset table → mg-def
+//   +0x44  uint32[defCount]         relative-offset table â†’ mg-def
 //
 //   per mg-def @ defOff:
 //     +0x00   uint16   parentBone
 //     +0x02   uint8    lodCount
-//     +0x38   uint32[lodCount]      relative-offset table → skin list
+//     +0x38   uint32[lodCount]      relative-offset table â†’ skin list
 //
 //     per skin list @ skinOff (relative to defOff):
 //       +0x00   uint32   submeshCount
 //       +0x04   6 bytes  pad
-//       then    uint16 × submeshCount   MESH-submesh indices
+//       then    uint16 Ã— submeshCount   MESH-submesh indices
 //
 // Vertices of meshes[idx] rigidly belong to parentBone, with LODlvl = j.
 
@@ -42,9 +42,9 @@ bool GOWRMgParser::Parse(std::shared_ptr<IFile> file,
         uint32_t defOff = 0;
         file->Read(&defOff, 4);
 
-        // ── DIAGNOSTIC: dump the 56 bytes at the head of each mg-def so we
+        // â”€â”€ DIAGNOSTIC: dump the 56 bytes at the head of each mg-def so we
         // can manually inspect for MAT hashes / hidden flags. Remove once
-        // the mesh→MAT link is identified. (Layout to date: +0x00 parentBone
+        // the meshâ†’MAT link is identified. (Layout to date: +0x00 parentBone
         // u16, +0x02 lodCount u8, then 53 unknown bytes before +0x38.)
         {
             uint8_t hdr[0x40] = {};

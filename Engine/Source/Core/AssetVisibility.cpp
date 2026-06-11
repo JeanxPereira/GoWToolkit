@@ -1,0 +1,133 @@
+﻿#include "Core/AssetVisibility.h"
+#include "Core/Domain/Entry.h"
+#include "Core/Types/TypeRegistry.h"
+
+namespace Onyx {
+
+AssetVisibility& AssetVisibility::Get() {
+    static AssetVisibility s_instance;
+    return s_instance;
+}
+
+AssetVisibility::AssetVisibility() = default;
+
+void AssetVisibility::SetDefault(GameVersion ver, TypeId id, Visibility vis) {
+    m_defaults[MakeKey(ver, id)] = vis;
+}
+
+// â”€â”€ Query â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+Visibility AssetVisibility::GetDefault(GameVersion ver, TypeId id) const {
+    auto it = m_defaults.find(MakeKey(ver, id));
+    return (it != m_defaults.end()) ? it->second : Visibility::Visible;
+}
+
+Visibility AssetVisibility::GetCurrent(GameVersion ver, TypeId id) const {
+    Visibility def = GetDefault(ver, id);
+    if (def == Visibility::Internal) return Visibility::Internal;
+
+    auto it = m_overrides.find(MakeKey(ver, id));
+    if (it != m_overrides.end()) {
+        return it->second ? Visibility::Visible : Visibility::Hidden;
+    }
+    return def;
+}
+
+bool AssetVisibility::IsVisible(GameVersion ver, TypeId id) const {
+    return GetCurrent(ver, id) == Visibility::Visible;
+}
+
+bool AssetVisibility::IsVisible(const AssetEntry& entry, GameVersion ver) const {
+    return IsVisible(ver, entry.typeId);
+}
+
+// â”€â”€ User overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+void AssetVisibility::SetUserOverride(GameVersion ver, TypeId id, bool visible) {
+    Visibility def = GetDefault(ver, id);
+    if (def == Visibility::Internal) return; // Cannot override Internal
+
+    uint32_t key = MakeKey(ver, id);
+
+    // If the override matches the default, remove it (no-op override)
+    bool defaultVisible = (def == Visibility::Visible);
+    if (visible == defaultVisible) {
+        m_overrides.erase(key);
+    } else {
+        m_overrides[key] = visible;
+    }
+}
+
+void AssetVisibility::ClearUserOverride(GameVersion ver, TypeId id) {
+    m_overrides.erase(MakeKey(ver, id));
+}
+
+void AssetVisibility::ResetAllOverrides() {
+    m_overrides.clear();
+}
+
+// â”€â”€ FilterPanel data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+std::vector<AssetVisibility::TypeVisInfo> AssetVisibility::GetFilterableTypes(GameVersion ver) const {
+    std::vector<TypeVisInfo> result;
+
+    // Walk all registered handlers and include types that have a default
+    // of Hidden (filterable) or Visible (togglable to hide).
+    // Skip Internal types â€” those never appear in the UI.
+    const auto& handlers = TypeRegistry::Get().AllHandlers();
+
+    for (const auto* handler : handlers) {
+        TypeId id = handler->GetId();
+        Visibility def = GetDefault(ver, id);
+
+        // Skip Internal types â€” not user-toggleable
+        if (def == Visibility::Internal) continue;
+
+        // Skip Unknown type
+        if (!id.valid()) continue;
+
+        TypeVisInfo info;
+        info.id               = id;
+        info.name             = handler->GetName();
+        info.icon             = handler->GetIcon();
+        info.defaultVis       = def;
+        info.currentlyVisible = (GetCurrent(ver, id) == Visibility::Visible);
+        info.hasOverride      = (m_overrides.find(MakeKey(ver, id)) != m_overrides.end());
+
+        result.push_back(info);
+    }
+
+    return result;
+}
+
+// â”€â”€ Persistence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+std::vector<AssetVisibility::SerializedOverride> AssetVisibility::ExportOverrides() const {
+    std::vector<SerializedOverride> result;
+    result.reserve(m_overrides.size());
+
+    for (const auto& [key, vis] : m_overrides) {
+        SerializedOverride so;
+        // Pack: gameVersion in high byte, typeId in low byte
+        uint8_t gameVer = (uint8_t)(key >> 16);
+        uint8_t typeId  = (uint8_t)(key & 0xFFFF);
+        so.key     = (uint16_t)(gameVer << 8) | typeId;
+        so.visible = vis ? 1 : 0;
+        so._pad    = 0;
+        result.push_back(so);
+    }
+    return result;
+}
+
+void AssetVisibility::ImportOverrides(const std::vector<SerializedOverride>& data) {
+    m_overrides.clear();
+    for (const auto& so : data) {
+        uint8_t gameVer = (uint8_t)(so.key >> 8);
+        uint8_t typeId  = (uint8_t)(so.key & 0xFF);
+        uint32_t key = MakeKey(static_cast<GameVersion>(gameVer),
+                               TypeId{typeId});
+        m_overrides[key] = (so.visible != 0);
+    }
+}
+
+} // namespace Onyx

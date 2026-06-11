@@ -1,10 +1,10 @@
-// Structural WAD tag handlers — identified by tag number, not magic.
+﻿// Structural WAD tag handlers â€” identified by tag number, not magic.
 // These have no payload to parse, they just control the WAD tree structure.
 
-#include "core/types/TypeRegistry.h"
-#include "core/types/ITypeHandler.h"
+#include "Core/Types/TypeRegistry.h"
+#include "Core/Types/ITypeHandler.h"
 #include "core/types/GameTypes.h"
-#include "fonts/SFSymbols.h"
+#include "Fonts/SFSymbols.h"
 
 namespace {
 
@@ -51,7 +51,7 @@ public:
 
 } // anonymous namespace
 
-// ── Self-registration for GOW2 ──
+// â”€â”€ Self-registration for GOW2 â”€â”€
 REGISTER_TAG(GOW2, 0,  EntityCountHandler);
 REGISTER_TAG(GOW2, 2,  GroupStartHandler);
 REGISTER_TAG(GOW2, 3,  GroupEndHandler);

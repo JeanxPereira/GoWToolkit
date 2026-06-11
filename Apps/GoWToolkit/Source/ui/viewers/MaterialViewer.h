@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 
-#include "ui/viewers/IDocumentContent.h"
+#include "Ui/Viewers/IDocumentContent.h"
 #include "core/parsers/gow2/MaterialParser.h"
-#include "core/parsers/shared/TextureData.h"
+#include "Core/Parsers/Shared/TextureData.h"
 #include <string>
 #include <memory>
 #include <vector>

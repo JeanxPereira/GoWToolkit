@@ -1,13 +1,13 @@
-#pragma once
+﻿#pragma once
 #include "imgui.h"
-#include "ui/PanelRegistry.h"
+#include "Ui/PanelRegistry.h"
 
-#include "ui/WindowDecorator.h"
-#include "ui/viewers/DocumentWindow.h"
-#include "ui/ViewerRegistry.h"
-#include "core/AssetDatabase.h"
-#include "core/AppConfig.h"
-#include "core/RecentFiles.h"
+#include "Ui/WindowDecorator.h"
+#include "Ui/Viewers/DocumentWindow.h"
+#include "Ui/ViewerRegistry.h"
+#include "Core/AssetDatabase.h"
+#include "Core/AppConfig.h"
+#include "Core/RecentFiles.h"
 #include <GLFW/glfw3.h>
 #include <functional>
 #include <memory>
@@ -20,7 +20,7 @@ public:
 
     // Hook the executable uses to register game-specific panels and viewers.
     // Set before init(); invoked once during init, after the engine's generic
-    // panels are registered. Keeps App game-agnostic — the engine ships no
+    // panels are registered. Keeps App game-agnostic â€” the engine ships no
     // game wiring of its own.
     using AppRegistrar = std::function<void(App&)>;
     void SetRegistrar(AppRegistrar r) { m_registrar = std::move(r); }
@@ -28,7 +28,7 @@ public:
     // Minimal accessor the registrar uses to add a (game) panel.
     void addPanel(std::unique_ptr<IPanel> panel) { m_panels.add(std::move(panel)); }
 
-    // Frame phases — called by Window
+    // Frame phases â€” called by Window
     void frameBegin();
     void frame();
     void frameEnd();

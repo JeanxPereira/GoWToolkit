@@ -1,5 +1,5 @@
-#include "core/types/GameTypes.h"
-#include "core/types/TypeCatalog.h"
+﻿#include "core/types/GameTypes.h"
+#include "Core/Types/TypeCatalog.h"
 #include "core/types/GameTypeTable.h"
 #include <cassert>
 #include <iterator>

@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
-#include "ui/viewers/IDocumentContent.h"
-#include "ui/viewers/Viewport3D.h"
+#include "Ui/Viewers/IDocumentContent.h"
+#include "Ui/Viewers/Viewport3D.h"
 #include "core/WadTypes.h"
 #include <map>
 #include <memory>

@@ -1,7 +1,7 @@
-#include "core/loaders/GOWRLoaders.h"
-#include "core/types/TypeRegistry.h"
+﻿#include "core/loaders/GOWRLoaders.h"
+#include "Core/Types/TypeRegistry.h"
 #include "core/WadTypes.h"
-#include "core/schema/AssetReader.h"
+#include "Core/Schema/AssetReader.h"
 #include "core/formats/GOWRMeshDefnFormat.h"
 #include "core/parsers/gowr/MeshParser.h"
 #include "core/parsers/gowr/LodPackIndex.h"
@@ -9,12 +9,12 @@
 #include "core/parsers/gowr/ProtoParser.h"
 #include "core/parsers/gowr/MgParser.h"
 #include "core/parsers/gowr/ShaderParser.h"
-#include "core/parsers/shared/SceneNode.h"
-#include "ui/viewers/ImageViewer.h"
-#include "core/Logger.h"
-#include "core/vfs/SliceFile.h"
-#include "core/vfs/MemoryFile.h"
-#include "ui/viewers/Viewport3D.h"
+#include "Core/Parsers/Shared/SceneNode.h"
+#include "Ui/Viewers/ImageViewer.h"
+#include "Core/Logger.h"
+#include "Core/Vfs/SliceFile.h"
+#include "Core/Vfs/MemoryFile.h"
+#include "Ui/Viewers/Viewport3D.h"
 #include <cstring>
 #include <filesystem>
 #include <functional>
@@ -24,7 +24,7 @@
 #include "core/parsers/gowr/Rdna2Detiler.h"
 #include "core/parsers/gowr/BcDecoder.h"
 #include "core/profiles/gowr/GowrProfileTag.h"
-#include "core/PathUtils.h"
+#include "Core/PathUtils.h"
 
 using Onyx::Rdna2::Detile;
 
@@ -39,11 +39,11 @@ static Onyx::Gowr::WadEntryRole GetRole(const AssetEntry& e) {
 #include <mach-o/dyld.h>
 #endif
 
-// ── GOWRLoaders.cpp ────────────────────────────────────────────────────────
+// â”€â”€ GOWRLoaders.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 namespace Onyx {
 
-// ── Search candidates for runtime files (config.ini, lodpacks.txt) ─────────
+// â”€â”€ Search candidates for runtime files (config.ini, lodpacks.txt) â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static std::vector<std::filesystem::path> ResourceSearchDirs() {
     std::vector<std::filesystem::path> candidates;
     candidates.push_back(std::filesystem::current_path());
@@ -72,7 +72,7 @@ static std::filesystem::path FindResource(const std::string& filename) {
     return {};
 }
 
-// ── Resolve game root from config.ini ─────────────────────────────────────
+// â”€â”€ Resolve game root from config.ini â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static std::filesystem::path ReadGameRootFromConfig() {
     auto configPath = FindResource("config.ini");
     if (configPath.empty()) return {};
@@ -99,7 +99,7 @@ static std::filesystem::path ReadGameRootFromConfig() {
     return std::filesystem::path(line);
 }
 
-// ── Auto-detect game root from a WAD path ──────────────────────────────────
+// â”€â”€ Auto-detect game root from a WAD path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // GOWR layout puts WADs under <gameRoot>/exec/wad/pc_le/. We walk up from the
 // WAD's parent dir looking for an ancestor that contains exec/wad/pc_le, so we
@@ -151,7 +151,7 @@ bool EnsureGowrConfigIni(const std::filesystem::path& wadPath) {
     return true;
 }
 
-// ── LodPackIndex singleton ─────────────────────────────────────────────────
+// â”€â”€ LodPackIndex singleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 static LodPackIndex* s_lodIndex = nullptr;
 
@@ -165,7 +165,7 @@ static LodPackIndex& GetLodIndex() {
             LOG_INFO("[GOWRLoaders] Found lodpacks.txt at: %s", lodpacksTxt.string().c_str());
             s_lodIndex->LoadFromList(lodpacksTxt, gameRoot);
         } else {
-            LOG_WARN("[GOWRLoaders] config.ini or lodpacks.txt not found — LOD lookup disabled");
+            LOG_WARN("[GOWRLoaders] config.ini or lodpacks.txt not found â€” LOD lookup disabled");
         }
     }
     return *s_lodIndex;
@@ -180,7 +180,7 @@ static void StartTexIndexLoad() {
     if (!gameRoot.empty()) {
         s_texIndex->LoadFromGameRoot(gameRoot);
     } else {
-        LOG_WARN("[GOWRLoaders] config.ini not found — Texture lookup from texpack disabled");
+        LOG_WARN("[GOWRLoaders] config.ini not found â€” Texture lookup from texpack disabled");
         s_texIndex->SetLoaded();
     }
 }
@@ -192,7 +192,7 @@ TexPackIndex& GetTexIndex() {
     }
     if (!s_texIndexStarted) {
         s_texIndexStarted = true;
-        // Launch indexing on a background thread — does NOT block UI
+        // Launch indexing on a background thread â€” does NOT block UI
         std::thread(StartTexIndexLoad).detach();
     }
     return *s_texIndex;
@@ -205,16 +205,16 @@ void InvalidateLodIndex() {
     s_texIndex = nullptr;
 }
 
-// ── GOWR Mesh Handling ─────────────────────────────────────────────────────
+// â”€â”€ GOWR Mesh Handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry, AssetContainer& wad, bool attachSkeleton) {
     if (!wad.fileSource) return nullptr;
 
-    // ── Slice the MESH file ────────────────────────────────────────────
+    // â”€â”€ Slice the MESH file â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     auto meshFile = std::make_shared<SliceFile>(
         wad.fileSource, entry.offset, entry.size);
 
-    // ── Find the paired MG_GPU sibling ────────────────────────────────
+    // â”€â”€ Find the paired MG_GPU sibling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Strip prefix (MESH_ or MG_) and trailing ---NNNNN hash to get the base name.
     std::string base = entry.name;
     for (const char* pfx : {"MESH_", "MG_"}) {
@@ -253,11 +253,11 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
         LOG_INFO("[GOWRLoaders] GPU: %s (size=%u)",
                  gpuEntry->name.c_str(), gpuEntry->size);
     } else {
-        LOG_WARN("[GOWRLoaders] No MeshGpu sibling for '%s' — hash=0 submeshes only",
+        LOG_WARN("[GOWRLoaders] No MeshGpu sibling for '%s' â€” hash=0 submeshes only",
                  entry.name.c_str());
     }
 
-    // ── Parse ──────────────────────────────────────────────────────────
+    // â”€â”€ Parse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     MeshData data;
     bool ok = false;
 
@@ -273,7 +273,7 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
         return std::make_shared<Viewport3D>(entry.name);
     }
 
-    // ── Find paired MG_<base> file (bone-binding, no _gpu suffix) ─────
+    // â”€â”€ Find paired MG_<base> file (bone-binding, no _gpu suffix) â”€â”€â”€â”€â”€
     std::shared_ptr<IFile> mgFile;
     std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findMg;
     findMg = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
@@ -303,12 +303,12 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
                  mgEntry->name.c_str(), mgEntry->size);
     }
 
-    // ── DIAGNOSTIC: locate paired MDL_<base> and dump first 512 bytes plus
+    // â”€â”€ DIAGNOSTIC: locate paired MDL_<base> and dump first 512 bytes plus
     // a tail sample. Hunting for MAT hash field placement. Remove once link
     // identified.
     {
         std::string mdlBase = base;
-        // Strip trailing "_<digits>" suffix (e.g. "athena10_0" → "athena10")
+        // Strip trailing "_<digits>" suffix (e.g. "athena10_0" â†’ "athena10")
         auto usPos = mdlBase.find_last_of('_');
         if (usPos != std::string::npos && usPos + 1 < mdlBase.size()) {
             bool allDigits = true;
@@ -368,16 +368,16 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
         }
     }
 
-    // ── Find paired goProto* file (skeleton) ───────────────────────────
+    // â”€â”€ Find paired goProto* file (skeleton) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Skip entirely when the caller asked for a mesh-only view (MESH_ entry).
     // Rigged viewers (goProto*, go*) pass attachSkeleton=true and resolve the
     // rig via name pairing below.
     std::shared_ptr<ObjectData> skeleton;
     if (attachSkeleton) {
-        // Naming: MESH_athena10_0 → look for goProtoathena10 (strip MESH_/MG_,
+        // Naming: MESH_athena10_0 â†’ look for goProtoathena10 (strip MESH_/MG_,
         // trailing _N, and trailing ---HASH).
         std::string protoBase = base;
-        // Strip trailing "_<digits>" suffix if present (e.g. "athena10_0" → "athena10")
+        // Strip trailing "_<digits>" suffix if present (e.g. "athena10_0" â†’ "athena10")
         auto usPos = protoBase.find_last_of('_');
         if (usPos != std::string::npos && usPos + 1 < protoBase.size()) {
             bool allDigits = true;
@@ -420,14 +420,14 @@ static std::shared_ptr<IDocumentContent> SharedGowrMeshLoad(const AssetEntry& en
         }
     }
 
-    // ── Build SceneData and load into viewport ─────────────────────────
+    // â”€â”€ Build SceneData and load into viewport â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     auto vp = std::make_shared<Viewport3D>(entry.name);
 
     if (skeleton) {
-        // ── Skinning resolution (CURRENT: rigid-only fallback) ────────────
+        // â”€â”€ Skinning resolution (CURRENT: rigid-only fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // GOWR skinned vertex bone-indices are per-submesh LOCAL palette
-        // indices (not global). The palette source — MG file vs MESH submesh
-        // header vs separate VPK — is still unknown. Treating them as global
+        // indices (not global). The palette source â€” MG file vs MESH submesh
+        // header vs separate VPK â€” is still unknown. Treating them as global
         // (identity jointMap) causes catastrophic vertex explosions because
         // small palette indices map to arbitrary global bones.
         //
@@ -476,20 +476,20 @@ std::shared_ptr<AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<IFile> fil
 }
 
 std::shared_ptr<IDocumentContent> GOWRMeshDefnHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    // MESH_* — render the 3D model without binding to a skeleton.
+    // MESH_* â€” render the 3D model without binding to a skeleton.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/false);
 }
 std::shared_ptr<IDocumentContent> GOWRSkinnedMeshHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    // GOWR_SKINNED_MESH — attach the rig so bones drive the mesh.
+    // GOWR_SKINNED_MESH â€” attach the rig so bones drive the mesh.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
 std::shared_ptr<IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    // go* instance — load with rig.
+    // go* instance â€” load with rig.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
 
 #include <imgui.h>
-#include "ui/viewers/ImageViewer.h"
+#include "Ui/Viewers/ImageViewer.h"
 
 class GOWRTextureViewer : public IDocumentContent {
 public:
@@ -514,11 +514,11 @@ public:
                 m_initialized = true;
                 FirstLoad(texIdx);
             } else if (!texIdx.IsLoading()) {
-                // Indexing finished and the hash is still missing — real fail.
+                // Indexing finished and the hash is still missing â€” real fail.
                 m_initialized = true;
                 m_failReason = "hash not in texpack index";
             } else {
-                // Still indexing — show progress and bail until next frame.
+                // Still indexing â€” show progress and bail until next frame.
                 ImGui::SetCursorPos(ImVec2(ImGui::GetWindowSize().x * 0.5f - 150,
                                            ImGui::GetWindowSize().y * 0.5f - 20));
                 ImGui::Text("Indexing texpacks in background (parallel)...");
@@ -576,7 +576,7 @@ private:
 
         // PS5 AGC T# at +0x10 (after 16-byte GNF header). 8 dwords.
         // dw3 bits[24:20] = sw_mode, bits[21:8] = pipeBankXor (14-bit).
-        // dw1 bits[25:20] = data_format (AGC enum — empirically BC1=0x2A here).
+        // dw1 bits[25:20] = data_format (AGC enum â€” empirically BC1=0x2A here).
         const uint32_t dw1 = *reinterpret_cast<uint32_t*>(gnfBuf + 0x14);
         const uint32_t dw3 = *reinterpret_cast<uint32_t*>(gnfBuf + 0x1C);
 
@@ -584,7 +584,7 @@ private:
         m_pipeBankXor = (dw3 >> 8)  & 0x3FFF;
         const uint32_t dataFmt = (dw1 >> 20) & 0x3F;
 
-        // Map AGC data_format → BC format. Values verified against DDS FourCC
+        // Map AGC data_format â†’ BC format. Values verified against DDS FourCC
         // (DXT1/ATI1/ATI2/DX10) for GOWR PC.
         bool isBc = true;
         switch (dataFmt) {
@@ -605,7 +605,7 @@ private:
         const uint32_t blocksY = (m_texH + 3) / 4;
         const size_t   linearBcSz = size_t(blocksX) * blocksY * blockBytes;
 
-        // Multi-mip blocks store mips smallest→largest; mip0 occupies the last
+        // Multi-mip blocks store mips smallestâ†’largest; mip0 occupies the last
         // `linearBcSz` bytes of the block's raw data area.
         const int64_t mip0Off = static_cast<int64_t>(texEntry.blockDataOffset)
                               + static_cast<int64_t>(bDataOff)
@@ -654,7 +654,7 @@ std::shared_ptr<IDocumentContent> GOWRTextureHandler::CreateViewer(const AssetEn
 std::shared_ptr<IDocumentContent> GOWRRigHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     if (!wad.fileSource) return nullptr;
 
-    // Derive the base name: "goProtofox00" → "fox00"
+    // Derive the base name: "goProtofox00" â†’ "fox00"
     std::string protoBase = entry.name;
     if (protoBase.rfind("goProto", 0) == 0) protoBase = protoBase.substr(7);
     auto dashPos = protoBase.rfind("---");
@@ -744,7 +744,7 @@ REGISTER_FILE_TYPE(GOWRModelInstanceHandler);
 REGISTER_FILE_TYPE(GOWRTextureHandler);
 REGISTER_FILE_TYPE(GOWRRigHandler);
 
-// ── GOWR Shader Viewer ────────────────────────────────────────────────────
+// â”€â”€ GOWR Shader Viewer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class GOWRShaderViewer : public IDocumentContent {
 public:
@@ -759,7 +759,7 @@ public:
             return;
         }
 
-        // ── Onyx Header ─────────────────────────────────────────────────
+        // â”€â”€ Onyx Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         ImGui::SeparatorText("Onyx Shader Header");
         if (ImGui::BeginTable("##gowhdr", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Field",  ImGuiTableColumnFlags_WidthFixed, 140);
@@ -779,7 +779,7 @@ public:
             return;
         }
 
-        // ── Debug path (ILDN) ──────────────────────────────────────────
+        // â”€â”€ Debug path (ILDN) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (!m_data->debugPath.empty()) {
             ImGui::Spacing();
             ImGui::SeparatorText("Build Path (ILDN)");
@@ -790,7 +790,7 @@ public:
                 ImGui::SetClipboardText(m_data->debugPath.c_str());
         }
 
-        // ── DXIL Info ──────────────────────────────────────────────────
+        // â”€â”€ DXIL Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (m_data->dxil.valid) {
             ImGui::Spacing();
             ImGui::SeparatorText("DXIL Payload");
@@ -803,7 +803,7 @@ public:
             }
         }
 
-        // ── Chunks ─────────────────────────────────────────────────────
+        // â”€â”€ Chunks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         ImGui::Spacing();
         ImGui::SeparatorText("DXBC Chunks");
         if (ImGui::BeginTable("##chunks", 3,
@@ -827,18 +827,18 @@ public:
             ImGui::EndTable();
         }
 
-        // ── Input Signature ────────────────────────────────────────────
+        // â”€â”€ Input Signature â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         DrawSignature("Input Signature (ISG1)", m_data->inputs);
 
-        // ── Output Signature ───────────────────────────────────────────
+        // â”€â”€ Output Signature â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         DrawSignature("Output Signature (OSG1)", m_data->outputs);
 
-        // ── Patch Signature ────────────────────────────────────────────
+        // â”€â”€ Patch Signature â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (!m_data->patch.empty()) {
             DrawSignature("Patch Signature (PSG1)", m_data->patch);
         }
 
-        // ── Statistics ─────────────────────────────────────────────────
+        // â”€â”€ Statistics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (m_data->stats.valid) {
             ImGui::Spacing();
             ImGui::SeparatorText("Statistics (STAT)");
@@ -855,7 +855,7 @@ public:
             }
         }
 
-        // ── Shader Hash ────────────────────────────────────────────────
+        // â”€â”€ Shader Hash â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (m_data->hasHash) {
             ImGui::Spacing();
             ImGui::SeparatorText("Shader Hash");

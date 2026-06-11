@@ -1,9 +1,9 @@
-#pragma once
-#include "core/schema/AssetFormat.h"
+﻿#pragma once
+#include "Core/Schema/AssetFormat.h"
 
 namespace Onyx {
 
-// ── GOWR Mesh Definition ───────────────────────────────────────────────────
+// â”€â”€ GOWR Mesh Definition â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class GOWRMeshDefnFormat : public AssetFormat {
 protected:
     void Build() override {

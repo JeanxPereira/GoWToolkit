@@ -1,5 +1,5 @@
-#pragma once
-#include "core/types/ITypeHandler.h"
+﻿#pragma once
+#include "Core/Types/ITypeHandler.h"
 #include "core/types/GameTypes.h"
 #include <filesystem>
 

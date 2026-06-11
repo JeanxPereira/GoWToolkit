@@ -1,8 +1,8 @@
-#pragma once
-#include "core/AssetDatabase.h"
-#include "ui/IPanel.h"
+﻿#pragma once
+#include "Core/AssetDatabase.h"
+#include "Ui/IPanel.h"
 #include <filesystem>
-#include "core/domain/MediaKind.h"
+#include "Core/Domain/MediaKind.h"
 
 class WadBrowser : public IPanel {
 public:
