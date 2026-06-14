@@ -235,6 +235,7 @@ endif()
 # Both live in their own CMakeLists; the third-party blocks above are shared.
 add_subdirectory(Engine)
 add_subdirectory(Apps/GoWToolkit)
+add_subdirectory(Apps/MinimalViewer)
 
 # ── Tests ─────────────────────────────────────────────────────────────────
 if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)

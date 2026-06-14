@@ -58,3 +58,8 @@ set_target_properties(gowtoolkit_tests PROPERTIES
 if(MSVC)
     target_compile_options(gowtoolkit_tests PRIVATE /utf-8)
 endif()
+
+add_test(NAME MinimalViewer_SelfTest
+         COMMAND MinimalViewer --selftest $<TARGET_FILE:MinimalViewer>)
+set_tests_properties(MinimalViewer_SelfTest PROPERTIES
+         PASS_REGULAR_EXPRESSION "selftest OK")
