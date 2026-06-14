@@ -30,10 +30,20 @@ int RunSelfTest(const char* path) {
     std::vector<uint8_t> bytes = file.ReadAll();
     if (bytes.empty()) { std::fprintf(stderr, "selftest: empty read\n"); return 4; }
 
-    // 3) Format a hex dump and validate it is non-trivial.
-    std::string dump = FormatHexDump(bytes, /*maxBytes=*/256);
-    if (dump.find("0000") == std::string::npos) {
-        std::fprintf(stderr, "selftest: hex dump missing offset column\n"); return 5;
+    // 3) Validate the hex formatter deterministically against a known input:
+    //    offset column, byte column (uppercase hex), and ASCII gutter.
+    const std::vector<uint8_t> probe = {0x00, 0x41, 0xFF}; // NUL, 'A', 0xFF -> ".A."
+    const std::string probeDump = FormatHexDump(probe, probe.size());
+    if (probeDump.substr(0, 8) != "00000000" ||
+        probeDump.find("00 41 FF") == std::string::npos ||
+        probeDump.find(".A.") == std::string::npos) {
+        std::fprintf(stderr, "selftest: hex formatter output wrong:\n%s\n", probeDump.c_str());
+        return 5;
+    }
+
+    // 4) Exercise the real path on the opened file's bytes.
+    if (FormatHexDump(bytes, /*maxBytes=*/256).empty()) {
+        std::fprintf(stderr, "selftest: empty dump from file bytes\n"); return 6;
     }
     std::printf("selftest OK: %zu bytes, type id=%u\n", bytes.size(), id.value);
     return 0;

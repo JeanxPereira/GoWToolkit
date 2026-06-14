@@ -31,6 +31,8 @@ static int RunGui(const char* optionalPath) {
         Onyx::Vfs::OsFile file(path);
         if (!file.IsValid()) return;
         std::vector<uint8_t> bytes = file.ReadAll();
+        constexpr size_t kMaxHexBytes = 64 * 1024; // demo hex view: cap to avoid OOM on large files
+        if (bytes.size() > kMaxHexBytes) bytes.resize(kMaxHexBytes);
         auto viewer = std::make_shared<MinimalViewer::HexViewer>(path, std::move(bytes));
         app.getDocumentWindow().AddTab(viewer);
     });
