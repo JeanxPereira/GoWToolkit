@@ -2,7 +2,7 @@
 #include "imgui.h"
 #include <cstdio>
 
-namespace Onyx {
+namespace Onyx::App {
 
 // ── Forward declaration ────────────────────────────────────────────────────
 static void RenderAssetNodeRow(const Schema::AssetNode& node);
@@ -159,4 +159,4 @@ static void RenderAssetNodeRow(const Schema::AssetNode& node) {
     ImGui::PopID();
 }
 
-} // namespace Onyx
+} // namespace Onyx::App

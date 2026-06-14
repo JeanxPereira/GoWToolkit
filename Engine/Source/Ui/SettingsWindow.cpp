@@ -9,6 +9,7 @@
 #include "Core/AssetVisibility.h"
 #include "Fonts/SFSymbols.h"
 #include "Ui/Widgets.h"
+#include "FontDebuggerWindow.h"
 
 #include <algorithm>
 #include <cstring>
@@ -40,6 +41,8 @@ static void EndSubWindow() {
 }
 
 // â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+namespace Onyx::App {
 
 void SettingsWindow::Init() {
   // Font list is now managed by Onyx::Fonts (populated in App::init)
@@ -173,8 +176,6 @@ void SettingsWindow::Draw() {
   ImGui::End();
 }
 
-#include "FontDebuggerWindow.h"
-
 // â”€â”€ Category: Interface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void SettingsWindow::DrawInterfaceCategory() {
@@ -182,11 +183,11 @@ void SettingsWindow::DrawInterfaceCategory() {
   ImGuiStyle &style = ImGui::GetStyle();
 
   static bool showFontDebug = false;
-  if (Onyx::UI::Widgets::Button("Open SF Symbols Debugger")) {
+  if (Onyx::App::Widgets::Button("Open SF Symbols Debugger")) {
     showFontDebug = true;
   }
   if (showFontDebug) {
-    Onyx::FontDebuggerWindow::Draw(&showFontDebug);
+    Onyx::App::FontDebuggerWindow::Draw(&showFontDebug);
   }
   ImGui::Separator();
 
@@ -216,7 +217,7 @@ void SettingsWindow::DrawInterfaceCategory() {
 
     ImGui::Spacing();
     auto preset = [&](const char *lbl, float t) {
-      if (Onyx::UI::Widgets::Button(lbl, ImVec2(50, 0))) {
+      if (Onyx::App::Widgets::Button(lbl, ImVec2(50, 0))) {
         Onyx::Scale::SetUserScale(t);
         Onyx::Scale::ApplyStyleScale(t);
         Onyx::Theme::ApplyTheme(config->getAccent());
@@ -548,7 +549,7 @@ void SettingsWindow::DrawAssetFiltersCategory() {
 
     if (BeginSubWindow("Filters", ImVec2(0, 0))) {
         // â”€â”€ Reset button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        if (Onyx::UI::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All")) {
+        if (Onyx::App::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All")) {
             vis.ResetAllOverrides();
         }
         ImGui::SameLine();
@@ -752,10 +753,12 @@ void SettingsWindow::DrawThemeEditorCategory() {
   // â”€â”€ Reset all button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ImGui::Spacing();
   ImGui::Separator();
-  if (Onyx::UI::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All Colors")) {
+  if (Onyx::App::Widgets::Button(ICON_SF_ARROW_COUNTERCLOCKWISE " Reset All Colors")) {
     Onyx::Theme::ClearAllOverrides();
     Onyx::Theme::ApplyTheme(config->getAccent());
   }
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Discard all individual color overrides and revert to accent-derived palette");
 }
+
+} // namespace Onyx::App

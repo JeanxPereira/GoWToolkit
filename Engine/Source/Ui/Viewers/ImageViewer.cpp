@@ -110,13 +110,13 @@ void ImageViewer::Draw() {
 
   // Defer button actions until we know `avail` (canvas size) â€” the viewport
   // center anchor needs it. Bool flags carry the intent across.
-  const bool zoomInClicked  = Onyx::UI::Widgets::SmallButton(ICON_SF_PLUS_MAGNIFYINGGLASS);
+  const bool zoomInClicked  = Onyx::App::Widgets::SmallButton(ICON_SF_PLUS_MAGNIFYINGGLASS);
   ImGui::SameLine();
-  const bool zoomOutClicked = Onyx::UI::Widgets::SmallButton(ICON_SF_MINUS_MAGNIFYINGGLASS);
+  const bool zoomOutClicked = Onyx::App::Widgets::SmallButton(ICON_SF_MINUS_MAGNIFYINGGLASS);
   ImGui::SameLine();
-  const bool oneToOneClicked = Onyx::UI::Widgets::SmallButton("1:1");
+  const bool oneToOneClicked = Onyx::App::Widgets::SmallButton("1:1");
   ImGui::SameLine();
-  const bool fitClicked = Onyx::UI::Widgets::SmallButton("Fit");
+  const bool fitClicked = Onyx::App::Widgets::SmallButton("Fit");
   ImGui::SameLine();
 
   // Alpha toggle â€” show alpha channel as grayscale

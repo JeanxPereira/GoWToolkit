@@ -1,4 +1,4 @@
-﻿#include "AppRegistration.h"
+#include "AppRegistration.h"
 
 #include "App.h"
 
@@ -16,9 +16,9 @@
 
 namespace Onyx {
 
-void InstallGoWPanels(App& app) {
-  app.SetRegistrar([](App& a) {
-    // Game (app) panels â€” these were previously hardcoded in
+void InstallGoWPanels(Onyx::App::App& app) {
+  app.SetRegistrar([](Onyx::App::App& a) {
+    // Game (app) panels — these were previously hardcoded in
     // App::registerPanels(). Constructor args match verbatim.
     a.addPanel(std::make_unique<WadBrowser>());
     a.addPanel(std::make_unique<Inspector>());
@@ -26,15 +26,15 @@ void InstallGoWPanels(App& app) {
     // Audio-volume <-> config sync. SoundPlayer (a game viewer) hosts the live
     // volume; App used to bridge it to AppConfig directly. Keep that bridge on
     // the app side via lifecycle events so the engine stays game-agnostic:
-    //   â€¢ restore config -> SoundPlayer once at startup,
-    //   â€¢ mirror SoundPlayer -> config every frame so it persists on exit.
+    //   • restore config -> SoundPlayer once at startup,
+    //   • mirror SoundPlayer -> config every frame so it persists on exit.
     // The registrar runs during App::init() after the config pointer is set,
     // so getConfig() is valid here.
     //
     // The mirror runs on EventFrameEnd (posted AFTER panels/documents draw),
     // not EventFrameTick (posted before the draw). The SoundPlayer volume
     // slider mutates s_volume during the draw, so reading it post-draw captures
-    // a same-frame change the same frame â€” matching the original frameEnd()
+    // a same-frame change the same frame — matching the original frameEnd()
     // write-back timing.
     AppConfig* config = a.getConfig();
     EventStartupFinished::subscribe([config] {

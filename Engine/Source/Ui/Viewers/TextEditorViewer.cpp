@@ -58,7 +58,7 @@ void TextEditorViewer::CopyAll() {
 }
 
 void TextEditorViewer::DrawToolbar() {
-    namespace W = Onyx::UI::Widgets;
+    namespace W = Onyx::App::Widgets;
 
     ImGui::PushStyleColor(ImGuiCol_Button,        Onyx::Theme::ToolbarButton());
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Onyx::Theme::ToolbarButtonHover());

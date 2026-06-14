@@ -4,7 +4,7 @@
 // On macOS, dispatches to NSMenu system menu bar.
 // On Windows/Linux, falls through to ImGui.
 
-namespace NativeMenuBar {
+namespace Onyx::App::NativeMenuBar {
     // Enable/disable native menu bar (only effective on macOS)
     void enable(bool enabled);
     bool isEnabled();

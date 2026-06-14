@@ -3,6 +3,8 @@
 
 struct AppContext;
 
+namespace Onyx::App {
+
 class IPanel {
 public:
     virtual ~IPanel() = default;
@@ -10,3 +12,5 @@ public:
     virtual std::string_view getName() const = 0;
     bool visible = true;
 };
+
+} // namespace Onyx::App

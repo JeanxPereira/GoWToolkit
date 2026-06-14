@@ -1,4 +1,4 @@
-#include "MaterialViewer.h"
+﻿#include "MaterialViewer.h"
 #include "Fonts/SFSymbols.h"
 #include "Ui/Widgets.h"
 #include <glad/glad.h>
@@ -164,7 +164,7 @@ void MaterialViewer::Draw() {
         // Make the layer number clickable
         char layerLabel[32];
         snprintf(layerLabel, sizeof(layerLabel), "%zu##layer", i);
-        if (Onyx::UI::Widgets::Selectable(layerLabel, isSelected,
+        if (Onyx::App::Widgets::Selectable(layerLabel, isSelected,
                               ImGuiSelectableFlags_SpanAllColumns)) {
           m_selectedLayer = (int)i;
         }

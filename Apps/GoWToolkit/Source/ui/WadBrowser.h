@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 #include "Core/AssetDatabase.h"
 #include "Ui/IPanel.h"
 #include <filesystem>
 #include "Core/Domain/MediaKind.h"
 
-class WadBrowser : public IPanel {
+class WadBrowser : public Onyx::App::IPanel {
 public:
     WadBrowser();
     ~WadBrowser();

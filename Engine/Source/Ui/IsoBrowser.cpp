@@ -1,4 +1,4 @@
-﻿#include "Ui/IsoBrowser.h"
+#include "Ui/IsoBrowser.h"
 #include "Core/ToolkitApi.h"
 #include "Fonts/SFSymbols.h"
 #include "Core/Vfs/IsoFileSystem.h"
@@ -6,6 +6,8 @@
 #include "Ui/Widgets.h"
 #include "imgui.h"
 #include <filesystem>
+
+namespace Onyx::App {
 
 void IsoBrowser::Draw() {
     if (!visible) return;
@@ -28,9 +30,9 @@ void IsoBrowser::Draw() {
         bool open = ImGui::TreeNodeEx(filename.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
 
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight());
-        Onyx::UI::Widgets::IconButtonOpts closeOpts;
+        Onyx::App::Widgets::IconButtonOpts closeOpts;
         closeOpts.tooltip = "Close ISO";
-        if (Onyx::UI::Widgets::IconButton("iso_close", ICON_SF_XMARK, closeOpts)) {
+        if (Onyx::App::Widgets::IconButton("iso_close", ICON_SF_XMARK, closeOpts)) {
             db.CloseIso(i);
             if (open) ImGui::TreePop();
             ImGui::PopID();
@@ -59,7 +61,7 @@ void IsoBrowser::Draw() {
 
             char rowId[24];
             snprintf(rowId, sizeof(rowId), "%d", rowIdx++);
-            Onyx::UI::Widgets::ColoredTreeNode(rowId, path.c_str(), icon, neutralColor, flags, false);
+            Onyx::App::Widgets::ColoredTreeNode(rowId, path.c_str(), icon, neutralColor, flags, false);
 
             if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
@@ -79,3 +81,5 @@ void IsoBrowser::Draw() {
 
     ImGui::End();
 }
+
+} // namespace Onyx::App

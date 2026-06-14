@@ -1,7 +1,7 @@
 ﻿#include "Ui/ViewerRegistry.h"
 #include "Core/Logger.h"
 
-namespace Onyx {
+namespace Onyx::App {
 
 ViewerRegistry::ViewerRegistry() {
     auto defaultLegacyFactory = [](const AssetEntry& entry, AssetContainer& wad) {
@@ -51,4 +51,4 @@ std::shared_ptr<Viewers::IDocumentContent> ViewerRegistry::Open(const AssetEntry
     return nullptr;
 }
 
-} // namespace Onyx
+} // namespace Onyx::App

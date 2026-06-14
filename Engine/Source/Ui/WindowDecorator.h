@@ -2,6 +2,8 @@
 #include <GLFW/glfw3.h>
 #include <string>
 
+namespace Onyx::App {
+
 // Orquestra NativeWindow + TitleBar
 // Chamado uma vez no startup e depois em cada frame
 class WindowDecorator {
@@ -18,3 +20,5 @@ public:
     // Chamar antes de ImGui::NewFrame()
     void beginFrame(GLFWwindow* window);
 };
+
+} // namespace Onyx::App

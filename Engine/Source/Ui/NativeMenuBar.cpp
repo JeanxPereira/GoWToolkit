@@ -1,4 +1,4 @@
-﻿#include "Ui/NativeMenuBar.h"
+#include "Ui/NativeMenuBar.h"
 #include "Ui/NativeWindow.h"
 #include "imgui.h"
 
@@ -22,7 +22,7 @@ extern "C" {
 }
 #endif
 
-namespace NativeMenuBar {
+namespace Onyx::App::NativeMenuBar {
 
 static bool s_enabled = false;
 #if defined(GOWTOOL_OS_MACOS)
@@ -111,4 +111,4 @@ void separator() {
     ImGui::Separator();
 }
 
-} // namespace NativeMenuBar
+} // namespace Onyx::App::NativeMenuBar

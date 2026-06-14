@@ -113,9 +113,9 @@ void WadBrowser::Draw() {
         ImGui::SameLine(windowWidth - buttonsWidth);
         ImGui::SetNextItemAllowOverlap();
         {
-            Onyx::UI::Widgets::IconButtonOpts opts;
+            Onyx::App::Widgets::IconButtonOpts opts;
             opts.tooltip = "Load Entire Map/Level";
-            if (Onyx::UI::Widgets::IconButton("wad_map", ICON_SF_MAP_FILL, opts)) {
+            if (Onyx::App::Widgets::IconButton("wad_map", ICON_SF_MAP_FILL, opts)) {
                 auto viewer = std::make_shared<Onyx::MapViewer>(wad.filename, wad);
                 Onyx::Api::Documents().AddTab(viewer);
             }
@@ -124,9 +124,9 @@ void WadBrowser::Draw() {
         ImGui::SameLine();
         ImGui::SetNextItemAllowOverlap();
         {
-            Onyx::UI::Widgets::IconButtonOpts opts;
+            Onyx::App::Widgets::IconButtonOpts opts;
             opts.tooltip = "Close WAD";
-            if (Onyx::UI::Widgets::IconButton("wad_close", ICON_SF_XMARK, opts)) {
+            if (Onyx::App::Widgets::IconButton("wad_close", ICON_SF_XMARK, opts)) {
                 if (wadOpen) ImGui::TreePop();
                 ImGui::PopID();
                 EventWadClosed::post(wadIdx);
@@ -200,7 +200,7 @@ void WadBrowser::Draw() {
 
                 // â”€â”€ TreeNode with formatted label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 bool isSelected = (Onyx::Api::GetSelected() == &entry);
-                bool node_open = Onyx::UI::Widgets::ColoredTreeNode("", label_name.c_str(), icon, color, flags, isSelected);
+                bool node_open = Onyx::App::Widgets::ColoredTreeNode("", label_name.c_str(), icon, color, flags, isSelected);
 
                 // â”€â”€ Selection (single click) â€” via Api::SetSelected â”€â”€
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {

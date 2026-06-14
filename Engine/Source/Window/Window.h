@@ -1,10 +1,12 @@
-﻿#pragma once
+#pragma once
 
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <cstdint>
 #include "App.h"
 #include "Core/AppConfig.h"
+
+namespace Onyx::App {
 
 class Window {
 public:
@@ -27,33 +29,33 @@ public:
     // Minimal accessor so the executable can install its game-specific
     // registrar onto the App before run()/init().
     App& app() { return m_app; }
-    
+
     // Config accessors
     bool isBorderless() const { return !m_config.nativeDecorations; }
 
 private:
-    // â”€â”€ Platform-specific (implemented per OS in window/platform/) â”€â”€
+    // ── Platform-specific (implemented per OS in window/platform/) ──
     void configureGLFW();
     void setupNativeWindow();
     void beginNativeWindowFrame();
     void endNativeWindowFrame();
 
-    // â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Lifecycle ────────────────────────────────────────────────────
     void initGLFW();
     void initImGui();
     void exitGLFW();
     void exitImGui();
 
-    // â”€â”€ Frame phases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Frame phases ─────────────────────────────────────────────────
     void frameBegin();
     void frame();
     void frameEnd();
 
-    // â”€â”€ Optimizations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    bool shouldRender();   // vtx buffer diff â€” skip GPU when idle
+    // ── Optimizations ────────────────────────────────────────────────
+    bool shouldRender();   // vtx buffer diff — skip GPU when idle
     void unlockFrameRate();
 
-    // â”€â”€ Members â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Members ──────────────────────────────────────────────────────
     GLFWwindow*  m_window   = nullptr;
     App          m_app;
     AppConfig    m_config;
@@ -70,3 +72,5 @@ private:
     // Config path
     std::string m_configPath;
 };
+
+} // namespace Onyx::App

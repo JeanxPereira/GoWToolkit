@@ -12,9 +12,9 @@ namespace Onyx::Rendering {
 class AnimationPlayer;
 }
 
-namespace Onyx::UI {
+namespace Onyx::App {
 
 void              SetActiveAnimationPlayer(Onyx::Rendering::AnimationPlayer* player);
 Onyx::Rendering::AnimationPlayer* GetActiveAnimationPlayer();
 
-} // namespace Onyx::UI
+} // namespace Onyx::App

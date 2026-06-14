@@ -1,4 +1,4 @@
-﻿#include "Window/Window.h"
+#include "Window/Window.h"
 #include "AppRegistration.h"
 #include "Core/ProfileManager.h"
 #include "core/profiles/gow2/ProfileGOW2.h"
@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
     // Record the main thread before anything else spawns workers.
     Onyx::Threading::MarkMainThread();
 
-    // Populate the asset-type catalog before any parse or UI draw â€” every
+    // Populate the asset-type catalog before any parse or UI draw — every
     // GameTypes:: handle is invalid until this runs.
     Onyx::GameTypes::RegisterGameTypes();
 
@@ -44,9 +44,9 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    Window::initNative();
-    Window window;
-    // Inject the game panel/viewer registrar BEFORE the App initializes â€” run()
+    Onyx::App::Window::initNative();
+    Onyx::App::Window window;
+    // Inject the game panel/viewer registrar BEFORE the App initializes — run()
     // calls App::init(), which invokes the registrar from registerPanels().
     Onyx::InstallGoWPanels(window.app());
     window.run();

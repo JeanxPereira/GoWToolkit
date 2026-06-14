@@ -3,7 +3,7 @@
 #include <imgui_internal.h>
 #include "../fonts/SFSymbols.h"
 
-namespace Onyx {
+namespace Onyx::App {
 
 struct IconPreview {
     const char* name;
@@ -6791,4 +6791,4 @@ void FontDebuggerWindow::Draw(bool* p_open) {
     ImGui::End();
 }
 
-} // namespace Onyx
+} // namespace Onyx::App

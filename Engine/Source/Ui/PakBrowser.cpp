@@ -1,4 +1,4 @@
-﻿#include "Ui/PakBrowser.h"
+#include "Ui/PakBrowser.h"
 #include "UIHelpers.h"
 #include "Core/AssetDatabase.h"
 #include "Core/ToolkitApi.h"
@@ -10,6 +10,7 @@
 #include <fstream>
 #include "Core/Logger.h"
 
+namespace Onyx::App {
 
 void PakBrowser::Draw() {
   if (!visible)
@@ -32,9 +33,9 @@ void PakBrowser::Draw() {
 
     ImGui::PushID((int)pi);
     ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight());
-    Onyx::UI::Widgets::IconButtonOpts closeOpts;
+    Onyx::App::Widgets::IconButtonOpts closeOpts;
     closeOpts.tooltip = "Close PAK";
-    if (Onyx::UI::Widgets::IconButton("pak_close", ICON_SF_XMARK, closeOpts)) {
+    if (Onyx::App::Widgets::IconButton("pak_close", ICON_SF_XMARK, closeOpts)) {
       db.ClosePak(pi);
       ImGui::PopID();
       if (open)
@@ -61,8 +62,8 @@ void PakBrowser::Draw() {
       // Stable per-row id via entry offset (unique within a PAK).
       char rowId[24];
       snprintf(rowId, sizeof(rowId), "%u", entry.offset);
-      Onyx::UI::Widgets::ColoredTreeNode(rowId, entry.name.c_str(), icon, color, flags, is_selected);
-      
+      Onyx::App::Widgets::ColoredTreeNode(rowId, entry.name.c_str(), icon, color, flags, is_selected);
+
       ImGui::PushID((int)entry.offset);
       if (ImGui::BeginPopupContextItem()) {
           if (ImGui::MenuItem(ICON_SF_DOCUMENT_ON_DOCUMENT " Copy Name")) {
@@ -95,7 +96,7 @@ void PakBrowser::Draw() {
       }
       ImGui::PopID();
 
-      // â”€â”€ Selection (single click) â€” via Api::SetSelected â”€â”€
+      // ── Selection (single click) — via Api::SetSelected ──
       if (ImGui::IsItemClicked()) {
         Onyx::Api::SetSelected(&entry, &pak);
       }
@@ -109,7 +110,7 @@ void PakBrowser::Draw() {
       }
 
       if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
-        // WAD files and unknown types â†’ open as WAD browser. The decision of
+        // WAD files and unknown types → open as WAD browser. The decision of
         // what counts as an openable container is owned by the active profile.
         if (pak.profile && pak.profile->IsContainerEntry(entry)) {
           db.LoadWadFromPakEntry(&entry, pak);
@@ -144,3 +145,5 @@ void PakBrowser::Draw() {
 
   ImGui::End();
 }
+
+} // namespace Onyx::App

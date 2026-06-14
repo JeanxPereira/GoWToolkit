@@ -10,7 +10,7 @@ namespace Onyx::Viewers {
 /// Panel that visualizes animation curves (joint rotation/position over time)
 /// using ImPlot. Displays curves from whatever AnimationData is currently available
 /// via the selected asset's SceneData or via the global animation pointer.
-class AnimCurveView : public IPanel {
+class AnimCurveView : public Onyx::App::IPanel {
 public:
     AnimCurveView();
     ~AnimCurveView();

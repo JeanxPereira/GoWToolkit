@@ -1,4 +1,4 @@
-﻿#include <glad/glad.h>  // Must be before GLFW
+#include <glad/glad.h>  // Must be before GLFW
 #include "Window/Window.h"
 
 #include <cfloat>
@@ -18,7 +18,9 @@
 #include "Core/Events.h"
 #include "Ui/NativeWindow.h"
 
-// â”€â”€ Globals needed by GLFW callbacks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+namespace Onyx::App {
+
+// -- Globals needed by GLFW callbacks -----------------------------------------
 static Window* s_windowInstance = nullptr;
 
 static void glfw_error_callback(int error, const char* desc) {
@@ -27,7 +29,7 @@ static void glfw_error_callback(int error, const char* desc) {
     // desktop session (TeamViewer, VNC, RDP, or any virtual display) instead
     // of a real physical NSScreen.  The Cocoa backend queries the monitor's
     // usable area during window creation/positioning; that call fails
-    // gracefully on a virtual display â€” the window still opens and renders
+    // gracefully on a virtual display -- the window still opens and renders
     // correctly, so the message is just noise.  All other errors are logged.
 #if defined(__APPLE__)
     if (error == GLFW_PLATFORM_ERROR && desc && strstr(desc, "workarea"))
@@ -36,7 +38,7 @@ static void glfw_error_callback(int error, const char* desc) {
     fprintf(stderr, "GLFW error %d: %s\n", error, desc);
 }
 
-// â”€â”€ Constructor / Destructor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Constructor / Destructor --------------------------------------------------
 
 Window::Window()
     : m_configPath(PathUtils::resolvePath("gowtool.gtkc"))
@@ -54,10 +56,10 @@ Window::Window()
     Onyx::TaskManager::init();
 }
 
-// â”€â”€ run â€” finalize App and enter the frame loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- run -- finalize App and enter the frame loop ------------------------------
 // App init is deferred out of the constructor so the executable can inject the
-// game panel/viewer registrar (via app()) before App::init() â€” which is what
-// invokes the registrar â€” runs.
+// game panel/viewer registrar (via app()) before App::init() -- which is what
+// invokes the registrar -- runs.
 
 void Window::run() {
     m_app.init(m_window, &m_config);
@@ -103,7 +105,7 @@ Window::~Window() {
     s_windowInstance = nullptr;
 }
 
-// â”€â”€ initGLFW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- initGLFW -----------------------------------------------------------------
 
 void Window::initGLFW() {
     glfwSetErrorCallback(glfw_error_callback);
@@ -167,7 +169,7 @@ void Window::initGLFW() {
     glfwSetWindowUserPointer(m_window, this);
 }
 
-// â”€â”€ initImGui â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- initImGui ----------------------------------------------------------------
 
 void Window::initImGui() {
     IMGUI_CHECKVERSION();
@@ -216,7 +218,7 @@ void Window::initImGui() {
 #endif
 }
 
-// â”€â”€ exitImGui / exitGLFW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- exitImGui / exitGLFW -----------------------------------------------------
 
 void Window::exitImGui() {
     ImGui_ImplOpenGL3_Shutdown();
@@ -231,7 +233,7 @@ void Window::exitGLFW() {
     m_window = nullptr;
 }
 
-// â”€â”€ loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- loop ---------------------------------------------------------------------
 
 void Window::loop() {
     while (!glfwWindowShouldClose(m_window)) {
@@ -273,7 +275,7 @@ void Window::loop() {
     }
 }
 
-// â”€â”€ fullFrame â€” crash-protected frame â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- fullFrame -- crash-protected frame ---------------------------------------
 
 void Window::fullFrame() {
     if (!m_window) return;
@@ -296,7 +298,7 @@ void Window::fullFrame() {
 #endif
 }
 
-// â”€â”€ frameBegin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- frameBegin ---------------------------------------------------------------
 
 void Window::frameBegin() {
     ImGui_ImplOpenGL3_NewFrame();
@@ -309,13 +311,13 @@ void Window::frameBegin() {
     beginNativeWindowFrame();
 }
 
-// â”€â”€ frame â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- frame --------------------------------------------------------------------
 
 void Window::frame() {
     m_app.frame();
 }
 
-// â”€â”€ frameEnd â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- frameEnd -----------------------------------------------------------------
 
 void Window::frameEnd() {
     endNativeWindowFrame();
@@ -360,7 +362,7 @@ void Window::frameEnd() {
     m_app.frameEnd();
 }
 
-// â”€â”€ shouldRender â€” vtx buffer diff (zero GPU idle) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- shouldRender -- vtx buffer diff (zero GPU idle) --------------------------
 
 bool Window::shouldRender() {
     ImDrawData* drawData = ImGui::GetDrawData();
@@ -449,9 +451,11 @@ bool Window::shouldRender() {
     return false;
 }
 
-// â”€â”€ unlockFrameRate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- unlockFrameRate ----------------------------------------------------------
 
 void Window::unlockFrameRate() {
     glfwPostEmptyEvent();
     m_shouldUnlockFrameRate = true;
 }
+
+} // namespace Onyx::App

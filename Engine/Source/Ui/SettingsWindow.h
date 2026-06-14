@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "imgui.h"
 #include "Core/AppConfig.h"
 #include "Core/ThemeManager.h"
@@ -8,11 +8,13 @@
 #include <vector>
 #include <filesystem>
 
+namespace Onyx::App {
+
 // 1:1 ImHex ViewSettings layout: two-column table with category list on the
 // left and settings on the right, using SubWindow grouping for subcategories.
 class SettingsWindow : public IPanel {
 public:
-    // Reference to shared config â€” set in App::init
+    // Reference to shared config — set in App::init
     AppConfig* config = nullptr;
 
     void Init();
@@ -30,7 +32,7 @@ private:
     bool  m_fontSizeChanged = false; // deferred rebuild (ImHex pattern)
     bool  m_justOpened    = true;
 
-    // Drawing helpers â€” one per category
+    // Drawing helpers — one per category
     void DrawInterfaceCategory();
     void DrawAppearanceCategory();
     void DrawThemeEditorCategory();
@@ -47,3 +49,5 @@ private:
     ImVec4  m_accentTargetColor;
     float   m_accentTransitionStart = 0.0f;
 };
+
+} // namespace Onyx::App

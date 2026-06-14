@@ -1,4 +1,4 @@
-#include "AnimCurveView.h"
+﻿#include "AnimCurveView.h"
 
 #include "Core/AssetDatabase.h"
 #include "Core/Events.h"
@@ -185,7 +185,7 @@ void AnimCurveView::Draw() {
     // Cached playhead frame â€” drawn as a vertical line on each plot so the
     // user can match what they see in the viewport to where the value lives
     // on the curve.
-    Onyx::Rendering::AnimationPlayer* activePlayer = Onyx::UI::GetActiveAnimationPlayer();
+    Onyx::Rendering::AnimationPlayer* activePlayer = Onyx::App::GetActiveAnimationPlayer();
     double playheadFrame = -1.0;
     if (activePlayer && activePlayer->GetFrameCount() > 0) {
         playheadFrame = (double)activePlayer->GetCurrentFrame();

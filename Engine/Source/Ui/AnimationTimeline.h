@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 #include "imgui.h"
 #include "Rendering/AnimationPlayer.h"
 
-namespace Onyx::UI {
+namespace Onyx::App {
 
 // Rich timeline widget for skeletal animations.
 //
@@ -22,4 +22,4 @@ bool DrawAnimationTimeline(const char* strId,
                            Onyx::Rendering::AnimationPlayer& player,
                            const AnimationTimelineStyle& style = {});
 
-} // namespace Onyx::UI
+} // namespace Onyx::App

@@ -90,7 +90,7 @@ void DocumentWindow::Draw() {
             ImGuiTabItemFlags flags = ImGuiTabItemFlags_None;
             std::string tabTitle = tab->GetName() + "###" + std::to_string(reinterpret_cast<uintptr_t>(tab.get()));
             
-            if (Onyx::UI::Widgets::BeginTabItem(tabTitle.c_str(), &open, flags)) {
+            if (Onyx::App::Widgets::BeginTabItem(tabTitle.c_str(), &open, flags)) {
                 m_activeTabIndex = (int)i; // Track active tab
                 tab->Draw();
                 ImGui::EndTabItem();

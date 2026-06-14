@@ -2,7 +2,7 @@
 #include "imgui.h"
 #include <string>
 
-namespace Onyx::UI::Widgets {
+namespace Onyx::App::Widgets {
 
     // Options for IconButton. All fields optional.
     //   size:     (0,0) ⇒ a square sized to ImGui::GetFrameHeight().
@@ -52,4 +52,4 @@ namespace Onyx::UI::Widgets {
     bool BeginTabItem(const char* label, bool* p_open = nullptr,
                       ImGuiTabItemFlags flags = 0);
 
-} // namespace Onyx::UI::Widgets
+} // namespace Onyx::App::Widgets

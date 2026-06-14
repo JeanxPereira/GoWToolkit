@@ -16,7 +16,7 @@
 
 #include <GLFW/glfw3.h>
 
-namespace NativeWindow {
+namespace Onyx::App::NativeWindow {
     void setFullFrameCallback(void(*cb)());
     void setup(GLFWwindow* window, bool borderless);
     void beginFrame(GLFWwindow* window, float titleBarHeight);

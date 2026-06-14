@@ -13,7 +13,7 @@
 
 #pragma comment(lib, "dwmapi.lib")
 
-namespace NativeWindow {
+namespace Onyx::App::NativeWindow {
 
 static LONG_PTR  s_oldWndProc    = 0;
 static float     s_titleBarHeight = 0.0f;
@@ -223,5 +223,5 @@ void beginFrame(GLFWwindow* window, float titleBarHeight) {
 
 void endFrame(GLFWwindow*) {}
 
-} // namespace NativeWindow
+} // namespace Onyx::App::NativeWindow
 #endif

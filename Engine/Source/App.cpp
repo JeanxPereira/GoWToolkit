@@ -31,6 +31,8 @@
 #include "Core/FontManager.h"
 #include "Fonts/SFSymbols.h"
 
+namespace Onyx::App {
+
 void App::registerPanels() {
   // â”€â”€ Generic (engine) panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   m_panels.add(std::make_unique<IsoBrowser>());
@@ -513,3 +515,5 @@ void App::drawMenuItems() {
     NativeMenuBar::endMenu();
   }
 }
+
+} // namespace Onyx::App

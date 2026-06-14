@@ -4,12 +4,12 @@
 
 #include <GLFW/glfw3.h>
 
-namespace NativeWindow {
+namespace Onyx::App::NativeWindow {
 
 void setFullFrameCallback(void(*)()) {}
 void setup(GLFWwindow*, bool) {}
 void beginFrame(GLFWwindow*, float) {}
 void endFrame(GLFWwindow*)          {}
 
-} // namespace NativeWindow
+} // namespace Onyx::App::NativeWindow
 #endif

@@ -1,10 +1,12 @@
-﻿#pragma once
+#pragma once
 #include "Core/Domain/Wad.h"
 #include "Core/Types/GameVersion.h"
 #include "Core/Types/TypeId.h"
 #include "Ui/IPanel.h"
 
 class AssetDatabase;
+
+namespace Onyx::App {
 
 class PakBrowser : public IPanel {
 public:
@@ -14,3 +16,5 @@ public:
 private:
     char m_filter[64] = "";
 };
+
+} // namespace Onyx::App

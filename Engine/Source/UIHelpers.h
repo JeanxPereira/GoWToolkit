@@ -6,11 +6,11 @@
 
 // Formatting utilities (HashHex, FormatBytes, FormatNum, MatchesFilter)
 #include "Ui/Formatting.h"
-// Bring Onyx:: formatting helpers into global scope for backward compatibility
-using Onyx::HashHex;
-using Onyx::FormatBytes;
-using Onyx::FormatNum;
-using Onyx::MatchesFilter;
+// Bring Onyx::App:: formatting helpers into global scope for backward compatibility
+using Onyx::App::HashHex;
+using Onyx::App::FormatBytes;
+using Onyx::App::FormatNum;
+using Onyx::App::MatchesFilter;
 
 // TypeId â†’ visual mapping (TypeName, ColorForType, IconForType, SkinModeName)
 #include "Ui/TypeVisuals.h"

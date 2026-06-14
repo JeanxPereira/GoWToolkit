@@ -1,5 +1,7 @@
-﻿#pragma once
+#pragma once
 #include "Ui/IPanel.h"
+
+namespace Onyx::App {
 
 class CameraPanel : public IPanel {
 public:
@@ -18,3 +20,5 @@ public:
 private:
     static CameraPanel* s_instance;
 };
+
+} // namespace Onyx::App

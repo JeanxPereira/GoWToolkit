@@ -821,10 +821,10 @@ void VideoPlayer::DrawControlBar() {
 
   // Play / Pause button (icon only, no text)
   if (m_state == PlayState::Playing) {
-    if (Onyx::UI::Widgets::SmallButton(ICON_SF_PAUSE_FILL "##play_pause"))
+    if (Onyx::App::Widgets::SmallButton(ICON_SF_PAUSE_FILL "##play_pause"))
       Pause();
   } else {
-    if (Onyx::UI::Widgets::SmallButton(ICON_SF_PLAY_FILL "##play_pause"))
+    if (Onyx::App::Widgets::SmallButton(ICON_SF_PLAY_FILL "##play_pause"))
       Play();
   }
   if (ImGui::IsItemHovered())
@@ -837,7 +837,7 @@ void VideoPlayer::DrawControlBar() {
   bool canStop = (m_state != PlayState::Stopped);
   if (!canStop)
     ImGui::BeginDisabled();
-  if (Onyx::UI::Widgets::SmallButton(ICON_SF_STOP_FILL "##stop"))
+  if (Onyx::App::Widgets::SmallButton(ICON_SF_STOP_FILL "##stop"))
     Stop();
   if (!canStop)
     ImGui::EndDisabled();
@@ -891,7 +891,7 @@ void VideoPlayer::DrawControlBar() {
   }
 
   // Mute toggle
-  if (Onyx::UI::Widgets::SmallButton(m_muted ? ICON_SF_SPEAKER_SLASH_FILL "##mute"
+  if (Onyx::App::Widgets::SmallButton(m_muted ? ICON_SF_SPEAKER_SLASH_FILL "##mute"
                                             : ICON_SF_SPEAKER_WAVE_2_FILL "##mute"))
     m_muted = !m_muted;
   if (ImGui::IsItemHovered())

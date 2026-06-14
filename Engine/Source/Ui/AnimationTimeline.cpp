@@ -5,7 +5,7 @@
 #include <cmath>
 #include <set>
 
-namespace Onyx::UI {
+namespace Onyx::App {
 
 namespace {
 
@@ -173,4 +173,4 @@ bool DrawAnimationTimeline(const char* strId,
     return changed;
 }
 
-} // namespace Onyx::UI
+} // namespace Onyx::App

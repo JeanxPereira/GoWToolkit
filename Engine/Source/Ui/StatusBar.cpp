@@ -1,4 +1,4 @@
-﻿#include "Ui/StatusBar.h"
+#include "Ui/StatusBar.h"
 
 #include "Core/Logger.h"
 #include "Core/AssetDatabase.h"
@@ -8,6 +8,8 @@
 #include "imgui.h"
 
 #include <cmath>
+
+namespace Onyx::App {
 
 StatusBar::StatusBar() {
     EventWadOpened::subscribe(this, [this](AssetContainer* wad) {
@@ -39,7 +41,7 @@ void StatusBar::Draw() {
     if (!visible) return;
     ImGui::Begin("Log", &visible);
 
-    // â”€â”€ TaskManager Progress (new system) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── TaskManager Progress (new system) ────────────────────────────────────
     auto& tasks = Onyx::TaskManager::getRunningTasks();
     bool hasVisibleTasks = false;
 
@@ -63,7 +65,7 @@ void StatusBar::Draw() {
     }
 
 
-    // â”€â”€ Background tasks indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Background tasks indicator ────────────────────────────────────────────
     size_t bgCount = Onyx::TaskManager::getRunningBackgroundTaskCount();
     if (bgCount > 0) {
         if (hasVisibleTasks) ImGui::Separator();
@@ -73,7 +75,7 @@ void StatusBar::Draw() {
 
     if (hasVisibleTasks) ImGui::Separator();
 
-    // â”€â”€ Log viewer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Log viewer ────────────────────────────────────────────────────────────
     if (ImGui::Button("Clear")) {
         Onyx::Logger::Get().Clear();
     }
@@ -154,3 +156,5 @@ void StatusBar::Draw() {
 void StatusBar::SetMessage(const char* msg) {
     LOG_INFO("%s", msg);
 }
+
+} // namespace Onyx::App

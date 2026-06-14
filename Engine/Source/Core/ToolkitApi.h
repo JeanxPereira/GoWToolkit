@@ -8,6 +8,8 @@ class AppConfig;
 
 namespace Onyx {
     class ProfileManager;
+}
+namespace Onyx::App {
     class ViewerRegistry;
 }
 namespace Onyx::Viewers {
@@ -22,9 +24,9 @@ using AssetContainer = Onyx::Domain::AssetContainer;
 namespace Onyx::Api {
 
     struct InitParams {
-        AssetDatabase*             db = nullptr;
-        AppConfig*                 config = nullptr;
-        Onyx::ViewerRegistry*      viewers = nullptr;
+        AssetDatabase*                 db = nullptr;
+        AppConfig*                     config = nullptr;
+        Onyx::App::ViewerRegistry*     viewers = nullptr;
         Onyx::Viewers::DocumentWindow* documents = nullptr;
     };
 
@@ -44,7 +46,7 @@ namespace Onyx::Api {
     Onyx::Types::TypeRegistry& Types();
 
     /// Access the global ViewerRegistry.
-    ViewerRegistry& Viewers();
+    Onyx::App::ViewerRegistry& Viewers();
 
     /// Access the global DocumentWindow.
     Viewers::DocumentWindow& Documents();

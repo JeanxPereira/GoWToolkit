@@ -3,6 +3,8 @@
 #include <GLFW/glfw3.h>
 #include <string>
 
+namespace Onyx::App {
+
 // Réplica do ImGuiExt::TitleBarButton do ImHex
 // Button sem borda com ItemSpacing.x = 0, para uso na titlebar
 bool TitleBarButton(const char* label, ImVec2 size);
@@ -22,3 +24,5 @@ namespace TitleBar {
     bool draw(GLFWwindow* window, const std::string& title, bool borderless);
 
 } // namespace TitleBar
+
+} // namespace Onyx::App

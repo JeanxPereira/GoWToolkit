@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 #include <vector>
 #include <memory>
 #include <string_view>
 #include "Ui/IPanel.h"
 
-
+namespace Onyx::App {
 
 class PanelRegistry {
 public:
@@ -36,3 +36,5 @@ public:
 private:
     std::vector<std::unique_ptr<IPanel>> m_panels;
 };
+
+} // namespace Onyx::App

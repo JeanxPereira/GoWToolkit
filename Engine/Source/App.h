@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "imgui.h"
 #include "Ui/PanelRegistry.h"
 
@@ -13,6 +13,8 @@
 #include <memory>
 #include <string>
 
+namespace Onyx::App {
+
 class App {
 public:
     App();
@@ -20,7 +22,7 @@ public:
 
     // Hook the executable uses to register game-specific panels and viewers.
     // Set before init(); invoked once during init, after the engine's generic
-    // panels are registered. Keeps App game-agnostic â€” the engine ships no
+    // panels are registered. Keeps App game-agnostic — the engine ships no
     // game wiring of its own.
     using AppRegistrar = std::function<void(App&)>;
     void SetRegistrar(AppRegistrar r) { m_registrar = std::move(r); }
@@ -28,7 +30,7 @@ public:
     // Minimal accessor the registrar uses to add a (game) panel.
     void addPanel(std::unique_ptr<IPanel> panel) { m_panels.add(std::move(panel)); }
 
-    // Frame phases â€” called by Window
+    // Frame phases — called by Window
     void frameBegin();
     void frame();
     void frameEnd();
@@ -39,7 +41,7 @@ public:
     AssetDatabase& getDatabase() { return m_db; }
     AppConfig*     getConfig() { return m_config; }
     Onyx::Viewers::DocumentWindow& getDocumentWindow() { return m_documentWindow; }
-    Onyx::ViewerRegistry& getViewerRegistry() { return m_viewerRegistry; }
+    ViewerRegistry& getViewerRegistry() { return m_viewerRegistry; }
 
 private:
     void drawMenuBar();
@@ -54,7 +56,7 @@ private:
     AssetDatabase         m_db;
     PanelRegistry         m_panels;
     Onyx::Viewers::DocumentWindow   m_documentWindow;
-    Onyx::ViewerRegistry            m_viewerRegistry;
+    ViewerRegistry                  m_viewerRegistry;
     WindowDecorator       m_decorator;
     AppConfig*            m_config  = nullptr;
     GLFWwindow*           m_window  = nullptr;
@@ -71,3 +73,5 @@ private:
     bool m_showOpenDialog = false;
     int  m_openDialogSelectedGame = 1; // Default: GOW2
 };
+
+} // namespace Onyx::App

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <unordered_map>
 
-namespace Onyx::UI::Widgets {
+namespace Onyx::App::Widgets {
 
 namespace {
 
@@ -269,4 +269,4 @@ bool BeginTabItem(const char* label, bool* p_open, ImGuiTabItemFlags flags) {
     return open;
 }
 
-} // namespace Onyx::UI::Widgets
+} // namespace Onyx::App::Widgets

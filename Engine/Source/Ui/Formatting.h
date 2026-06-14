@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <sstream>
 
-namespace Onyx {
+namespace Onyx::App {
 
 inline std::string HashHex(uint64_t hash) {
     std::ostringstream ss;
@@ -32,4 +32,4 @@ inline bool MatchesFilter(const std::string& name, const char* filter) {
     return n.find(f) != std::string::npos;
 }
 
-} // namespace Onyx
+} // namespace Onyx::App

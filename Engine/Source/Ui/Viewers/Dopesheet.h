@@ -13,7 +13,7 @@ namespace Onyx::Viewers {
 // (sourced from the parsed AnimSubstream maps). The current playhead is
 // drawn as a vertical highlight so users can correlate the viewport pose
 // to the channel grid.
-class Dopesheet : public IPanel {
+class Dopesheet : public Onyx::App::IPanel {
 public:
     Dopesheet();
     ~Dopesheet();

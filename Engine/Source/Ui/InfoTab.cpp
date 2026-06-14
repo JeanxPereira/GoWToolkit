@@ -1,4 +1,4 @@
-﻿#include "Ui/InfoTab.h"
+#include "Ui/InfoTab.h"
 #include "UIHelpers.h"
 #include "imgui.h"
 #include "Ui/AssetNodeRenderer.h"
@@ -31,6 +31,8 @@ static std::string FormatFloat(float v) {
     return ss.str();
 }
 
+namespace Onyx::App {
+
 void InfoTab::Draw(AssetDatabase& db, AssetEntry* e) {
     if (!e) return;
 
@@ -62,5 +64,7 @@ void InfoTab::Draw(AssetDatabase& db, AssetEntry* e) {
     ImGui::Spacing();
 
     // Render the tree using the auto-renderer
-    Onyx::RenderAssetNode(*e->assetNode);
+    Onyx::App::RenderAssetNode(*e->assetNode);
 }
+
+} // namespace Onyx::App

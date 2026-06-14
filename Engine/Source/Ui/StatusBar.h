@@ -1,5 +1,7 @@
-﻿#pragma once
+#pragma once
 #include "Ui/IPanel.h"
+
+namespace Onyx::App {
 
 class StatusBar : public IPanel {
 public:
@@ -10,3 +12,5 @@ public:
     std::string_view getName() const override { return "Log"; }
     void SetMessage(const char* msg);
 };
+
+} // namespace Onyx::App

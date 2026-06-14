@@ -8,7 +8,7 @@ namespace Onyx::Viewers {
 
 /// Panel that shows WAD file statistics using ImPlot charts.
 /// Displays: asset type distribution, size breakdown, and top entries.
-class WadStatsView : public IPanel {
+class WadStatsView : public Onyx::App::IPanel {
 public:
     void Draw() override;
     std::string_view getName() const override { return "WAD Stats"; }

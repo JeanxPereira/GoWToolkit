@@ -11,7 +11,7 @@ namespace Onyx::Api {
 
     static AssetDatabase*       s_database  = nullptr;
     static AppConfig*           s_config    = nullptr;
-    static Onyx::ViewerRegistry* s_viewers   = nullptr;
+    static Onyx::App::ViewerRegistry* s_viewers   = nullptr;
     static Onyx::Viewers::DocumentWindow* s_documents = nullptr;
 
     static AssetEntry*         s_selectedEntry = nullptr;
@@ -48,7 +48,7 @@ namespace Onyx::Api {
         return Onyx::Types::TypeRegistry::Get();
     }
 
-    ViewerRegistry& Viewers() {
+    Onyx::App::ViewerRegistry& Viewers() {
         if (!s_viewers) {
             fprintf(stderr, "[ToolkitApi] FATAL: Viewers() called before Init() or missing param\n");
             std::abort();

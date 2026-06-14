@@ -12,7 +12,7 @@
 
 namespace Onyx::Viewers { class IDocumentContent; }
 
-namespace Onyx {
+namespace Onyx::App {
 
 class ViewerRegistry {
 public:
@@ -27,4 +27,4 @@ private:
     std::unordered_map<Domain::MediaKind, Factory> m_factories;
 };
 
-} // namespace Onyx
+} // namespace Onyx::App
