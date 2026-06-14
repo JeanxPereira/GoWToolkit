@@ -146,11 +146,13 @@ else()
 endif()
 
 # ── Copy FFmpeg DLLs (Windows only) ───────────────────────────────────────
-# FFMPEG_DLLS is set in the root CMakeLists (parent scope, visible here).
-if(WIN32 AND FFMPEG_DLLS)
+# ONYX_FFMPEG_DLLS is a CACHE INTERNAL var exported by OnyxSDK (consumed via
+# FetchContent in the root CMakeLists). Using ONYX_FFMPEG_DLLS instead of the
+# former FFMPEG_DLLS which lived in root parent scope.
+if(WIN32 AND ONYX_FFMPEG_DLLS)
     add_custom_command(TARGET GoWToolkit POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${FFMPEG_DLLS}
+            ${ONYX_FFMPEG_DLLS}
             "$<TARGET_FILE_DIR:GoWToolkit>"
         COMMENT "Copying FFmpeg DLLs to output directory"
     )

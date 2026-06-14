@@ -33,10 +33,11 @@ set(APP_TEST_SOURCES
 add_executable(gowtoolkit_tests ${TEST_SOURCES} ${APP_TEST_SOURCES})
 
 target_include_directories(gowtoolkit_tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/Engine/Source
     ${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source
     ${CMAKE_SOURCE_DIR}/third_party/bcdec
 )
+# Engine headers are inherited transitively via Onyx::Onyx PUBLIC interface
+# (<Onyx/...> includes). Engine/Source is no longer in-tree (now in OnyxSDK).
 
 # Pass the path to the fixtures directory so tests don't depend on the
 # current working directory at execution time.
@@ -59,7 +60,5 @@ if(MSVC)
     target_compile_options(gowtoolkit_tests PRIVATE /utf-8)
 endif()
 
-add_test(NAME MinimalViewer_SelfTest
-         COMMAND MinimalViewer --selftest $<TARGET_FILE:MinimalViewer>)
-set_tests_properties(MinimalViewer_SelfTest PROPERTIES
-         PASS_REGULAR_EXPRESSION "selftest OK")
+# MinimalViewer_SelfTest has moved to OnyxSDK/Tests (MinimalViewer now lives
+# in OnyxSDK/Examples). GoWToolkit no longer builds or tests it.
