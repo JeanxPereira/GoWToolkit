@@ -67,4 +67,9 @@ TexPackIndex& GetTexIndex();
 // present or was written successfully.
 bool EnsureGowrConfigIni(const std::filesystem::path& wadPath);
 
+// Invalidate any cached LOD/tex index that was built before the config was
+// written. Called by ProfileGOWR::PrepareForParse when a fresh config.ini is
+// created.
+void InvalidateLodIndex();
+
 } // namespace Onyx

@@ -37,6 +37,11 @@ public:
     // node the user can drill into). Default: false. Profiles override.
     virtual bool IsContainerEntry(const AssetEntry& entry) const { return false; }
 
+    // Called by the database immediately before ParseContainer so a profile can
+    // do any pre-parse setup (e.g. ensure an external config file exists).
+    // Default: no-op. Profiles override if they need it.
+    virtual void PrepareForParse(const std::filesystem::path& path) {}
+
 };
 
 } // namespace Onyx::Domain

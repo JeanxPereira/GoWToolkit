@@ -223,4 +223,12 @@ bool ProfileGOWR::IsContainerEntry(const AssetEntry& e) const {
     return e.typeId == GameTypes::WadFile || e.typeId == GameTypes::Unknown;
 }
 
+void ProfileGOWR::PrepareForParse(const std::filesystem::path& path) {
+    // GOWR needs config.ini present before ParseContainer's eager GetTexIndex();
+    // if a fresh one was written, invalidate any LOD index cached without it.
+    if (EnsureGowrConfigIni(path)) {
+        InvalidateLodIndex();
+    }
+}
+
 } // namespace Onyx

@@ -7,11 +7,6 @@
 #include <Onyx/Services/Events.h>
 #include <Onyx/Types/TypeRegistry.h>
 
-namespace Onyx {
-    bool EnsureGowrConfigIni(const std::filesystem::path& wadPath);
-    void InvalidateLodIndex();
-}
-
 namespace Onyx::Services {
 
 // â”€â”€ LoadPakFromIso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -151,15 +146,8 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     }
     if (!profile) return false;
 
-    // For GOWR, ensure config.ini exists BEFORE ParseContainer so the eager
-    // GetTexIndex() call inside ProfileGOWR::ParseContainer picks up the game root.
-    // If we just wrote a fresh config, also invalidate any cached index that
-    // was created earlier in this process without it.
-    if (profile->GetName().find("Ragnarok") != std::string::npos) {
-        if (Onyx::EnsureGowrConfigIni(path)) {
-            Onyx::InvalidateLodIndex();
-        }
-    }
+    // Let the profile do any pre-parse setup before ParseContainer runs.
+    profile->PrepareForParse(path);
 
     AssetContainer wad;
     wad.filename = path.filename().string();

@@ -21,6 +21,8 @@ public:
     bool LoadFromArchive(std::shared_ptr<Vfs::IVirtualFileSystem> vfs, AssetContainer& outWad) override;
 
     bool IsContainerEntry(const AssetEntry& entry) const override;
+
+    void PrepareForParse(const std::filesystem::path& path) override;
 private:
     std::map<std::string, std::shared_ptr<Schema::StructDef>> m_schemas;
 };
