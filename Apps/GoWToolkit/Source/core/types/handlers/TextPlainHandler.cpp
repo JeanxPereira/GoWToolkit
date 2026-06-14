@@ -1,16 +1,16 @@
-// Plain-text file handler. Routes .txt / .ini / .cfg / .csv / .json / .log
+﻿// Plain-text file handler. Routes .txt / .ini / .cfg / .csv / .json / .log
 // PAK entries (typed by ProfileGOW2's extension switch) to the
-// Viewers::TextEditorViewer. Registered by TypeId â€” no magic number, so this never
+// Viewers::TextEditorViewer. Registered by TypeId Ã¢â‚¬â€ no magic number, so this never
 // enters the magic dispatch map.
 
-#include "Core/Domain/Entry.h"
-#include "Core/Domain/Wad.h"
-#include "Core/Types/ITypeHandler.h"
-#include "Core/Types/TypeRegistry.h"
+#include <Onyx/Domain/Entry.h>
+#include <Onyx/Domain/Wad.h>
+#include <Onyx/Types/ITypeHandler.h>
+#include <Onyx/Types/TypeRegistry.h>
 #include "core/types/GameTypes.h"
-#include "Core/Vfs/IFile.h"
-#include "Fonts/SFSymbols.h"
-#include "Ui/Viewers/TextEditorViewer.h"
+#include <Onyx/Vfs/IFile.h>
+#include <Onyx/Fonts/SFSymbols.h>
+#include <Onyx/Viewers/TextEditorViewer.h>
 
 namespace {
 

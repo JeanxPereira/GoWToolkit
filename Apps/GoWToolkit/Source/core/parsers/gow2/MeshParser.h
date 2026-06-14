@@ -1,7 +1,7 @@
-#pragma once
-#include "Core/Parsers/Shared/MeshData.h"
-#include "Core/Types/GameVersion.h"
-#include "Core/Vfs/IFile.h"
+﻿#pragma once
+#include <Onyx/Parsers/MeshData.h>
+#include <Onyx/Types/GameVersion.h>
+#include <Onyx/Vfs/IFile.h>
 #include <memory>
 
 namespace Onyx {

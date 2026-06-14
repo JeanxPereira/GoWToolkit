@@ -1,10 +1,10 @@
-#include "Ui/CameraPanel.h"
-#include "Ui/Viewers/Viewport3D.h"
-#include "Ui/Viewers/IDocumentContent.h"
-#include "Rendering/Camera.h"
-#include "Core/AppConfig.h"
-#include "Core/ToolkitApi.h"
-#include "Ui/Viewers/DocumentWindow.h"
+﻿#include "Ui/CameraPanel.h"
+#include <Onyx/Viewers/Viewport3D.h>
+#include <Onyx/Viewers/IDocumentContent.h>
+#include <Onyx/Rendering/Camera.h>
+#include <Onyx/Services/AppConfig.h>
+#include <Onyx/Api/ToolkitApi.h>
+#include <Onyx/Viewers/DocumentWindow.h>
 #include "imgui.h"
 
 namespace Onyx::App {
@@ -65,7 +65,7 @@ void CameraPanel::Draw() {
     Onyx::Rendering::Camera& cam = vp->GetCamera();
     bool changed = false;
 
-    // ── FOV ──────────────────────────────────────────────────────────────────
+    // â”€â”€ FOV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (ImGui::SliderFloat("FOV", &cam.fov, 10.0f, 120.0f, "%.1f")) {
         changed = true;
     }
@@ -73,7 +73,7 @@ void CameraPanel::Draw() {
     ImGui::Separator();
     ImGui::TextDisabled("Auto adapts near/far based on scene bounds and orbit distance. Disable to force fixed planes.");
 
-    // ── Near plane ────────────────────────────────────────────────────────────
+    // â”€â”€ Near plane â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (ImGui::Checkbox("Auto near", &cam.autoNear)) changed = true;
     ImGui::BeginDisabled(cam.autoNear);
     if (ImGui::DragFloat("Manual near", &cam.manualNear, 0.01f, 0.001f, 10000.0f, "%.3f")) {
@@ -96,7 +96,7 @@ void CameraPanel::Draw() {
 
     ImGui::Separator();
 
-    // ── Far plane ──────────────────────────────────────────────────────────────
+    // â”€â”€ Far plane â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (ImGui::Checkbox("Auto far", &cam.autoFar)) changed = true;
     ImGui::BeginDisabled(cam.autoFar);
     if (ImGui::DragFloat("Manual far", &cam.manualFar, 10.0f, 1.0f, 1.0e6f, "%.1f")) {
@@ -113,7 +113,7 @@ void CameraPanel::Draw() {
     }
     ImGui::EndDisabled();
 
-    // ── Diagnostics ────────────────────────────────────────────────────────────
+    // â”€â”€ Diagnostics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ImGui::Separator();
     int w = vp->GetFboWidth(), h = vp->GetFboHeight();
     float aspect = (h > 0) ? (float)w / (float)h : 1.0f;
@@ -129,7 +129,7 @@ void CameraPanel::Draw() {
     ImGui::Text("Scene max     : %.1f %.1f %.1f", mx.x, mx.y, mx.z);
     ImGui::Text("Scene radius  : %.1f", cam.GetSceneRadius());
 
-    // ── Reset ──────────────────────────────────────────────────────────────────
+    // â”€â”€ Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ImGui::Separator();
     if (ImGui::Button("Reset to defaults")) {
         cam.fov               = 55.0f;

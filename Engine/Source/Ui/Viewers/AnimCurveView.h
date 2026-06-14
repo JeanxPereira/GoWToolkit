@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include "Ui/IPanel.h"
-#include "Core/Parsers/Shared/AnimationData.h"
+#include <Onyx/App/IPanel.h>
+#include <Onyx/Parsers/AnimationData.h>
 #include <vector>
 #include <string>
 #include <memory>

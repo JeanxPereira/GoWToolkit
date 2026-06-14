@@ -1,4 +1,4 @@
-#include "Logger.h"
+﻿#include <Onyx/Services/Logger.h>
 
 #include <atomic>
 #include <chrono>
@@ -23,7 +23,7 @@
 
 namespace Onyx::Services {
 
-// ── Shared state for the new structured surface ──────────────────────────
+// â”€â”€ Shared state for the new structured surface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 namespace {
 
 struct LogState {
@@ -90,7 +90,7 @@ void AppendMemoryEntry(Log::Level lvl, std::string_view message) {
 
 } // anonymous namespace
 
-// ── Onyx::Logger (legacy) ──────────────────────────────────────────────────
+// â”€â”€ Onyx::Logger (legacy) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Logger& Logger::Get() {
     static Logger instance;
     return instance;
@@ -117,7 +117,7 @@ void Logger::Clear() {
     st.memoryEntries.clear();
 }
 
-// ── Onyx::Log namespace ────────────────────────────────────────────────────
+// â”€â”€ Onyx::Log namespace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 namespace Log {
 
 const char* LevelName(Level lvl) {
@@ -166,7 +166,7 @@ void LogString(Level lvl, std::string_view category, std::string_view message) {
     LogState& st = state();
 
     // Snapshot the sink map under the lock, then fan out without
-    // holding it — keeps callbacks free to recurse safely.
+    // holding it â€” keeps callbacks free to recurse safely.
     std::vector<SinkFn> active;
     {
         std::lock_guard<std::mutex> lock(st.mutex);
@@ -177,7 +177,7 @@ void LogString(Level lvl, std::string_view category, std::string_view message) {
 
     for (auto& sink : active) {
         try { sink(lvl, category, message); }
-        catch (...) { /* swallow — never let logging crash production */ }
+        catch (...) { /* swallow â€” never let logging crash production */ }
     }
 }
 
@@ -191,7 +191,7 @@ SinkToken InstallStderrSink() {
 
 namespace {
 
-// Rotates path.N → path.N+1, ... up to keep `rotations` history files
+// Rotates path.N â†’ path.N+1, ... up to keep `rotations` history files
 // alongside `path` itself. Errors are best-effort; logging must not
 // crash the host process.
 void RotateFiles(const std::string& base, size_t rotations) {

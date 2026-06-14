@@ -1,4 +1,4 @@
-// Model handler — GOW1/2 mesh container (mdl_*)
+﻿// Model handler â€” GOW1/2 mesh container (mdl_*)
 // Magic: 0x0002000F (MODEL_MAGIC in god_of_war_browser)
 //
 // Resolution follows the Go project (god_of_war_browser):
@@ -7,25 +7,25 @@
 //   Texture resolved by exact name from Material layers.
 // Uses SceneData pipeline for correct per-layer texture resolution.
 
-#include "Core/Types/TypeRegistry.h"
-#include "Core/Types/ITypeHandler.h"
+#include <Onyx/Types/TypeRegistry.h>
+#include <Onyx/Types/ITypeHandler.h>
 #include "core/types/GameTypes.h"
-#include "Core/Schema/AssetReader.h"
+#include <Onyx/Schema/AssetReader.h>
 #include "core/formats/GOW2ModelFormat.h"
 
-#include "Ui/Viewers/Viewport3D.h"
-#include "Core/Interfaces/IGameProfile.h"
+#include <Onyx/Viewers/Viewport3D.h>
+#include <Onyx/Domain/IAssetProfile.h>
 #include "core/parsers/gow2/MeshParser.h"
 #include "core/parsers/gow2/TextureParser.h"
 #include "core/parsers/gow2/MaterialParser.h"
-#include "Core/Parsers/Shared/SceneNode.h"
-#include "Core/Parsers/Shared/ScriptTargetParser.h"
-#include "Core/Vfs/SliceFile.h"
+#include <Onyx/Parsers/SceneNode.h>
+#include <Onyx/Parsers/ScriptTargetParser.h>
+#include <Onyx/Vfs/SliceFile.h>
 #include "core/WadTypes.h"
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 #include <cstring>
 #include <functional>
-#include "Fonts/SFSymbols.h"
+#include <Onyx/Fonts/SFSymbols.h>
 
 namespace {
 
@@ -95,7 +95,7 @@ public:
     std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
 
-        // Resolve the Model entry itself — if it's a reference, find the definition
+        // Resolve the Model entry itself â€” if it's a reference, find the definition
         const AssetEntry* model = &entry;
         if (model->children.empty()) {
             if (auto resolved = ResolveRef(wad.entries, entry.name, Onyx::GameTypes::Model))
@@ -124,7 +124,7 @@ public:
 
         uint32_t materialOffset = scene->materials.size();
 
-        // Parse materials → MaterialInfo (store all layers for main layer selection)
+        // Parse materials â†’ MaterialInfo (store all layers for main layer selection)
         for (const auto* mat : matEntries) {
             Onyx::Parsers::MaterialInfo matInfo;
             if (auto matData = Onyx::GOW2MaterialParser::Parse(*mat, wad.fileSource)) {
@@ -166,7 +166,7 @@ public:
 
         if (scene->IsEmpty()) return nullptr;
 
-        // Detect Sky script — flag both scene and individual parts so
+        // Detect Sky script â€” flag both scene and individual parts so
         // SceneRenderer (which reads part.isSky into RenderBatch::isSky) can
         // route them through the sky pass.
         for (const auto& child : model->children) {

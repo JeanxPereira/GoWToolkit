@@ -1,4 +1,4 @@
-#include "StructDef.h"
+﻿#include <Onyx/Schema/StructDef.h>
 
 namespace Onyx::Schema {
 

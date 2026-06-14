@@ -1,6 +1,6 @@
-﻿#include "ScriptTargetParser.h"
-#include "Core/Vfs/IFile.h"
-#include "Core/Logger.h"
+﻿#include <Onyx/Parsers/ScriptTargetParser.h>
+#include <Onyx/Vfs/IFile.h>
+#include <Onyx/Services/Logger.h>
 #include <vector>
 
 namespace Onyx::Parsers {

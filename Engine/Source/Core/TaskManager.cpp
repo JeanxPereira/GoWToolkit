@@ -1,5 +1,5 @@
-﻿#include "Core/TaskManager.h"
-#include "Core/Logger.h"
+﻿#include <Onyx/Services/TaskManager.h>
+#include <Onyx/Services/Logger.h>
 
 #include <algorithm>
 #include <ranges>

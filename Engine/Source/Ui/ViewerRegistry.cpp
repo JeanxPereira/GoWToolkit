@@ -1,5 +1,5 @@
-﻿#include "Ui/ViewerRegistry.h"
-#include "Core/Logger.h"
+﻿#include <Onyx/App/ViewerRegistry.h>
+#include <Onyx/Services/Logger.h>
 
 namespace Onyx::App {
 

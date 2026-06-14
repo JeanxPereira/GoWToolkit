@@ -1,9 +1,9 @@
 ﻿#include "ProfileGOW2.h"
 #include "formats/MDL.h"
-#include "Core/Vfs/IsoFileSystem.h"
-#include "Core/Logger.h"
-#include "Core/Types/TypeRegistry.h"
-#include "Core/Types/TypeCatalog.h"
+#include <Onyx/Vfs/IsoFileSystem.h>
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Types/TypeRegistry.h>
+#include <Onyx/Types/TypeCatalog.h>
 #include "core/types/GameTypes.h"
 #include <iostream>
 #include <set>

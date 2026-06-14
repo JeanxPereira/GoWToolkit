@@ -1,7 +1,7 @@
-﻿#include "SceneRenderer.h"
-#include "ShaderManager.h"
-#include "Core/AppConfig.h"
-#include "Core/Logger.h"
+﻿#include <Onyx/Rendering/SceneRenderer.h>
+#include <Onyx/Rendering/ShaderManager.h>
+#include <Onyx/Services/AppConfig.h>
+#include <Onyx/Services/Logger.h>
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>

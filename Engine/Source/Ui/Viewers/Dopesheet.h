@@ -1,12 +1,12 @@
-#pragma once
-#include "Ui/IPanel.h"
-#include "Core/Parsers/Shared/AnimationData.h"
+﻿#pragma once
+#include <Onyx/App/IPanel.h>
+#include <Onyx/Parsers/AnimationData.h>
 #include <memory>
 #include <string>
 
 namespace Onyx::Viewers {
 
-// Dopesheet panel â€” joints down, frames across.
+// Dopesheet panel Ã¢â‚¬â€ joints down, frames across.
 //
 // Each row is one joint, each cell a frame. A dot is drawn where the
 // underlying decoder actually has a sample for that joint at that frame

@@ -1,7 +1,7 @@
-﻿#include "DocumentWindow.h"
+﻿#include <Onyx/Viewers/DocumentWindow.h>
 #include "imgui.h"
-#include "Core/Events.h"
-#include "Ui/Widgets.h"
+#include <Onyx/Services/Events.h>
+#include <Onyx/App/Widgets.h>
 
 namespace Onyx::Viewers {
 

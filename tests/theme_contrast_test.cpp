@@ -8,7 +8,7 @@
 //        and links imgui_lib).
 
 #include <doctest/doctest.h>
-#include "Core/ThemeManager.h"
+#include <Onyx/Services/ThemeManager.h>
 #include "imgui.h"
 #include <cmath>
 

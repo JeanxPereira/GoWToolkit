@@ -2,8 +2,8 @@
 #
 # Reusable, game-agnostic SDK. Compiles WITHOUT any file under Apps/ — the
 # boundary contract of the M2 split. Apps consume it via Onyx::Onyx and
-# inherit its PUBLIC include root (Source/), so existing `#include "core/..."`
-# / "ui/..." / "window/..." lines keep resolving.
+# inherit Include/ (PUBLIC), which exposes only the <Onyx/...> headers.
+# Engine internals are compiled with Source/ as a PRIVATE include root.
 
 file(GLOB_RECURSE ONYX_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Source/*.cpp"
@@ -20,8 +20,9 @@ endif()
 add_library(Onyx STATIC ${ONYX_SOURCES})
 add_library(Onyx::Onyx ALIAS Onyx)
 
-target_include_directories(Onyx PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source
+target_include_directories(Onyx
+    PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/Include
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Source
 )
 
 target_compile_features(Onyx PUBLIC cxx_std_20)

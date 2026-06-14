@@ -3,7 +3,7 @@
 #include <atomic>
 #include <thread>
 
-#include "Core/Threading.h"
+#include <Onyx/Services/Threading.h>
 
 namespace T = Onyx::Threading;
 

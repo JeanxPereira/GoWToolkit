@@ -1,5 +1,5 @@
-﻿#include "Camera.h"
-#include "Core/AppConfig.h"
+﻿#include <Onyx/Rendering/Camera.h>
+#include <Onyx/Services/AppConfig.h>
 #include <algorithm>
 #include <cmath>
 

@@ -1,7 +1,7 @@
-﻿#include "ImageViewer.h"
-#include "Fonts/SFSymbols.h"
-#include "Core/ThemeManager.h"
-#include "Ui/Widgets.h"
+﻿#include <Onyx/Viewers/ImageViewer.h>
+#include <Onyx/Fonts/SFSymbols.h>
+#include <Onyx/Services/ThemeManager.h>
+#include <Onyx/App/Widgets.h>
 #include <algorithm>
 #include <cmath>
 #include <glad/glad.h>

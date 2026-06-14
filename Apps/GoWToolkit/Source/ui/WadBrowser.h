@@ -1,8 +1,8 @@
-#pragma once
-#include "Core/AssetDatabase.h"
-#include "Ui/IPanel.h"
+﻿#pragma once
+#include <Onyx/Services/AssetDatabase.h>
+#include <Onyx/App/IPanel.h>
 #include <filesystem>
-#include "Core/Domain/MediaKind.h"
+#include <Onyx/Domain/MediaKind.h>
 
 class WadBrowser : public Onyx::App::IPanel {
 public:

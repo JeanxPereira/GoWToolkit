@@ -1,10 +1,10 @@
-#include "MapViewer.h"
+﻿#include "MapViewer.h"
 #include <imgui.h>
-#include "Core/Logger.h"
-#include "Core/Types/TypeRegistry.h"
-#include "Core/Types/TypeId.h"
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Types/TypeRegistry.h>
+#include <Onyx/Types/TypeId.h>
 #include "core/types/GameTypes.h"
-#include "Core/Parsers/Shared/SceneNode.h"
+#include <Onyx/Parsers/SceneNode.h>
 #include "core/WadTypes.h"
 #include <string>
 

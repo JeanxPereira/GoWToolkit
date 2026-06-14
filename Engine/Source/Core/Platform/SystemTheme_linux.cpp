@@ -1,4 +1,4 @@
-#include "SystemTheme.h"
+﻿#include <Onyx/Platform/SystemTheme.h>
 
 #if !defined(_WIN32) && !defined(__APPLE__)
 
@@ -33,7 +33,7 @@ SystemAppearance DetectSystemAppearance() {
         if (out.find("prefer-light") != std::string::npos) return SystemAppearance::Light;
     }
 
-    // Fallback: gtk-theme name contains "dark" → Dark.
+    // Fallback: gtk-theme name contains "dark" â†’ Dark.
     out = ShellCapture("gsettings get org.gnome.desktop.interface gtk-theme 2>/dev/null");
     if (!out.empty()) {
         for (char &c : out) c = (char)tolower((unsigned char)c);

@@ -5,7 +5,7 @@
 //   GOW2 (size 0x68): 3Ã—3 orientation columns + Vec3 position â†’ 4Ã—4 matrix
 
 #include "InstanceParser.h"
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 #include <cstring>
 #include <cmath>
 

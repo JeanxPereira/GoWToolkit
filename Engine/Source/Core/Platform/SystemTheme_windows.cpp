@@ -1,4 +1,4 @@
-#include "SystemTheme.h"
+﻿#include <Onyx/Platform/SystemTheme.h>
 
 #ifdef _WIN32
 
@@ -9,8 +9,8 @@ namespace Onyx::Platform {
 
 SystemAppearance DetectSystemAppearance() {
     // HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme
-    //   DWORD = 0 → apps use dark theme
-    //   DWORD = 1 → apps use light theme
+    //   DWORD = 0 â†’ apps use dark theme
+    //   DWORD = 1 â†’ apps use light theme
     HKEY key;
     if (RegOpenKeyExW(
             HKEY_CURRENT_USER,

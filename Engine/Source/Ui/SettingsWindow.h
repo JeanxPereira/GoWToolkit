@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 #include "imgui.h"
-#include "Core/AppConfig.h"
-#include "Core/ThemeManager.h"
-#include "Ui/IPanel.h"
+#include <Onyx/Services/AppConfig.h>
+#include <Onyx/Services/ThemeManager.h>
+#include <Onyx/App/IPanel.h>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,7 +14,7 @@ namespace Onyx::App {
 // left and settings on the right, using SubWindow grouping for subcategories.
 class SettingsWindow : public IPanel {
 public:
-    // Reference to shared config — set in App::init
+    // Reference to shared config â€” set in App::init
     Onyx::Services::AppConfig* config = nullptr;
 
     void Init();
@@ -32,7 +32,7 @@ private:
     bool  m_fontSizeChanged = false; // deferred rebuild (ImHex pattern)
     bool  m_justOpened    = true;
 
-    // Drawing helpers — one per category
+    // Drawing helpers â€” one per category
     void DrawInterfaceCategory();
     void DrawAppearanceCategory();
     void DrawThemeEditorCategory();

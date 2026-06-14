@@ -1,5 +1,5 @@
 ﻿#include "MgParser.h"
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 
 // â”€â”€ MgParser.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MG-file layout (port of GOWTool Formats.cpp::MG::Parse):

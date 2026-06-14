@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "Core/Vfs/IFile.h"
+#include <Onyx/Vfs/IFile.h>
 
 namespace Onyx {
 

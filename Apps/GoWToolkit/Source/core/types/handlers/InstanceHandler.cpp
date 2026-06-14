@@ -1,4 +1,4 @@
-// Instance handler â€” GOW1/GOW2 game object instances (goarcher00, gohero00, etc.)
+﻿// Instance handler Ã¢â‚¬â€ GOW1/GOW2 game object instances (goarcher00, gohero00, etc.)
 // Magic: 0x00030001 (GOW2), 0x00020001 (GOW1)
 //
 // Resolution follows the Go project (god_of_war_browser):
@@ -6,21 +6,21 @@
 //   GOW1: Object is looked up by name stored in Instance binary data
 // Then delegates to ObjectHandler.
 
-#include "Core/Types/TypeRegistry.h"
-#include "Core/Types/ITypeHandler.h"
+#include <Onyx/Types/TypeRegistry.h>
+#include <Onyx/Types/ITypeHandler.h>
 #include "core/types/GameTypes.h"
 #include "core/WadTypes.h"
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 #include "core/parsers/gow2/InstanceParser.h"
-#include "Ui/Viewers/Viewport3D.h"
+#include <Onyx/Viewers/Viewport3D.h>
 #include <cstring>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "Fonts/SFSymbols.h"
+#include <Onyx/Fonts/SFSymbols.h>
 
 namespace {
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 // Find a AssetEntry by exact name and TypeId in the WAD tree.
 // Mirrors Go's GetNodeByName: searches backwards from the instance's position.
@@ -52,7 +52,7 @@ static const AssetEntry* FindEntryByName(
     return nullptr;
 }
 
-// â”€â”€ InstanceHandler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ InstanceHandler Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class InstanceHandler : public Onyx::Types::ITypeHandler {
 public:
@@ -79,7 +79,7 @@ public:
 
         const AssetEntry* objEntry = nullptr;
 
-        // â”€â”€ GOW2 path: find child Object/Model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ GOW2 path: find child Object/Model Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         {
             const AssetEntry* sourceEntry = &entry;
 
@@ -134,12 +134,12 @@ public:
 
         auto scene = handler->BuildSceneData(*objEntry, wad);
         if (!scene) {
-            LOG_WARN("[InstanceHandler] handler->BuildSceneData returned null for '%s' â†’ '%s'",
+            LOG_WARN("[InstanceHandler] handler->BuildSceneData returned null for '%s' Ã¢â€ â€™ '%s'",
                      entry.name.c_str(), objEntry->name.c_str());
             return nullptr;
         }
 
-        // 4. Sky detection â€” three sources, any one triggers sky routing:
+        // 4. Sky detection Ã¢â‚¬â€ three sources, any one triggers sky routing:
         //    a) ObjectHandler/ProcessModel sets part.isSky when SCR_Sky child
         //       lives on a Model under an Object (matches god_of_war_browser).
         //    b) ModelHandler sets scene->isSky when SCR_Sky child lives on the
@@ -161,11 +161,11 @@ public:
                      entry.name.c_str(), instData->isSky, partSky, scene->isSky);
         }
 
-        // 5. Instance transform â€” GOW2: do NOT apply.
+        // 5. Instance transform Ã¢â‚¬â€ GOW2: do NOT apply.
         //
         // Reference: god_of_war_browser/web/data/static/js/BrowserWad.js:1365
         //   if (inst.IsGow2) {
-        //     // instNode.setLocalMatrix(instMat);   â† COMMENTED OUT
+        //     // instNode.setLocalMatrix(instMat);   Ã¢â€ Â COMMENTED OUT
         //   }
         // Joint world transforms (renderMat from Matrixes1 chain) already place
         // GOW2 geometry in world space. Applying inst.Position on top double-
@@ -174,7 +174,7 @@ public:
         //
         // We keep instanceTransform on the scene so callers can introspect the
         // raw matrix if needed (debug/UI), but it is identity for render
-        // purposes â€” SceneRenderer's flipZ scale still applies as configured.
+        // purposes Ã¢â‚¬â€ SceneRenderer's flipZ scale still applies as configured.
         scene->instanceTransform = glm::mat4(1.0f);
 
         return scene;

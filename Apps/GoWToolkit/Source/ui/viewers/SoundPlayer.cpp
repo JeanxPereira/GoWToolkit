@@ -1,9 +1,9 @@
 ﻿#include "SoundPlayer.h"
-#include "Core/Logger.h"
-#include "Core/ThemeManager.h"
-#include "Ui/Widgets.h"
-#include "Core/Audio/AdpcmDecoder.h"
-#include "Fonts/SFSymbols.h"
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Services/ThemeManager.h>
+#include <Onyx/App/Widgets.h>
+#include <Onyx/Audio/AdpcmDecoder.h>
+#include <Onyx/Fonts/SFSymbols.h>
 #include <algorithm>
 #include <cmath>
 #include <cstring>

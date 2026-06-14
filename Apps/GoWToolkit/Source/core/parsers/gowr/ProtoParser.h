@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include "Core/Parsers/Shared/ObjectData.h"
-#include "Core/Vfs/IFile.h"
+#include <Onyx/Parsers/ObjectData.h>
+#include <Onyx/Vfs/IFile.h>
 #include <memory>
 
 namespace Onyx {

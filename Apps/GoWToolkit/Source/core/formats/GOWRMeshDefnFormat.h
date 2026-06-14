@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Core/Schema/AssetFormat.h"
+#include <Onyx/Schema/AssetFormat.h>
 
 namespace Onyx {
 

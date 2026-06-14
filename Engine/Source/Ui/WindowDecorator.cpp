@@ -1,4 +1,4 @@
-#include "Ui/WindowDecorator.h"
+﻿#include <Onyx/App/WindowDecorator.h>
 #include "Ui/TitleBar.h"
 #include "Ui/NativeWindow.h"
 #include "imgui.h"
@@ -13,7 +13,7 @@ void WindowDecorator::init(GLFWwindow* window, const char* /*unused*/) {
 
 void WindowDecorator::beginFrame(GLFWwindow* window) {
     // 1:1 ImHex: s_titleBarHeight = ImGui::GetCurrentWindowRead()->MenuBarHeight
-    // Chamado após ImGui::Begin("##HostWindow") para ter o valor correcto
+    // Chamado apÃ³s ImGui::Begin("##HostWindow") para ter o valor correcto
     float h = 0.0f;
     if (GImGui && GImGui->CurrentWindow)
         h = GImGui->CurrentWindow->MenuBarHeight;

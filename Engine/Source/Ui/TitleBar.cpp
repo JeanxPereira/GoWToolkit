@@ -1,6 +1,6 @@
-#define IMGUI_DEFINE_MATH_OPERATORS
+﻿#define IMGUI_DEFINE_MATH_OPERATORS
 #include "Ui/TitleBar.h"
-#include "Fonts/SFSymbols.h"
+#include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "Ui/NativeWindow.h"
@@ -9,8 +9,8 @@
 
 namespace Onyx::App {
 
-// ── TitleBarButton ──────────────────────────────────────────────────────────
-// Réplica exacta do ImGuiExt::TitleBarButton do ImHex
+// â”€â”€ TitleBarButton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// RÃ©plica exacta do ImGuiExt::TitleBarButton do ImHex
 bool TitleBarButton(const char *label, ImVec2 size_arg) {
   ImGuiWindow *window = ImGui::GetCurrentWindow();
   if (window->SkipItems)
@@ -56,7 +56,7 @@ float backdropAlpha = 0.8f;
 // centrally by Onyx::Fonts::BuildAtlas() which merges SFSymbols as
 // part of the font atlas build. See core/FontManager.cpp.
 
-// ── Backdrop ────────────────────────────────────────────────────────────────
+// â”€â”€ Backdrop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Replicates ImHex's AddShadowCircle(pos, diameter/2, ButtonActive@0.8,
 // diameter/4, {0,0}) Since our ImGui doesn't have AddShadowCircle, we draw:
 //   1) A filled circle (solid shadow color)
@@ -131,10 +131,10 @@ void drawBackDrop() {
   dl->_VtxCurrentIdx += vtx_count;
 }
 
-// ── draw() ──────────────────────────────────────────────────────────────────
-// ATENÇÃO: chamar DEPOIS dos menu items, nunca antes.
-// No ImHex, drawTitleBar() é chamado numa 3ª chamada a BeginMainMenuBar,
-// após os menu items já terem sido desenhados.
+// â”€â”€ draw() â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ATENÃ‡ÃƒO: chamar DEPOIS dos menu items, nunca antes.
+// No ImHex, drawTitleBar() Ã© chamado numa 3Âª chamada a BeginMainMenuBar,
+// apÃ³s os menu items jÃ¡ terem sido desenhados.
 bool draw(GLFWwindow *window, const std::string &title, bool borderless) {
   bool wantClose = false;
 

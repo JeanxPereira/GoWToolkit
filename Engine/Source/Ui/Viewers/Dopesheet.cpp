@@ -1,7 +1,7 @@
 ﻿#include "Dopesheet.h"
 
-#include "Core/Events.h"
-#include "Rendering/AnimationPlayer.h"
+#include <Onyx/Services/Events.h>
+#include <Onyx/Rendering/AnimationPlayer.h>
 #include "Ui/ActiveAnimation.h"
 #include "imgui.h"
 #include <algorithm>

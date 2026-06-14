@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include "Core/Interfaces/IGameProfile.h"
-#include "Core/Schema/StructDef.h"
+#include <Onyx/Domain/IAssetProfile.h>
+#include <Onyx/Schema/StructDef.h>
 #include <map>
 
 namespace Onyx {

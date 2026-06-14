@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Core/Schema/StructDef.h"
+#include <Onyx/Schema/StructDef.h>
 #include <memory>
 
 namespace Onyx {

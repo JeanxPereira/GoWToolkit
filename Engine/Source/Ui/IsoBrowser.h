@@ -1,6 +1,6 @@
-#pragma once
-#include "Core/AssetDatabase.h"
-#include "Ui/IPanel.h"
+﻿#pragma once
+#include <Onyx/Services/AssetDatabase.h>
+#include <Onyx/App/IPanel.h>
 
 namespace Onyx::App {
 

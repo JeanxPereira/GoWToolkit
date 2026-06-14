@@ -1,9 +1,9 @@
 ﻿#include "ProfileGOWR.h"
 #include "GOWRTypes.h"
 #include "WadNodeBuilder.h"
-#include "Core/Vfs/IsoFileSystem.h"
-#include "Core/Vfs/MemoryFile.h"
-#include "Core/Logger.h"
+#include <Onyx/Vfs/IsoFileSystem.h>
+#include <Onyx/Vfs/MemoryFile.h>
+#include <Onyx/Services/Logger.h>
 #include <fstream>
 #include <algorithm>
 #include <cstring>

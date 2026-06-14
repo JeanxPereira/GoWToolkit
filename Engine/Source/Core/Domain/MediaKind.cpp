@@ -1,5 +1,5 @@
-﻿#include "MediaKind.h"
-#include "Fonts/SFSymbols.h"
+﻿#include <Onyx/Domain/MediaKind.h>
+#include <Onyx/Fonts/SFSymbols.h>
 
 namespace Onyx::Domain {
 

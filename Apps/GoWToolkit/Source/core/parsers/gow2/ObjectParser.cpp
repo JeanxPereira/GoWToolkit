@@ -9,7 +9,7 @@
 // followed by matrix arrays (Matrixes1, Matrixes2, Matrixes3) and vector arrays (Vectors4-7).
 
 #include "ObjectParser.h"
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 #include <cstring>
 #include <cmath>
 

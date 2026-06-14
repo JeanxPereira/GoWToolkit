@@ -1,5 +1,5 @@
-#include "Ui/InfoTab.h"
-#include "UIHelpers.h"
+﻿#include <Onyx/App/InfoTab.h>
+#include <Onyx/App/UIHelpers.h>
 #include "imgui.h"
 #include "Ui/AssetNodeRenderer.h"
 #include <string>

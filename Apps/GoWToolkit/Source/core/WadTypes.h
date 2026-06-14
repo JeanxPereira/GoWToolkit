@@ -11,8 +11,8 @@
 //
 // Will be deleted entirely in M4.T5.
 
-#include "Core/Domain/Entry.h"
-#include "Core/Domain/Wad.h"
+#include <Onyx/Domain/Entry.h>
+#include <Onyx/Domain/Wad.h>
 #include "core/domain/WadEntryRoleLegacy.h"
-#include "Core/Types/GameVersion.h"
-#include "Core/Types/TypeId.h"
+#include <Onyx/Types/GameVersion.h>
+#include <Onyx/Types/TypeId.h>

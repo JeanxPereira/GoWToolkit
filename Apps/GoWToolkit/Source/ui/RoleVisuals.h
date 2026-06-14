@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "core/profiles/gowr/GowrTaxonomy.h"
-#include "Fonts/SFSymbols.h"
+#include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
 
 // â”€â”€ Role-based color / icon (GOWR WAD entries) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

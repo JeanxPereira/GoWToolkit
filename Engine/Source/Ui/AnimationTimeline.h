@@ -1,6 +1,6 @@
-#pragma once
+﻿#pragma once
 #include "imgui.h"
-#include "Rendering/AnimationPlayer.h"
+#include <Onyx/Rendering/AnimationPlayer.h>
 
 namespace Onyx::App {
 

@@ -1,9 +1,9 @@
-#include "Ui/IsoBrowser.h"
-#include "Core/ToolkitApi.h"
-#include "Fonts/SFSymbols.h"
-#include "Core/Vfs/IsoFileSystem.h"
-#include "UIHelpers.h"
-#include "Ui/Widgets.h"
+﻿#include "Ui/IsoBrowser.h"
+#include <Onyx/Api/ToolkitApi.h>
+#include <Onyx/Fonts/SFSymbols.h>
+#include <Onyx/Vfs/IsoFileSystem.h>
+#include <Onyx/App/UIHelpers.h>
+#include <Onyx/App/Widgets.h>
 #include "imgui.h"
 #include <filesystem>
 

@@ -1,5 +1,5 @@
-#pragma once
-#include "Ui/IPanel.h"
+﻿#pragma once
+#include <Onyx/App/IPanel.h>
 
 namespace Onyx::App {
 

@@ -1,6 +1,6 @@
-﻿#include "Core/AssetVisibility.h"
-#include "Core/Domain/Entry.h"
-#include "Core/Types/TypeRegistry.h"
+﻿#include <Onyx/Services/AssetVisibility.h>
+#include <Onyx/Domain/Entry.h>
+#include <Onyx/Types/TypeRegistry.h>
 
 namespace Onyx::Services {
 

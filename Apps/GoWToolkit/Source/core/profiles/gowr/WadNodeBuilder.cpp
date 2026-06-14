@@ -1,6 +1,6 @@
 ﻿#include "WadNodeBuilder.h"
 #include "core/profiles/gowr/GowrProfileTag.h"
-#include "Core/Types/TypeCatalog.h"
+#include <Onyx/Types/TypeCatalog.h>
 #include "core/types/GameTypes.h"
 #include <algorithm>
 #include <cctype>

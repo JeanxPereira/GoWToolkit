@@ -1,9 +1,9 @@
 ﻿#include <doctest/doctest.h>
 #include "core/types/GameTypeTable.h"
-#include "Core/Types/TypeId.h"
+#include <Onyx/Types/TypeId.h>
 #include "core/types/GameTypes.h"
-#include "Core/Types/TypeCatalog.h"
-#include "Core/Domain/MediaKind.h"
+#include <Onyx/Types/TypeCatalog.h>
+#include <Onyx/Domain/MediaKind.h>
 #include <cstring>
 
 using namespace Onyx;

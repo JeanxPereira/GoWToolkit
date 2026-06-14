@@ -1,4 +1,4 @@
-#include "ProfileManager.h"
+﻿#include <Onyx/Services/ProfileManager.h>
 
 namespace Onyx::Services {
 
@@ -22,7 +22,7 @@ std::shared_ptr<Domain::IAssetProfile> ProfileManager::FindProfileByHint(const s
     for (auto& c : hintLower) c = (char)tolower(c);
 
     // Short aliases recognized before substring search
-    // Maps common CLI hints → substring that will match the full profile name
+    // Maps common CLI hints â†’ substring that will match the full profile name
     const std::pair<const char*, const char*> aliases[] = {
         {"gow1",      "god of war i"},
         {"gow2",      "god of war ii"},

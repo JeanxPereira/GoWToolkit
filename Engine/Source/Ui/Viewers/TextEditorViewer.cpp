@@ -1,10 +1,10 @@
-﻿#include "TextEditorViewer.h"
-#include "UIHelpers.h"
+﻿#include <Onyx/Viewers/TextEditorViewer.h>
+#include <Onyx/App/UIHelpers.h>
 #include "Core/FontManager.h"
-#include "Core/Logger.h"
-#include "Core/ThemeManager.h"
-#include "Fonts/SFSymbols.h"
-#include "Ui/Widgets.h"
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Services/ThemeManager.h>
+#include <Onyx/Fonts/SFSymbols.h>
+#include <Onyx/App/Widgets.h>
 
 #include <algorithm>
 #include <cctype>

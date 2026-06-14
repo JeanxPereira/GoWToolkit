@@ -1,5 +1,5 @@
-﻿#include "Core/AppConfig.h"
-#include "Core/AssetVisibility.h"
+﻿#include <Onyx/Services/AppConfig.h>
+#include <Onyx/Services/AssetVisibility.h>
 #include "imgui.h"
 #include <cstring>
 #include <fstream>

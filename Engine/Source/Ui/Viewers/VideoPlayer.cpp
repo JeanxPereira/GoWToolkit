@@ -1,8 +1,8 @@
-﻿#include "Ui/Viewers/VideoPlayer.h"
-#include "Core/Logger.h"
-#include "Core/ThemeManager.h"
-#include "Ui/Widgets.h"
-#include "Fonts/SFSymbols.h"
+﻿#include <Onyx/Viewers/VideoPlayer.h>
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Services/ThemeManager.h>
+#include <Onyx/App/Widgets.h>
+#include <Onyx/Fonts/SFSymbols.h>
 #include <algorithm>
 #include <cmath>
 #include <cstring>

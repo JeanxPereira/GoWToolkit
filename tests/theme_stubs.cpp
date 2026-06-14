@@ -3,7 +3,7 @@
 // provide a trivial fallback. Theme tests call ApplyTheme with an explicit
 // mode, so this is only reached if ThemeMode::System leaks in.
 
-#include "Core/Platform/SystemTheme.h"
+#include <Onyx/Platform/SystemTheme.h>
 
 namespace Onyx::Platform {
 

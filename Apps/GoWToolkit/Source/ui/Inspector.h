@@ -1,6 +1,6 @@
-#pragma once
-#include "Ui/IPanel.h"
-#include "Ui/InfoTab.h"
+﻿#pragma once
+#include <Onyx/App/IPanel.h>
+#include <Onyx/App/InfoTab.h>
 
 class Inspector : public Onyx::App::IPanel {
 public:

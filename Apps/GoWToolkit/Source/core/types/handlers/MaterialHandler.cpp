@@ -1,15 +1,15 @@
-// Material handler â€” GOW1/2 material definition
+﻿// Material handler Ã¢â‚¬â€ GOW1/2 material definition
 // Magic: 0x00000008 (MAT_MAGIC in god_of_war_browser)
 
-#include "Core/Types/TypeRegistry.h"
-#include "Core/Types/ITypeHandler.h"
+#include <Onyx/Types/TypeRegistry.h>
+#include <Onyx/Types/ITypeHandler.h>
 #include "core/types/GameTypes.h"
 
 #include "ui/viewers/MaterialViewer.h"
 #include "core/parsers/gow2/MaterialParser.h"
 #include "core/parsers/gow2/TextureParser.h"
-#include "Core/Vfs/SliceFile.h"
-#include "Fonts/SFSymbols.h"
+#include <Onyx/Vfs/SliceFile.h>
+#include <Onyx/Fonts/SFSymbols.h>
 
 namespace {
 
@@ -73,7 +73,7 @@ public:
                 entry.name, 
                 std::move(matData), 
                 [](const std::string& texName) -> unsigned int {
-                    return 0; // Fallback â€” textures are now passed directly
+                    return 0; // Fallback Ã¢â‚¬â€ textures are now passed directly
                 },
                 std::move(textures)
             );

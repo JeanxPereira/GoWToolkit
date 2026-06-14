@@ -1,7 +1,7 @@
 ﻿#include <doctest/doctest.h>
-#include "Core/AssetVisibility.h"
+#include <Onyx/Services/AssetVisibility.h>
 #include "core/types/GameTypes.h"
-#include "Core/Types/TypeCatalog.h"
+#include <Onyx/Types/TypeCatalog.h>
 
 using namespace Onyx::Services;
 using namespace Onyx::Domain;

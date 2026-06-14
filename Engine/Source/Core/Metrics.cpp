@@ -1,4 +1,4 @@
-#include "Metrics.h"
+﻿#include <Onyx/Services/Metrics.h>
 
 #include <atomic>
 
@@ -6,7 +6,7 @@ namespace Onyx::Metrics {
 
 namespace {
 
-// Hot-path flag: a relaxed load is enough — recordings should reflect
+// Hot-path flag: a relaxed load is enough â€” recordings should reflect
 // the most recent Enable/Disable on a best-effort basis. Strict
 // ordering across threads is not required for an instrumentation
 // surface.

@@ -1,9 +1,9 @@
-#include "Core/ToolkitApi.h"
-#include "Core/ProfileManager.h"
-#include "Core/Types/TypeRegistry.h"
-#include "Ui/ViewerRegistry.h"
-#include "Ui/Viewers/DocumentWindow.h"
-#include "Core/Events.h"
+﻿#include <Onyx/Api/ToolkitApi.h>
+#include <Onyx/Services/ProfileManager.h>
+#include <Onyx/Types/TypeRegistry.h>
+#include <Onyx/App/ViewerRegistry.h>
+#include <Onyx/Viewers/DocumentWindow.h>
+#include <Onyx/Services/Events.h>
 #include <cstdio>
 #include <cstdlib>
 

@@ -1,6 +1,6 @@
 ﻿#include "MaterialViewer.h"
-#include "Fonts/SFSymbols.h"
-#include "Ui/Widgets.h"
+#include <Onyx/Fonts/SFSymbols.h>
+#include <Onyx/App/Widgets.h>
 #include <glad/glad.h>
 #include <imgui.h>
 

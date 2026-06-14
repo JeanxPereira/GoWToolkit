@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Core/Vfs/IFile.h"
+#include <Onyx/Vfs/IFile.h>
 #include <vector>
 #include <cstdint>
 #include <memory>

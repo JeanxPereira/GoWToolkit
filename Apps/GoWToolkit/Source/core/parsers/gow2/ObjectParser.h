@@ -1,5 +1,5 @@
-#pragma once
-#include "Core/Parsers/Shared/ObjectData.h"
+﻿#pragma once
+#include <Onyx/Parsers/ObjectData.h>
 #include <memory>
 #include <cstdint>
 

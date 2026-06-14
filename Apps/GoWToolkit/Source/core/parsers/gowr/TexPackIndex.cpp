@@ -1,7 +1,7 @@
 ﻿#include "core/parsers/gowr/TexPackIndex.h"
-#include "Core/Logger.h"
-#include "Core/TaskManager.h"
-#include "Core/Vfs/OsFile.h"
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Services/TaskManager.h>
+#include <Onyx/Vfs/OsFile.h>
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>

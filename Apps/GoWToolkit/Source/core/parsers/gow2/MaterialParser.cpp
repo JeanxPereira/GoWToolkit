@@ -1,6 +1,6 @@
 ﻿#include "MaterialParser.h"
-#include "Core/Vfs/SliceFile.h"
-#include "Core/Logger.h"
+#include <Onyx/Vfs/SliceFile.h>
+#include <Onyx/Services/Logger.h>
 #include <cstring>
 
 namespace Onyx {

@@ -11,11 +11,11 @@
 
 #include "core/profiles/gow2/ProfileGOW2.h"
 #include "core/profiles/gowr/ProfileGOWR.h"
-#include "Core/Types/TypeId.h"
+#include <Onyx/Types/TypeId.h>
 #include "core/types/GameTypes.h"
-#include "Core/Types/TypeCatalog.h"
-#include "Core/Vfs/MemoryFile.h"
-#include "Core/Vfs/OsFile.h"
+#include <Onyx/Types/TypeCatalog.h>
+#include <Onyx/Vfs/MemoryFile.h>
+#include <Onyx/Vfs/OsFile.h>
 
 #define XXH_INLINE_ALL
 #include "xxhash.h"

@@ -1,5 +1,5 @@
 ﻿#include "ShaderParser.h"
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 #include <cstring>
 #include <algorithm>
 

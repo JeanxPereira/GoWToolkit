@@ -1,5 +1,5 @@
 ﻿#include "Ui/AnimationTimeline.h"
-#include "Core/Parsers/Shared/AnimationData.h"
+#include <Onyx/Parsers/AnimationData.h>
 #include "imgui_internal.h"
 #include <algorithm>
 #include <cmath>

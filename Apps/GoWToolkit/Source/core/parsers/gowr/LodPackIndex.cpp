@@ -1,5 +1,5 @@
 ﻿#include "LodPackIndex.h"
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 #include <fstream>
 #include <cstring>
 

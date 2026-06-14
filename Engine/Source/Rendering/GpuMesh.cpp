@@ -1,5 +1,5 @@
 ﻿#include <glad/glad.h>
-#include "GpuMesh.h"
+#include <Onyx/Rendering/GpuMesh.h>
 #include <algorithm>
 #include <limits>
 

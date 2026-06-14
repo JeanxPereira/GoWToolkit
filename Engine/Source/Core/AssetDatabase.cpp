@@ -1,11 +1,11 @@
-﻿#include "AssetDatabase.h"
-#include "vfs/OsFile.h"
-#include "vfs/SliceFile.h"
-#include "vfs/IsoFileSystem.h"
-#include "Core/Logger.h"
-#include "Core/TaskManager.h"
-#include "Core/Events.h"
-#include "types/TypeRegistry.h"
+﻿#include <Onyx/Services/AssetDatabase.h>
+#include <Onyx/Vfs/OsFile.h>
+#include <Onyx/Vfs/SliceFile.h>
+#include <Onyx/Vfs/IsoFileSystem.h>
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Services/TaskManager.h>
+#include <Onyx/Services/Events.h>
+#include <Onyx/Types/TypeRegistry.h>
 
 namespace Onyx {
     bool EnsureGowrConfigIni(const std::filesystem::path& wadPath);

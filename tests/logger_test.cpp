@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 
 namespace L = Onyx::Services::Log;
 

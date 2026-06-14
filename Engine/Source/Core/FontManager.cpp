@@ -1,5 +1,5 @@
 ﻿#include "Core/FontManager.h"
-#include "Core/PathUtils.h"
+#include <Onyx/Services/PathUtils.h>
 #include "Core/ScaleManager.h"
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"

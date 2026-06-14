@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "Ui/Viewers/IDocumentContent.h"
-#include "Ui/Viewers/Viewport3D.h"
+#include <Onyx/Viewers/IDocumentContent.h>
+#include <Onyx/Viewers/Viewport3D.h>
 #include "core/WadTypes.h"
 #include <map>
 #include <memory>

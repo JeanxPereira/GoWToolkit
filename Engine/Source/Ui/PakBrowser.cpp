@@ -1,14 +1,14 @@
-#include "Ui/PakBrowser.h"
-#include "UIHelpers.h"
-#include "Core/AssetDatabase.h"
-#include "Core/ToolkitApi.h"
-#include "Fonts/SFSymbols.h"
+﻿#include "Ui/PakBrowser.h"
+#include <Onyx/App/UIHelpers.h>
+#include <Onyx/Services/AssetDatabase.h>
+#include <Onyx/Api/ToolkitApi.h>
+#include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
-#include "Ui/ViewerRegistry.h"
-#include "Ui/Widgets.h"
-#include "Ui/Viewers/DocumentWindow.h"
+#include <Onyx/App/ViewerRegistry.h>
+#include <Onyx/App/Widgets.h>
+#include <Onyx/Viewers/DocumentWindow.h>
 #include <fstream>
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 
 namespace Onyx::App {
 
@@ -96,7 +96,7 @@ void PakBrowser::Draw() {
       }
       ImGui::PopID();
 
-      // ── Selection (single click) — via Api::SetSelected ──
+      // â”€â”€ Selection (single click) â€” via Api::SetSelected â”€â”€
       if (ImGui::IsItemClicked()) {
         Onyx::Api::SetSelected(&entry, &pak);
       }
@@ -110,7 +110,7 @@ void PakBrowser::Draw() {
       }
 
       if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
-        // WAD files and unknown types → open as WAD browser. The decision of
+        // WAD files and unknown types â†’ open as WAD browser. The decision of
         // what counts as an openable container is owned by the active profile.
         if (pak.profile && pak.profile->IsContainerEntry(entry)) {
           db.LoadWadFromPakEntry(&entry, pak);

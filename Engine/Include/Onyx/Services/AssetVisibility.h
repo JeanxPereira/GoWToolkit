@@ -1,0 +1,90 @@
+﻿#pragma once
+#include <Onyx/Types/GameVersion.h>
+#include <Onyx/Types/TypeId.h>
+#include <cstdint>
+#include <unordered_map>
+#include <vector>
+
+namespace Onyx::Domain { struct AssetEntry; }
+using AssetEntry = Onyx::Domain::AssetEntry;
+
+namespace Onyx::Services {
+
+/// Controls whether a type appears in the WAD browser tree.
+enum class Visibility : uint8_t {
+    Visible,   // Always shown
+    Hidden,    // Hidden by default, user can toggle on
+    Internal   // Never shown (structural: GroupStart, EntityCount, etc.)
+};
+
+/// Centralized, data-driven asset visibility registry.
+///
+/// Replaces the hardcoded IsGOWRViewable() switch and provides GOW2 filtering
+/// for the first time. Each (Types::GameVersion, Types::TypeId) pair has a default Visibility.
+/// Users can override Hiddenâ†’Visible and vice-versa through the FilterPanel.
+/// Overrides are persisted in the GTKC config.
+class AssetVisibility {
+public:
+    static AssetVisibility& Get();
+
+    /// Should this entry be rendered in the browser tree?
+    bool IsVisible(Types::GameVersion ver, Types::TypeId id) const;
+
+    /// Convenience overload that reads game version from the entry's context.
+    /// Uses GOW2 as default â€” GOWR entries checked via roleâ†’Types::TypeId mapping.
+    bool IsVisible(const AssetEntry& entry, Types::GameVersion ver) const;
+
+    Visibility GetDefault(Types::GameVersion ver, Types::TypeId id) const;
+    Visibility GetCurrent(Types::GameVersion ver, Types::TypeId id) const;
+
+    /// Seed a default visibility for a (ver, type) pair. Called at startup by
+    /// app-level code that owns the game-specific default table; the store
+    /// itself holds no game knowledge.
+    void SetDefault(Types::GameVersion ver, Types::TypeId id, Visibility vis);
+
+    /// Toggle an override. Only works for Hidden types (not Internal).
+    void SetUserOverride(Types::GameVersion ver, Types::TypeId id, bool visible);
+    void ClearUserOverride(Types::GameVersion ver, Types::TypeId id);
+    void ResetAllOverrides();
+
+    /// Info for the FilterPanel UI.
+    struct TypeVisInfo {
+        Types::TypeId      id;
+        const char* name;       // from ITypeHandler::GetName()
+        const char* icon;       // from ITypeHandler::GetIcon()
+        Visibility  defaultVis;
+        bool        hasOverride;
+        bool        currentlyVisible;
+    };
+
+    /// Returns all filterable (Hidden, not Internal) types for a game version.
+    std::vector<TypeVisInfo> GetFilterableTypes(Types::GameVersion ver) const;
+
+    // â”€â”€ Persistence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Overrides are stored as a compact array of (key, visible) pairs.
+    // key = (uint8_t gameVersion << 8) | uint8_t typeId
+    struct SerializedOverride {
+        uint16_t key;       // (gameVersion << 8) | typeId
+        uint8_t  visible;   // 0 or 1
+        uint8_t  _pad = 0;
+    };
+    static_assert(sizeof(SerializedOverride) == 4, "Must be 4 bytes for GTKC alignment");
+
+    std::vector<SerializedOverride> ExportOverrides() const;
+    void ImportOverrides(const std::vector<SerializedOverride>& data);
+
+private:
+    AssetVisibility();
+
+    static uint32_t MakeKey(Types::GameVersion ver, Types::TypeId id) {
+        return (static_cast<uint32_t>(ver) << 16) | id.value;
+    }
+
+    // Default visibility per (ver, typeId)
+    std::unordered_map<uint32_t, Visibility> m_defaults;
+
+    // User overrides: key â†’ visible (true = force show, false = force hide)
+    std::unordered_map<uint32_t, bool> m_overrides;
+};
+
+} // namespace Onyx::Services

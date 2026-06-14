@@ -1,5 +1,5 @@
 ﻿#include "core/profiles/AssetVisibilityDefaults.h"
-#include "Core/AssetVisibility.h"
+#include <Onyx/Services/AssetVisibility.h>
 #include "core/types/GameTypes.h"
 
 namespace Onyx {

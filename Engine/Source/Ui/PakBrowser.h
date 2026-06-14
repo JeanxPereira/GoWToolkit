@@ -1,8 +1,8 @@
-#pragma once
-#include "Core/Domain/Wad.h"
-#include "Core/Types/GameVersion.h"
-#include "Core/Types/TypeId.h"
-#include "Ui/IPanel.h"
+﻿#pragma once
+#include <Onyx/Domain/Wad.h>
+#include <Onyx/Types/GameVersion.h>
+#include <Onyx/Types/TypeId.h>
+#include <Onyx/App/IPanel.h>
 
 class AssetDatabase;
 

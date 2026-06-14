@@ -1,7 +1,7 @@
 ﻿#include <glad/glad.h>
-#include "GridRenderer.h"
-#include "ShaderManager.h"
-#include "Core/Logger.h"
+#include <Onyx/Rendering/GridRenderer.h>
+#include <Onyx/Rendering/ShaderManager.h>
+#include <Onyx/Services/Logger.h>
 #include <vector>
 
 namespace Onyx::Rendering {

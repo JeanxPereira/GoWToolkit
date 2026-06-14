@@ -1,13 +1,13 @@
-#include "Viewport3D.h"
-#include "Rendering/ShaderManager.h"
-#include "Core/Events.h"
+﻿#include <Onyx/Viewers/Viewport3D.h>
+#include <Onyx/Rendering/ShaderManager.h>
+#include <Onyx/Services/Events.h>
 #include <glad/glad.h>
 #include <imgui.h>
-#include "Core/AppConfig.h"
-#include "Core/ThemeManager.h"
-#include "Fonts/SFSymbols.h"
+#include <Onyx/Services/AppConfig.h>
+#include <Onyx/Services/ThemeManager.h>
+#include <Onyx/Fonts/SFSymbols.h>
 #include "Ui/CameraPanel.h"
-#include "Ui/Widgets.h"
+#include <Onyx/App/Widgets.h>
 #include "Ui/AnimationTimeline.h"
 #include "Ui/ActiveAnimation.h"
 #include <glm/gtc/matrix_transform.hpp>
@@ -134,7 +134,7 @@ void Viewport3D::Draw() {
 
     ResizeFBO((int)viewSize.x, (int)viewSize.y);
 
-    // ── Animation update (every frame, regardless of redraw) ─────────
+    // â”€â”€ Animation update (every frame, regardless of redraw) â”€â”€â”€â”€â”€â”€â”€â”€â”€
     float currentTime = (float)ImGui::GetTime();
     float dt = (m_lastFrameTime > 0.0f) ? (currentTime - m_lastFrameTime) : 0.0f;
     m_lastFrameTime = currentTime;
@@ -146,7 +146,7 @@ void Viewport3D::Draw() {
         m_needsRedraw = true;
     }
 
-    // ── Render to FBO ────────────────────────────────────────────────
+    // â”€â”€ Render to FBO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (m_needsRedraw && m_fboWidth > 0 && m_fboHeight > 0) {
         m_needsRedraw = false;
 
@@ -164,7 +164,7 @@ void Viewport3D::Draw() {
         bool hasContent = m_sceneRenderer && !m_sceneRenderer->IsEmpty();
         auto* cfg = Onyx::Services::AppConfig::Get();
 
-        // ── Background gradient ────────────────────��─────────────────
+        // â”€â”€ Background gradient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (hasContent && cfg) {
             Rendering::SceneRenderer::RenderBackground(
                 glm::vec3(cfg->bgTopR, cfg->bgTopG, cfg->bgTopB),
@@ -191,7 +191,7 @@ void Viewport3D::Draw() {
         glDepthMask(GL_TRUE);
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        // ── Scene ────────────────────────────────────────────────────
+        // â”€â”€ Scene â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (hasContent) {
             if (m_sceneRenderer->HasSky()) {
                 m_sceneRenderer->RenderSky(view, proj, shadingMode);
@@ -204,7 +204,7 @@ void Viewport3D::Draw() {
             }
         }
 
-        // ── Grid ────────────────────────────────────────────────────────────
+        // â”€â”€ Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (showGrid) {
             glm::vec4 gridColor = cfg ? glm::vec4(cfg->gridR, cfg->gridG, cfg->gridB, cfg->gridA) 
                                       : glm::vec4(0.35f, 0.35f, 0.35f, 0.5f);
@@ -217,7 +217,7 @@ void Viewport3D::Draw() {
             glDepthMask(GL_TRUE);
         }
 
-        // ── Resolve MSAA ────────────────────────���────────────────────
+        // â”€â”€ Resolve MSAA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         glBindFramebuffer(GL_READ_FRAMEBUFFER, m_msaaFbo);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
         glBlitFramebuffer(0, 0, m_fboWidth, m_fboHeight, 0, 0, m_fboWidth, m_fboHeight,
@@ -227,7 +227,7 @@ void Viewport3D::Draw() {
         glDisable(GL_MULTISAMPLE);
     }
 
-    // ── Display cached texture ────────────────────────��─────────────
+    // â”€â”€ Display cached texture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ImVec2 uv0(0, 1), uv1(1, 0); // flip Y for OpenGL
     ImGui::Image((void*)(intptr_t)m_colorTex, viewSize, uv0, uv1);
 
@@ -235,24 +235,24 @@ void Viewport3D::Draw() {
     const ImVec2 imageMin = ImGui::GetItemRectMin();
     const ImVec2 imageMax = ImGui::GetItemRectMax();
 
-    // ── Axis gizmo overlay ──────────────────────────────────────────
+    // â”€â”€ Axis gizmo overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     Rendering::CameraView snapTarget;
     if (m_axisGizmo.Draw(m_camera.GetViewRotation(), imageMin, imageMax, snapTarget)) {
         m_camera.SnapToView(snapTarget);
         m_needsRedraw = true;
     }
 
-    // ── Input ───────────────────────��───────────────────────────────
+    // â”€â”€ Input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     HandleInput();
 
-    // ── Toolbar overlay ─────────────────────────────────────────────
+    // â”€â”€ Toolbar overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ImVec2 cursorPos = ImGui::GetCursorScreenPos();
     DrawToolbar(avail, cursorPos);
 
-    // ── Object list ──────────────────────────────────────────────────
+    // â”€â”€ Object list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     DrawObjectList(avail, cursorPos);
 
-    // ── Empty viewport message ─────────────────────────���────────────
+    // â”€â”€ Empty viewport message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ï¿½ï¿½ï¿½â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (!m_sceneRenderer || m_sceneRenderer->IsEmpty()) {
         const char* msg = "No mesh loaded";
         ImVec2 textSize = ImGui::CalcTextSize(msg);
@@ -263,7 +263,7 @@ void Viewport3D::Draw() {
         ImGui::TextDisabled("%s", msg);
     }
 
-    // ── Animation transport bar (only when a clip is loaded) ─────────
+    // â”€â”€ Animation transport bar (only when a clip is loaded) â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (hasTransport) {
         DrawTransportBar();
     }
@@ -274,7 +274,7 @@ void Viewport3D::HandleInput() {
 
     ImGuiIO& io = ImGui::GetIO();
 
-    // Suppress camera mouse handling while the axis gizmo owns the cursor —
+    // Suppress camera mouse handling while the axis gizmo owns the cursor â€”
     // otherwise a click-to-snap would also fire an orbit on drag-off.
     const bool gizmoHot = m_axisGizmo.IsHovered();
 
@@ -338,7 +338,7 @@ void Viewport3D::DrawToolbar(ImVec2 avail, ImVec2 cursorPos) {
 
     namespace W = Onyx::App::Widgets;
 
-    // Shading cycle — icon is the cube; mode goes in the tooltip.
+    // Shading cycle â€” icon is the cube; mode goes in the tooltip.
     const char* shadingLabel = nullptr;
     switch (shadingMode) {
         case Rendering::ShadingMode::Solid:        shadingLabel = "Solid";      break;
@@ -449,7 +449,7 @@ void Viewport3D::DrawToolbar(ImVec2 avail, ImVec2 cursorPos) {
         }
     }
 
-    // FPS counter — bottom center
+    // FPS counter â€” bottom center
     {
         char fpsBuf[32];
         snprintf(fpsBuf, sizeof(fpsBuf), "%.0f FPS", ImGui::GetIO().Framerate);
@@ -488,7 +488,7 @@ void Viewport3D::DrawInspector() {
         Onyx::App::SetActiveAnimationPlayer(nullptr);
     }
 
-    // ── Animation Section ─────────────────────────────────────────────
+    // â”€â”€ Animation Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (m_sceneRenderer && m_sceneRenderer->HasAnimations()) {
         ImGui::Separator();
         ImGui::Text("Animations");
@@ -542,10 +542,10 @@ void Viewport3D::DrawInspector() {
         // Transport now lives in the bar directly under the viewport.
         // The inspector keeps just the clip browser so users can pick
         // an act without leaving their docked panel.
-        ImGui::TextDisabled("Transport controls below viewport ↓");
+        ImGui::TextDisabled("Transport controls below viewport â†“");
     }
 
-    // ── Mesh Batches ────────────────────────────────────────────────
+    // â”€â”€ Mesh Batches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ImGui::Separator();
     ImGui::Text("Scene Mesh Batches");
 
@@ -621,7 +621,7 @@ void Viewport3D::DrawInspector() {
         // Multi-LOD group: collapsible tree
         ImGui::PushID((int)(1000 + g));
 
-        // Group-level visibility checkbox: ANY visible → checked; toggling sets all
+        // Group-level visibility checkbox: ANY visible â†’ checked; toggling sets all
         bool anyVisible = false, allVisible = true;
         for (size_t i : grp.idx) {
             if (batches[i].isVisible) anyVisible = true;

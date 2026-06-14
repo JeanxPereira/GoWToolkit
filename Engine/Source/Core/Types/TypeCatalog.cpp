@@ -1,5 +1,5 @@
-﻿#include "Core/Types/TypeCatalog.h"
-#include "Fonts/SFSymbols.h"
+﻿#include <Onyx/Types/TypeCatalog.h>
+#include <Onyx/Fonts/SFSymbols.h>
 
 namespace Onyx::Types {
 

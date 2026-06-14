@@ -1,7 +1,7 @@
 #include "FontDebuggerWindow.h"
 #include <imgui.h>
 #include <imgui_internal.h>
-#include "../fonts/SFSymbols.h"
+#include <Onyx/Fonts/SFSymbols.h>
 
 namespace Onyx::App {
 

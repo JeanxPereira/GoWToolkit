@@ -1,13 +1,13 @@
-#include "ui/Inspector.h"
-#include "UIHelpers.h"
-#include "ui/RoleVisuals.h"   // GOWR role â†’ color/icon (ColorForRole, IconForRole)
-#include "Core/ToolkitApi.h"
+﻿#include "ui/Inspector.h"
+#include <Onyx/App/UIHelpers.h>
+#include "ui/RoleVisuals.h"   // GOWR role Ã¢â€ â€™ color/icon (ColorForRole, IconForRole)
+#include <Onyx/Api/ToolkitApi.h>
 #include "core/profiles/gowr/GowrProfileTag.h"
-#include "Fonts/SFSymbols.h"
+#include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
 
-#include "Ui/Viewers/DocumentWindow.h"
-#include "Ui/Viewers/IDocumentContent.h"
+#include <Onyx/Viewers/DocumentWindow.h>
+#include <Onyx/Viewers/IDocumentContent.h>
 
 void Inspector::Draw() {
     if (!visible) return;
@@ -23,7 +23,7 @@ void Inspector::Draw() {
         return;
     }
 
-    // â”€â”€ Header â€” always visible â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â‚¬â€ always visible Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     ImGui::PushID("InspectorHeader");
 
     const char* icon = IconForType(entry->typeId);
@@ -41,7 +41,7 @@ void Inspector::Draw() {
     ImGui::TextDisabled("%s  |  %s", entry->wadName.c_str(),
                         FormatBytes(entry->size).c_str());
 
-    // â”€â”€ Context menu on header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Context menu on header Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     if (ImGui::BeginPopupContextItem("InspectorHeaderCtx")) {
         if (ImGui::MenuItem(ICON_SF_DOCUMENT_ON_DOCUMENT "  Copy Name")) {
             ImGui::SetClipboardText(entry->name.c_str());
@@ -64,7 +64,7 @@ void Inspector::Draw() {
     ImGui::PopID();
     ImGui::Separator();
 
-    // â”€â”€ Viewer Inspector section â€” if a document viewer is active â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Viewer Inspector section Ã¢â‚¬â€ if a document viewer is active Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     if (Onyx::Api::Documents().HasActiveDocument()) {
         auto doc = Onyx::Api::Documents().GetActiveDocument();
         if (doc) {
@@ -73,7 +73,7 @@ void Inspector::Draw() {
         }
     }
 
-    // â”€â”€ Properties section â€” always shown (collapsible) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Properties section Ã¢â‚¬â€ always shown (collapsible) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     if (ImGui::CollapsingHeader("Properties", ImGuiTreeNodeFlags_DefaultOpen)) {
         m_info_tab.Draw(Onyx::Api::Database(), entry);
     }

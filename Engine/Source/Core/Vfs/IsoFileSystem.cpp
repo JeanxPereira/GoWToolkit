@@ -1,7 +1,7 @@
-﻿#include "IsoFileSystem.h"
+﻿#include <Onyx/Vfs/IsoFileSystem.h>
 #include "IsoFile.h"
-#include "OsFile.h"
-#include "Core/Logger.h"
+#include <Onyx/Vfs/OsFile.h>
+#include <Onyx/Services/Logger.h>
 #include <iostream>
 #include <vector>
 

@@ -7,8 +7,8 @@
 // turn SetTime/Update/SetFrame into O(1) lookups. The original step-driven
 // HandleSkinningStream path is kept and reused for the bake walk.
 
-#include "AnimationPlayer.h"
-#include "Core/Logger.h"
+#include <Onyx/Rendering/AnimationPlayer.h>
+#include <Onyx/Services/Logger.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <algorithm>

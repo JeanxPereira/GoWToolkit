@@ -1,5 +1,5 @@
-#pragma once
-#include "Core/Types/TypeId.h"
+﻿#pragma once
+#include <Onyx/Types/TypeId.h>
 
 namespace Onyx::GameTypes {
 

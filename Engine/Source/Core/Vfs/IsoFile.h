@@ -1,5 +1,5 @@
-#pragma once
-#include "IFile.h"
+﻿#pragma once
+#include <Onyx/Vfs/IFile.h>
 #include <fstream>
 #include <string>
 

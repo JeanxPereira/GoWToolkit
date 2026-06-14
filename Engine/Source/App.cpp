@@ -1,9 +1,9 @@
 ﻿#define IMGUI_DEFINE_MATH_OPERATORS
-#include "App.h"
-#include "UIHelpers.h"
+#include <Onyx/App/App.h>
+#include <Onyx/App/UIHelpers.h>
 #include "imgui_internal.h" // DockBuilder
 
-#include "Ui/IPanel.h"
+#include <Onyx/App/IPanel.h>
 #include "Ui/NativeMenuBar.h"
 #include "Ui/NativeWindow.h"
 #include "Ui/TitleBar.h"
@@ -15,21 +15,21 @@
 #include "Ui/StatusBar.h"
 
 // Viewer headers
-#include "Ui/Viewers/ImageViewer.h"
-#include "Ui/Viewers/Viewport3D.h"
+#include <Onyx/Viewers/ImageViewer.h>
+#include <Onyx/Viewers/Viewport3D.h>
 #include "Ui/Viewers/AnimCurveView.h"
 #include "Ui/Viewers/Dopesheet.h"
 #include "Ui/Viewers/WadStatsView.h"
 
 // Core subsystems
-#include "Core/Events.h"
-#include "Core/TaskManager.h"
-#include "Core/ToolkitApi.h"
+#include <Onyx/Services/Events.h>
+#include <Onyx/Services/TaskManager.h>
+#include <Onyx/Api/ToolkitApi.h>
 
-#include "Core/Logger.h"
-#include "Core/PathUtils.h"
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Services/PathUtils.h>
 #include "Core/FontManager.h"
-#include "Fonts/SFSymbols.h"
+#include <Onyx/Fonts/SFSymbols.h>
 
 namespace Onyx::App {
 

@@ -4,7 +4,7 @@
 #include <thread>
 #include <vector>
 
-#include "Core/Metrics.h"
+#include <Onyx/Services/Metrics.h>
 
 using namespace std::chrono_literals;
 namespace M = Onyx::Metrics;

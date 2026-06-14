@@ -4,7 +4,7 @@
 #include <vector>
 #include <memory>
 #include "core/WadTypes.h"
-#include "Core/Vfs/IFile.h"
+#include <Onyx/Vfs/IFile.h>
 
 namespace Onyx {
 

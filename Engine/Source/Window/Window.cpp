@@ -1,5 +1,5 @@
-#include <glad/glad.h>  // Must be before GLFW
-#include "Window/Window.h"
+﻿#include <glad/glad.h>  // Must be before GLFW
+#include <Onyx/App/Window.h>
 
 #include <cfloat>
 #include <cstring>
@@ -10,12 +10,12 @@
 #include "imgui_impl_opengl3.h"
 #include "implot.h"
 
-#include "Core/PathUtils.h"
-#include "Core/TaskManager.h"
-#include "Core/ThemeManager.h"
+#include <Onyx/Services/PathUtils.h>
+#include <Onyx/Services/TaskManager.h>
+#include <Onyx/Services/ThemeManager.h>
 #include "Core/ScaleManager.h"
 #include "Core/FontManager.h"
-#include "Core/Events.h"
+#include <Onyx/Services/Events.h>
 #include "Ui/NativeWindow.h"
 
 namespace Onyx::App {

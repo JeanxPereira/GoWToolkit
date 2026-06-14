@@ -1,8 +1,8 @@
 ﻿#include <glad/glad.h>
-#include "ShaderManager.h"
-#include "Core/AppConfig.h"
+#include <Onyx/Rendering/ShaderManager.h>
+#include <Onyx/Services/AppConfig.h>
 #include <glm/gtc/type_ptr.hpp>
-#include "Core/Logger.h"
+#include <Onyx/Services/Logger.h>
 #include <cmath>
 #include <vector>
 

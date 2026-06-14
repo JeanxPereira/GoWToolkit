@@ -1,14 +1,14 @@
 ﻿#define IMGUI_DEFINE_MATH_OPERATORS
 #include "Ui/SettingsWindow.h"
-#include "Core/PathUtils.h"
+#include <Onyx/Services/PathUtils.h>
 #include "Core/FontManager.h"
 #include "Core/ScaleManager.h"
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "Rendering/ShaderManager.h"
-#include "Core/AssetVisibility.h"
-#include "Fonts/SFSymbols.h"
-#include "Ui/Widgets.h"
+#include <Onyx/Rendering/ShaderManager.h>
+#include <Onyx/Services/AssetVisibility.h>
+#include <Onyx/Fonts/SFSymbols.h>
+#include <Onyx/App/Widgets.h>
 #include "FontDebuggerWindow.h"
 
 #include <algorithm>

@@ -1,5 +1,5 @@
-﻿#include "TypeRegistry.h"
-#include "Core/Logger.h"
+﻿#include <Onyx/Types/TypeRegistry.h>
+#include <Onyx/Services/Logger.h>
 #include <cstring>
 
 namespace Onyx::Types {

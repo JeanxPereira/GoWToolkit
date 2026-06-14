@@ -1,5 +1,5 @@
-#include "NodeInstance.h"
-#include "../vfs/IFile.h"
+﻿#include <Onyx/Schema/NodeInstance.h>
+#include <Onyx/Vfs/IFile.h>
 
 namespace Onyx::Schema {
 
