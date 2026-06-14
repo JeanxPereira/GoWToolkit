@@ -5,7 +5,7 @@ namespace Onyx::App {
 
 class InfoTab {
 public:
-    void Draw(AssetDatabase& db, AssetEntry* e);
+    void Draw(Onyx::Services::AssetDatabase& db, AssetEntry* e);
 };
 
 } // namespace Onyx::App

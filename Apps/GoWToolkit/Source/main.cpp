@@ -15,8 +15,8 @@
 #endif
 
 static void registerProfiles() {
-    Onyx::ProfileManager::Get().RegisterProfile(std::make_shared<Onyx::ProfileGOW2>());
-    Onyx::ProfileManager::Get().RegisterProfile(std::make_shared<Onyx::ProfileGOWR>());
+    Onyx::Services::ProfileManager::Get().RegisterProfile(std::make_shared<Onyx::ProfileGOW2>());
+    Onyx::Services::ProfileManager::Get().RegisterProfile(std::make_shared<Onyx::ProfileGOWR>());
 }
 
 int main(int argc, char** argv) {

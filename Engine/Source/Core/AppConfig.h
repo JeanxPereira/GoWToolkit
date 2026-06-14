@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+namespace Onyx::Services {
+
 // Config persistente — salvo em gowtool.gtkc (formato binário GTKC)
 // Layout de janelas do ImGui é armazenado como blob opaco no final do arquivo
 struct AppConfig {
@@ -87,3 +89,5 @@ struct AppConfig {
   // Get accent color as ImVec4 (theme application is handled by ThemeManager)
   ImVec4 getAccent() const { return ImVec4(accentR, accentG, accentB, accentA); }
 };
+
+} // namespace Onyx::Services

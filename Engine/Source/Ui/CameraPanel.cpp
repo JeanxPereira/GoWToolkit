@@ -13,7 +13,7 @@ CameraPanel* CameraPanel::s_instance = nullptr;
 
 CameraPanel::CameraPanel() {
     s_instance = this;
-    if (auto* cfg = AppConfig::Get()) {
+    if (auto* cfg = Onyx::Services::AppConfig::Get()) {
         visible = cfg->camPanelVisible;
     } else {
         visible = false;
@@ -31,7 +31,7 @@ void CameraPanel::Toggle() {
 }
 
 void CameraPanel::Draw() {
-    AppConfig* cfg = AppConfig::Get();
+    Onyx::Services::AppConfig* cfg = Onyx::Services::AppConfig::Get();
 
     // Persist visibility every frame: View menu and the viewport "Cam" button
     // both drive IPanel::visible (via CameraPanel::Toggle()), so the panel

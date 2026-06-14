@@ -162,7 +162,7 @@ void Viewport3D::Draw() {
         glEnable(GL_MULTISAMPLE);
 
         bool hasContent = m_sceneRenderer && !m_sceneRenderer->IsEmpty();
-        auto* cfg = AppConfig::Get();
+        auto* cfg = Onyx::Services::AppConfig::Get();
 
         // ── Background gradient ────────────────────��─────────────────
         if (hasContent && cfg) {

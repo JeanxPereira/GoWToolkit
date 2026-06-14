@@ -3,9 +3,11 @@
 #include "core/types/GameTypes.h"
 #include "Core/Types/TypeCatalog.h"
 
-using namespace Onyx;
+using namespace Onyx::Services;
 using namespace Onyx::Domain;
 using namespace Onyx::Types;
+// Make GameTypes accessible (it lives in Onyx::GameTypes, a sub-ns of Onyx)
+using namespace Onyx;
 
 TEST_CASE("Visibility override survives Export/Import by stable value") {
     GameTypes::RegisterGameTypes();

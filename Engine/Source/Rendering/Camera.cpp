@@ -8,7 +8,7 @@ namespace Onyx::Rendering {
 Camera::Camera() {
     // Pull persisted tuning knobs so the projection slab matches the user's
     // last-session preferences immediately (no per-viewport sync needed).
-    if (auto* cfg = AppConfig::Get()) {
+    if (auto* cfg = Onyx::Services::AppConfig::Get()) {
         fov               = cfg->camFov;
         nearPlane         = cfg->camNearPlane;
         farPlane          = cfg->camFarPlane;

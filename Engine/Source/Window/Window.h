@@ -57,8 +57,8 @@ private:
 
     // ── Members ──────────────────────────────────────────────────────
     GLFWwindow*  m_window   = nullptr;
-    App          m_app;
-    AppConfig    m_config;
+    App                         m_app;
+    Onyx::Services::AppConfig   m_config;
 
     // Frame rate control
     bool   m_shouldUnlockFrameRate = false;

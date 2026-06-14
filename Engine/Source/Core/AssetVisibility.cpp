@@ -2,7 +2,7 @@
 #include "Core/Domain/Entry.h"
 #include "Core/Types/TypeRegistry.h"
 
-namespace Onyx {
+namespace Onyx::Services {
 
 AssetVisibility& AssetVisibility::Get() {
     static AssetVisibility s_instance;
@@ -130,4 +130,4 @@ void AssetVisibility::ImportOverrides(const std::vector<SerializedOverride>& dat
     }
 }
 
-} // namespace Onyx
+} // namespace Onyx::Services

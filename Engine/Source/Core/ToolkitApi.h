@@ -3,10 +3,9 @@
 // ToolkitApi — Global singleton facade for accessing core subsystems.
 // Inspired by ImHexApi::System — provides global access without AppContext& pass-through.
 
-class AssetDatabase;
-class AppConfig;
-
-namespace Onyx {
+namespace Onyx::Services {
+    class AssetDatabase;
+    struct AppConfig;
     class ProfileManager;
 }
 namespace Onyx::App {
@@ -24,23 +23,23 @@ using AssetContainer = Onyx::Domain::AssetContainer;
 namespace Onyx::Api {
 
     struct InitParams {
-        AssetDatabase*                 db = nullptr;
-        AppConfig*                     config = nullptr;
-        Onyx::App::ViewerRegistry*     viewers = nullptr;
-        Onyx::Viewers::DocumentWindow* documents = nullptr;
+        Onyx::Services::AssetDatabase*         db = nullptr;
+        Onyx::Services::AppConfig*             config = nullptr;
+        Onyx::App::ViewerRegistry*             viewers = nullptr;
+        Onyx::Viewers::DocumentWindow*         documents = nullptr;
     };
 
     /// Initialize the facade pointers. Call once in App::init().
     void Init(const InitParams& params);
 
     /// Access the global AssetDatabase.
-    AssetDatabase& Database();
+    Onyx::Services::AssetDatabase& Database();
 
     /// Access the global AppConfig.
-    AppConfig& Config();
+    Onyx::Services::AppConfig& Config();
 
     /// Access the global ProfileManager.
-    ProfileManager& Profiles();
+    Onyx::Services::ProfileManager& Profiles();
 
     /// Access the global TypeRegistry.
     Onyx::Types::TypeRegistry& Types();

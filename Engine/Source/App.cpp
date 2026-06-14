@@ -68,7 +68,7 @@ void App::registerPanels() {
 
 App::App() {}
 
-void App::init(GLFWwindow *window, AppConfig *config) {
+void App::init(GLFWwindow *window, Onyx::Services::AppConfig *config) {
   m_window = window;
   m_config = config;
 
@@ -124,8 +124,8 @@ void App::frameBegin() {
 
 void App::frame() {
   // Process task manager deferred calls and garbage collection
-  Onyx::TaskManager::runDeferredCalls();
-  Onyx::TaskManager::collectGarbage();
+  Onyx::Services::TaskManager::runDeferredCalls();
+  Onyx::Services::TaskManager::collectGarbage();
 
 
   // Per-frame tick event for animations, progress bars, etc.
@@ -336,7 +336,7 @@ void App::drawOpenDialog() {
   }
 }
 
-void App::openRecentFile(RecentEntry entry) {
+void App::openRecentFile(Onyx::Services::RecentEntry entry) {
   fs::path p(entry.path);
   if (!fs::exists(p))
     return;
@@ -441,7 +441,7 @@ void App::drawMenuItems() {
 
     // â”€â”€ Recents submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (NativeMenuBar::beginMenu("Recent Files", !m_recentFiles.Empty())) {
-      RecentEntry entryToOpen;
+      Onyx::Services::RecentEntry entryToOpen;
       bool shouldOpen = false;
 
       for (const auto &entry : m_recentFiles.Entries()) {

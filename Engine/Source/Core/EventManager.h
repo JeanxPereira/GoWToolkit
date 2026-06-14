@@ -23,38 +23,38 @@
 //   EventWadOpened::post(wadPtr);
 
 #define EVENT_DEF_IMPL(event_name, event_name_string, should_log, ...)                                                  \
-    struct event_name final : public Onyx::impl::Event<__VA_ARGS__> {                                                    \
-        constexpr static auto Id = [] { return Onyx::impl::EventId(event_name_string); }();                              \
+    struct event_name final : public Onyx::Services::impl::Event<__VA_ARGS__> {                                          \
+        constexpr static auto Id = [] { return Onyx::Services::impl::EventId(event_name_string); }();                   \
         constexpr static auto ShouldLog = (should_log);                                                                 \
         explicit event_name(Callback func) noexcept : Event(std::move(func)) { }                                        \
                                                                                                                         \
-        static Onyx::EventManager::EventList::iterator subscribe(Event::Callback function) {                             \
-            return Onyx::EventManager::subscribe<event_name>(std::move(function));                                        \
+        static Onyx::Services::EventManager::EventList::iterator subscribe(Event::Callback function) {                  \
+            return Onyx::Services::EventManager::subscribe<event_name>(std::move(function));                             \
         }                                                                                                               \
         template<typename = void>                                                                                       \
-        static Onyx::EventManager::EventList::iterator subscribe(Event::BaseCallback function)                           \
+        static Onyx::Services::EventManager::EventList::iterator subscribe(Event::BaseCallback function)                 \
         requires (!std::same_as<Event::Callback, Event::BaseCallback>) {                                                \
-            return Onyx::EventManager::subscribe<event_name>([function = std::move(function)](auto && ...) {              \
+            return Onyx::Services::EventManager::subscribe<event_name>([function = std::move(function)](auto && ...) {   \
                 function();                                                                                             \
             });                                                                                                         \
         }                                                                                                               \
         static void subscribe(void *token, Event::Callback function) {                                                  \
-            Onyx::EventManager::subscribe<event_name>(token, std::move(function));                                        \
+            Onyx::Services::EventManager::subscribe<event_name>(token, std::move(function));                             \
         }                                                                                                               \
         template<typename = void>                                                                                       \
         static void subscribe(void *token, Event::BaseCallback function)                                                \
         requires (!std::same_as<Event::Callback, Event::BaseCallback>) {                                                \
-            return Onyx::EventManager::subscribe<event_name>(token,                                                       \
+            return Onyx::Services::EventManager::subscribe<event_name>(token,                                            \
                 [function = std::move(function)](auto && ...) { function(); });                                          \
         }                                                                                                               \
-        static void unsubscribe(const Onyx::EventManager::EventList::iterator &token) noexcept {                         \
-            Onyx::EventManager::unsubscribe(token);                                                                       \
+        static void unsubscribe(const Onyx::Services::EventManager::EventList::iterator &token) noexcept {              \
+            Onyx::Services::EventManager::unsubscribe(token);                                                            \
         }                                                                                                               \
         static void unsubscribe(void *token) noexcept {                                                                 \
-            Onyx::EventManager::unsubscribe<event_name>(token);                                                           \
+            Onyx::Services::EventManager::unsubscribe<event_name>(token);                                                \
         }                                                                                                               \
         static void post(auto &&...args) {                                                                              \
-            Onyx::EventManager::post<event_name>(std::forward<decltype(args)>(args)...);                                  \
+            Onyx::Services::EventManager::post<event_name>(std::forward<decltype(args)>(args)...);                       \
         }                                                                                                               \
     }
 
@@ -62,7 +62,7 @@
 #define EVENT_DEF_NO_LOG(event_name, ...)   EVENT_DEF_IMPL(event_name, #event_name, false, __VA_ARGS__)
 
 
-namespace Onyx {
+namespace Onyx::Services {
 
     namespace impl {
 
@@ -220,4 +220,4 @@ namespace Onyx {
         }
     };
 
-} // namespace Onyx
+} // namespace Onyx::Services

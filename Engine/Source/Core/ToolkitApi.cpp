@@ -9,8 +9,8 @@
 
 namespace Onyx::Api {
 
-    static AssetDatabase*       s_database  = nullptr;
-    static AppConfig*           s_config    = nullptr;
+    static Onyx::Services::AssetDatabase*  s_database  = nullptr;
+    static Onyx::Services::AppConfig*      s_config    = nullptr;
     static Onyx::App::ViewerRegistry* s_viewers   = nullptr;
     static Onyx::Viewers::DocumentWindow* s_documents = nullptr;
 
@@ -24,7 +24,7 @@ namespace Onyx::Api {
         s_documents = params.documents;
     }
 
-    AssetDatabase& Database() {
+    Onyx::Services::AssetDatabase& Database() {
         if (!s_database) {
             fprintf(stderr, "[ToolkitApi] FATAL: Database() called before Init()\n");
             std::abort();
@@ -32,7 +32,7 @@ namespace Onyx::Api {
         return *s_database;
     }
 
-    AppConfig& Config() {
+    Onyx::Services::AppConfig& Config() {
         if (!s_config) {
             fprintf(stderr, "[ToolkitApi] FATAL: Config() called before Init()\n");
             std::abort();
@@ -40,8 +40,8 @@ namespace Onyx::Api {
         return *s_config;
     }
 
-    ProfileManager& Profiles() {
-        return ProfileManager::Get();
+    Onyx::Services::ProfileManager& Profiles() {
+        return Onyx::Services::ProfileManager::Get();
     }
 
     Onyx::Types::TypeRegistry& Types() {

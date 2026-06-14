@@ -12,12 +12,14 @@ namespace Onyx {
     void InvalidateLodIndex();
 }
 
+namespace Onyx::Services {
+
 // â”€â”€ LoadPakFromIso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Abre ISO, detecta profile, extrai TOC â†’ paks[]
 bool AssetDatabase::LoadPakFromIso(const fs::path& isoPath) {
     if (!fs::exists(isoPath)) return false;
 
-    auto profile = Onyx::ProfileManager::Get().DetectProfileForFile(isoPath);
+    auto profile = Onyx::Services::ProfileManager::Get().DetectProfileForFile(isoPath);
     if (!profile) return false;
 
     auto vfs = profile->MountArchive(isoPath);
@@ -30,7 +32,7 @@ bool AssetDatabase::LoadPakFromIso(const fs::path& isoPath) {
 
     if (profile->LoadFromArchive(vfs, pak)) {
         paks.push_back(std::move(pak));
-        Onyx::TaskManager::doLater([this]() {
+        Onyx::Services::TaskManager::doLater([this]() {
             if (!paks.empty()) EventPakOpened::post(&paks.back());
         });
         return true;
@@ -91,7 +93,7 @@ bool AssetDatabase::LoadWadFromPakEntry(AssetEntry* e, AssetContainer& parentPak
     if (profile->ParseContainer(slice, result)) {
         LOG_INFO("[AssetDatabase] Parsed WAD '%s': %zu tags", e->name.c_str(), result.entries.size());
         wads.push_back(std::move(result));
-        Onyx::TaskManager::doLater([this]() {
+        Onyx::Services::TaskManager::doLater([this]() {
             if (!wads.empty()) EventWadOpened::post(&wads.back());
         });
         return true;
@@ -142,10 +144,10 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
     // Selecionar profile: por hint explÃ­cito ou auto-detect
     std::shared_ptr<Onyx::Domain::IAssetProfile> profile;
     if (!gameHint.empty()) {
-        profile = Onyx::ProfileManager::Get().FindProfileByHint(gameHint);
+        profile = Onyx::Services::ProfileManager::Get().FindProfileByHint(gameHint);
     }
     if (!profile) {
-        profile = Onyx::ProfileManager::Get().DetectProfileForFile(path);
+        profile = Onyx::Services::ProfileManager::Get().DetectProfileForFile(path);
     }
     if (!profile) return false;
 
@@ -171,7 +173,7 @@ bool AssetDatabase::LoadWad(const fs::path& path, const std::string& gameHint) {
 
     if (profile->ParseContainer(file, wad)) {
         wads.push_back(std::move(wad));
-        Onyx::TaskManager::doLater([this]() {
+        Onyx::Services::TaskManager::doLater([this]() {
             if (!wads.empty()) EventWadOpened::post(&wads.back());
         });
         return true;
@@ -240,7 +242,7 @@ void AssetDatabase::LoadWadAsync(const fs::path& path, const std::string& gameHi
         return;
     }
 
-    Onyx::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path, gameHint](Onyx::Task& task) {
+    Onyx::Services::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path, gameHint](Onyx::Services::Task& task) {
         task.update(5);
 
         bool success = LoadWad(path, gameHint);
@@ -259,7 +261,7 @@ void AssetDatabase::LoadIsoPakAsync(const fs::path& path) {
         return;
     }
 
-    Onyx::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path](Onyx::Task& task) {
+    Onyx::Services::TaskManager::createTask("Loading " + path.filename().string(), 100, [this, path](Onyx::Services::Task& task) {
         task.update(10);
 
         bool isoSuccess = LoadIso(path);
@@ -277,6 +279,8 @@ void AssetDatabase::LoadIsoPakAsync(const fs::path& path) {
 }
 
 bool AssetDatabase::IsLoading() const {
-    return Onyx::TaskManager::getRunningTaskCount() > 0;
+    return Onyx::Services::TaskManager::getRunningTaskCount() > 0;
 }
+
+} // namespace Onyx::Services
 

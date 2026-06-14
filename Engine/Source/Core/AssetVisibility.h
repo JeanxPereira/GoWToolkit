@@ -8,7 +8,7 @@
 namespace Onyx::Domain { struct AssetEntry; }
 using AssetEntry = Onyx::Domain::AssetEntry;
 
-namespace Onyx {
+namespace Onyx::Services {
 
 /// Controls whether a type appears in the WAD browser tree.
 enum class Visibility : uint8_t {
@@ -87,4 +87,4 @@ private:
     std::unordered_map<uint32_t, bool> m_overrides;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Services

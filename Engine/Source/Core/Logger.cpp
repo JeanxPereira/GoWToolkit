@@ -21,7 +21,7 @@
 #  define gowtool_fileno fileno
 #endif
 
-namespace Onyx {
+namespace Onyx::Services {
 
 // ── Shared state for the new structured surface ──────────────────────────
 namespace {
@@ -245,4 +245,4 @@ SinkToken InstallRotatingFileSink(const std::string& path, size_t maxBytes, size
 
 } // namespace Log
 
-} // namespace Onyx
+} // namespace Onyx::Services

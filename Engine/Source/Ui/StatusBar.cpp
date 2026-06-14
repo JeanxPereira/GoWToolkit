@@ -42,7 +42,7 @@ void StatusBar::Draw() {
     ImGui::Begin("Log", &visible);
 
     // ── TaskManager Progress (new system) ────────────────────────────────────
-    auto& tasks = Onyx::TaskManager::getRunningTasks();
+    auto& tasks = Onyx::Services::TaskManager::getRunningTasks();
     bool hasVisibleTasks = false;
 
     for (auto& task : tasks) {
@@ -66,7 +66,7 @@ void StatusBar::Draw() {
 
 
     // ── Background tasks indicator ────────────────────────────────────────────
-    size_t bgCount = Onyx::TaskManager::getRunningBackgroundTaskCount();
+    size_t bgCount = Onyx::Services::TaskManager::getRunningBackgroundTaskCount();
     if (bgCount > 0) {
         if (hasVisibleTasks) ImGui::Separator();
         ImGui::TextDisabled("Background tasks: %zu", bgCount);
@@ -77,7 +77,7 @@ void StatusBar::Draw() {
 
     // ── Log viewer ────────────────────────────────────────────────────────────
     if (ImGui::Button("Clear")) {
-        Onyx::Logger::Get().Clear();
+        Onyx::Services::Logger::Get().Clear();
     }
     ImGui::SameLine();
     bool copy = ImGui::Button("Copy to Clipboard");
@@ -87,7 +87,7 @@ void StatusBar::Draw() {
 
     if (copy) ImGui::LogToClipboard();
 
-    auto entries = Onyx::Logger::Get().GetEntries();
+    auto entries = Onyx::Services::Logger::Get().GetEntries();
 
     // Store scroll state before drawing logic
     bool atBottom = (ImGui::GetScrollY() >= ImGui::GetScrollMaxY());
@@ -96,11 +96,11 @@ void StatusBar::Draw() {
         const auto& entry = entries[i];
 
         // Skip debug messages in UI
-        if (entry.level == Onyx::LogLevel::Debug) continue;
+        if (entry.level == Onyx::Services::LogLevel::Debug) continue;
 
         ImVec4 color;
-        if (entry.level == Onyx::LogLevel::Error) color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
-        else if (entry.level == Onyx::LogLevel::Warning) color = ImVec4(1.0f, 0.8f, 0.4f, 1.0f);
+        if (entry.level == Onyx::Services::LogLevel::Error) color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+        else if (entry.level == Onyx::Services::LogLevel::Warning) color = ImVec4(1.0f, 0.8f, 0.4f, 1.0f);
         else color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
 
         ImGui::PushID(i);
@@ -124,7 +124,7 @@ void StatusBar::Draw() {
             if (ImGui::MenuItem("Copy All")) {
                 std::string allLogs;
                 for (const auto& e : entries) {
-                    if (e.level == Onyx::LogLevel::Debug) continue;
+                    if (e.level == Onyx::Services::LogLevel::Debug) continue;
                     allLogs += "[" + e.time + "] " + e.message + "\n";
                 }
                 ImGui::SetClipboardText(allLogs.c_str());

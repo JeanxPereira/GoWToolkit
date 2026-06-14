@@ -50,7 +50,7 @@ static Onyx::Types::GameVersion DetectGameVersion(const AssetEntry& e) {
 
 static bool IsEntryVisible(const AssetEntry& entry) {
     auto ver = DetectGameVersion(entry);
-    return Onyx::AssetVisibility::Get().IsVisible(ver, entry.typeId);
+    return Onyx::Services::AssetVisibility::Get().IsVisible(ver, entry.typeId);
 }
 
 

@@ -36,7 +36,7 @@ void InstallGoWPanels(Onyx::App::App& app) {
     // slider mutates s_volume during the draw, so reading it post-draw captures
     // a same-frame change the same frame — matching the original frameEnd()
     // write-back timing.
-    AppConfig* config = a.getConfig();
+    Onyx::Services::AppConfig* config = a.getConfig();
     EventStartupFinished::subscribe([config] {
       if (config)
         Onyx::SoundPlayer::s_volume = config->audioVolume;

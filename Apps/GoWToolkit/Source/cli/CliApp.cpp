@@ -89,8 +89,8 @@ static bool OpenWadFromFile(const std::filesystem::path& path,
                              std::shared_ptr<Vfs::IFile>& fileOut)
 {
     auto profile = gameHint.empty()
-        ? ProfileManager::Get().DetectProfileForFile(path)
-        : ProfileManager::Get().FindProfileByHint(gameHint);
+        ? Onyx::Services::ProfileManager::Get().DetectProfileForFile(path)
+        : Onyx::Services::ProfileManager::Get().FindProfileByHint(gameHint);
     if (!profile) {
         std::cerr << "[CLI] Could not detect game profile. Use --game gow2|ragnarok\n";
         return false;
@@ -304,7 +304,7 @@ int CliApp::HandleExtract(const std::vector<std::string>& args) {
         return 1;
     }
 
-    auto profile = ProfileManager::Get().DetectProfileForFile(isoPath);
+    auto profile = Onyx::Services::ProfileManager::Get().DetectProfileForFile(isoPath);
     if (!profile) {
         std::cerr << "[CLI] Could not detect game profile.\n";
         return 1;

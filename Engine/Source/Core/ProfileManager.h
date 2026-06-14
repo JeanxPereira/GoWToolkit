@@ -4,7 +4,7 @@
 #include <memory>
 #include <filesystem>
 
-namespace Onyx {
+namespace Onyx::Services {
 
 class ProfileManager {
 public:
@@ -29,4 +29,4 @@ private:
     std::vector<std::shared_ptr<Domain::IAssetProfile>> m_profiles;
 };
 
-} // namespace Onyx
+} // namespace Onyx::Services

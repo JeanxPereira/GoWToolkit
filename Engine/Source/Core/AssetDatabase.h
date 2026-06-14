@@ -17,6 +17,8 @@ namespace Onyx::Vfs {
     class IsoFileSystem;
 }
 
+namespace Onyx::Services {
+
 class AssetDatabase {
 public:
     // Carrega ISO e extrai TOC -> paks
@@ -57,4 +59,6 @@ public:
     std::vector<AssetContainer> wads;  // WAD internals (tags parseadas de um .WAD)
     std::vector<std::shared_ptr<Onyx::Vfs::IsoFileSystem>> isos;
 };
+
+} // namespace Onyx::Services
 

@@ -33,7 +33,7 @@ static std::string FormatFloat(float v) {
 
 namespace Onyx::App {
 
-void InfoTab::Draw(AssetDatabase& db, AssetEntry* e) {
+void InfoTab::Draw(Onyx::Services::AssetDatabase& db, AssetEntry* e) {
     if (!e) return;
 
     // Basic metadata table (always shown, read-only)

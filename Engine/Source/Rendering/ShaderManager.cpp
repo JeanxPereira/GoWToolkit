@@ -580,7 +580,7 @@ void ShaderManager::GenerateMatcapTexture() {
 
                 // Clay-like warm base (or from AppConfig)
                 float baseR = 0.62f, baseG = 0.58f, baseB = 0.56f;
-                auto* cfg = AppConfig::Get();
+                auto* cfg = Onyx::Services::AppConfig::Get();
                 if (cfg) {
                     baseR = cfg->matcapR;
                     baseG = cfg->matcapG;

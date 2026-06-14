@@ -5,6 +5,8 @@
 
 namespace fs = std::filesystem;
 
+namespace Onyx::Services {
+
 /// A single recent file entry with its path and detected game type.
 struct RecentEntry {
     std::string path;       // absolute file path
@@ -40,3 +42,5 @@ private:
     std::vector<RecentEntry> m_entries;
     std::string m_savePath;
 };
+
+} // namespace Onyx::Services

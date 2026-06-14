@@ -29,7 +29,7 @@
 #include <string_view>
 #include <vector>
 
-namespace Onyx {
+namespace Onyx::Services {
 
 // ── Legacy logging facade (still used by ~250 call sites) ─────────────────
 enum class LogLevel { Debug, Info, Warning, Error };
@@ -100,17 +100,17 @@ inline void Log(Level lvl, std::string_view category,
 
 } // namespace Log
 
-} // namespace Onyx
+} // namespace Onyx::Services
 
 // ── New category-aware macros (preferred) ────────────────────────────────
-#define GOW_LOG_TRACE(cat, ...) ::Onyx::Log::Log(::Onyx::Log::Level::Trace, (cat), __VA_ARGS__)
-#define GOW_LOG_DEBUG(cat, ...) ::Onyx::Log::Log(::Onyx::Log::Level::Debug, (cat), __VA_ARGS__)
-#define GOW_LOG_INFO(cat, ...)  ::Onyx::Log::Log(::Onyx::Log::Level::Info,  (cat), __VA_ARGS__)
-#define GOW_LOG_WARN(cat, ...)  ::Onyx::Log::Log(::Onyx::Log::Level::Warn,  (cat), __VA_ARGS__)
-#define GOW_LOG_ERROR(cat, ...) ::Onyx::Log::Log(::Onyx::Log::Level::Error, (cat), __VA_ARGS__)
+#define GOW_LOG_TRACE(cat, ...) ::Onyx::Services::Log::Log(::Onyx::Services::Log::Level::Trace, (cat), __VA_ARGS__)
+#define GOW_LOG_DEBUG(cat, ...) ::Onyx::Services::Log::Log(::Onyx::Services::Log::Level::Debug, (cat), __VA_ARGS__)
+#define GOW_LOG_INFO(cat, ...)  ::Onyx::Services::Log::Log(::Onyx::Services::Log::Level::Info,  (cat), __VA_ARGS__)
+#define GOW_LOG_WARN(cat, ...)  ::Onyx::Services::Log::Log(::Onyx::Services::Log::Level::Warn,  (cat), __VA_ARGS__)
+#define GOW_LOG_ERROR(cat, ...) ::Onyx::Services::Log::Log(::Onyx::Services::Log::Level::Error, (cat), __VA_ARGS__)
 
 // ── Legacy printf-style macros (no category) ─────────────────────────────
-#define LOG_DEBUG(...) ::Onyx::Logger::Get().Log(::Onyx::LogLevel::Debug,   __VA_ARGS__)
-#define LOG_INFO(...)  ::Onyx::Logger::Get().Log(::Onyx::LogLevel::Info,    __VA_ARGS__)
-#define LOG_WARN(...)  ::Onyx::Logger::Get().Log(::Onyx::LogLevel::Warning, __VA_ARGS__)
-#define LOG_ERR(...)   ::Onyx::Logger::Get().Log(::Onyx::LogLevel::Error,   __VA_ARGS__)
+#define LOG_DEBUG(...) ::Onyx::Services::Logger::Get().Log(::Onyx::Services::LogLevel::Debug,   __VA_ARGS__)
+#define LOG_INFO(...)  ::Onyx::Services::Logger::Get().Log(::Onyx::Services::LogLevel::Info,    __VA_ARGS__)
+#define LOG_WARN(...)  ::Onyx::Services::Logger::Get().Log(::Onyx::Services::LogLevel::Warning, __VA_ARGS__)
+#define LOG_ERR(...)   ::Onyx::Services::Logger::Get().Log(::Onyx::Services::LogLevel::Error,   __VA_ARGS__)

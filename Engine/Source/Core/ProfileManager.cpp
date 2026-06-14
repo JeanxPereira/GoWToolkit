@@ -1,6 +1,6 @@
 #include "ProfileManager.h"
 
-namespace Onyx {
+namespace Onyx::Services {
 
 void ProfileManager::RegisterProfile(std::shared_ptr<Domain::IAssetProfile> profile) {
     if (profile) {
@@ -45,4 +45,4 @@ std::shared_ptr<Domain::IAssetProfile> ProfileManager::FindProfileByHint(const s
     return nullptr;
 }
 
-} // namespace Onyx
+} // namespace Onyx::Services

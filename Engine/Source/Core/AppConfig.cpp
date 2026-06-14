@@ -54,6 +54,8 @@ struct ConfigBinaryData {
 };
 #pragma pack(pop)
 
+namespace Onyx::Services {
+
 static AppConfig* s_instance = nullptr;
 
 AppConfig* AppConfig::Get() {
@@ -137,10 +139,10 @@ AppConfig AppConfig::load(const std::string& path) {
             if (data.version >= 9) {
                 uint32_t overrideCount = 0;
                 if (f.read(reinterpret_cast<char*>(&overrideCount), 4) && overrideCount > 0 && overrideCount < 1024) {
-                    std::vector<Onyx::AssetVisibility::SerializedOverride> overrides(overrideCount);
+                    std::vector<AssetVisibility::SerializedOverride> overrides(overrideCount);
                     f.read(reinterpret_cast<char*>(overrides.data()),
-                           overrideCount * sizeof(Onyx::AssetVisibility::SerializedOverride));
-                    Onyx::AssetVisibility::Get().ImportOverrides(overrides);
+                           overrideCount * sizeof(AssetVisibility::SerializedOverride));
+                    AssetVisibility::Get().ImportOverrides(overrides);
                 }
             }
 
@@ -221,12 +223,12 @@ void AppConfig::save(const std::string& path) const {
     }
 
     // V9: Asset visibility overrides
-    auto overrides = Onyx::AssetVisibility::Get().ExportOverrides();
+    auto overrides = AssetVisibility::Get().ExportOverrides();
     uint32_t overrideCount = (uint32_t)overrides.size();
     f.write(reinterpret_cast<const char*>(&overrideCount), 4);
     if (overrideCount > 0) {
         f.write(reinterpret_cast<const char*>(overrides.data()),
-                overrideCount * sizeof(Onyx::AssetVisibility::SerializedOverride));
+                overrideCount * sizeof(AssetVisibility::SerializedOverride));
     }
 
     // V11: Custom accent presets
@@ -237,4 +239,6 @@ void AppConfig::save(const std::string& path) const {
                 presetCount * sizeof(AppConfig::CustomPreset));
     }
 }
+
+} // namespace Onyx::Services
 

@@ -482,7 +482,7 @@ void SettingsWindow::DrawAppearanceCategory() {
         ImGui::SameLine();
         const bool ok = ImGui::Button("Save");
         if (ok && buf[0] != '\0') {
-          AppConfig::CustomPreset cp{};
+          Onyx::Services::AppConfig::CustomPreset cp{};
           std::strncpy(cp.name, buf, sizeof(cp.name) - 1);
           cp.r = config->accentR;
           cp.g = config->accentG;
@@ -545,7 +545,7 @@ void SettingsWindow::DrawViewportCategory() {
 // â”€â”€ Category: Asset Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void SettingsWindow::DrawAssetFiltersCategory() {
-    auto& vis = Onyx::AssetVisibility::Get();
+    auto& vis = Onyx::Services::AssetVisibility::Get();
 
     if (BeginSubWindow("Filters", ImVec2(0, 0))) {
         // â”€â”€ Reset button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -574,11 +574,11 @@ void SettingsWindow::DrawAssetFiltersCategory() {
             if (types.empty()) continue;
 
             // Separate into hidden-by-default and visible-by-default groups
-            std::vector<Onyx::AssetVisibility::TypeVisInfo> hiddenDefaults;
-            std::vector<Onyx::AssetVisibility::TypeVisInfo> visibleDefaults;
+            std::vector<Onyx::Services::AssetVisibility::TypeVisInfo> hiddenDefaults;
+            std::vector<Onyx::Services::AssetVisibility::TypeVisInfo> visibleDefaults;
 
             for (const auto& t : types) {
-                if (t.defaultVis == Onyx::Visibility::Hidden) {
+                if (t.defaultVis == Onyx::Services::Visibility::Hidden) {
                     hiddenDefaults.push_back(t);
                 } else {
                     visibleDefaults.push_back(t);

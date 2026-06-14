@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <ranges>
 
-namespace Onyx {
+namespace Onyx::Services {
 
     // â”€â”€ Static storage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -319,4 +319,4 @@ namespace Onyx {
         s_tasksFinishedCallbacks.push_back(function);
     }
 
-} // namespace Onyx
+} // namespace Onyx::Services

@@ -187,7 +187,7 @@ void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
     // Fan out â€” one background task per pack. Heavy work (LZ4 + parse) runs
     // outside the mutex; only the final merge into m_entries holds it briefly.
     for (uint32_t packIdx : order) {
-        TaskManager::createBackgroundTask(
+        Services::TaskManager::createBackgroundTask(
             "TexPack: " + m_packs[packIdx].tocPath.stem().stem().string(),
             [this, packIdx]() {
                 this->IndexPack(packIdx);

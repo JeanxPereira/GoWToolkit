@@ -5,6 +5,8 @@
 // File format: one entry per line, tab-separated:
 // path<TAB>gameHint<TAB>fileType
 
+namespace Onyx::Services {
+
 void RecentFiles::Load(const std::string& path) {
     m_savePath = path;
     m_entries.clear();
@@ -72,3 +74,5 @@ void RecentFiles::Add(const std::string& filePath, const std::string& gameHint, 
     if (!m_savePath.empty())
         Save(m_savePath);
 }
+
+} // namespace Onyx::Services

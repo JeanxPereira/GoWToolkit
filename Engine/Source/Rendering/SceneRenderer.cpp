@@ -561,7 +561,7 @@ void SceneRenderer::Render(const glm::mat4& view, const glm::mat4& proj, Shading
         
         shader->Use();
         shader->SetInt("uWireframeOverride", 1);
-        auto* cfg = AppConfig::Get();
+        auto* cfg = Onyx::Services::AppConfig::Get();
         glm::vec4 wireColor = cfg ? glm::vec4(cfg->wireR, cfg->wireG, cfg->wireB, 1.0f) : glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         shader->SetVec4("uWireColor", wireColor);
         
@@ -690,7 +690,7 @@ void SceneRenderer::RenderSkeleton(const glm::mat4& view, const glm::mat4& proj)
     struct LineVert { glm::vec3 pos; glm::vec4 color; };
     std::vector<LineVert> lines;
 
-    auto* cfg = AppConfig::Get();
+    auto* cfg = Onyx::Services::AppConfig::Get();
     glm::vec4 boneColor = cfg ? glm::vec4(cfg->boneR, cfg->boneG, cfg->boneB, 1.0f) : glm::vec4(0.0f, 1.0f, 0.4f, 1.0f);
     glm::vec4 rootColor = cfg ? glm::vec4(cfg->boneG, cfg->boneR, cfg->boneB, 1.0f) : glm::vec4(1.0f, 0.3f, 0.1f, 1.0f);
     glm::vec4 jointDot = boneColor * 0.5f + glm::vec4(0.5f);
@@ -906,7 +906,7 @@ void SceneRenderer::RenderOutlineScreenSpace(const glm::mat4& view, const glm::m
     postShader->SetInt("uMaskTex", 0);
     postShader->SetVec2("uTexelSize", glm::vec2(1.0f / viewportW, 1.0f / viewportH));
 
-    auto* cfg = AppConfig::Get();
+    auto* cfg = Onyx::Services::AppConfig::Get();
     glm::vec4 hlColor = cfg ? glm::vec4(cfg->hlR, cfg->hlG, cfg->hlB, cfg->hlA)
                             : glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
     postShader->SetVec4("uOutlineColor", hlColor);

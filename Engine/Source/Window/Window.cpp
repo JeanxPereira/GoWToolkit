@@ -45,15 +45,15 @@ Window::Window()
 {
     s_windowInstance = this;
 
-    m_config = AppConfig::load(m_configPath);
-    AppConfig::SetInstance(&m_config);
+    m_config = Onyx::Services::AppConfig::load(m_configPath);
+    Onyx::Services::AppConfig::SetInstance(&m_config);
 
     initGLFW();
     initImGui();
     setupNativeWindow();
 
     // Initialize core systems
-    Onyx::TaskManager::init();
+    Onyx::Services::TaskManager::init();
 }
 
 // -- run -- finalize App and enter the frame loop ------------------------------
@@ -96,8 +96,8 @@ Window::~Window() {
 
     // Shutdown core systems
     EventShutdown::post();
-    Onyx::EventManager::clear();
-    Onyx::TaskManager::exit();
+    Onyx::Services::EventManager::clear();
+    Onyx::Services::TaskManager::exit();
 
     exitImGui();
     exitGLFW();

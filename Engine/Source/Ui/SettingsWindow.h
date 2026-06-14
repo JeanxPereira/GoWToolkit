@@ -15,7 +15,7 @@ namespace Onyx::App {
 class SettingsWindow : public IPanel {
 public:
     // Reference to shared config — set in App::init
-    AppConfig* config = nullptr;
+    Onyx::Services::AppConfig* config = nullptr;
 
     void Init();
     void Draw() override;

@@ -13,7 +13,7 @@ using AssetContainer = Onyx::Domain::AssetContainer;
 using AssetEntry     = Onyx::Domain::AssetEntry;
 namespace Onyx::Viewers { class IDocumentContent; }
 namespace Onyx::Parsers { struct AnimationData; }
-class AppConfig;
+namespace Onyx::Services { struct AppConfig; }
 
 // ── Lifecycle Events ───────────────────────────────────────────────────────
 

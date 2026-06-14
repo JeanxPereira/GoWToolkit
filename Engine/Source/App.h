@@ -18,7 +18,7 @@ namespace Onyx::App {
 class App {
 public:
     App();
-    void init(GLFWwindow* window, AppConfig* config);
+    void init(GLFWwindow* window, Onyx::Services::AppConfig* config);
 
     // Hook the executable uses to register game-specific panels and viewers.
     // Set before init(); invoked once during init, after the engine's generic
@@ -38,8 +38,8 @@ public:
     bool wantClose() const { return m_wantClose; }
 
     // UI Component Getters (for external access)
-    AssetDatabase& getDatabase() { return m_db; }
-    AppConfig*     getConfig() { return m_config; }
+    Onyx::Services::AssetDatabase& getDatabase() { return m_db; }
+    Onyx::Services::AppConfig*     getConfig() { return m_config; }
     Onyx::Viewers::DocumentWindow& getDocumentWindow() { return m_documentWindow; }
     ViewerRegistry& getViewerRegistry() { return m_viewerRegistry; }
 
@@ -50,15 +50,15 @@ private:
     void drawOpenDialog();
     void setupDockLayout(ImGuiID dockspace_id);
     void registerPanels();
-    void openRecentFile(RecentEntry entry);
+    void openRecentFile(Onyx::Services::RecentEntry entry);
     std::string getRecentsPath() const;
 
-    AssetDatabase         m_db;
+    Onyx::Services::AssetDatabase   m_db;
     PanelRegistry         m_panels;
     Onyx::Viewers::DocumentWindow   m_documentWindow;
     ViewerRegistry                  m_viewerRegistry;
     WindowDecorator       m_decorator;
-    AppConfig*            m_config  = nullptr;
+    Onyx::Services::AppConfig*      m_config  = nullptr;
     GLFWwindow*           m_window  = nullptr;
     bool                  m_wantClose         = false;
     bool                  m_layoutInitialized = false;
@@ -67,7 +67,7 @@ private:
     AppRegistrar          m_registrar;
 
     // Recents
-    RecentFiles           m_recentFiles;
+    Onyx::Services::RecentFiles     m_recentFiles;
 
     // Open dialog state
     bool m_showOpenDialog = false;
