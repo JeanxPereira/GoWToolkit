@@ -12,6 +12,10 @@ public:
 
     std::string GetName() const override { return "God of War II (PS2)"; }
 
+    Onyx::Domain::OpenFilter GetOpenFilter() const override {
+        return {"God of War I / II (PS2)", {"iso", "wad"}};
+    }
+
     bool Detect(const std::filesystem::path& path) const override;
     
     std::shared_ptr<Vfs::IVirtualFileSystem> MountArchive(const std::filesystem::path& path) override;
