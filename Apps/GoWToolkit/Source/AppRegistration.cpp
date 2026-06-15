@@ -1,6 +1,7 @@
 ﻿#include "AppRegistration.h"
 
 #include <Onyx/App/App.h>
+#include "imgui_internal.h"
 
 #include <Onyx/Services/AppConfig.h>
 #include <Onyx/Services/Events.h>
@@ -38,6 +39,26 @@ void InstallGoWPanels(Onyx::App::App& app) {
     { auto p = std::make_unique<Onyx::Viewers::Dopesheet>(); p->visible = false; a.addPanel(std::move(p)); }
 
     if (auto* cfg = a.getConfig()) cfg->windowTitle = "God Of War Toolkit";
+
+    a.SetDefaultLayout([](ImGuiID dockspace) {
+      ImGui::DockBuilderRemoveNode(dockspace);
+      ImGui::DockBuilderAddNode(dockspace, ImGuiDockNodeFlags_DockSpace);
+      ImGui::DockBuilderSetNodeSize(dockspace, ImGui::GetMainViewport()->Size);
+      ImGuiID dock_main = dockspace;
+      ImGuiID dock_left = 0;
+      ImGuiID dock_bottom = 0;
+      ImGuiID dock_right = 0;
+      ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Left,  0.22f, &dock_left,   &dock_main);
+      ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Down,  0.20f, &dock_bottom, &dock_main);
+      ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Right, 0.25f, &dock_right,  &dock_main);
+      ImGui::DockBuilderDockWindow("PAK Browser", dock_left);
+      ImGui::DockBuilderDockWindow("WAD Browser", dock_left);
+      ImGui::DockBuilderDockWindow("Viewer",      dock_main);
+      ImGui::DockBuilderDockWindow("Inspector",   dock_right);
+      ImGui::DockBuilderDockWindow("Camera",      dock_right); // tab next to Inspector
+      ImGui::DockBuilderDockWindow("Log",         dock_bottom);
+      ImGui::DockBuilderFinish(dockspace);
+    });
 
     // Game (app) panels
     a.addPanel(std::make_unique<WadBrowser>());
