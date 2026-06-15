@@ -5,6 +5,14 @@
 #include <Onyx/Services/AppConfig.h>
 #include <Onyx/Services/Events.h>
 
+// Generic opt-in panels (previously auto-registered by the engine)
+#include <Onyx/App/Panels/IsoBrowser.h>
+#include <Onyx/App/Panels/PakBrowser.h>
+#include <Onyx/App/Panels/CameraPanel.h>
+#include <Onyx/App/Panels/AnimCurveView.h>
+#include <Onyx/App/Panels/Dopesheet.h>
+#include <Onyx/App/Panels/WadStatsView.h>
+
 // Game panels
 #include "ui/Inspector.h"
 #include "ui/WadBrowser.h"
@@ -18,8 +26,20 @@ namespace Onyx {
 
 void InstallGoWPanels(Onyx::App::App& app) {
   app.SetRegistrar([](Onyx::App::App& a) {
-    // Game (app) panels â€” these were previously hardcoded in
-    // App::registerPanels(). Constructor args match verbatim.
+    // Generic panels GoWToolkit opts into (previously auto-registered by the
+    // engine; now app-composed after Onyx panel-composition change).
+    // Default-hidden: ISO Browser, Anim Curves, WAD Stats, Dopesheet.
+    // Default-visible: PAK Browser, Camera.
+    { auto p = std::make_unique<Onyx::App::IsoBrowser>(); p->visible = false; a.addPanel(std::move(p)); }
+    a.addPanel(std::make_unique<Onyx::App::PakBrowser>());
+    a.addPanel(std::make_unique<Onyx::App::CameraPanel>());
+    { auto p = std::make_unique<Onyx::Viewers::AnimCurveView>(); p->visible = false; a.addPanel(std::move(p)); }
+    { auto p = std::make_unique<Onyx::Viewers::WadStatsView>(); p->visible = false; a.addPanel(std::move(p)); }
+    { auto p = std::make_unique<Onyx::Viewers::Dopesheet>(); p->visible = false; a.addPanel(std::move(p)); }
+
+    if (auto* cfg = a.getConfig()) cfg->windowTitle = "God Of War Toolkit";
+
+    // Game (app) panels
     a.addPanel(std::make_unique<WadBrowser>());
     a.addPanel(std::make_unique<Inspector>());
 
@@ -34,7 +54,7 @@ void InstallGoWPanels(Onyx::App::App& app) {
     // The mirror runs on EventFrameEnd (posted AFTER panels/documents draw),
     // not EventFrameTick (posted before the draw). The SoundPlayer volume
     // slider mutates s_volume during the draw, so reading it post-draw captures
-    // a same-frame change the same frame â€” matching the original frameEnd()
+    // a same-frame change the same frame â€" matching the original frameEnd()
     // write-back timing.
     Onyx::Services::AppConfig* config = a.getConfig();
     EventStartupFinished::subscribe([config] {
