@@ -2,6 +2,8 @@
 #include <Onyx/Domain/IAssetProfile.h>
 #include <Onyx/Schema/StructDef.h>
 #include <map>
+#include <string>
+#include <vector>
 
 namespace Onyx {
 
@@ -11,6 +13,7 @@ public:
     ~ProfileGOW2() override = default;
 
     std::string GetName() const override { return "God of War II (PS2)"; }
+    std::vector<std::string> GetHints() const override { return {"gow1", "gow2", "ps2"}; }
 
     Onyx::Domain::OpenFilter GetOpenFilter() const override {
         return {"God of War I / II (PS2)", {"iso", "wad"}};
