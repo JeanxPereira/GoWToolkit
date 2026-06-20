@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include <Onyx/Parsers/MeshData.h>
-#include <Onyx/Types/GameVersion.h>
 #include <Onyx/Vfs/IFile.h>
 #include <memory>
 

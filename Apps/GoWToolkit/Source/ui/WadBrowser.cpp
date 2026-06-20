@@ -39,18 +39,8 @@ WadBrowser::~WadBrowser() {
 // Delegates to the centralized AssetVisibility registry which handles both
 // GOW2 (TypeId-based) and GOWR (roleÃ¢â€ â€™TypeId mapping) in one code path.
 // Users can toggle visibility per type via the Asset Filters panel.
-static Onyx::Types::GameVersion DetectGameVersion(const AssetEntry& e) {
-    // GOWR entries have a classified role via GowrProfileTag
-    if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
-        if (t->role != Onyx::Gowr::WadEntryRole::Unknown)
-            return Onyx::Types::GameVersion::GOWR;
-    }
-    return Onyx::Types::GameVersion::GOW2;
-}
-
 static bool IsEntryVisible(const AssetEntry& entry) {
-    auto ver = DetectGameVersion(entry);
-    return Onyx::Services::AssetVisibility::Get().IsVisible(ver, entry.typeId);
+    return Onyx::Services::AssetVisibility::Get().IsVisible(entry.typeId);
 }
 
 

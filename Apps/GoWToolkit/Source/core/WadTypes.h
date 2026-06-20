@@ -14,5 +14,4 @@
 #include <Onyx/Domain/Entry.h>
 #include <Onyx/Domain/Wad.h>
 #include "core/domain/WadEntryRoleLegacy.h"
-#include <Onyx/Types/GameVersion.h>
 #include <Onyx/Types/TypeId.h>
