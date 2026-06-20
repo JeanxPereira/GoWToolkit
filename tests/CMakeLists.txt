@@ -23,6 +23,7 @@ list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/theme_stubs.cpp")
 # Container end-to-end plus the type catalog the snapshots label entries with.
 set(APP_TEST_SOURCES
     "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/types/GameTypes.cpp"
+    "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/types/WadDispatch.cpp"
     "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/profiles/gow2/ProfileGOW2.cpp"
     "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/profiles/gow2/formats/MDL.cpp"
     "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/profiles/gowr/ProfileGOWR.cpp"
