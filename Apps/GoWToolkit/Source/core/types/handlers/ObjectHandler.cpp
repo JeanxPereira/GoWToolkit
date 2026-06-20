@@ -15,7 +15,7 @@
 #include "core/parsers/gow2/TextureParser.h"
 #include "core/parsers/gow2/AnimationParser.h"
 #include <Onyx/Parsers/SceneNode.h>
-#include <Onyx/Parsers/ScriptTargetParser.h>
+#include "core/parsers/gow2/ScriptTargetParser.h"
 #include <Onyx/Vfs/SliceFile.h>
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Viewers/Viewport3D.h>

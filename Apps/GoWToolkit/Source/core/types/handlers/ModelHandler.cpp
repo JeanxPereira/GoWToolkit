@@ -19,7 +19,7 @@
 #include "core/parsers/gow2/TextureParser.h"
 #include "core/parsers/gow2/MaterialParser.h"
 #include <Onyx/Parsers/SceneNode.h>
-#include <Onyx/Parsers/ScriptTargetParser.h>
+#include "core/parsers/gow2/ScriptTargetParser.h"
 #include <Onyx/Vfs/SliceFile.h>
 #include "core/WadTypes.h"
 #include <Onyx/Services/Logger.h>
