@@ -5,6 +5,7 @@
 #include <Onyx/Types/TypeRegistry.h>
 #include <Onyx/Types/TypeCatalog.h>
 #include "core/types/GameTypes.h"
+#include "core/types/WadDispatch.h"
 #include <iostream>
 #include <set>
 #include <algorithm>
@@ -147,7 +148,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
             payloadSizeAvailable = 4;
         }
 
-        auto* handler = Types::TypeRegistry::Get().ResolveByTag(Types::GameVersion::GOW2, rawTag.tag, payloadMagic, payloadSizeAvailable);
+        auto* handler = Gow::WadTypeRegistry::Get().ResolveByTag(Gow::GameVersion::GOW2, rawTag.tag, payloadMagic, payloadSizeAvailable);
         entry.typeId = handler ? handler->GetId() : GameTypes::Unknown;
 
         // Set schema string for UI display
