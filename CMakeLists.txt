@@ -22,7 +22,7 @@ FetchContent_MakeAvailable(OnyxSDK)
 # ONYX_FFMPEG_DLLS / ONYX_FONTS_DIR are now available.
 
 # ── bcdec (app-only, image-decoder single-header — NOT part of Onyx) ────
-# Referenced from Apps/GoWToolkit/CMakeLists via
+# Referenced from cmake/GoWToolkit.cmake via
 #   target_include_directories(... third_party/bcdec)
 # No CMake target needed; the include dir is set app-side.
 
@@ -62,8 +62,9 @@ endif()
 # ── Targets -----------------------------------------------------------------
 #
 # Engine (Onyx) is now consumed from OnyxSDK via FetchContent above.
-# GoWToolkit is the executable (first consumer of Onyx::Onyx).
-add_subdirectory(Apps/GoWToolkit)
+# GoWToolkit is the executable (first consumer of Onyx::Onyx); its target is
+# defined in cmake/GoWToolkit.cmake and consumes Source/ at the repo root.
+include(cmake/GoWToolkit.cmake)
 
 # ── Tests ─────────────────────────────────────────────────────────────────
 if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)

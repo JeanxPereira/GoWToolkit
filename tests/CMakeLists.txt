@@ -18,23 +18,23 @@ file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/theme_stubs.cpp")
 
 # ── App-core sources the golden / table tests link against ────────────────
-# These live under Apps/GoWToolkit/Source (game-specific, not part of Onyx).
+# These live under Source/ (game-specific, not part of Onyx).
 # Minimal closure to run ProfileGOW2::ParseContainer / ProfileGOWR::Parse-
 # Container end-to-end plus the type catalog the snapshots label entries with.
 set(APP_TEST_SOURCES
-    "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/types/GameTypes.cpp"
-    "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/types/WadDispatch.cpp"
-    "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/profiles/gow2/ProfileGOW2.cpp"
-    "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/profiles/gow2/formats/MDL.cpp"
-    "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/profiles/gowr/ProfileGOWR.cpp"
-    "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/profiles/gowr/WadNodeBuilder.cpp"
-    "${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source/core/profiles/gowr/GowrTaxonomy.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/types/GameTypes.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/types/WadDispatch.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/profiles/gow2/ProfileGOW2.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/profiles/gow2/formats/MDL.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/profiles/gowr/ProfileGOWR.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/profiles/gowr/WadNodeBuilder.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/profiles/gowr/GowrTaxonomy.cpp"
 )
 
 add_executable(gowtoolkit_tests ${TEST_SOURCES} ${APP_TEST_SOURCES})
 
 target_include_directories(gowtoolkit_tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/Apps/GoWToolkit/Source
+    ${CMAKE_SOURCE_DIR}/Source
     ${CMAKE_SOURCE_DIR}/third_party/bcdec
 )
 # Engine headers are inherited transitively via Onyx::Onyx PUBLIC interface
