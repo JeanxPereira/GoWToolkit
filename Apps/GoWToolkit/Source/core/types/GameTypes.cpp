@@ -14,7 +14,7 @@ Onyx::Types::TypeId Unknown, EntityCount, GroupStart, GroupEnd, HeaderStart, Hea
     ShaderCompute, ShaderLibrary, MeshGpu, MeshDefn, GameObjectProto,
     GameObjectInst, GameObjectOverride, TexturePair, MaterialRef, LodBinding,
     AnimClip, SoundEmitter, ParticleEmitter, ParticleSystem, ClientGuid,
-    WadIdentity, SharedWadRef, Sentinel;
+    WadIdentity, SharedWadRef, Sentinel, GowrMaterial;
 
 void RegisterGameTypes() {
     // Map legacy value -> the extern handle, so registration fills them in order.
@@ -27,7 +27,7 @@ void RegisterGameTypes() {
         &ShaderCompute, &ShaderLibrary, &MeshGpu, &MeshDefn, &GameObjectProto,
         &GameObjectInst, &GameObjectOverride, &TexturePair, &MaterialRef, &LodBinding,
         &AnimClip, &SoundEmitter, &ParticleEmitter, &ParticleSystem, &ClientGuid,
-        &WadIdentity, &SharedWadRef, &Sentinel,
+        &WadIdentity, &SharedWadRef, &Sentinel, &GowrMaterial,
     };
     static_assert(std::size(slots) == std::size(kGameTypeTable),
                   "slots[] and kGameTypeTable must stay in sync");

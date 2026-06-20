@@ -645,7 +645,7 @@ static Types::TypeId RoleToTypeId(WadEntryRole role) {
         case WadEntryRole::TexturePair: return GameTypes::TexturePair;
         case WadEntryRole::TextureGpu: return GameTypes::TexturePair;
         case WadEntryRole::TextureCpu: return GameTypes::TexturePair;
-        case WadEntryRole::Material: return GameTypes::Material;
+        case WadEntryRole::Material: return GameTypes::GowrMaterial;
         case WadEntryRole::MaterialRef: return GameTypes::MaterialRef;
         case WadEntryRole::LodBinding: return GameTypes::LodBinding;
         case WadEntryRole::AnimClip: return GameTypes::AnimClip;

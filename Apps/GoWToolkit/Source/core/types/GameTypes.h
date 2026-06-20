@@ -14,7 +14,7 @@ extern Onyx::Types::TypeId Unknown, EntityCount, GroupStart, GroupEnd, HeaderSta
     ShaderCompute, ShaderLibrary, MeshGpu, MeshDefn, GameObjectProto,
     GameObjectInst, GameObjectOverride, TexturePair, MaterialRef, LodBinding,
     AnimClip, SoundEmitter, ParticleEmitter, ParticleSystem, ClientGuid,
-    WadIdentity, SharedWadRef, Sentinel;
+    WadIdentity, SharedWadRef, Sentinel, GowrMaterial;
 
 // Registers every GoW type into the TypeCatalog, in legacy enum order so each
 // handle's .value equals its old enum value (GTKC V9 persistence stability).

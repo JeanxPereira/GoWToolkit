@@ -26,10 +26,9 @@ void RegisterGameVisibilityDefaults() {
     vis.SetDefault(GameTypes::Collision,    Onyx::Services::Visibility::Hidden);
     vis.SetDefault(GameTypes::Script,       Onyx::Services::Visibility::Hidden);
     vis.SetDefault(GameTypes::Flipbook,     Onyx::Services::Visibility::Hidden);
-    vis.SetDefault(GameTypes::MeshGpu,      Onyx::Services::Visibility::Hidden);
-    vis.SetDefault(GameTypes::Model,        Onyx::Services::Visibility::Hidden);
-    vis.SetDefault(GameTypes::Material,     Onyx::Services::Visibility::Hidden);
-    vis.SetDefault(GameTypes::MaterialRef,  Onyx::Services::Visibility::Hidden);
+    vis.SetDefault(GameTypes::MeshGpu,        Onyx::Services::Visibility::Hidden);
+    vis.SetDefault(GameTypes::GowrMaterial,   Onyx::Services::Visibility::Hidden);
+    vis.SetDefault(GameTypes::MaterialRef,    Onyx::Services::Visibility::Hidden);
     vis.SetDefault(GameTypes::AnimClip,     Onyx::Services::Visibility::Hidden);
     vis.SetDefault(GameTypes::SoundEmitter, Onyx::Services::Visibility::Hidden);
     vis.SetDefault(GameTypes::LodBinding,   Onyx::Services::Visibility::Hidden);

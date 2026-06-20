@@ -74,6 +74,7 @@ inline constexpr GameTypeRow kGameTypeTable[] = {
     { 47, "GOWR_WAD_IDENTITY",   "WAD Identity",     Domain::MediaKind::Container, ICON_SF_DOCUMENT,    {0.6f, 0.6f, 0.6f, 1.0f} },
     { 48, "GOWR_SHARED_WAD_REF", "Shared WAD Ref",   Domain::MediaKind::Container, ICON_SF_DOCUMENT,    {0.6f, 0.6f, 0.6f, 1.0f} },
     { 49, "SENTINEL",            "Sentinel",         Domain::MediaKind::Unknown,   ICON_SF_DOCUMENT,    {0.6f, 0.6f, 0.6f, 1.0f} },
+    { 50, "GOWR_MATERIAL",      "Material",          Domain::MediaKind::Material,  ICON_SF_DOCUMENT,    {0.6f, 0.6f, 0.6f, 1.0f} },
 };
 
 } // namespace Onyx
