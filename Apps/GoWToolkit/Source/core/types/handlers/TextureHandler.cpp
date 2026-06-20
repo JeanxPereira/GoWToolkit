@@ -3,6 +3,7 @@
 
 #include <Onyx/Types/TypeRegistry.h>
 #include <Onyx/Types/ITypeHandler.h>
+#include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
 
 #include <Onyx/Viewers/ImageViewer.h>
@@ -11,7 +12,7 @@
 
 namespace {
 
-class TextureHandler : public Onyx::Types::ITypeHandler {
+class TextureHandler : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Texture; }
     const char*  GetName()  const override { return "Texture"; }
@@ -30,4 +31,4 @@ public:
 
 } // anonymous namespace
 
-REGISTER_TYPE(GOW2, TextureHandler);
+REGISTER_GOW_TYPE(GOW2, TextureHandler);

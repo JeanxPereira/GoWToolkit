@@ -9,6 +9,7 @@
 
 #include <Onyx/Types/TypeRegistry.h>
 #include <Onyx/Types/ITypeHandler.h>
+#include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
 #include <Onyx/Schema/AssetReader.h>
 #include "core/formats/GOW2ModelFormat.h"
@@ -77,7 +78,7 @@ static const Onyx::Parsers::MaterialInfo::Layer* SelectMainLayer(const Onyx::Par
     return main;
 }
 
-class ModelHandler : public Onyx::Types::ITypeHandler {
+class ModelHandler : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Model; }
     const char*  GetName()  const override { return "Model"; }
@@ -216,5 +217,5 @@ public:
 
 } // anonymous namespace
 
-REGISTER_TYPE(GOW2, ModelHandler);
+REGISTER_GOW_TYPE(GOW2, ModelHandler);
 

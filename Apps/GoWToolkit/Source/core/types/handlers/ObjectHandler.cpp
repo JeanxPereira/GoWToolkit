@@ -8,6 +8,7 @@
 #include <Onyx/Types/TypeRegistry.h>
 #include <Onyx/Domain/IAssetProfile.h>
 #include <Onyx/Types/ITypeHandler.h>
+#include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
 #include "core/parsers/gow2/ObjectParser.h"
 #include "core/parsers/gow2/MeshParser.h"
@@ -238,7 +239,7 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
 
 // â”€â”€ Handler classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-class ObjectHandlerGOW2 : public Onyx::Types::ITypeHandler {
+class ObjectHandlerGOW2 : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Object; }
     const char*  GetName()  const override { return "Object"; }
@@ -272,5 +273,5 @@ public:
 
 } // anonymous namespace
 
-REGISTER_TYPE(GOW2, ObjectHandlerGOW2);
+REGISTER_GOW_TYPE(GOW2, ObjectHandlerGOW2);
 

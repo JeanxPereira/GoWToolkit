@@ -18,7 +18,6 @@ class TextPlainHandler : public Onyx::Types::ITypeHandler {
 public:
     Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::TextPlain; }
     const char* GetName() const override { return "Text"; }
-    uint32_t    GetMagic() const override { return 0; } // extension-based
     const char* GetIcon() const override { return ICON_SF_DOCUMENT; }
     Color4f     GetColor() const override { return {0.85f, 0.85f, 0.85f, 1.0f}; }
 

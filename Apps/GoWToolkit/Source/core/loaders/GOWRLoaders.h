@@ -9,7 +9,6 @@ class GOWRMeshDefnHandler : public Types::ITypeHandler {
 public:
     Types::TypeId  GetId()    const override { return GameTypes::MeshDefn; }
     const char*  GetName()  const override { return "GOWR Mesh Defn"; }
-    uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<Schema::AssetNode> Parse(std::shared_ptr<Vfs::IFile> file) override;
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
 };
@@ -18,7 +17,6 @@ class GOWRSkinnedMeshHandler : public Types::ITypeHandler {
 public:
     Types::TypeId  GetId()    const override { return GameTypes::MeshDefn; } // reuse
     const char*  GetName()  const override { return "GOWR Skinned Mesh"; }
-    uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
 };
 
@@ -26,7 +24,6 @@ class GOWRModelInstanceHandler : public Types::ITypeHandler {
 public:
     Types::TypeId  GetId()    const override { return GameTypes::GameObjectInst; }
     const char*  GetName()  const override { return "GOWR Model Instance"; }
-    uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
 };
 
@@ -34,7 +31,6 @@ class GOWRTextureHandler : public Types::ITypeHandler {
 public:
     Types::TypeId  GetId()    const override { return GameTypes::TexturePair; }
     const char*  GetName()  const override { return "GOWR Texture Pair"; }
-    uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
 };
 
@@ -43,7 +39,6 @@ class GOWRRigHandler : public Types::ITypeHandler {
 public:
     Types::TypeId  GetId()    const override { return GameTypes::GameObjectProto; }
     const char*  GetName()  const override { return "GOWR Proto Rig"; }
-    uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
 };
 
@@ -52,7 +47,6 @@ public:
     GOWRShaderHandler(Types::TypeId id) : m_id(id) {}
     Types::TypeId  GetId()    const override { return m_id; }
     const char*  GetName()  const override { return "GOWR Shader"; }
-    uint32_t     GetMagic() const override { return 0x00; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
 private:
     Types::TypeId m_id;

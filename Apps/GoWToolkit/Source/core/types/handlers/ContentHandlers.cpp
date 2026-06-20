@@ -5,6 +5,7 @@
 #include <Onyx/Schema/AssetReader.h>
 #include <Onyx/Types/ITypeHandler.h>
 #include <Onyx/Types/TypeRegistry.h>
+#include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include "ui/viewers/SoundPlayer.h"
@@ -28,7 +29,7 @@
 namespace {
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Animation Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000003 (ANIMATIONS_MAGIC)
-class AnimationHandler : public Onyx::Types::ITypeHandler {
+class AnimationHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Animation; }
   const char *GetName() const override { return "Animation"; }
@@ -49,7 +50,7 @@ public:
 };
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Script Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00010004 (SCRIPT_MAGIC)
-class ScriptHandler : public Onyx::Types::ITypeHandler {
+class ScriptHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Script; }
   const char *GetName() const override { return "Script"; }
@@ -63,7 +64,7 @@ public:
 };
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Light Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000006 (LIGHT_MAGIC)
-class LightHandler : public Onyx::Types::ITypeHandler {
+class LightHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Light; }
   const char *GetName() const override { return "Light"; }
@@ -75,7 +76,7 @@ public:
 };
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Sound (GOW2) Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000015 (GOW2_SBP_MAGIC)
-class SoundHandlerGOW2 : public Onyx::Types::ITypeHandler {
+class SoundHandlerGOW2 : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Sound; }
   const char *GetName() const override { return "Sound"; }
@@ -98,7 +99,7 @@ public:
 };
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Collision Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000011 (COLLISION_MAGIC)
-class CollisionHandler : public Onyx::Types::ITypeHandler {
+class CollisionHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Collision; }
   const char *GetName() const override { return "Collision"; }
@@ -107,7 +108,7 @@ public:
 };
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Flipbook (GOW2) Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x0000001B
-class FlipbookHandlerGOW2 : public Onyx::Types::ITypeHandler {
+class FlipbookHandlerGOW2 : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Flipbook; }
   const char *GetName() const override { return "Flipbook"; }
@@ -116,7 +117,7 @@ public:
 };
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Chunk Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x80000001 (CHUNK_MAGIC / context)
-class ChunkHandler : public Onyx::Types::ITypeHandler {
+class ChunkHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Chunk; }
   const char *GetName() const override { return "Chunk"; }
@@ -293,7 +294,7 @@ public:
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Shader Group Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000027 (SHG_MAGIC)
 // Only GOW1
-class ShaderGroupHandler : public Onyx::Types::ITypeHandler {
+class ShaderGroupHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::ShaderContainer; }
   const char *GetName() const override { return "Shader Group"; }
@@ -309,9 +310,6 @@ class VagHandler : public Onyx::Types::ITypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::VagAudio; }
   const char *GetName() const override { return "VAG Audio"; }
-  uint32_t GetMagic() const override {
-    return 0x00;
-  } // no magic, extension based
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_3; }
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; }
 
@@ -332,7 +330,6 @@ class VpkHandler : public Onyx::Types::ITypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::VpkVideo; }
   const char *GetName() const override { return "VPK Video"; }
-  uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_SPEAKER_WAVE_2_FILL; }
   Color4f GetColor() const override { return {0.3f, 0.9f, 0.6f, 1.0f}; }
 
@@ -353,7 +350,6 @@ class PssHandler : public Onyx::Types::ITypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::PssVideo; }
   const char *GetName() const override { return "PSS Video"; }
-  uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }
   Color4f GetColor() const override {
     return {0.8f, 0.5f, 0.9f, 1.0f};
@@ -373,7 +369,6 @@ class PswHandler : public Onyx::Types::ITypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::PswVideo; }
   const char *GetName() const override { return "PSW Video"; }
-  uint32_t GetMagic() const override { return 0x00; }
   const char *GetIcon() const override { return ICON_SF_PLAY_FILL; }
   Color4f GetColor() const override { return {0.8f, 0.5f, 0.9f, 1.0f}; }
 
@@ -390,12 +385,12 @@ public:
 } // anonymous namespace
 
 // GOW2 registrations (magic-based, WAD internal types)
-REGISTER_TYPE(GOW2, AnimationHandler);
-REGISTER_TYPE(GOW2, ScriptHandler);
-REGISTER_TYPE(GOW2, LightHandler);
-REGISTER_TYPE(GOW2, SoundHandlerGOW2);
-REGISTER_TYPE(GOW2, FlipbookHandlerGOW2);
-REGISTER_TYPE(GOW2, ChunkHandler);
+REGISTER_GOW_TYPE(GOW2, AnimationHandler);
+REGISTER_GOW_TYPE(GOW2, ScriptHandler);
+REGISTER_GOW_TYPE(GOW2, LightHandler);
+REGISTER_GOW_TYPE(GOW2, SoundHandlerGOW2);
+REGISTER_GOW_TYPE(GOW2, FlipbookHandlerGOW2);
+REGISTER_GOW_TYPE(GOW2, ChunkHandler);
 
 // File-level handlers (identified by extension in TOC/PAK, not by magic).
 // Registered by TypeId only Ã¢â‚¬â€ avoids the magic=0x00 collision.

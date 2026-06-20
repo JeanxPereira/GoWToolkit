@@ -3,12 +3,13 @@
 
 #include <Onyx/Types/TypeRegistry.h>
 #include <Onyx/Types/ITypeHandler.h>
+#include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
 #include <Onyx/Fonts/SFSymbols.h>
 
 namespace {
 
-class EntityCountHandler : public Onyx::Types::ITypeHandler {
+class EntityCountHandler : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::EntityCount; }
     const char*  GetName()  const override { return "Entity Count"; }
@@ -17,7 +18,7 @@ public:
     Color4f      GetColor() const override { return {0.4f, 0.4f, 0.4f, 1.0f}; }
 };
 
-class GroupStartHandler : public Onyx::Types::ITypeHandler {
+class GroupStartHandler : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::GroupStart; }
     const char*  GetName()  const override { return "Group"; }
@@ -26,7 +27,7 @@ public:
     Color4f      GetColor() const override { return {0.9f, 0.9f, 0.9f, 1.0f}; }
 };
 
-class GroupEndHandler : public Onyx::Types::ITypeHandler {
+class GroupEndHandler : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::GroupEnd; }
     const char*  GetName()  const override { return "Group End"; }
@@ -35,14 +36,14 @@ public:
     Color4f      GetColor() const override { return {0.4f, 0.4f, 0.4f, 1.0f}; }
 };
 
-class HeaderStartHandler : public Onyx::Types::ITypeHandler {
+class HeaderStartHandler : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::HeaderStart; }
     const char*  GetName()  const override { return "Header Start"; }
     uint32_t     GetMagic() const override { return 0; }
 };
 
-class HeaderPopHandler : public Onyx::Types::ITypeHandler {
+class HeaderPopHandler : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::HeaderPop; }
     const char*  GetName()  const override { return "Header Pop"; }
@@ -52,9 +53,9 @@ public:
 } // anonymous namespace
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Self-registration for GOW2 Ã¢â€â‚¬Ã¢â€â‚¬
-REGISTER_TAG(GOW2, 0,  EntityCountHandler);
-REGISTER_TAG(GOW2, 2,  GroupStartHandler);
-REGISTER_TAG(GOW2, 3,  GroupEndHandler);
-REGISTER_TAG(GOW2, 21, HeaderStartHandler);
-REGISTER_TAG(GOW2, 19, HeaderPopHandler);
+REGISTER_GOW_TAG(GOW2, 0,  EntityCountHandler);
+REGISTER_GOW_TAG(GOW2, 2,  GroupStartHandler);
+REGISTER_GOW_TAG(GOW2, 3,  GroupEndHandler);
+REGISTER_GOW_TAG(GOW2, 21, HeaderStartHandler);
+REGISTER_GOW_TAG(GOW2, 19, HeaderPopHandler);
 

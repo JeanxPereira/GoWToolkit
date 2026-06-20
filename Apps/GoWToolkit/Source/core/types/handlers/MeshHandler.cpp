@@ -4,12 +4,13 @@
 
 #include <Onyx/Types/TypeRegistry.h>
 #include <Onyx/Types/ITypeHandler.h>
+#include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
 #include <Onyx/Fonts/SFSymbols.h>
 
 namespace {
 
-class MeshHandler : public Onyx::Types::ITypeHandler {
+class MeshHandler : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Mesh; }
     const char*  GetName()  const override { return "Mesh"; }
@@ -25,7 +26,7 @@ public:
     }
 };
 
-class GmdlHandler : public Onyx::Types::ITypeHandler {
+class GmdlHandler : public Onyx::Gow::IWadTypeHandler {
 public:
     Onyx::Types::TypeId  GetId()    const override { return Onyx::GameTypes::Mesh; }
     const char*  GetName()  const override { return "GMDL Mesh"; }
@@ -43,5 +44,5 @@ public:
 
 } // anonymous namespace
 
-REGISTER_TYPE(GOW2, MeshHandler);
-REGISTER_TYPE(GOW2, GmdlHandler);
+REGISTER_GOW_TYPE(GOW2, MeshHandler);
+REGISTER_GOW_TYPE(GOW2, GmdlHandler);

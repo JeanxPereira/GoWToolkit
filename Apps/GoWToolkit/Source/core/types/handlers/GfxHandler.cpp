@@ -3,13 +3,14 @@
 
 #include <Onyx/Types/ITypeHandler.h>
 #include <Onyx/Types/TypeRegistry.h>
+#include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
 
 #include <Onyx/Fonts/SFSymbols.h>
 
 namespace {
 
-class GfxHandler : public Onyx::Types::ITypeHandler {
+class GfxHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::GfxData; }
   const char *GetName() const override { return "GFX Data"; }
@@ -20,4 +21,4 @@ public:
 
 } // namespace
 
-REGISTER_TYPE(GOW2, GfxHandler);
+REGISTER_GOW_TYPE(GOW2, GfxHandler);
