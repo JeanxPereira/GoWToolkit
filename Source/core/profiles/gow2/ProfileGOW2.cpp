@@ -10,6 +10,8 @@
 #include <set>
 #include <algorithm>
 #include <cstring>
+#include <fstream>
+#include <cstdint>
 
 namespace Onyx {
 
@@ -24,7 +26,19 @@ void ProfileGOW2::RegisterSchemas() {
 bool ProfileGOW2::Detect(const std::filesystem::path& path) const {
     std::string ext = path.extension().string();
     for (auto& c : ext) c = (char)tolower((unsigned char)c);
-    return (ext == ".iso" || ext == ".wad");
+    if (ext == ".iso") return true;          // PS2 ISO image (GOW1/2)
+    if (ext != ".wad") return false;
+
+    // A .wad may be PS2 (GOW1/2) OR modern (GoW 2018/Ragnarok). Reject the
+    // modern ones by magic so auto-detect routes them to the GOWR profile:
+    //   'WTOC' (0x434F5457) or LZ4 frame header (0x184D2204).
+    std::ifstream fs(path, std::ios::binary);
+    if (!fs) return false;
+    uint32_t magic = 0;
+    fs.read(reinterpret_cast<char*>(&magic), 4);
+    if (magic == 0x434F5457 || magic == 0x184D2204) return false;
+
+    return true;  // assume a PS2-format WAD
 }
 
 std::shared_ptr<Vfs::IVirtualFileSystem> ProfileGOW2::MountArchive(const std::filesystem::path& path) {
