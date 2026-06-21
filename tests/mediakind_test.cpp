@@ -1,34 +1,37 @@
-#include <doctest/doctest.h>
+﻿#include <doctest/doctest.h>
 #include <string>
-#include "core/domain/MediaKind.h"
+#include <Onyx/Domain/MediaKind.h>
+#include "core/types/GameTypes.h"
+#include <Onyx/Types/TypeCatalog.h>
 
 using namespace Onyx;
+using namespace Onyx::Domain;
+using namespace Onyx::Types;
 
-TEST_CASE("MediaKind Constexpr Evaluation") {
-    // Verification that KindOf is constexpr
-    static_assert(KindOf(TypeId::Mesh) == MediaKind::Mesh, "Mesh should map to Mesh");
-    static_assert(KindOf(TypeId::Texture) == MediaKind::Image, "Texture should map to Image");
-    static_assert(KindOf(TypeId::Sound) == MediaKind::Audio, "Sound should map to Audio");
-    static_assert(KindOf(TypeId::Instance) == MediaKind::Map, "Instance should map to Map");
+TEST_CASE("Catalog media routing") {
+    GameTypes::RegisterGameTypes();
+    CHECK(KindOf(GameTypes::Mesh)     == MediaKind::Mesh);
+    CHECK(KindOf(GameTypes::Texture)  == MediaKind::Image);
+    CHECK(KindOf(GameTypes::Sound)    == MediaKind::Audio);
+    CHECK(KindOf(GameTypes::Instance) == MediaKind::Map);
 }
 
-TEST_CASE("MediaKind Coverage") {
-    // Iterate over all TypeIds to ensure everything returns a valid value.
-    // Structural tags map to Unknown, but none should trigger undefined behavior.
-    
+TEST_CASE("Catalog media coverage") {
+    GameTypes::RegisterGameTypes();
+
     // Explicit AC checks
-    CHECK(KindOf(TypeId::Texture) == MediaKind::Image);
-    CHECK(KindOf(TypeId::VagAudio) == MediaKind::Audio);
+    CHECK(KindOf(GameTypes::Texture) == MediaKind::Image);
+    CHECK(KindOf(GameTypes::VagAudio) == MediaKind::Audio);
 
     // Some content types
-    CHECK(KindOf(TypeId::Animation) == MediaKind::Animation);
-    CHECK(KindOf(TypeId::Material) == MediaKind::Material);
-    CHECK(KindOf(TypeId::WadFile) == MediaKind::Container);
-    
+    CHECK(KindOf(GameTypes::Animation) == MediaKind::Animation);
+    CHECK(KindOf(GameTypes::Material) == MediaKind::Material);
+    CHECK(KindOf(GameTypes::WadFile) == MediaKind::Container);
+
     // Non-content types
-    CHECK(KindOf(TypeId::GroupStart) == MediaKind::Unknown);
-    CHECK(KindOf(TypeId::Sentinel) == MediaKind::Unknown);
-    
+    CHECK(KindOf(GameTypes::GroupStart) == MediaKind::Unknown);
+    CHECK(KindOf(GameTypes::Sentinel) == MediaKind::Unknown);
+
     // Test Name() and Icon()
     CHECK(std::string(Name(MediaKind::Image)) == "Image");
     CHECK(Icon(MediaKind::Image) != nullptr);

@@ -1,0 +1,416 @@
+﻿#include "ProfileGOW2.h"
+#include "formats/MDL.h"
+#include <Onyx/Vfs/IsoFileSystem.h>
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Types/TypeRegistry.h>
+#include <Onyx/Types/TypeCatalog.h>
+#include "core/types/GameTypes.h"
+#include "core/types/WadDispatch.h"
+#include <iostream>
+#include <set>
+#include <algorithm>
+#include <cstring>
+#include <fstream>
+#include <cstdint>
+
+namespace Onyx {
+
+ProfileGOW2::ProfileGOW2() {
+    // Schemas are registered automatically by TypeHandlers.
+}
+
+void ProfileGOW2::RegisterSchemas() {
+    // Obsolete â€” handled by individual TypeHandlers and NodeInstance::Parse
+}
+
+bool ProfileGOW2::Detect(const std::filesystem::path& path) const {
+    std::string ext = path.extension().string();
+    for (auto& c : ext) c = (char)tolower((unsigned char)c);
+    if (ext == ".iso") return true;          // PS2 ISO image (GOW1/2)
+    if (ext != ".wad") return false;
+
+    // A .wad may be PS2 (GOW1/2) OR modern (GoW 2018/Ragnarok). Reject the
+    // modern ones by magic so auto-detect routes them to the GOWR profile:
+    //   'WTOC' (0x434F5457) or LZ4 frame header (0x184D2204).
+    std::ifstream fs(path, std::ios::binary);
+    if (!fs) return false;
+    uint32_t magic = 0;
+    fs.read(reinterpret_cast<char*>(&magic), 4);
+    if (magic == 0x434F5457 || magic == 0x184D2204) return false;
+
+    return true;  // assume a PS2-format WAD
+}
+
+std::shared_ptr<Vfs::IVirtualFileSystem> ProfileGOW2::MountArchive(const std::filesystem::path& path) {
+    auto vfs = std::make_shared<Vfs::IsoFileSystem>(path.string());
+    if (vfs->Initialize()) {
+        LOG_INFO("[GOW2] Successfully mounted ISO: %s", path.string().c_str());
+        return vfs;
+    }
+    return nullptr;
+}
+
+#pragma pack(push, 1)
+struct RawWadTag {
+    uint16_t tag;
+    uint16_t flags;
+    uint32_t size;
+    char name[24];
+};
+#pragma pack(pop)
+
+// Tag numbers from GOW2 WAD format (matches reference god_of_war_browser/pack/wad/gow2.go)
+static constexpr uint16_t WADTAG_ENTITY_COUNT  = 0;
+static constexpr uint16_t WADTAG_SERVER_INST   = 1;
+static constexpr uint16_t WADTAG_GROUP_START   = 2;
+static constexpr uint16_t WADTAG_GROUP_END     = 3;
+static constexpr uint16_t WADTAG_HEADER_POP    = 19;
+static constexpr uint16_t WADTAG_HEADER_START  = 21;
+// Tags 11-16 are TT_* (tweak template) nodes â€” added as leaves, no group semantics
+
+bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContainer& outWad) {
+    if (!file || !file->IsValid()) return false;
+
+    file->Seek(0, SEEK_END);
+    int64_t fileSize = file->Tell();
+    file->Seek(0, SEEK_SET);
+
+    LOG_INFO("[GOW2] Parsing WAD of size %lld bytes", fileSize);
+
+    int64_t pos = 0;
+
+    // Stack of pointers to vectors of entries. We start with the root vector.
+    std::vector<std::vector<AssetEntry>*> stack;
+    stack.push_back(&outWad.entries);
+
+    bool newGroupTag = false;
+    int totalTags = 0;
+
+    // Name â†’ (typeId, offset, size) for resolving zero-sized reference entries.
+    // A SERVER_INSTANCE with size=0 is a pointer to a previous definition with the same name.
+    // When accessed, we redirect to the real definition's data (same as reference GetNodeById).
+    struct DefInfo { Types::TypeId typeId; int64_t offset; uint32_t size; };
+    std::unordered_map<std::string, DefInfo> nameToDefinition;
+
+    while (pos < fileSize) {
+        RawWadTag rawTag;
+        if (file->Read(&rawTag, sizeof(RawWadTag)) != sizeof(RawWadTag)) {
+            break; // EOF or error
+        }
+
+        pos += sizeof(RawWadTag);
+        if (rawTag.tag == WADTAG_ENTITY_COUNT) rawTag.size = 0;
+
+        // â”€â”€ Handle structural tags that affect the stack but don't produce nodes â”€â”€
+        if (rawTag.tag == WADTAG_GROUP_START) {
+            newGroupTag = true;
+            if (rawTag.size > 0) {
+                pos += rawTag.size;
+                pos = ((pos + 15) / 16) * 16;
+                file->Seek(pos, SEEK_SET);
+            }
+            continue;
+        }
+        if (rawTag.tag == WADTAG_GROUP_END) {
+            if (!newGroupTag) {
+                if (stack.size() > 1) stack.pop_back();
+            } else {
+                newGroupTag = false; // empty group
+            }
+            if (rawTag.size > 0) {
+                pos += rawTag.size;
+                pos = ((pos + 15) / 16) * 16;
+                file->Seek(pos, SEEK_SET);
+            }
+            continue;
+        }
+        // Entity count and header pop are metadata â€” skip silently (reference: default â†’ NOP)
+        if (rawTag.tag == WADTAG_ENTITY_COUNT || rawTag.tag == WADTAG_HEADER_POP) {
+            if (rawTag.size > 0) {
+                pos += rawTag.size;
+                pos = ((pos + 15) / 16) * 16;
+                file->Seek(pos, SEEK_SET);
+            }
+            continue;
+        }
+        // Only SERVER_INSTANCE (1), TT_* (11-16) and HEADER_START (21) reach the tree.
+        // Any other unknown structural tag is silently ignored (reference: default â†’ NOP).
+        bool addToTree = (rawTag.tag == WADTAG_SERVER_INST) ||
+                         (rawTag.tag >= 11 && rawTag.tag <= 16) ||
+                         (rawTag.tag == WADTAG_HEADER_START);
+        if (!addToTree) {
+            if (rawTag.size > 0) {
+                pos += rawTag.size;
+                pos = ((pos + 15) / 16) * 16;
+                file->Seek(pos, SEEK_SET);
+            }
+            continue;
+        }
+
+        AssetEntry entry;
+        entry.name   = std::string(rawTag.name, strnlen(rawTag.name, 24));
+        entry.size   = rawTag.size;
+        entry.offset = pos;
+        entry.wadName = outWad.filename;
+
+        // â”€â”€ Type Identification â”€â”€
+        uint8_t payloadMagic[4] = {0};
+        size_t payloadSizeAvailable = 0;
+        if (rawTag.size >= 4) {
+            file->Read(payloadMagic, 4);
+            file->Seek(pos, SEEK_SET); // rewind
+            payloadSizeAvailable = 4;
+        }
+
+        auto* handler = Gow::WadTypeRegistry::Get().ResolveByTag(Gow::GameVersion::GOW2, rawTag.tag, payloadMagic, payloadSizeAvailable);
+        entry.typeId = handler ? handler->GetId() : GameTypes::Unknown;
+
+        // Set schema string for UI display
+
+
+        // Fallback type resolution for types not yet in Types::TypeRegistry
+        if (entry.typeId == GameTypes::Unknown) {
+            size_t dotPos = entry.name.find_last_of('.');
+            if (dotPos != std::string::npos) {
+                std::string ext = entry.name.substr(dotPos + 1);
+                std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
+
+                if      (ext == "WAD") { entry.typeId = GameTypes::WadFile; }
+                else if (ext == "VAG") { entry.typeId = GameTypes::VagAudio; }
+                else if (ext == "VPK" || ext == "VP1") { entry.typeId = GameTypes::VpkVideo; }
+                else if (ext == "PSS") { entry.typeId = GameTypes::PssVideo; }
+                else if (ext == "PSW") { entry.typeId = GameTypes::PswVideo; }
+                else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
+                         ext == "CSV" || ext == "JSON" || ext == "LOG") {
+                    entry.typeId = GameTypes::TextPlain;
+                }
+            } else {
+                std::string nameLower = entry.name;
+                std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+                if (nameLower.find("pal_") == 0) {
+                    entry.typeId = GameTypes::PalData;
+
+                } else {
+                    if (rawTag.size >= 4) {
+                        uint32_t magic;
+                        std::memcpy(&magic, payloadMagic, 4);
+                        if ((magic & 0x80000000) != 0) {
+                            entry.typeId = GameTypes::Chunk;
+
+                        } else {
+
+                            LOG_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u magic=0x%08X", entry.name.c_str(), rawTag.size, magic);
+                        }
+                    } else {
+
+                        LOG_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u (no magic)", entry.name.c_str(), rawTag.size);
+                    }
+                }
+            }
+        }
+
+        // â”€â”€ Zero-sized reference resolution â”€â”€
+        // A SERVER_INSTANCE with size=0 is a pointer to a previous definition with the same name.
+        // Resolve it to the real data so viewers can read it (mirrors reference GetNodeById lazy resolution).
+        if (rawTag.tag == WADTAG_SERVER_INST && rawTag.size == 0) {
+            auto it = nameToDefinition.find(entry.name);
+            if (it != nameToDefinition.end()) {
+                entry.typeId  = it->second.typeId;
+                entry.offset  = it->second.offset;
+                entry.size    = it->second.size;
+
+            }
+        } else if (rawTag.size > 0 && !entry.name.empty()) {
+            // Cache real definitions for reference resolution above
+            nameToDefinition[entry.name] = { entry.typeId, entry.offset, entry.size };
+        }
+
+        entry.kind = KindOf(entry.typeId);
+
+        // â”€â”€ Add node to tree â”€â”€
+        std::vector<AssetEntry>* currentLevel = stack.back();
+        currentLevel->push_back(std::move(entry));
+        totalTags++;
+
+        // Only SERVER_INSTANCE (tag=1) can become the new parent after a GroupStart.
+        // HeaderStart (tag=21) and TT_* (tags 11-16) are added as flat siblings without
+        // group semantics â€” matches reference gow2parseTag exactly.
+        if (newGroupTag && rawTag.tag == WADTAG_SERVER_INST) {
+            newGroupTag = false;
+            stack.push_back(&(currentLevel->back().children));
+        }
+
+        // Skip payload data (aligned to 16 bytes)
+        if (rawTag.size > 0) {
+            pos += rawTag.size;
+            pos = ((pos + 15) / 16) * 16;
+            file->Seek(pos, SEEK_SET);
+        }
+    }
+
+    // Pass 2: resolve zero-sized and unknown types from forward references
+    std::function<void(std::vector<AssetEntry>&)> resolveUnknowns = [&](std::vector<AssetEntry>& list) {
+        for (auto& n : list) {
+            if (n.size == 0 && n.typeId == GameTypes::Unknown && !n.name.empty()) {
+                auto it = nameToDefinition.find(n.name);
+                if (it != nameToDefinition.end()) {
+                    n.typeId = it->second.typeId;
+                    n.offset = it->second.offset;
+                    n.size   = it->second.size;
+
+                    n.kind = KindOf(n.typeId);
+                }
+            }
+            resolveUnknowns(n.children);
+        }
+    };
+    resolveUnknowns(outWad.entries);
+
+    LOG_INFO("[GOW2] Parsed WAD: %d elements built into a tree structure.", totalTags);
+    return true;
+}
+
+// â”€â”€ Shared helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+static void assignSchemaType(AssetEntry& entry) {
+    size_t dot = entry.name.find_last_of('.');
+    if (dot != std::string::npos) {
+        std::string ext = entry.name.substr(dot + 1);
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
+
+        if      (ext == "MDL") { entry.typeId = Onyx::GameTypes::Model;    }
+        else if (ext == "TXR") { entry.typeId = Onyx::GameTypes::Texture;  }
+        else if (ext == "ANM") { entry.typeId = Onyx::GameTypes::Animation; }
+        else if (ext == "WAD") { entry.typeId = Onyx::GameTypes::WadFile;  }
+        else if (ext == "VAG") { entry.typeId = Onyx::GameTypes::VagAudio; }
+        else if (ext == "VPK" || ext == "VP1" || ext == "VP2" ||
+                 ext == "VP3" || ext == "VP4")
+                              { entry.typeId = Onyx::GameTypes::VpkVideo; }
+        else if (ext == "PSS") { entry.typeId = Onyx::GameTypes::PssVideo; }
+        else if (ext == "PSW") { entry.typeId = Onyx::GameTypes::PswVideo; }
+        else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
+                 ext == "CSV" || ext == "JSON" || ext == "LOG")
+                              { entry.typeId = Onyx::GameTypes::TextPlain; }
+
+        if (entry.typeId == Onyx::GameTypes::Unknown) {
+            // Unhandled extension
+        }
+    }
+    entry.kind = KindOf(entry.typeId);
+}
+
+// â”€â”€ GOW2 TOC parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Format: uint32 fileCount, then fileCountÃ—36-byte entries, then offset array
+//   [0:24]  filename (null-padded)
+//   [24:28] file size in bytes
+//   [28:32] encounter count (number of copies/locations)
+//   [32:36] encounter start index into the offset array
+// Each offset value:
+//   if >= 10000000 â†’ dual-layer disc; pakIndex = value / 10M, sector = value % 10M
+//   else           â†’ single-layer rip; all data in PART1.PAK at that sector
+#pragma pack(push, 1)
+struct RawTocEntryGOW2 {
+    char     name[24];
+    uint32_t size;
+    uint32_t encountersCount;
+    uint32_t encountersStart;
+};
+#pragma pack(pop)
+
+bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<Vfs::IVirtualFileSystem> vfs,
+                                        Vfs::IFile* tocFile, AssetContainer& outWad) {
+    LOG_INFO("[GOW2] Parsing TOC... size: %zu bytes.", (size_t)tocFile->Size());
+
+    uint32_t numFiles = 0;
+    if (tocFile->Read(&numFiles, 4) != 4) return false;
+
+    std::vector<RawTocEntryGOW2> rawEntries(numFiles);
+    tocFile->Read(rawEntries.data(), numFiles * sizeof(RawTocEntryGOW2));
+
+    const uint32_t offsetsStart = 4 + numFiles * (uint32_t)sizeof(RawTocEntryGOW2);
+
+    outWad.filename = "God of War II (ISO)";
+
+    auto pakExists = [&](const std::string& name) -> bool {
+        return vfs->Exists("/" + name) || vfs->Exists(name);
+    };
+    std::set<std::string> warnedMissingPaks;
+
+    const uint32_t SECTOR_SIZE    = 2048;
+    const uint32_t DVDDL_SPLITLINE = 10000000;
+
+    for (const auto& raw : rawEntries) {
+        if (raw.encountersCount == 0) continue;
+
+        uint32_t rawSector = 0;
+        tocFile->Seek(offsetsStart + raw.encountersStart * 4, SEEK_SET);
+        tocFile->Read(&rawSector, 4);
+
+        uint32_t pakIndex  = rawSector / DVDDL_SPLITLINE;
+        uint32_t realSector = rawSector % DVDDL_SPLITLINE;
+        std::string pakName = "PART" + std::to_string(pakIndex + 1) + ".PAK";
+
+        if (!pakExists(pakName)) {
+            if (warnedMissingPaks.insert(pakName).second)
+                LOG_WARN("[GOW2] '%s' not found in ISO â€” skipping its entries. "
+                         "(Dual-layer ISOs may need both layers merged.)", pakName.c_str());
+            continue;
+        }
+
+        AssetEntry entry;
+        entry.name = std::string(raw.name, strnlen(raw.name, 24));
+        entry.size   = raw.size;
+        entry.offset = (int64_t)realSector * SECTOR_SIZE;
+        entry.wadName = pakName;
+        entry.hash = std::hash<std::string>{}(entry.name);
+        assignSchemaType(entry);
+        outWad.entries.push_back(std::move(entry));
+    }
+
+    LOG_INFO("[GOW2] TOC parsed: %zu files.", outWad.entries.size());
+    return !outWad.entries.empty();
+}
+
+// â”€â”€ LoadFromArchive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+bool ProfileGOW2::LoadFromArchive(std::shared_ptr<Vfs::IVirtualFileSystem> vfs, AssetContainer& outWad) {
+    // Try GOW2.TOC first (some builds use this name)
+    auto tocFile = vfs->OpenFile("/GOW2.TOC");
+
+    // Fall back to GODOFWAR.TOC (default GOW2 layout)
+    if (!tocFile || !tocFile->IsValid())
+        tocFile = vfs->OpenFile("/GODOFWAR.TOC");
+
+    if (!tocFile || !tocFile->IsValid()) {
+        LOG_ERR("[Onyx] No TOC file found in ISO (tried GOW2.TOC, GODOFWAR.TOC).");
+        return false;
+    }
+
+    // Sanity-check GOW2 header: first 4 bytes = file count (small integer),
+    // and count * sizeof(RawTocEntryGOW2) + 4 must fit within the file.
+    tocFile->Seek(0, SEEK_END);
+    int64_t tocSize = tocFile->Tell();
+    tocFile->Seek(0, SEEK_SET);
+
+    uint32_t possibleCount = 0;
+    tocFile->Read(&possibleCount, 4);
+    tocFile->Seek(0, SEEK_SET);
+
+    bool isGOW2 = (possibleCount > 0 && possibleCount < 200000) &&
+                  ((int64_t)(possibleCount * sizeof(RawTocEntryGOW2) + 4) <= tocSize);
+
+    if (!isGOW2) {
+        LOG_ERR("[Onyx] TOC header does not look like GOW2 (count=%u, size=%lld). "
+                "GOW1 ISOs are not supported by this profile.",
+                possibleCount, (long long)tocSize);
+        return false;
+    }
+
+    LOG_INFO("[Onyx] Detected GOW2 TOC format (%u entries).", possibleCount);
+    return LoadFromArchiveGOW2(vfs, tocFile.get(), outWad);
+}
+
+bool ProfileGOW2::IsContainerEntry(const AssetEntry& e) const {
+    return e.typeId == GameTypes::WadFile || e.typeId == GameTypes::Unknown;
+}
+
+} // namespace Onyx

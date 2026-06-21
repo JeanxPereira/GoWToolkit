@@ -1,0 +1,69 @@
+﻿#pragma once
+#include <Onyx/Types/ITypeHandler.h>
+#include "core/types/GameTypes.h"
+#include <filesystem>
+
+namespace Onyx {
+
+class GOWRMeshDefnHandler : public Types::ITypeHandler {
+public:
+    Types::TypeId  GetId()    const override { return GameTypes::MeshDefn; }
+    const char*  GetName()  const override { return "GOWR Mesh Defn"; }
+    std::shared_ptr<Schema::AssetNode> Parse(std::shared_ptr<Vfs::IFile> file) override;
+    std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
+};
+
+class GOWRSkinnedMeshHandler : public Types::ITypeHandler {
+public:
+    Types::TypeId  GetId()    const override { return GameTypes::MeshDefn; } // reuse
+    const char*  GetName()  const override { return "GOWR Skinned Mesh"; }
+    std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
+};
+
+class GOWRModelInstanceHandler : public Types::ITypeHandler {
+public:
+    Types::TypeId  GetId()    const override { return GameTypes::GameObjectInst; }
+    const char*  GetName()  const override { return "GOWR Model Instance"; }
+    std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
+};
+
+class GOWRTextureHandler : public Types::ITypeHandler {
+public:
+    Types::TypeId  GetId()    const override { return GameTypes::TexturePair; }
+    const char*  GetName()  const override { return "GOWR Texture Pair"; }
+    std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
+};
+
+
+class GOWRRigHandler : public Types::ITypeHandler {
+public:
+    Types::TypeId  GetId()    const override { return GameTypes::GameObjectProto; }
+    const char*  GetName()  const override { return "GOWR Proto Rig"; }
+    std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
+};
+
+class GOWRShaderHandler : public Types::ITypeHandler {
+public:
+    GOWRShaderHandler(Types::TypeId id) : m_id(id) {}
+    Types::TypeId  GetId()    const override { return m_id; }
+    const char*  GetName()  const override { return "GOWR Shader"; }
+    std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
+private:
+    Types::TypeId m_id;
+};
+
+class TexPackIndex;
+TexPackIndex& GetTexIndex();
+
+// Try to auto-detect the GOWR game root from a loaded WAD path and persist it
+// to config.ini next to the executable. Walks up from `wadPath` looking for a
+// dir that contains `exec/wad/pc_le/`. Returns true if config.ini was already
+// present or was written successfully.
+bool EnsureGowrConfigIni(const std::filesystem::path& wadPath);
+
+// Invalidate any cached LOD/tex index that was built before the config was
+// written. Called by ProfileGOWR::PrepareForParse when a fresh config.ini is
+// created.
+void InvalidateLodIndex();
+
+} // namespace Onyx

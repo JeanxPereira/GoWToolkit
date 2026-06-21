@@ -7,6 +7,7 @@
 // step will fail and direct you here.
 
 #include "core/parsers/gowr/TexPackIndex.h"
+#include <filesystem>
 
 namespace Onyx {
 
@@ -16,5 +17,11 @@ TexPackIndex& GetTexIndex() {
     static TexPackIndex stub;
     return stub;
 }
+
+// ProfileGOWR::PrepareForParse calls these before ParseContainer. In tests we
+// have no game root to detect, so both are no-ops (EnsureGowrConfigIni returns
+// false so InvalidateLodIndex is never called, but stubs are needed to link).
+bool EnsureGowrConfigIni(const std::filesystem::path&) { return false; }
+void InvalidateLodIndex() {}
 
 } // namespace Onyx

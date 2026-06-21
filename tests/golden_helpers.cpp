@@ -1,4 +1,4 @@
-#include "golden_helpers.h"
+﻿#include "golden_helpers.h"
 
 #include <doctest/doctest.h>
 
@@ -11,9 +11,11 @@
 
 #include "core/profiles/gow2/ProfileGOW2.h"
 #include "core/profiles/gowr/ProfileGOWR.h"
-#include "core/types/TypeId.h"
-#include "core/vfs/MemoryFile.h"
-#include "core/vfs/OsFile.h"
+#include <Onyx/Types/TypeId.h>
+#include "core/types/GameTypes.h"
+#include <Onyx/Types/TypeCatalog.h>
+#include <Onyx/Vfs/MemoryFile.h>
+#include <Onyx/Vfs/OsFile.h>
 
 #define XXH_INLINE_ALL
 #include "xxhash.h"
@@ -37,7 +39,7 @@ std::string ToHex64(uint64_t value) {
 
 // Reads up to `kPayloadHashLimit` bytes at `offset` from `source` and returns
 // xxhash64 of the slice (0 when the entry has no payload).
-uint64_t HashEntryPayload(Onyx::IFile& source, uint64_t offset, uint64_t size) {
+uint64_t HashEntryPayload(Onyx::Vfs::IFile& source, uint64_t offset, uint64_t size) {
     if (size == 0) return 0;
     size_t toRead = static_cast<size_t>(std::min<uint64_t>(size, kPayloadHashLimit));
     std::vector<uint8_t> buf(toRead);
@@ -48,15 +50,15 @@ uint64_t HashEntryPayload(Onyx::IFile& source, uint64_t offset, uint64_t size) {
 }
 
 void FlattenEntry(const AssetEntry& entry,
-                  Onyx::IFile* source,
+                  Onyx::Vfs::IFile* source,
                   std::vector<ordered_json>& out) {
     ordered_json e;
     e["name"]        = entry.name;
-    e["typeId"]      = Onyx::TypeIdName(entry.typeId);
+    e["typeId"]      = Onyx::Types::TypeCatalog::Get().Label(entry.typeId);
     e["size"]        = entry.size;
     e["offset"]      = entry.offset;
     e["childCount"]  = static_cast<uint64_t>(entry.children.size());
-    e["kind"]        = std::string(Onyx::Name(entry.kind));
+    e["kind"]        = std::string(Onyx::Domain::Name(entry.kind));
     if (source && entry.size > 0) {
         e["payloadHash"] = ToHex64(HashEntryPayload(*source, entry.offset, entry.size));
     } else {
@@ -170,10 +172,13 @@ bool ShouldUpdateGoldens() {
 void RunGoldenTest(std::string_view versionTag,
                    const fs::path& wadPath,
                    const fs::path& expectedJsonPath) {
+    // Type catalog must be populated before parsing so handles/labels resolve.
+    Onyx::GameTypes::RegisterGameTypes();
+
     REQUIRE_MESSAGE(fs::exists(wadPath),
                     "fixture WAD not found: " << wadPath.string());
 
-    auto file = std::make_shared<Onyx::OsFile>(wadPath.string());
+    auto file = std::make_shared<Onyx::Vfs::OsFile>(wadPath.string());
     REQUIRE_MESSAGE(file->IsValid(),
                     "failed to open fixture WAD: " << wadPath.string());
 
@@ -207,7 +212,7 @@ void RunGoldenTest(std::string_view versionTag,
 
     ordered_json expected = LoadGolden(expectedJsonPath);
     REQUIRE_MESSAGE(!expected.is_null(),
-                    "golden JSON missing — rerun with GOWTOOLKIT_GOLDEN_UPDATE=1 to create it: "
+                    "golden JSON missing Ã¢â‚¬â€ rerun with GOWTOOLKIT_GOLDEN_UPDATE=1 to create it: "
                     << expectedJsonPath.string());
 
     std::string diff = DiffSnapshots(actual, expected);
