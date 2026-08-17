@@ -15,6 +15,7 @@
 #include <Onyx/Vfs/SliceFile.h>
 #include <Onyx/Vfs/MemoryFile.h>
 #include <Onyx/Viewers/Viewport3D.h>
+#include <cctype>
 #include <cstring>
 #include <filesystem>
 #include <functional>
@@ -35,9 +36,7 @@ static Onyx::Gowr::WadEntryRole GetRole(const AssetEntry& e) {
     return Onyx::Gowr::WadEntryRole::Unknown;
 }
 
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#endif
+#include <Onyx/Services/PathUtils.h>
 
 // â”€â”€ GOWRLoaders.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -48,19 +47,22 @@ static std::vector<std::filesystem::path> ResourceSearchDirs() {
     std::vector<std::filesystem::path> candidates;
     candidates.push_back(std::filesystem::current_path());
 
-#ifdef __APPLE__
-    char exeBuf[4096] = {};
-    uint32_t bufSize = sizeof(exeBuf);
-    if (_NSGetExecutablePath(exeBuf, &bufSize) == 0) {
-        try {
-            auto exePath = std::filesystem::path(exeBuf);
-            auto exeDir  = exePath.parent_path();
-            candidates.push_back(exeDir);
-            // Walk up: MacOS -> Contents -> .app -> build/
-            candidates.push_back(exeDir.parent_path().parent_path().parent_path());
-        } catch (...) {}
-    }
-#endif
+    // O writer salva config.ini em PathUtils::getExecutableDir(), entao o reader
+    // precisa olhar la tambem. Antes so o CWD era pesquisado, o que perdia o
+    // config recem-salvo sempre que o exe era lancado de outro diretorio
+    // (ex.: build-ninja\GoWToolkit.exe chamado a partir da raiz do repo).
+    // getResourceDir() resolve sozinho o caso do bundle .app no macOS.
+    try {
+        auto exeDir = PathUtils::getExecutableDir();
+        candidates.push_back(exeDir);
+
+        auto resDir = PathUtils::getResourceDir();
+        if (resDir != exeDir) candidates.push_back(resDir);
+
+        auto up = exeDir.parent_path();
+        if (!up.empty() && up != exeDir) candidates.push_back(up);
+    } catch (...) {}
+
     return candidates;
 }
 
@@ -207,6 +209,17 @@ void InvalidateLodIndex() {
 
 // â”€â”€ GOWR Mesh Handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+// MG_*_gpu names carry a trailing part/LOD index ("_0", "_12") that the go*
+// instance names do not: goathena10 pairs with MG_athena10_0_gpu. Strip one
+// trailing _<digits> so the two can be compared.
+static std::string StripPartIndex(const std::string& s) {
+    auto u = s.rfind('_');
+    if (u == std::string::npos || u + 1 >= s.size()) return s;
+    for (size_t i = u + 1; i < s.size(); ++i)
+        if (!std::isdigit(static_cast<unsigned char>(s[i]))) return s;
+    return s.substr(0, u);
+}
+
 static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry, AssetContainer& wad, bool attachSkeleton) {
     if (!wad.fileSource) return nullptr;
 
@@ -216,9 +229,15 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
 
     // â”€â”€ Find the paired MG_GPU sibling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Strip prefix (MESH_ or MG_) and trailing ---NNNNN hash to get the base name.
+    // GO instances are named go<base>; mesh/gpu files are MESH_<base> / MG_<base>.
+    const bool isInstance = (entry.typeId == GameTypes::GameObjectInst);
     std::string base = entry.name;
-    for (const char* pfx : {"MESH_", "MG_"}) {
-        if (base.rfind(pfx, 0) == 0) { base = base.substr(strlen(pfx)); break; }
+    if (isInstance) {
+        if (base.rfind("go", 0) == 0) base = base.substr(2);
+    } else {
+        for (const char* pfx : {"MESH_", "MG_"}) {
+            if (base.rfind(pfx, 0) == 0) { base = base.substr(strlen(pfx)); break; }
+        }
     }
     auto dashPos = base.rfind("---");
     if (dashPos != std::string::npos) base = base.substr(0, dashPos);
@@ -237,6 +256,10 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                     gpuBase.substr(gpuBase.size() - 4) == "_gpu")
                     gpuBase = gpuBase.substr(0, gpuBase.size() - 4);
                 if (gpuBase == base) return &e;
+                // An instance carries no part index, so compare against the
+                // gpu base with its trailing _<N> removed. First match wins:
+                // when a model ships several LODs we take the lowest.
+                if (isInstance && StripPartIndex(gpuBase) == base) return &e;
             }
             if (!e.children.empty()) {
                 auto* found = findGpu(e.children);
@@ -252,8 +275,13 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
             wad.fileSource, gpuEntry->offset, gpuEntry->size);
         LOG_INFO("[GOWRLoaders] GPU: %s (size=%u)",
                  gpuEntry->name.c_str(), gpuEntry->size);
+    } else if (isInstance) {
+        // Most GO instances are not meshes at all (lights, emitters, triggers),
+        // so a missing sibling is the normal case rather than a problem.
+        LOG_DEBUG("[GOWRLoaders] Instance '%s' has no mesh pair - not renderable",
+                  entry.name.c_str());
     } else {
-        LOG_WARN("[GOWRLoaders] No MeshGpu sibling for '%s' â€” hash=0 submeshes only",
+        LOG_WARN("[GOWRLoaders] No MeshGpu sibling for '%s' - hash=0 submeshes only",
                  entry.name.c_str());
     }
 
@@ -269,7 +297,11 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     }
 
     if (!ok || data.parts.empty()) {
-        LOG_WARN("[GOWRLoaders] Parse failed or no parts for '%s'", entry.name.c_str());
+        if (!gpuFile && isInstance) {
+            LOG_DEBUG("[GOWRLoaders] Nothing to render for instance '%s'", entry.name.c_str());
+        } else {
+            LOG_WARN("[GOWRLoaders] Parse failed or no parts for '%s'", entry.name.c_str());
+        }
         return std::make_shared<Viewers::Viewport3D>(entry.name);
     }
 
