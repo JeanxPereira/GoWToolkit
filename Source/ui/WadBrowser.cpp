@@ -119,7 +119,7 @@ void WadBrowser::Draw() {
             if (Onyx::App::Widgets::IconButton("wad_close", ICON_SF_XMARK, opts)) {
                 if (wadOpen) ImGui::TreePop();
                 ImGui::PopID();
-                EventWadClosed::post(wadIdx);
+                // CloseWad posts EventWadClosed itself, before it erases.
                 db.CloseWad(wadIdx);
                 break;
             }

@@ -35,9 +35,7 @@ static Onyx::Gowr::WadEntryRole GetRole(const AssetEntry& e) {
     return Onyx::Gowr::WadEntryRole::Unknown;
 }
 
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#endif
+#include <Onyx/Services/PathUtils.h>
 
 // â”€â”€ GOWRLoaders.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -48,19 +46,22 @@ static std::vector<std::filesystem::path> ResourceSearchDirs() {
     std::vector<std::filesystem::path> candidates;
     candidates.push_back(std::filesystem::current_path());
 
-#ifdef __APPLE__
-    char exeBuf[4096] = {};
-    uint32_t bufSize = sizeof(exeBuf);
-    if (_NSGetExecutablePath(exeBuf, &bufSize) == 0) {
-        try {
-            auto exePath = std::filesystem::path(exeBuf);
-            auto exeDir  = exePath.parent_path();
-            candidates.push_back(exeDir);
-            // Walk up: MacOS -> Contents -> .app -> build/
-            candidates.push_back(exeDir.parent_path().parent_path().parent_path());
-        } catch (...) {}
-    }
-#endif
+    // O writer salva config.ini em PathUtils::getExecutableDir(), entao o reader
+    // precisa olhar la tambem. Antes so o CWD era pesquisado, o que perdia o
+    // config recem-salvo sempre que o exe era lancado de outro diretorio
+    // (ex.: build-ninja\GoWToolkit.exe chamado a partir da raiz do repo).
+    // getResourceDir() resolve sozinho o caso do bundle .app no macOS.
+    try {
+        auto exeDir = PathUtils::getExecutableDir();
+        candidates.push_back(exeDir);
+
+        auto resDir = PathUtils::getResourceDir();
+        if (resDir != exeDir) candidates.push_back(resDir);
+
+        auto up = exeDir.parent_path();
+        if (!up.empty() && up != exeDir) candidates.push_back(up);
+    } catch (...) {}
+
     return candidates;
 }
 
