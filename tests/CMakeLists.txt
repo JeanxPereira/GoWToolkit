@@ -29,6 +29,7 @@ set(APP_TEST_SOURCES
     "${CMAKE_SOURCE_DIR}/Source/core/profiles/gowr/ProfileGOWR.cpp"
     "${CMAKE_SOURCE_DIR}/Source/core/profiles/gowr/WadNodeBuilder.cpp"
     "${CMAKE_SOURCE_DIR}/Source/core/profiles/gowr/GowrTaxonomy.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/parsers/gowr/MgParser.cpp"
 )
 
 add_executable(gowtoolkit_tests ${TEST_SOURCES} ${APP_TEST_SOURCES})

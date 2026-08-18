@@ -15,10 +15,15 @@
 #include <Onyx/Vfs/SliceFile.h>
 #include <Onyx/Vfs/MemoryFile.h>
 #include <Onyx/Viewers/Viewport3D.h>
+#include <Onyx/Rendering/SceneRenderer.h>
+#include <imgui.h>
+#include <algorithm>
+#include <string>
 #include <cctype>
 #include <cstring>
 #include <filesystem>
 #include <functional>
+#include <unordered_map>
 #include <mutex>
 #include <thread>
 #include <fstream>
@@ -224,6 +229,86 @@ static std::string StripPartIndex(const std::string& s) {
         if (!std::isdigit(static_cast<unsigned char>(s[i]))) return s;
     return s.substr(0, u);
 }
+
+// -- GOWR detail-level document ----------------------------------------------
+// A GOWR model is a set of parts, each with its own chain of detail levels.
+// The renderer draws every batch it is handed, so without a filter all levels
+// of every part stack on top of one another.
+//
+// This wraps the viewport and drives per-batch visibility from one level
+// choice, defaulting to LOD 0. The level of each batch comes from the MG part
+// table rather than being inferred, so parts with shorter chains clamp to
+// their own last level instead of disappearing.
+struct PartLevel {
+    int part  = -1;
+    int level = -1;
+};
+
+class GowrLodDocument : public Viewers::IDocumentContent {
+public:
+    GowrLodDocument(std::shared_ptr<Viewers::Viewport3D> vp,
+                    std::vector<PartLevel> meta, int maxLevels)
+        : m_vp(std::move(vp)), m_meta(std::move(meta)), m_maxLevels(maxLevels) {}
+
+    std::string GetName() const override { return m_vp->GetName(); }
+    void Draw() override { Apply(); m_vp->Draw(); }
+    Viewers::Viewport3D* GetEmbeddedViewport() override { return m_vp.get(); }
+
+    void DrawInspector() override {
+        ImGui::Text("Level of Detail");
+
+        std::vector<std::string> labels;
+        labels.reserve(m_maxLevels + 1);
+        labels.push_back("All levels");
+        for (int i = 0; i < m_maxLevels; ++i)
+            labels.push_back("LOD " + std::to_string(i));
+
+        std::vector<const char*> items;
+        items.reserve(labels.size());
+        for (const auto& s : labels) items.push_back(s.c_str());
+
+        if (ImGui::Combo("##gowr_lod", &m_lod, items.data(), (int)items.size())) {
+            m_dirty = true;
+            m_vp->RequestRedraw();
+        }
+        ImGui::TextDisabled("%d levels; parts with shorter chains clamp to their last.",
+                            m_maxLevels);
+        ImGui::Separator();
+        m_vp->DrawInspector();
+    }
+
+private:
+    void Apply() {
+        if (!m_dirty) return;
+        auto* sr = m_vp->GetSceneRenderer();
+        if (!sr || sr->IsEmpty()) return;   // retry once the scene exists
+        auto& batches = sr->GetBatches();
+        if (batches.size() != m_meta.size()) return;
+        m_dirty = false;
+
+        // Highest level index actually present for each part, so a request
+        // beyond a part's chain shows its coarsest level rather than nothing.
+        std::vector<int> lastOf;
+        for (const auto& pl : m_meta) {
+            if (pl.part < 0) continue;
+            if ((int)lastOf.size() <= pl.part) lastOf.resize(pl.part + 1, -1);
+            lastOf[pl.part] = std::max(lastOf[pl.part], pl.level);
+        }
+
+        for (size_t i = 0; i < batches.size(); ++i) {
+            const auto& pl = m_meta[i];
+            if (m_lod == 0 || pl.part < 0) { batches[i].isVisible = true; continue; }
+            const int want = std::min(m_lod - 1, lastOf[pl.part]);
+            batches[i].isVisible = (pl.level == want);
+        }
+    }
+
+    std::shared_ptr<Viewers::Viewport3D> m_vp;
+    std::vector<PartLevel>               m_meta;
+    int  m_maxLevels = 1;
+    int  m_lod       = 1;   // default to LOD 0 rather than every level at once
+    bool m_dirty     = true;
+};
 
 static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry, AssetContainer& wad, bool attachSkeleton) {
     if (!wad.fileSource) return nullptr;
@@ -460,36 +545,101 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     // â”€â”€ Build Parsers::SceneData and load into viewport â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     auto vp = std::make_shared<Viewers::Viewport3D>(entry.name);
 
-    if (skeleton) {
-        // â”€â”€ Skinning resolution (CURRENT: rigid-only fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // GOWR skinned vertex bone-indices are per-submesh LOCAL palette
-        // indices (not global). The palette source â€” MG file vs MESH submesh
-        // header vs separate VPK â€” is still unknown. Treating them as global
-        // (identity jointMap) causes catastrophic vertex explosions because
-        // small palette indices map to arbitrary global bones.
-        //
-        // Until the palette is located, force every part to rigid: bind all
-        // verts to the MG parentBone with weight 1. This loses skinning but
-        // keeps the mesh shape stable.
-        // TODO: locate per-submesh bone palette (MG skinList? MESH header?
-        //       VPK chunk?) and wire jointMap[localIdx] = globalIdx.
-        if (mgFile) {
-            uint32_t meshSubCount = 0;
-            for (const auto& p : data.parts)
-                if (p.materialId + 1 > meshSubCount) meshSubCount = p.materialId + 1;
+    // -- Resolve parts, detail levels and the bone palette from the MG ------
+    // The MG is authoritative for all three: it names which submeshes form
+    // each level of each part, and carries the palette that turns a vertex's
+    // local bone index into a global skeleton index.
+    GOWRMgParser::Data mg;
+    std::vector<PartLevel> partMeta(data.parts.size());
+    bool haveMg = false;
 
-            std::vector<uint16_t> parentBone;
-            if (GOWRMgParser::Parse(mgFile, meshSubCount, parentBone)) {
-                for (auto& p : data.parts) {
-                    uint16_t pb = (p.materialId < parentBone.size())
-                                    ? parentBone[p.materialId] : 0xFFFF;
-                    if (pb == 0xFFFF) pb = 0;
-                    p.jointMap = { pb };
-                    for (auto& v : p.vertices) {
+    if (mgFile) {
+        uint32_t meshSubCount = 0;
+        for (const auto& p : data.parts)
+            if (p.materialId + 1 > meshSubCount) meshSubCount = p.materialId + 1;
+        haveMg = GOWRMgParser::Parse(mgFile, meshSubCount, mg);
+    }
+
+    if (haveMg) {
+        for (size_t i = 0; i < data.parts.size(); ++i) {
+            auto&      part = data.parts[i];
+            const auto sm   = part.materialId;
+            if (sm >= mg.partOfSubmesh.size()) continue;
+
+            const int pi = mg.partOfSubmesh[sm];
+            const int lv = mg.levelOfSubmesh[sm];
+            partMeta[i] = { pi, lv };
+            if (pi < 0) {
+                part.name = "sm" + std::to_string(sm) + " (unreferenced)";
+                continue;
+            }
+
+            char label[64];
+            std::snprintf(label, sizeof(label), "Part %02d  LOD %d", pi, lv);
+            part.name = label;
+        }
+    }
+
+    if (skeleton) {
+        // -- Skinning --------------------------------------------------------
+        // Vertex bone indices are local to the part's palette, so the jointMap
+        // is the palette itself. Parts with no bone semantics stay rigid and
+        // bind to their root bone.
+        if (haveMg) {
+            // Vertex bone indices are global skeleton indices, while the
+            // renderer uploads at most 150 matrices per batch. The MG palette
+            // is exactly the set of bones a part uses, so it becomes the
+            // jointMap and the vertex indices are rebased onto it.
+            int skinned = 0, rigid = 0, unmapped = 0;
+            size_t offPalette = 0;
+
+            for (size_t i = 0; i < data.parts.size(); ++i) {
+                auto&     part = data.parts[i];
+                const int pi   = partMeta[i].part;
+                if (pi < 0 || pi >= (int)mg.parts.size()) { ++unmapped; continue; }
+                const auto& src = mg.parts[pi];
+
+                if (part.isRigid || src.palette.empty()) {
+                    part.jointMap = { src.palette.empty() ? src.boneRef
+                                                          : src.palette.front() };
+                    for (auto& v : part.vertices) {
                         v.boneIndices = glm::uvec4(0, 0, 0, 0);
                         v.boneWeights = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
                     }
+                    ++rigid;
+                    continue;
                 }
+
+                part.jointMap = src.palette;
+
+                // Global bone index -> slot within this part's palette.
+                std::unordered_map<uint32_t, uint32_t> slotOf;
+                slotOf.reserve(src.palette.size() * 2);
+                for (uint32_t s = 0; s < src.palette.size(); ++s)
+                    slotOf.emplace(src.palette[s], s);
+
+                for (auto& v : part.vertices) {
+                    for (int k = 0; k < 4; ++k) {
+                        auto it = slotOf.find(v.boneIndices[k]);
+                        if (it != slotOf.end()) {
+                            v.boneIndices[k] = it->second;
+                        } else {
+                            // Not in the palette: drop the influence rather
+                            // than bind the vertex to an arbitrary bone.
+                            v.boneIndices[k] = 0;
+                            v.boneWeights[k] = 0.0f;
+                            ++offPalette;
+                        }
+                    }
+                }
+                ++skinned;
+            }
+
+            LOG_INFO("[GOWRLoaders] Skinning: %d skinned, %d rigid, %d unmapped parts",
+                     skinned, rigid, unmapped);
+            if (offPalette > 0) {
+                LOG_WARN("[GOWRLoaders] %zu vertex influences referenced a bone "
+                         "outside their part's palette", offPalette);
             }
         }
 
@@ -502,6 +652,10 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         std::vector<std::unique_ptr<Parsers::TextureData>> noTextures;
         vp->LoadFromMeshData(data, noTextures);
     }
+
+    if (haveMg && mg.MaxLevelCount() > 1)
+        return std::make_shared<GowrLodDocument>(std::move(vp), std::move(partMeta),
+                                                 mg.MaxLevelCount());
     return vp;
 }
 
