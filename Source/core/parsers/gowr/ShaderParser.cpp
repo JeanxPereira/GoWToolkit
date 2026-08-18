@@ -185,6 +185,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file
     std::vector<uint8_t> payload(payloadSize);
     file->Seek(dxbcStart, 0);
     file->Read(payload.data(), payloadSize);
+    shader->dxbc = payload;
 
     // Parse each chunk
     for (uint32_t i = 0; i < chunkCount; i++) {

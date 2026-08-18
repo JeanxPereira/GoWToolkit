@@ -58,6 +58,9 @@ struct GOWRShaderData {
 
     // DXBC container
     bool        hasDxbc       = false;
+    // Raw container bytes, kept so the disassembler can be handed the
+    // blob without re-reading the WAD.
+    std::vector<uint8_t> dxbc;
     uint8_t     md5[16]       = {};
     uint32_t    dxbcVersion   = 0;
 

@@ -9,6 +9,8 @@
 #include "core/parsers/gowr/ProtoParser.h"
 #include "core/parsers/gowr/MgParser.h"
 #include "core/parsers/gowr/ShaderParser.h"
+#include "core/shaders/DxilDisassembler.h"
+#include "ui/CodeView.h"
 #include <Onyx/Parsers/SceneNode.h>
 #include <Onyx/Viewers/ImageViewer.h>
 #include <Onyx/Services/Logger.h>
@@ -950,6 +952,14 @@ public:
             return;
         }
 
+        if (!ImGui::BeginTabBar("##shader_tabs")) return;
+
+        if (ImGui::BeginTabItem("Container")) {
+            // The container pass bails early on a few conditions; keeping
+            // it in a lambda lets those returns stand without skipping the
+            // matching ImGui End* calls.
+            [&] {
+
         // â”€â”€ Onyx Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         ImGui::SeparatorText("Onyx Shader Header");
         if (ImGui::BeginTable("##gowhdr", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
@@ -1057,9 +1067,61 @@ public:
             if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1))
                 ImGui::SetClipboardText(hashStr);
         }
+            }();
+            ImGui::EndTabItem();
+        }
+
+        DrawDisassemblyTab();
+        ImGui::EndTabBar();
     }
 
 private:
+    // -- Disassembly ------------------------------------------------------
+    // DXIL is LLVM bitcode, so the text comes from dxcompiler.dll rather
+    // than from anything we parse. It is produced on demand and cached:
+    // a shader is usually opened to read one thing, not to be re-decoded
+    // every frame.
+    void DrawDisassemblyTab() {
+        if (!ImGui::BeginTabItem("Disassembly")) return;
+
+        if (!m_data->hasDxbc) {
+            ImGui::TextDisabled("No DXBC container to disassemble.");
+            ImGui::EndTabItem();
+            return;
+        }
+
+        if (!m_disasmTried) {
+            m_disasmTried = true;
+            std::string text;
+            if (DxilDisassembler::Disassemble(m_data->dxbc.data(),
+                                              m_data->dxbc.size(),
+                                              text, m_disasmError)) {
+                m_code.SetText(std::move(text));
+            }
+        }
+
+        if (m_code.Empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.4f, 1.0f),
+                               "Disassembly unavailable");
+            ImGui::Spacing();
+            ImGui::TextWrapped("%s", m_disasmError.c_str());
+            ImGui::Spacing();
+            ImGui::TextDisabled("The Container tab still shows signatures, "
+                                "chunks and resource info, which are parsed "
+                                "natively and need no external tool.");
+            if (ImGui::Button("Retry")) m_disasmTried = false;
+            ImGui::EndTabItem();
+            return;
+        }
+
+        m_code.Draw("disasm");
+        ImGui::EndTabItem();
+    }
+
+    Onyx::Ui::CodeView m_code;
+    std::string        m_disasmError;
+    bool               m_disasmTried = false;
+
     std::string m_name;
     std::unique_ptr<GOWRShaderData> m_data;
 
