@@ -145,12 +145,20 @@ name ends in. Character textures sit in `root.texpack`. Measured on
 them declares a streamed size of zero - they are resident-only, from 4 up to
 512 pixels.
 
-A resident payload cannot be decoded from its entry size alone: the entry is
-padded well past its data (a 16x16 diffuse occupies 2304 bytes of which 184 are
-non-zero), and the pixel format varies - a 512x512 one is exactly `512*512*4`,
-uncompressed RGBA8, and carries `04` in the per-mip array at descriptor `0x50`
-where the others carry `01`. Until that field is understood, guessing the
-format would produce coloured noise rather than a texture.
+A resident texture keeps its own format: the descriptor embeds a GNF block at
+`0x68`, the same structure the texpack blocks carry, so the AGC `T#` sits at
+`0x78` and the format and swizzle words at `0x7C` and `0x84`. Mip 0 starts at
+the beginning of the payload - `TX_regionidmap` pins that, its data extent
+being exactly `200 * 200 * 4`.
+
+Entry size is no guide on its own: payloads are padded well past their data (a
+16x16 diffuse occupies 2304 bytes of which 184 are non-zero) and the format
+genuinely varies. Among r_heroa00's resident textures there are BC1, BC4, BC7
+and uncompressed RGBA8, the last carrying AGC data_format `0x38`.
+
+`TX_texture_white` is a useful oracle for this path: 4x4, BC1, and its payload
+opens `ff ff ff ff 00 00 00 00` - two white endpoints and zero indices, which
+must decode to solid white.
 
 A descriptor whose size at `0x5C` is **zero** has nothing to stream: the
 resident payload is the whole texture. `r_athena00` is like this for its

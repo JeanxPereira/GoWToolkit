@@ -336,6 +336,27 @@ static std::string MaterialHashKey(const std::string& matName) {
     return h;
 }
 
+// A texture that never streams lives entirely in this WAD, as a descriptor
+// entry and a payload entry sharing its name. 26 of r_heroa00's 2798 textures
+// are like this, up to 512 pixels, and the texpack knows nothing about them.
+static bool DecodeTextureFromWad(AssetContainer& wad,
+                                 const std::vector<const AssetEntry*>& flat,
+                                 const std::string& name,
+                                 Parsers::TextureData& out, std::string& error) {
+    const AssetEntry* desc = nullptr;
+    const AssetEntry* pay  = nullptr;
+    for (const AssetEntry* e : flat) {
+        if (e->name != name || e->size == 0) continue;
+        if (e->size >= 0xC8 && e->size <= 0x200) desc = e;   // descriptor is 0xC8
+        else                                     pay  = e;
+    }
+    if (!desc || !pay) { error = "no descriptor/payload pair in this WAD"; return false; }
+
+    auto dFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, desc->offset, desc->size);
+    auto pFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, pay->offset, pay->size);
+    return GOWRDecodeResidentTexture(dFile, pFile, name, out, error);
+}
+
 // -- Mesh material table ------------------------------------------------------
 // A mesh names its materials by index, and the table it indexes is per mesh:
 // r_heroa00's MESH_heroa00_0 uses indices 0..97 while the WAD holds 884
@@ -801,7 +822,15 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
 
             auto tex = std::make_unique<Parsers::TextureData>();
             std::string err;
-            if (GOWRDecodeTexture(GetTexIndex(), ref->textureHash, ref->name, *tex, err)) {
+            bool got = GOWRDecodeTexture(GetTexIndex(), ref->textureHash,
+                                         ref->name, *tex, err);
+            if (!got) {
+                // Not in a texpack means it may never stream at all.
+                std::string wadErr;
+                got = DecodeTextureFromWad(wad, flat, ref->name, *tex, wadErr);
+                if (!got) err += "; " + wadErr;
+            }
+            if (got) {
                 if (!bound.empty()) bound += ", ";
                 bound += TextureRoleName(kLayerRoles[L]);
                 matLayers[mi][L] = std::move(tex);
