@@ -640,8 +640,24 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         if (GetRole(*e) == Gowr::WadEntryRole::Material && e->size > 0)
             matEntries.push_back(e);
 
-    std::vector<std::unique_ptr<Parsers::TextureData>> matTextures(matEntries.size());
+    // Layer order is a convention of this loader, not of the format: the
+    // renderer indexes textures as [material][layer], and a shader that grows
+    // normal or occlusion support needs to know where to find them. Absent
+    // roles stay null, which the renderer already treats as untextured.
+    static constexpr TextureRole kLayerRoles[] = {
+        TextureRole::Diffuse,           // layer 0 - the only one bound today
+        TextureRole::Normal,            // layer 1
+        TextureRole::AmbientOcclusion,  // layer 2
+        TextureRole::Height,            // layer 3
+    };
+    constexpr size_t kLayerCount = sizeof(kLayerRoles) / sizeof(kLayerRoles[0]);
+
+    std::vector<std::vector<std::unique_ptr<Parsers::TextureData>>>
+        matLayers(matEntries.size());
+
     for (size_t mi = 0; mi < matEntries.size(); ++mi) {
+        matLayers[mi].resize(kLayerCount);
+
         const AssetEntry* me = matEntries[mi];
         auto matFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, me->offset, me->size);
         auto refFile = FindMaterialRefList(wad, flat, MaterialHashKey(me->name));
@@ -653,19 +669,26 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
             continue;
         }
 
-        const MatReference* diffuse = mat.Texture(TextureRole::Diffuse);
-        LOG_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, diffuse=%s",
-                 mi, me->name.c_str(), mat.Textures().size(),
-                 diffuse ? diffuse->name.c_str() : "(none)");
-        if (!diffuse) continue;
+        std::string bound;
+        for (size_t L = 0; L < kLayerCount; ++L) {
+            const MatReference* ref = mat.Texture(kLayerRoles[L]);
+            if (!ref) continue;
 
-        auto tex = std::make_unique<Parsers::TextureData>();
-        std::string err;
-        if (GOWRDecodeTexture(GetTexIndex(), diffuse->textureHash, diffuse->name, *tex, err)) {
-            matTextures[mi] = std::move(tex);
-        } else {
-            LOG_WARN("[GOWRLoaders] %s: %s", diffuse->name.c_str(), err.c_str());
+            auto tex = std::make_unique<Parsers::TextureData>();
+            std::string err;
+            if (GOWRDecodeTexture(GetTexIndex(), ref->textureHash, ref->name, *tex, err)) {
+                if (!bound.empty()) bound += ", ";
+                bound += TextureRoleName(kLayerRoles[L]);
+                matLayers[mi][L] = std::move(tex);
+            } else {
+                LOG_WARN("[GOWRLoaders] %s (%s): %s", ref->name.c_str(),
+                         TextureRoleName(kLayerRoles[L]), err.c_str());
+            }
         }
+
+        LOG_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",
+                 mi, me->name.c_str(), mat.Textures().size(),
+                 bound.empty() ? "none" : bound.c_str());
     }
 
     // From here on materialId means the material, not the submesh: everything
@@ -747,12 +770,16 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         scene->skeleton  = skeleton;
         scene->flipZ     = true;    // mesh and bones both face -Z; flip once for screen
         scene->meshParts = std::move(data.parts);
-        scene->textures.resize(matTextures.size());
-        for (size_t mi = 0; mi < matTextures.size(); ++mi)
-            if (matTextures[mi]) scene->textures[mi].push_back(std::move(matTextures[mi]));
+        scene->textures = std::move(matLayers);
         vp->LoadScene(std::move(scene));
     } else {
-        vp->LoadFromMeshData(data, matTextures);
+        // The flat path carries one texture per material, so it only gets the
+        // diffuse; the layered path above keeps the rest.
+        std::vector<std::unique_ptr<Parsers::TextureData>> diffuseOnly;
+        diffuseOnly.reserve(matLayers.size());
+        for (auto& layers : matLayers)
+            diffuseOnly.push_back(layers.empty() ? nullptr : std::move(layers[0]));
+        vp->LoadFromMeshData(data, diffuseOnly);
     }
 
     if (haveMg && mg.MaxLevelCount() > 1)
