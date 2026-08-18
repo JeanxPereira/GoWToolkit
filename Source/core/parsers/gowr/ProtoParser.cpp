@@ -1,6 +1,8 @@
 ﻿#include "ProtoParser.h"
 #include <Onyx/Services/Logger.h>
 #include <glm/gtc/matrix_inverse.hpp>
+#include <cmath>
+#include <glm/gtc/quaternion.hpp>
 #include <cstdio>
 
 // â”€â”€ ProtoParser.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -104,20 +106,74 @@ std::shared_ptr<Parsers::ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs:
 
         local[j]                     = M;
         obj->matrixes1[j]            = M;
-        obj->vectors4[j]             = glm::vec4(M[3].x, M[3].y, M[3].z, 0);
         obj->joints[j].parentToJoint = M;
+
+        // The renderer rebuilds each local transform from the TRS vectors
+        // (T * R * S) rather than from parentToJoint, so the matrix has to
+        // be decomposed into them. Leaving the rotation at zero yields a
+        // translation-only skeleton, which is what stretched the model
+        // along its bone chain.
+        glm::vec3 axisX(M[0]), axisY(M[1]), axisZ(M[2]);
+        const float sx = glm::length(axisX);
+        const float sy = glm::length(axisY);
+        const float sz = glm::length(axisZ);
+
+        glm::mat3 R(1.0f);
+        if (sx > 1e-6f && sy > 1e-6f && sz > 1e-6f) {
+            R = glm::mat3(axisX / sx, axisY / sy, axisZ / sz);
+        }
+
+        // Q.14 quaternion is what the quaternion path of the renderer's
+        // TRS builder expects; it renormalises, so rounding is harmless.
+        const glm::quat q = glm::normalize(glm::quat_cast(R));
+        auto q14 = [](float v) {
+            return static_cast<int>(std::lround(v * 16384.0f));
+        };
+
+        obj->vectors4[j] = glm::vec4(M[3].x, M[3].y, M[3].z, 0.0f);
+        obj->vectors5[j] = glm::ivec4(q14(q.x), q14(q.y), q14(q.z), q14(q.w));
+        obj->vectors6[j] = glm::vec4(sx > 1e-6f ? sx : 1.0f,
+                                     sy > 1e-6f ? sy : 1.0f,
+                                     sz > 1e-6f ? sz : 1.0f, 0.0f);
+        obj->joints[j].isQuaternion = true;
     }
 
     // â”€â”€ Hierarchical world rest pose (column-major matmul) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Mirror of FUN_140699110: world[i] = world[parent[i]] * local[i].
-    // Bones are stored in topological order (parent index < child index in
-    // every example we have), so a single forward pass suffices.
+    //
+    // Bones are NOT in topological order: goProtoathena10 opens with
+    // parent(0) = 1 and parent(1) = 3, so a single forward pass would
+    // compose a child against an unresolved parent. Resolve each chain on
+    // demand instead, memoising as we go.
     std::vector<glm::mat4> composedWorld(boneCount, glm::mat4(1.0f));
-    for (int j = 0; j < boneCount; ++j) {
-        int p = obj->joints[j].parent;
-        composedWorld[j] = (p < 0 || p >= boneCount)
-            ? local[j]
-            : (composedWorld[p] * local[j]);
+    std::vector<uint8_t>   resolved(boneCount, 0);
+
+    for (int start = 0; start < boneCount; ++start) {
+        if (resolved[start]) continue;
+
+        // Walk up to the first resolved ancestor (or a root), guarding
+        // against a malformed file that loops a bone back onto itself.
+        std::vector<int> chain;
+        std::vector<uint8_t> onChain(boneCount, 0);
+        int j = start;
+        while (j >= 0 && j < boneCount && !resolved[j] && !onChain[j]) {
+            onChain[j] = 1;
+            chain.push_back(j);
+            j = obj->joints[j].parent;
+        }
+        if (j >= 0 && j < boneCount && onChain[j]) {
+            LOG_WARN("[GOWRProtoParser] bone %d sits on a parent cycle - "
+                     "treating it as a root", j);
+        }
+
+        for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+            const int b = *it;
+            const int p = obj->joints[b].parent;
+            composedWorld[b] = (p < 0 || p >= boneCount || !resolved[p])
+                ? local[b]
+                : (composedWorld[p] * local[b]);
+            resolved[b] = 1;
+        }
     }
 
     // â”€â”€ Table B: read raw (column-major), purpose unknown at runtime â”€â”€â”€â”€â”€â”€â”€â”€
@@ -132,9 +188,18 @@ std::shared_ptr<Parsers::ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs:
         file->Read(&unused[2].x, 4); file->Read(&unused[2].y, 4); file->Read(&unused[2].z, 4); file->Read(&unused[2].w, 4);
         file->Read(&unused[3].x, 4); file->Read(&unused[3].y, 4); file->Read(&unused[3].z, 4); file->Read(&unused[3].w, 4);
 
+        // The skinning palette is worldRestPose * bindToJoint, so bindToJoint
+        // has to be the inverse of the rest pose: only then does the palette
+        // collapse to identity at rest and leave the mesh as authored.
+        // Leaving it as identity transforms every vertex by its bone's world
+        // matrix a second time, which stretches the model along the skeleton.
+        //
+        // Table B above is not that inverse - checked on goProtoathena10,
+        // where world[j] * B[j] is identity for only the 5 root bones - so
+        // the inverse is computed rather than read.
         obj->joints[j].renderMat      = composedWorld[j];
-        obj->joints[j].bindToJointMat = glm::mat4(1.0f);
-        obj->matrixes3[j]             = glm::mat4(1.0f);
+        obj->joints[j].bindToJointMat = glm::inverse(composedWorld[j]);
+        obj->matrixes3[j]             = obj->joints[j].bindToJointMat;
     }
 
     return obj;
