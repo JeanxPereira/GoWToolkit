@@ -648,7 +648,10 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         TextureRole::Diffuse,           // layer 0 - the only one bound today
         TextureRole::Normal,            // layer 1
         TextureRole::AmbientOcclusion,  // layer 2
-        TextureRole::Height,            // layer 3
+        TextureRole::Gloss,             // layer 3
+        TextureRole::Height,            // layer 4
+        TextureRole::Scatter,           // layer 5
+        TextureRole::Detail,            // layer 6
     };
     constexpr size_t kLayerCount = sizeof(kLayerRoles) / sizeof(kLayerRoles[0]);
 
@@ -686,9 +689,29 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
             }
         }
 
+        std::string skipped;
+        for (const auto* t : mat.Textures()) {
+            bool wanted = false;
+            for (size_t L = 0; L < kLayerCount; ++L)
+                if (kLayerRoles[L] == t->role) { wanted = true; break; }
+            if (wanted) continue;
+            if (!skipped.empty()) skipped += ", ";
+            skipped += t->name;
+        }
+
         LOG_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",
                  mi, me->name.c_str(), mat.Textures().size(),
                  bound.empty() ? "none" : bound.c_str());
+        if (!skipped.empty()) {
+            LOG_DEBUG("[GOWRLoaders]   not a mapped role: %s", skipped.c_str());
+        }
+        if (!matLayers[mi][0]) {
+            // Layer 0 is what the viewport samples, so say plainly why the
+            // model will render untextured rather than leaving it a mystery.
+            const MatReference* diff = mat.Texture(TextureRole::Diffuse);
+            LOG_WARN("[GOWRLoaders]   no usable diffuse (%s) - this material renders untextured",
+                     diff ? diff->name.c_str() : "material declares none");
+        }
     }
 
     // From here on materialId means the material, not the submesh: everything

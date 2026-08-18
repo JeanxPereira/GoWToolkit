@@ -30,6 +30,9 @@ enum class TextureRole : uint8_t {
     Roughness,         // _0r_
     Metallic,          // _0m_
     Emissive,          // _0e_
+    Gloss,             // _0g_   roughness/gloss; the second most common role
+    Scatter,           // _0sc_  subsurface scatter
+    Detail,            // _0sd_  detail overlay
 };
 
 const char* TextureRoleName(TextureRole role);

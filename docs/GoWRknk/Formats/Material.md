@@ -114,17 +114,40 @@ pairing rather than assuming it.
 The channel a texture contributes is encoded in its name, as the suffix before
 the trailing hash:
 
-| Suffix | Role |
-|--------|------|
-| `_0d_`  | Diffuse |
-| `_0n_`  | Normal |
-| `_0ao_` | Ambient occlusion |
-| `_0h_`  | Height |
+| Suffix | Role | Count across four shipped character WADs |
+|--------|------|---:|
+| `_0d_`  | Diffuse | 106 |
+| `_0n_`  | Normal | 97 |
+| `_0g_`  | Gloss / roughness | 91 |
+| `_0ao_` | Ambient occlusion | 69 |
+| `_0sc_` | Subsurface scatter | 39 |
+| `_0sd_` | Detail | 23 |
+| `_0h_`  | Height | 14 |
+| `_0e_`  | Emissive | 1 |
+
+Note that `sc` and `sd` are two characters where every other suffix is one, so
+a reader that assumes a single letter files 62 textures as unknown.
 
 A material commonly references textures belonging to other subjects — the
 athena materials all share one `teethtongue` height map, and one references a
 test checkerboard — so the subject in a texture name does not identify the
 material's purpose.
+
+### Where the pixels live
+
+A texture is declared by a descriptor entry (type `0x0022`) holding its name,
+its dimensions as `u16` at `0x48` and `0x4A`, and its full streamed byte size
+at `0x5C`. A payload entry (type `0x80A2`) carries a small resident slice.
+
+The full texture streams from a `.texpack`, keyed by the same hash the asset
+name ends in. Measured across `r_atreus00`, `r_atreusbear00`, `r_freya00` and
+`r_freyafalcon00` - 1148 textures - all but 22 resolve in a texpack, and the
+exceptions are 4 to 32 pixel stubs. Character textures sit in `root.texpack`.
+
+A descriptor whose size at `0x5C` is **zero** has nothing to stream: the
+resident payload is the whole texture. `r_athena00` is like this for its
+diffuse maps, which are genuinely 16x16 - so a viewer that only binds diffuse
+shows that character untextured no matter how much of the pipeline is correct.
 
 ## Unresolved
 
@@ -133,6 +156,10 @@ material's purpose.
 - **Sections 1 to 5** of the MAT entry. Section 1 holds 16-byte entries whose
   first field increments by 8 and whose last is a float; the rest were empty in
   every sample.
+- **Resident payload layout.** The `0x80A2` entry holds block-compressed data
+  but the format is not yet located in the descriptor; it can be inferred from
+  the ratio of `0x5C` to the pixel count. Only relevant for the 2% of textures
+  that never stream, all of which are tiny stubs.
 - **Index-to-material ordering.** That `0x28` is the material index is
   established; that index 0 means the first MAT entry in descriptor order is
   the working assumption, not a proven fact.

@@ -56,6 +56,9 @@ TextureRole RoleFromName(const std::string& name) {
     if (tag == "r")  return TextureRole::Roughness;
     if (tag == "m")  return TextureRole::Metallic;
     if (tag == "e")  return TextureRole::Emissive;
+    if (tag == "g")  return TextureRole::Gloss;
+    if (tag == "sc") return TextureRole::Scatter;
+    if (tag == "sd") return TextureRole::Detail;
     return TextureRole::Unknown;
 }
 
@@ -77,6 +80,9 @@ const char* TextureRoleName(TextureRole role) {
         case TextureRole::Roughness:        return "Roughness";
         case TextureRole::Metallic:         return "Metallic";
         case TextureRole::Emissive:         return "Emissive";
+        case TextureRole::Gloss:            return "Gloss";
+        case TextureRole::Scatter:          return "Scatter";
+        case TextureRole::Detail:           return "Detail";
         default:                            return "Unknown";
     }
 }
