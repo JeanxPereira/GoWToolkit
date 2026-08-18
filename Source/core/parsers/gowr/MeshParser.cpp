@@ -392,6 +392,17 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
             // Indices are GLOBAL skeleton indices, not palette-local ones:
             // measured on r_athena00, a part's distinct vertex indices are
             // exactly the set of values in its MG palette.
+            // Index width comes from the format byte, matching the engine's own
+            // vertex-pulling shader, which switches on it:
+            //   format 2 -> four raw u32   (302 submeshes of r_heroa00)
+            //   format 4 -> four u16
+            //   otherwise -> four u8
+            // Dispatching on compCount instead reads a four-byte tuple of uint8
+            // indices as an 11-bit packed block and reports bone 901 out of a
+            // 318-bone skeleton.
+            //
+            // Indices are GLOBAL skeleton indices; the loader rebases them onto
+            // the part's palette.
             case Semantic::BoneIdx: {
                 const uint32_t elemBytes = ElementSize(c.format, 1);
                 const int      n         = (c.compCount < 4) ? c.compCount : 4;
@@ -405,8 +416,12 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                     for (int k = 0; k < n; ++k) {
                         uint16_t b = 0; gpu->Read(&b, 2); idx[k] = b;
                     }
+                } else if (c.format != AttrFormat::R10G10B10) {
+                    for (int k = 0; k < n; ++k) {
+                        uint32_t b = 0; gpu->Read(&b, 4); idx[k] = b;
+                    }
                 } else {
-                    // Packed encoding: 11-bit indices across uint32 words.
+                    // Packed: 11-bit indices across uint32 words.
                     uint32_t u0 = 0, u1 = 0;
                     gpu->Read(&u0, 4);
                     gpu->Read(&u1, 4);
@@ -419,40 +434,42 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                 break;
             }
 
-            case Semantic::BoneWgt:
+            // The stored weights are always one short of the influence count:
+            // the shader derives the last as 1 - sum, which is why only three
+            // fields are read from the packed form and why a float form can
+            // carry two or three values.
+            case Semantic::BoneWgt: {
+                float w[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                int   n    = 0;
+
                 if (c.format == AttrFormat::R10G10B10) {
-                    // compCount tells us how many packed uint32s to read
-                    // compCount=1 â†’ 1 uint32 â†’ 3 packed weights (4th implicit)
-                    // compCount=2 â†’ 2 uint32s â†’ 6 weights
-                    // compCount=3 â†’ 3 uint32s â†’ 9 weights
+                    // Three 10-bit fields per uint32, scaled by 1/1023.
                     const float kScale = 1.0f / 1023.0f;
-                    float w[9] = {};
-                    int wIdx = 0;
-                    for (int pack = 0; pack < c.compCount; ++pack) {
-                        uint32_t u32;
-                        gpu->Read(&u32, 4);
-                        w[wIdx++] = (float)((u32      ) & 0x3FF) * kScale;
-                        w[wIdx++] = (float)((u32 >> 10) & 0x3FF) * kScale;
-                        w[wIdx++] = (float)((u32 >> 20) & 0x3FF) * kScale;
+                    for (int pack = 0; pack < c.compCount && n < 3; ++pack) {
+                        uint32_t u = 0;
+                        gpu->Read(&u, 4);
+                        for (int f = 0; f < 3 && n < 3; ++f, ++n)
+                            w[n] = (float)((u >> (f * 10)) & 0x3FF) * kScale;
                     }
-                    // For 4-influence (compCount=1): 4th = 1 - (w0+w1+w2), clamped
-                    if (c.compCount == 1) {
-                        float sum = w[0] + w[1] + w[2];
-                        w[3] = (sum < 1.0f) ? (1.0f - sum) : 0.0f;
+                } else {
+                    const uint32_t elemBytes = ElementSize(c.format, 1);
+                    const int      take      = (c.compCount < 3) ? c.compCount : 3;
+                    for (int k = 0; k < take; ++k, ++n) {
+                        if (elemBytes == 4) {
+                            gpu->Read(&w[n], 4);
+                        } else if (elemBytes == 2) {
+                            uint16_t r = 0; gpu->Read(&r, 2); w[n] = r / 65535.0f;
+                        } else {
+                            uint8_t r = 0; gpu->Read(&r, 1); w[n] = r / 255.0f;
+                        }
                     }
-                    v.boneWeights = glm::vec4(w[0], w[1], w[2], w[3]);
-                } else if (c.format == AttrFormat::Uint8) {
-                    // 4 Ã— uint8/255
-                    uint8_t b0, b1, b2, b3;
-                    gpu->Read(&b0, 1);
-                    gpu->Read(&b1, 1);
-                    gpu->Read(&b2, 1);
-                    gpu->Read(&b3, 1);
-                    v.boneWeights = glm::vec4(
-                        b0 / 255.0f, b1 / 255.0f,
-                        b2 / 255.0f, b3 / 255.0f);
                 }
+
+                const float sum = w[0] + w[1] + w[2];
+                w[3] = (sum < 1.0f) ? (1.0f - sum) : 0.0f;
+                v.boneWeights = glm::vec4(w[0], w[1], w[2], w[3]);
                 break;
+            }
 
             // â”€â”€ Tangent (not needed for geometry display) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             case Semantic::Tangent:
