@@ -140,9 +140,17 @@ its dimensions as `u16` at `0x48` and `0x4A`, and its full streamed byte size
 at `0x5C`. A payload entry (type `0x80A2`) carries a small resident slice.
 
 The full texture streams from a `.texpack`, keyed by the same hash the asset
-name ends in. Measured across `r_atreus00`, `r_atreusbear00`, `r_freya00` and
-`r_freyafalcon00` - 1148 textures - all but 22 resolve in a texpack, and the
-exceptions are 4 to 32 pixel stubs. Character textures sit in `root.texpack`.
+name ends in. Character textures sit in `root.texpack`. Measured on
+`r_heroa00`, 26 of 2798 textures resolve nowhere in a texpack, and every one of
+them declares a streamed size of zero - they are resident-only, from 4 up to
+512 pixels.
+
+A resident payload cannot be decoded from its entry size alone: the entry is
+padded well past its data (a 16x16 diffuse occupies 2304 bytes of which 184 are
+non-zero), and the pixel format varies - a 512x512 one is exactly `512*512*4`,
+uncompressed RGBA8, and carries `04` in the per-mip array at descriptor `0x50`
+where the others carry `01`. Until that field is understood, guessing the
+format would produce coloured noise rather than a texture.
 
 A descriptor whose size at `0x5C` is **zero** has nothing to stream: the
 resident payload is the whole texture. `r_athena00` is like this for its

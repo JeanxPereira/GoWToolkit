@@ -156,6 +156,43 @@ TEST_CASE("Two-letter channel suffixes parse as their own roles") {
     CHECK(refs[3].role == Onyx::TextureRole::AmbientOcclusion);
 }
 
+TEST_CASE("Both channel-naming conventions are read") {
+    // Assets spell the channel either as _0d_ or as plain _d_. Reading only the
+    // first form makes a material look like it declares no diffuse. "gen" sits
+    // in the same position as a tag but is a literal word, so it must not be
+    // mistaken for one.
+    RefBuilder b;
+    b.u32(4);
+    b.u32(0);
+    auto tex = [&](const char* name) {
+        uint8_t g[16] = { 0x54,0x58,0x45,0x54, 0x00,0x45,0x52,0x55 };
+        b.entry(g, name);
+    };
+    tex("TX_standardeye00_lacrimal_d_2C0DD348EE2EF243");
+    tex("TX_atreus00_eye_lacrimal_o_FA119503F5688267");
+    tex("TX_kratos_body_nm_1111111122222222");
+    tex("TX_death01_112E6D2408347E77");
+
+    std::vector<Onyx::MatReference> refs;
+    REQUIRE(Onyx::GOWRMaterialParseRefs(Mem(b.buf), refs));
+    REQUIRE(refs.size() == 4);
+    CHECK(refs[0].role == Onyx::TextureRole::Diffuse);
+    CHECK(refs[1].role == Onyx::TextureRole::AmbientOcclusion);
+    CHECK(refs[2].role == Onyx::TextureRole::Normal);
+    CHECK(refs[3].role == Onyx::TextureRole::Unknown);   // no channel at all
+}
+
+TEST_CASE("A gen infix is not mistaken for a channel") {
+    RefBuilder b;
+    b.u32(1);
+    b.u32(0);
+    uint8_t g[16] = { 0x54,0x58,0x45,0x54, 0x00,0x45,0x52,0x55 };
+    b.entry(g, "TX_cloudtile_gen_DCB6E128A9BEF8A5");
+    std::vector<Onyx::MatReference> refs;
+    REQUIRE(Onyx::GOWRMaterialParseRefs(Mem(b.buf), refs));
+    CHECK(refs[0].role == Onyx::TextureRole::Unknown);
+}
+
 TEST_CASE("A truncated trailing reference is still read") {
     std::vector<Onyx::MatReference> refs;
     REQUIRE(Onyx::GOWRMaterialParseRefs(Mem(BuildRefs()), refs));

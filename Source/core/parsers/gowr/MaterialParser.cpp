@@ -38,19 +38,28 @@ constexpr size_t kParamStride  = 24;
 const uint8_t kTextureTag[8] = { 0x54, 0x58, 0x45, 0x54, 0x00, 0x45, 0x52, 0x55 };
 
 TextureRole RoleFromName(const std::string& name) {
-    // TX_<subject>_gen_0<suffix>_<16 hex>
+    // Two conventions are in use, and both must be read:
+    //   TX_<subject>_gen_0<tag>_<hash>   1223 textures across four character WADs
+    //   TX_<subject>_<tag>_<hash>          ~700 more
+    // Taking only the first form leaves materials looking like they declare no
+    // diffuse at all, when in fact they name one as _d_ rather than _0d_.
     const size_t last = name.find_last_of('_');
     if (last == std::string::npos || last < 2) return TextureRole::Unknown;
     const size_t prev = name.find_last_of('_', last - 1);
     if (prev == std::string::npos) return TextureRole::Unknown;
 
     std::string tag = name.substr(prev + 1, last - prev - 1);
-    if (tag.size() < 2 || tag[0] != '0') return TextureRole::Unknown;
-    tag.erase(0, 1);
+    if (tag.empty()) return TextureRole::Unknown;
+
+    // "gen" is a literal word in most asset names, not a channel, and it sits in
+    // exactly the position a tag occupies when a name carries no channel at all.
+    if (tag == "gen" || tag == "ge") return TextureRole::Unknown;
+
+    if (tag[0] == '0' && tag.size() > 1) tag.erase(0, 1);
 
     if (tag == "d")  return TextureRole::Diffuse;
-    if (tag == "n")  return TextureRole::Normal;
-    if (tag == "ao") return TextureRole::AmbientOcclusion;
+    if (tag == "n" || tag == "nm") return TextureRole::Normal;
+    if (tag == "ao" || tag == "o")  return TextureRole::AmbientOcclusion;
     if (tag == "h")  return TextureRole::Height;
     if (tag == "s")  return TextureRole::Specular;
     if (tag == "r")  return TextureRole::Roughness;
@@ -117,10 +126,10 @@ bool GOWRMaterialParseRefs(const std::shared_ptr<Vfs::IFile>& file,
     file->Seek(0, SEEK_SET);
     uint32_t count = 0;
     file->Read(&count, 4);
-    if (count == 0 || count > 4096) {
-        LOG_WARN("[GOWRMaterial] implausible reference count %u", count);
-        return false;
-    }
+    // No warning here: this function doubles as the probe that decides whether
+    // an arbitrary entry is a reference list at all, so an implausible count is
+    // the expected answer for most entries rather than a problem.
+    if (count == 0 || count > 4096) return false;
 
     out.reserve(count);
     for (uint32_t i = 0; i < count; ++i) {

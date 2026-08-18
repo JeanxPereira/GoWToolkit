@@ -336,11 +336,102 @@ static std::string MaterialHashKey(const std::string& matName) {
     return h;
 }
 
-static std::shared_ptr<Vfs::IFile> FindMaterialRefList(
+// -- Mesh material table ------------------------------------------------------
+// A mesh names its materials by index, and the table it indexes is per mesh:
+// r_heroa00's MESH_heroa00_0 uses indices 0..97 while the WAD holds 884
+// materials, so treating the index as WAD-wide lands almost every part on the
+// wrong material.
+//
+// The table is a reference list holding only MAT_ names, and it sits in the
+// descriptor immediately after its mesh - measured on r_heroa00, all 18 lists
+// pair that way. Count alone does not identify it: six meshes there declare two
+// materials and six lists hold two. Payload order does not either; it agrees
+// with descriptor order for only 13 of the 18.
+//
+// The browser's tree groups entries into folders and loses descriptor order, so
+// it is read back from the WAD's own descriptor array. Layout per Wad.md.
+struct WadDescriptor {
+    std::string name;
+    uint16_t    type = 0;
+    uint32_t    size = 0;
+};
+
+static std::vector<WadDescriptor> ReadWadDescriptors(AssetContainer& wad) {
+    std::vector<WadDescriptor> out;
+    if (!wad.fileSource) return out;
+
+    constexpr size_t kHeader = 64, kStride = 0x90, kNameOff = 0x18, kNameMax = 56;
+
+    uint32_t magic = 0, version = 0, count = 0;
+    wad.fileSource->Seek(0, SEEK_SET);
+    wad.fileSource->Read(&magic, 4);
+    wad.fileSource->Read(&version, 4);
+    wad.fileSource->Read(&count, 4);
+    if (magic != 0x434F5457 || count == 0 || count > 1000000) return out;
+    if (wad.fileSource->Size() < kHeader + (size_t)count * kStride) return out;
+
+    out.reserve(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        const size_t rec = kHeader + (size_t)i * kStride;
+        WadDescriptor de;
+        uint16_t group = 0;
+        wad.fileSource->Seek(rec, SEEK_SET);
+        wad.fileSource->Read(&group, 2);
+        wad.fileSource->Read(&de.type, 2);
+        wad.fileSource->Read(&de.size, 4);
+
+        char name[kNameMax + 1] = {};
+        wad.fileSource->Seek(rec + kNameOff, SEEK_SET);
+        wad.fileSource->Read(name, kNameMax);
+        de.name = name;
+        out.push_back(std::move(de));
+    }
+    return out;
+}
+
+// Material names for one mesh, in the order its submeshes index them. Empty
+// when the table cannot be identified, which the caller must treat as "no
+// materials" rather than falling back to a guess.
+static std::vector<std::string> ResolveMeshMaterials(
         AssetContainer& wad, const std::vector<const AssetEntry*>& flat,
-        const std::string& hashKey) {
-    if (hashKey.empty()) return nullptr;
-    const std::string needle = hashKey + "_ps_";
+        const AssetEntry& meshEntry, uint32_t matCount) {
+    std::vector<std::string> out;
+    if (matCount == 0) return out;
+
+    const auto descs = ReadWadDescriptors(wad);
+    for (size_t i = 0; i + 1 < descs.size(); ++i) {
+        if (descs[i].name != meshEntry.name || descs[i].size != meshEntry.size) continue;
+
+        const WadDescriptor& next = descs[i + 1];
+        for (const AssetEntry* e : flat) {
+            if (e->name != next.name || e->size != next.size) continue;
+
+            auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, e->offset, e->size);
+            std::vector<MatReference> refs;
+            if (!GOWRMaterialParseRefs(file, refs)) continue;
+            if (refs.size() != matCount) continue;
+
+            std::vector<std::string> names;
+            for (const auto& r : refs) {
+                if (r.name.rfind("MAT_", 0) != 0) { names.clear(); break; }
+                names.push_back(r.name);
+            }
+            if (names.size() == matCount) return names;
+        }
+    }
+    return out;
+}
+
+// Maps every reference list in a WAD to the material it belongs to, in one
+// pass. Probing per material instead is quadratic and bites hard on real
+// content: r_heroa00 holds 25,207 entries and 884 materials, which is 15.8
+// million parses and freezes the app, where r_athena00's 4 materials over 114
+// entries never showed the cost.
+using MaterialRefIndex = std::unordered_map<std::string, std::shared_ptr<Vfs::IFile>>;
+
+static MaterialRefIndex BuildMaterialRefIndex(
+        AssetContainer& wad, const std::vector<const AssetEntry*>& flat) {
+    MaterialRefIndex index;
 
     for (const AssetEntry* e : flat) {
         if (e->size < 8 + 76 || e->size > (1u << 20)) continue;
@@ -349,13 +440,17 @@ static std::shared_ptr<Vfs::IFile> FindMaterialRefList(
         std::vector<MatReference> refs;
         if (!GOWRMaterialParseRefs(file, refs)) continue;
 
+        // A list belongs to whichever material its shader permutations name.
         for (const auto& r : refs) {
-            if (r.isShader && r.name.rfind(needle, 0) == 0) return file;
+            if (!r.isShader) continue;
+            const size_t sep = r.name.find("_ps_");
+            if (sep == std::string::npos || sep == 0) continue;
+            index.emplace(r.name.substr(0, sep), file);
+            break;
         }
     }
-    return nullptr;
+    return index;
 }
-
 static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry, AssetContainer& wad, bool attachSkeleton) {
     if (!wad.fileSource) return nullptr;
 
@@ -634,11 +729,32 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     // put them yet.
     std::vector<const AssetEntry*> flat;
     FlattenEntries(wad.entries, flat);
+    const MaterialRefIndex refIndex = BuildMaterialRefIndex(wad, flat);
 
-    std::vector<const AssetEntry*> matEntries;
+    // The mesh's own material table decides which MAT each index means.
+    uint32_t matCount = 0;
+    meshFile->Seek(0x20, SEEK_SET);
+    meshFile->Read(&matCount, 4);
+
+    const std::vector<std::string> matNames =
+        ResolveMeshMaterials(wad, flat, entry, matCount);
+
+    if (matCount > 0 && matNames.empty()) {
+        LOG_WARN("[GOWRLoaders] mesh declares %u materials but its table was "
+                 "not found - rendering untextured", matCount);
+    }
+
+    std::unordered_map<std::string, const AssetEntry*> matByName;
     for (const AssetEntry* e : flat)
         if (GetRole(*e) == Gowr::WadEntryRole::Material && e->size > 0)
-            matEntries.push_back(e);
+            matByName.emplace(e->name, e);
+
+    std::vector<const AssetEntry*> matEntries;
+    matEntries.reserve(matNames.size());
+    for (const auto& n : matNames) {
+        auto it = matByName.find(n);
+        matEntries.push_back(it != matByName.end() ? it->second : nullptr);
+    }
 
     // Layer order is a convention of this loader, not of the format: the
     // renderer indexes textures as [material][layer], and a shader that grows
@@ -662,8 +778,14 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         matLayers[mi].resize(kLayerCount);
 
         const AssetEntry* me = matEntries[mi];
+        if (!me) {
+            LOG_WARN("[GOWRLoaders] material[%zu] %s: named by the mesh but "
+                     "absent from this WAD", mi, matNames[mi].c_str());
+            continue;
+        }
         auto matFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, me->offset, me->size);
-        auto refFile = FindMaterialRefList(wad, flat, MaterialHashKey(me->name));
+        auto it      = refIndex.find(MaterialHashKey(me->name));
+        auto refFile = (it != refIndex.end()) ? it->second : nullptr;
 
         GOWRMaterial mat;
         if (!GOWRMaterialParse(matFile, refFile, mat)) continue;
@@ -1390,7 +1512,9 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRMaterialHandler::CreateViewer(
     FlattenEntries(wad.entries, flat);
 
     auto matFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.offset, entry.size);
-    auto refFile = FindMaterialRefList(wad, flat, MaterialHashKey(entry.name));
+    const MaterialRefIndex refIndex = BuildMaterialRefIndex(wad, flat);
+    auto it      = refIndex.find(MaterialHashKey(entry.name));
+    auto refFile = (it != refIndex.end()) ? it->second : nullptr;
 
     GOWRMaterial mat;
     if (!GOWRMaterialParse(matFile, refFile, mat)) return nullptr;
