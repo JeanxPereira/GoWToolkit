@@ -383,7 +383,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                 std::snprintf(tmp, sizeof(tmp), "%02X ", buf[b]);
                 hex += tmp;
             }
-            LOG_INFO("[GOWRLoaders] MDL '%s' size=%u first %u bytes: %s",
+            LOG_DEBUG("[GOWRLoaders] MDL '%s' size=%u first %u bytes: %s",
                      mdlEntry->name.c_str(), mdlEntry->size, dumpSz, hex.c_str());
 
             // Also dump last 256 bytes if file is larger than dumpSz
@@ -397,10 +397,10 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                     std::snprintf(tmp, sizeof(tmp), "%02X ", tail[b]);
                     thex += tmp;
                 }
-                LOG_INFO("[GOWRLoaders] MDL tail %u bytes: %s", tailSz, thex.c_str());
+                LOG_DEBUG("[GOWRLoaders] MDL tail %u bytes: %s", tailSz, thex.c_str());
             }
         } else {
-            LOG_INFO("[GOWRLoaders] No MDL_ sibling for '%s' (base='%s')",
+            LOG_DEBUG("[GOWRLoaders] No MDL_ sibling for '%s' (base='%s')",
                      entry.name.c_str(), mdlBase.c_str());
         }
     }

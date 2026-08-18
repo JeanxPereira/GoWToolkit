@@ -68,8 +68,8 @@ private:
         Semantic   semantic;
         AttrFormat format;
         uint8_t    compCount;   // number of components (1-4)
-        uint8_t    byteOffset;  // byte offset within the interleaved stride
-        uint32_t   bufferIdx;   // index into the buffer-offsets table
+        uint8_t    byteOffset;  // byte offset within its buffer's interleaved stride
+        uint8_t    bufferIdx;   // logical buffer this component lives in (0..14)
     };
 
     struct SubmeshHeader {
@@ -86,10 +86,11 @@ private:
 
         uint64_t meshHash;
 
-        uint8_t  bufferCount;
-        uint8_t  indicesStride;   // 2 = uint16, 4 = uint32
-        uint16_t bytesPerVertex;  // interleaved stride (valid when bufferCount == 1)
-        uint8_t  componentCount;
+        uint8_t  bufferCount;     // +0x80  logical buffer count
+        uint8_t  indicesStride;   // +0x81  bytes per index (2 = uint16, 4 = uint32)
+        uint8_t  bytesPerVertex;  // +0x82  unused by the game; strides are derived
+        uint8_t  topology;        // +0x83  primitive type (low 3 bits)
+        uint8_t  componentCount;  // +0x84
     };
 
     // â”€â”€ Private helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
