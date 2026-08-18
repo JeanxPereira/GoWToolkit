@@ -6,7 +6,13 @@
 #include <vector>
 #include <cstring>
 
+// bcdec is a single-header library: exactly one translation unit may emit its
+// implementation. TextureDecode.cpp owns it; every other includer gets the
+// declarations only. Defining it unconditionally here breaks the build the
+// moment a second file includes this header.
+#ifdef ONYX_BCDEC_IMPLEMENTATION
 #define BCDEC_IMPLEMENTATION
+#endif
 #include "bcdec.h"
 
 namespace Onyx {
