@@ -122,6 +122,41 @@ TEST_CASE("A reference is a texture because of its GUID, not its name") {
     CHECK_FALSE(refs[2].isTexture);
 }
 
+TEST_CASE("The texpack key comes from the name, not the GUID") {
+    // The two disagree often: across r_heroa00's 8396 texture references the
+    // GUID carries a different hash than the name 937 times, and it is the name
+    // hash the texpack is keyed by - 2772 of that WAD's 2798 textures resolve
+    // through it.
+    RefBuilder b;
+    b.u32(1);
+    b.u32(0);
+    uint8_t g[16] = { 0x54,0x58,0x45,0x54, 0x00,0x45,0x52,0x55 };
+    const uint32_t lo = 0x54EABE56, hi = 0x31989ADE;   // deliberately not the name
+    std::memcpy(g + 8,  &lo, 4);
+    std::memcpy(g + 12, &hi, 4);
+    b.entry(g, "TX_mm_rock_lava_01_gen_0d_9844A99EBCFCFFA1");
+
+    std::vector<Onyx::MatReference> refs;
+    REQUIRE(Onyx::GOWRMaterialParseRefs(Mem(b.buf), refs));
+    REQUIRE(refs.size() == 1);
+    CHECK(refs[0].textureHash == 0x9844A99EBCFCFFA1ull);
+}
+
+TEST_CASE("A name with no hash falls back to the GUID") {
+    RefBuilder b;
+    b.u32(1);
+    b.u32(0);
+    uint8_t g[16] = { 0x54,0x58,0x45,0x54, 0x00,0x45,0x52,0x55 };
+    const uint32_t lo = 0xAABBCCDD, hi = 0x11223344;
+    std::memcpy(g + 8,  &lo, 4);
+    std::memcpy(g + 12, &hi, 4);
+    b.entry(g, "TX_no_hash_here");
+
+    std::vector<Onyx::MatReference> refs;
+    REQUIRE(Onyx::GOWRMaterialParseRefs(Mem(b.buf), refs));
+    CHECK(refs[0].textureHash == 0xAABBCCDD11223344ull);
+}
+
 TEST_CASE("Texture roles come from the channel suffix") {
     std::vector<Onyx::MatReference> refs;
     REQUIRE(Onyx::GOWRMaterialParseRefs(Mem(BuildRefs()), refs));
