@@ -86,8 +86,11 @@ The words are stored little-endian, so the bytes on disk are **not** the ASCII
 string — they only spell `TEXT` `URE\0` when each word is read big-endian.
 Compare the byte pattern, not the string.
 
-The last two words are the texture hash in the order the asset name prints it,
-which is the key the `.texpack` index is searched by.
+The last two words look like the texture hash but are **not** a reliable key:
+across `r_heroa00`'s 8396 texture references they disagree with the hash the
+name ends in 937 times. The texpack is keyed by the **name** hash - 2772 of
+that WAD's 2798 textures resolve through it - so the name is what a reader
+should use, falling back to the GUID only when a name carries no hash.
 
 Everything else in the list is a shader permutation, named
 `<materialhash>_<stage>_<permutation>`.
@@ -139,11 +142,15 @@ A texture is declared by a descriptor entry (type `0x0022`) holding its name,
 its dimensions as `u16` at `0x48` and `0x4A`, and its full streamed byte size
 at `0x5C`. A payload entry (type `0x80A2`) carries a small resident slice.
 
-The full texture streams from a `.texpack`, keyed by the same hash the asset
-name ends in. Character textures sit in `root.texpack`. Measured on
-`r_heroa00`, 26 of 2798 textures resolve nowhere in a texpack, and every one of
-them declares a streamed size of zero - they are resident-only, from 4 up to
-512 pixels.
+The full texture streams from a `.texpack`, keyed by the hash the asset name
+ends in. Character textures sit in `root.texpack`, which holds 12364 of them.
+Measured on `r_heroa00`, 2772 of its 2798 textures resolve there; the other 26
+declare a streamed size of zero and are resident-only, from 4 up to 512 pixels.
+
+> An earlier version of this document claimed some textures were absent from
+> the installation. That was wrong - they were being looked up under the GUID
+> hash instead of the name hash, and a lookup for a key that does not exist is
+> indistinguishable from missing data until you check the pack directly.
 
 A resident texture keeps its own format: the descriptor embeds a GNF block at
 `0x68`, the same structure the texpack blocks carry, so the AGC `T#` sits at
@@ -164,6 +171,17 @@ A descriptor whose size at `0x5C` is **zero** has nothing to stream: the
 resident payload is the whole texture. `r_athena00` is like this for its
 diffuse maps, which are genuinely 16x16 - so a viewer that only binds diffuse
 shows that character untextured no matter how much of the pipeline is correct.
+
+### Variant redirects
+
+A texture also has a third entry, type `0x0002`, ranging from 0x4C to 0x124
+bytes. It is a redirect table: a count followed by alternative texture names
+and their GUIDs, mapping a variant to the assets that stand in for it -
+`TX_kratosblades00_sand_m_gen_0d_...` points at
+`TX_kratosblades00_damaged_gen_0d_...`, and a head variant lists four targets.
+
+Its size straddles the descriptor's own 0xC8, so entries sharing a name must be
+told apart by WAD type rather than by size.
 
 ## Unresolved
 
