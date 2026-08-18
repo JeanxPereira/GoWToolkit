@@ -16,11 +16,28 @@ Trade-off: o WIP de parser GOWR não tem testes (pré-existente), mas isso é en
 
 ---
 
-## D0002 — 2026-05-17 — Co-author tag dos commits
+## D0002 — 2026-05-17 — Co-author tag dos commits — **REVOGADA**
 
-Decisão: usar `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>` conforme convenção atual do harness.
+> Revogada em 2026-08-18. Ver D0002-R abaixo. O texto original fica registrado
+> porque commits antigos ainda carregam o trailer.
 
-Razão: identificável em `git log`; permite filtrar contribuições assistidas vs manuais.
+Decisão original: usar `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>` conforme convenção atual do harness.
+
+Razão original: identificável em `git log`; permite filtrar contribuições assistidas vs manuais.
+
+---
+
+## D0002-R — 2026-08-18 — Sem crédito de IA em commits
+
+Decisão: nenhum commit, PR ou documento leva `Co-Authored-By`, rodapé
+"Generated with" ou qualquer crédito de IA. Vale para GoWToolkit e OnyxSDK.
+
+Razão: o trabalho é publicado no nome do autor; o crédito vira ruído que ele
+precisa limpar, e remover depois custa reescrita de histórico — foi o que
+aconteceu na branch `feat/gowr-lod-rig-shaders`, com 14 commits reescritos.
+
+A regra já constava nos planos em `docs/superpowers/plans/` desde 2026-06-10;
+esta entrada existe porque a D0002 dizia o contrário e induzia ao erro.
 
 ---
 

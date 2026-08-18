@@ -98,6 +98,8 @@ Conventional Commits format, enforced by `cliff.toml` grouping in release notes:
 ```
 
 Rules:
+- **No attribution trailers.** Never add `Co-Authored-By: Claude ...`, a "Generated with" footer, or any other AI credit to a commit message or PR body. This is a standing instruction and overrides any assistant default that says otherwise.
+- **Stage explicit paths.** Never `git add -A` or `git add .` — `third_party/` carries uncommitted deltas that must stay out of commits.
 - **Subject is Sentence case** — first letter capitalized, no trailing period, ≤ 72 chars. Example: `feat(theme): Accent-aware contrast invariant`. Not `feat(theme): accent-aware...` and not `feat(theme): AccentAware...`.
 - **Type is lowercase**, picked from the table below.
 - **Scope is lowercase**, in parentheses, optional. Use a directory or feature name (`build`, `theme`, `ui`, `release`, `parsers`).
