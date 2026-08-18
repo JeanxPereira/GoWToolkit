@@ -163,11 +163,16 @@ static LodPackIndex& GetLodIndex() {
         auto lodpacksTxt = FindResource("lodpacks.txt");
         auto gameRoot    = ReadGameRootFromConfig();
 
-        if (!gameRoot.empty() && !lodpacksTxt.empty()) {
+        if (gameRoot.empty()) {
+            LOG_WARN("[GOWRLoaders] config.ini not found - LOD lookup disabled");
+        } else if (!lodpacksTxt.empty()) {
             LOG_INFO("[GOWRLoaders] Found lodpacks.txt at: %s", lodpacksTxt.string().c_str());
             s_lodIndex->LoadFromList(lodpacksTxt, gameRoot);
         } else {
-            LOG_WARN("[GOWRLoaders] config.ini or lodpacks.txt not found â€” LOD lookup disabled");
+            // A shipped install carries no lodpacks.txt (it is an artefact of the
+            // C# extractor), so index every .lodpack in pc_le directly. Without
+            // this the parser falls back to the low-res copy embedded in the WAD.
+            s_lodIndex->LoadFromGameRoot(gameRoot);
         }
     }
     return *s_lodIndex;

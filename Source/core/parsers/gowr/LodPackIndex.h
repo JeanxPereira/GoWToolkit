@@ -65,6 +65,13 @@ public:
     int LoadFromList(const std::filesystem::path& lodpacksTxtPath,
                      const std::filesystem::path& gameRoot);
 
+    // Bulk-load every .lodpack sitting in <gameRoot>/exec/wad/pc_le.
+    // Shipped games carry no lodpacks.txt -- that list is an artefact of the
+    // C# extractor -- so scanning the directory is what actually works on a
+    // real install. Mirrors TexPackIndex::LoadFromGameRoot.
+    // Returns total unique entries indexed.
+    int LoadFromGameRoot(const std::filesystem::path& gameRoot);
+
     // Look up a LOD entry by hash key.
     // The C# extractor also tries (key - 1) as a fallback; we do the same.
     // Returns nullptr if not found.

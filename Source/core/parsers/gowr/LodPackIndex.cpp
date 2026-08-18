@@ -1,5 +1,6 @@
 ﻿#include "LodPackIndex.h"
 #include <Onyx/Services/Logger.h>
+#include <algorithm>
 #include <fstream>
 #include <cstring>
 
@@ -137,6 +138,31 @@ int LodPackIndex::LoadFromList(const std::filesystem::path& lodpacksTxtPath,
         auto path = gameRoot / "exec" / "wad" / "pc_le" / (packNames[i] + ".lodpack");
         total += AddPack(path, packNames[i]);
     }
+
+    LOG_INFO("[LodPackIndex] Total unique lod entries indexed: %d", total);
+    return total;
+}
+
+// -- LoadFromGameRoot ------------------------------------------------------
+int LodPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
+    auto pcLeDir = gameRoot / "exec" / "wad" / "pc_le";
+    std::error_code ec;
+    if (!std::filesystem::exists(pcLeDir, ec)) {
+        LOG_WARN("[LodPackIndex] pc_le directory not found: %s", pcLeDir.string().c_str());
+        return 0;
+    }
+
+    std::vector<std::filesystem::path> packs;
+    for (const auto& e : std::filesystem::directory_iterator(pcLeDir, ec)) {
+        if (e.path().extension() == ".lodpack") packs.push_back(e.path());
+    }
+    std::sort(packs.begin(), packs.end());
+
+    LOG_INFO("[LodPackIndex] %zu lodpack(s) found in %s", packs.size(),
+             pcLeDir.string().c_str());
+
+    int total = 0;
+    for (const auto& p : packs) total += AddPack(p, p.stem().string());
 
     LOG_INFO("[LodPackIndex] Total unique lod entries indexed: %d", total);
     return total;
