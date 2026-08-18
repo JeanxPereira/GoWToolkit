@@ -23,7 +23,8 @@ public:
     // externally resolved LOD blobs). Does NOT do lodpack lookup.
     static bool Parse(std::shared_ptr<Vfs::IFile> meshFile,
                       std::shared_ptr<Vfs::IFile> gpuFile,
-                      Parsers::MeshData& outData);
+                      Parsers::MeshData& outData,
+                      std::vector<uint32_t>* outMaterialOfPart = nullptr);
 
     // Full parse with lodpack lookup.
     // For each submesh: if meshHash != 0 â†’ reads blob from lodIdx;
@@ -32,7 +33,8 @@ public:
     static bool ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
                                   std::shared_ptr<Vfs::IFile>    gpuFile,
                                   const LodPackIndex&       lodIdx,
-                                  Parsers::MeshData&                 outData);
+                                  Parsers::MeshData&                 outData,
+                                  std::vector<uint32_t>* outMaterialOfPart = nullptr);
 
     // Header-only parse (no GPU read, for tree inspection)
     static bool ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
@@ -75,6 +77,10 @@ private:
     struct SubmeshHeader {
         glm::vec3 extent;   // per-axis scale  (dequantisation)
         glm::vec3 origin;   // per-axis bias   (dequantisation)
+
+        // +0x28  index of the material this submesh draws with. Constant
+        // across every level of a part, which is what identifies it.
+        uint32_t materialIndex;
 
         uint32_t vertCount;
         uint32_t faceCount;

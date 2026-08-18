@@ -134,6 +134,9 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
     f->Seek(base + 0x1C, SEEK_SET);
     f->Read(&h.origin, 12);
 
+    f->Seek(base + 0x28, SEEK_SET);
+    f->Read(&h.materialIndex, 4);
+
     f->Seek(base + 0x30, SEEK_SET);
     f->Read(&h.gpuIndexOffset, 4);
 
@@ -497,7 +500,8 @@ bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
 // â”€â”€ Parse (full geometry pass) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
                             std::shared_ptr<Vfs::IFile> gpuFile,
-                            Parsers::MeshData& outData)
+                            Parsers::MeshData& outData,
+                            std::vector<uint32_t>* outMaterialOfPart)
 {
     if (!meshFile || !meshFile->IsValid()) return false;
     if (!gpuFile  || !gpuFile->IsValid())  return false;
@@ -579,6 +583,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
 
         totalVerts += hdr.vertCount;
         totalFaces += hdr.faceCount;
+        if (outMaterialOfPart) outMaterialOfPart->push_back(hdr.materialIndex);
         outData.parts.push_back(std::move(part));
     }
 
@@ -631,7 +636,8 @@ bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
 bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
                                        std::shared_ptr<Vfs::IFile>    gpuFile,
                                        const LodPackIndex&       lodIdx,
-                                       Parsers::MeshData&                 outData)
+                                       Parsers::MeshData&                 outData,
+                                       std::vector<uint32_t>* outMaterialOfPart)
 {
     if (!meshFile || !meshFile->IsValid()) return false;
 
@@ -711,6 +717,7 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
 
         totalVerts += hdr.vertCount;
         totalFaces += hdr.faceCount;
+        if (outMaterialOfPart) outMaterialOfPart->push_back(hdr.materialIndex);
         outData.parts.push_back(std::move(part));
     }
 
