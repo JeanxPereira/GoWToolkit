@@ -116,6 +116,8 @@ endif()
 target_include_directories(GoWToolkit PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source
     ${CMAKE_SOURCE_DIR}/third_party/bcdec
+    # stb_image_write: PNG output for the headless `render` command.
+    ${CMAKE_SOURCE_DIR}/third_party/stb
 )
 
 target_link_libraries(GoWToolkit PRIVATE Onyx::Onyx)

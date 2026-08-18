@@ -1,4 +1,6 @@
 ﻿#include "CliApp.h"
+#include "cli/RenderCommand.h"
+#include "core/harness/AssetHarness.h"
 #include <Onyx/Services/ProfileManager.h>
 #include "core/WadTypes.h"
 #include <Onyx/Vfs/OsFile.h>
@@ -38,6 +40,8 @@ int CliApp::Run(int argc, char** argv) {
         return HandleInspect(args);
     } else if (command == "extract") {
         return HandleExtract(args);
+    } else if (command == "render") {
+        return Onyx::Cli::RunRenderCommand(args);
     } else {
         std::cerr << "Unknown command: " << command << "\n";
         PrintHelp();
@@ -50,15 +54,16 @@ void CliApp::PrintHelp() {
         << "GoWTool CLI\n"
         << "Usage: GoWTool <command> [options]\n\n"
         << "Commands:\n"
-        << "  parse-wad <file> [--game gow2|ragnarok]   Parse WAD and print node tree.\n"
+        << "  parse-wad <file> [--game gow2|gowr]       Parse WAD and print node tree.\n"
         << "  inspect   <file> <name> [--game ...]      Parse and dump mesh/scene stats for a named entry.\n"
+        << "  render    <file> <name> [options]         Draw the entry offscreen to a PNG (--help for options).\n"
         << "  extract   <archive> <out_dir>             Extract all WADs from ISO.\n"
         << "  help                                      Print this help message.\n\n"
         << "Run without arguments to launch the GUI.\n\n"
         << "Examples:\n"
         << "  GoWTool parse-wad PAND01A.WAD\n"
         << "  GoWTool inspect PAND01A.WAD gohero00\n"
-        << "  GoWTool inspect game.iso ATHN01.WAD/gohero00\n";
+        << "  GoWTool render GOW.wad goProtoHeroA00 --angles --report hero.json\n";
 }
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -83,103 +88,19 @@ static void PrintEntryTree(const AssetEntry& entry, int depth) {
         PrintEntryTree(child, depth + 1);
 }
 
-static bool OpenWadFromFile(const std::filesystem::path& path,
-                             const std::string& gameHint,
-                             AssetContainer& wad,
-                             std::shared_ptr<Vfs::IFile>& fileOut)
-{
-    auto profile = gameHint.empty()
-        ? Onyx::Services::ProfileManager::Get().DetectProfileForFile(path)
-        : Onyx::Services::ProfileManager::Get().FindProfileByHint(gameHint);
-    if (!profile) {
-        std::cerr << "[CLI] Could not detect game profile. Use --game gow2|ragnarok\n";
-        return false;
-    }
-    std::cout << "[CLI] Profile: " << profile->GetName() << "\n";
+// OpenWadFromFile is gone: Harness::LoadContainer does the same walk and
+// additionally calls IAssetProfile::PrepareForParse, which the GUI always
+// calls and this file never did.
 
-    if (!std::filesystem::is_regular_file(path)) {
-        std::cerr << "[CLI] Path is not a regular file: " << path << "\n";
-        return false;
-    }
-
-    auto file = std::make_shared<Vfs::OsFile>(path.string());
-    if (!file->IsValid()) { std::cerr << "[CLI] Cannot open file.\n"; return false; }
-    fileOut = file;
-
-    wad.filename = path.filename().string();
-    wad.fullPath = path.string();
-    wad.profile = profile;
-    wad.fileSource = file;
-
-    if (!profile->ParseContainer(file, wad)) {
-        std::cerr << "[CLI] ParseContainer failed.\n";
-        return false;
-    }
-    return true;
-}
-
-// Find entry by exact name (depth-first search)
-static const AssetEntry* FindEntryByName(const std::vector<AssetEntry>& entries, const std::string& name) {
-    for (const auto& e : entries) {
-        if (e.name == name) return &e;
-        if (auto f = FindEntryByName(e.children, name)) return f;
-    }
-    return nullptr;
-}
-
-static void PrintSceneStats(const Parsers::SceneData& scene) {
-    std::cout << "\n=== Scene Data ===\n";
-    std::cout << "  Mesh parts  : " << scene.meshParts.size() << "\n";
-    std::cout << "  Materials   : " << scene.materials.size() << "\n";
-    std::cout << "  Textures    : " << scene.textures.size() << "\n";
-    std::cout << "  Has skeleton: " << (scene.HasSkeleton() ? "yes" : "no") << "\n";
-    std::cout << "  Is sky      : " << (scene.isSky ? "yes" : "no") << "\n";
-
-    if (scene.skeleton) {
-        std::cout << "  Joints      : " << scene.skeleton->joints.size() << "\n";
-    }
-
-    int totalVerts = 0, totalIdx = 0;
-    for (size_t i = 0; i < scene.meshParts.size(); ++i) {
-        const auto& p = scene.meshParts[i];
-        totalVerts += (int)p.vertices.size();
-        totalIdx   += (int)p.indices.size();
-        std::cout << "  Part[" << i << "] '" << p.name << "'"
-                  << " matId=" << p.materialId
-                  << " layer=" << p.textureLayer
-                  << " verts=" << p.vertices.size()
-                  << " tris=" << p.indices.size() / 3
-                  << "\n";
-    }
-    std::cout << "  TOTAL: " << totalVerts << " verts, " << totalIdx / 3 << " tris\n";
-
-    for (size_t i = 0; i < scene.materials.size(); ++i) {
-        const auto& mat = scene.materials[i];
-        std::cout << "  Mat[" << i << "] layers=" << mat.layers.size() << "\n";
-        for (size_t j = 0; j < mat.layers.size(); ++j) {
-            const auto& l = mat.layers[j];
-            std::cout << "    Layer[" << j << "] tex='" << l.textureName
-                      << "' hasTexture=" << l.hasTexture << "\n";
-        }
-    }
-
-    for (size_t i = 0; i < scene.textures.size(); ++i) {
-        for (size_t j = 0; j < scene.textures[i].size(); ++j) {
-            auto& td = scene.textures[i][j];
-            if (td)
-                std::cout << "  Tex[" << i << "][" << j << "] " << td->width << "x" << td->height
-                          << (td->IsValid() ? " OK" : " INVALID") << "\n";
-            else
-                std::cout << "  Tex[" << i << "][" << j << "] null\n";
-        }
-    }
-}
+// FindEntryByName and PrintSceneStats moved to core/harness/AssetHarness
+// so `inspect`, `render` and any future headless consumer report the same
+// facts from the same walk.
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Commands Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 int CliApp::HandleParseWad(const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        std::cerr << "Usage: GoWTool parse-wad <file> [--game gow2|ragnarok]\n";
+        std::cerr << "Usage: GoWTool parse-wad <file> [--game gow2|gowr]\n";
         return 1;
     }
 
@@ -190,17 +111,16 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
         }
     }
 
-    std::filesystem::path path(args[1]);
-    if (!std::filesystem::is_regular_file(path)) {
-        std::cerr << "[CLI] File not found: " << args[1] << "\n";
+    Onyx::Harness::LoadRequest req{std::filesystem::path(args[1]), "", gameHint};
+    Onyx::Harness::LoadResult  load;
+    if (!Onyx::Harness::LoadContainer(req, load)) {
+        std::cerr << "[CLI] " << load.error << "\n";
         return 1;
     }
+    const AssetContainer& wad = load.container;
 
-    AssetContainer wad;
-    std::shared_ptr<Vfs::IFile> file;
-    if (!OpenWadFromFile(path, gameHint, wad, file))
-        return 1;
-
+    std::cout << "[CLI] Profile: "
+              << (wad.profile ? wad.profile->GetName() : "(none)") << "\n";
     std::cout << "\n=== WAD: " << wad.filename << " ===\n";
     std::cout << "Total top-level entries: " << wad.entries.size() << "\n\n";
 
@@ -223,10 +143,8 @@ int CliApp::HandleParseWad(const std::vector<std::string>& args) {
 }
 
 int CliApp::HandleInspect(const std::vector<std::string>& args) {
-    // Usage: inspect <file> <entry-name> [--game ...]
-    // file can be a plain WAD, or ISO:WAD/entry notation
     if (args.size() < 3) {
-        std::cerr << "Usage: GoWTool inspect <wad-file> <entry-name> [--game gow2|ragnarok]\n";
+        std::cerr << "Usage: GoWTool inspect <wad-file> <entry-name> [--game gow2|gowr]\n";
         std::cerr << "Example: GoWTool inspect PAND01A.WAD gohero00\n";
         return 1;
     }
@@ -237,56 +155,32 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
             gameHint = args[++i];
     }
 
-    std::filesystem::path path(args[1]);
-    if (!std::filesystem::is_regular_file(path)) {
-        std::cerr << "[CLI] File not found: " << args[1] << "\n";
+    Onyx::Harness::LoadRequest req{std::filesystem::path(args[1]), args[2], gameHint};
+    Onyx::Harness::LoadResult  load;
+
+    if (!Onyx::Harness::Load(req, load)) {
+        std::cerr << "[CLI] " << load.error << "\n";
+        if (!load.container.entries.empty() && !load.entry) {
+            std::cerr << "[CLI] Top-level entries:\n";
+            for (const auto& e : load.container.entries)
+                std::cerr << "  " << e.name << " ["
+                          << Onyx::Types::TypeCatalog::Get().Label(e.typeId) << "]\n";
+        }
         return 1;
     }
 
-    const std::string& entryName = args[2];
+    std::cout << "[CLI] Profile: "
+              << (load.container.profile ? load.container.profile->GetName() : "(none)") << "\n";
+    std::cout << "[CLI] Parsed " << load.container.entries.size() << " top-level entries.\n";
+    std::cout << "[CLI] Found: '" << load.entry->name << "' ["
+              << Onyx::Types::TypeCatalog::Get().Label(load.entry->typeId) << "]"
+              << " size=" << load.entry->size
+              << " children=" << load.entry->children.size() << "\n";
 
-    AssetContainer wad;
-    std::shared_ptr<Vfs::IFile> file;
-    if (!OpenWadFromFile(path, gameHint, wad, file))
-        return 1;
-
-    std::cout << "[CLI] Parsed WAD with " << wad.entries.size() << " top-level entries.\n";
-    std::cout << "[CLI] Looking for entry: '" << entryName << "'\n";
-
-    const AssetEntry* entry = FindEntryByName(wad.entries, entryName);
-    if (!entry) {
-        std::cerr << "[CLI] Entry '" << entryName << "' not found.\n";
-        std::cerr << "[CLI] Top-level entries:\n";
-        for (const auto& e : wad.entries)
-            std::cerr << "  " << e.name << " [" << Onyx::Types::TypeCatalog::Get().Label(e.typeId) << "]\n";
-        return 1;
-    }
-
-    std::cout << "[CLI] Found: '" << entry->name << "' [" << Onyx::Types::TypeCatalog::Get().Label(entry->typeId) << "]"
-              << " size=" << entry->size << " offset=0x" << std::hex << entry->offset << std::dec
-              << " children=" << entry->children.size() << "\n";
-
-    auto* handler = Onyx::Types::TypeRegistry::Get().Resolve(entry->typeId);
-    if (!handler) {
-        std::cerr << "[CLI] No handler registered for typeId=" << (int)entry->typeId.value
-                  << " (" << Onyx::Types::TypeCatalog::Get().Label(entry->typeId) << ")\n";
-        return 1;
-    }
-
-    std::cout << "[CLI] Handler: " << handler->GetName() << "\n";
-    std::cout << "[CLI] Building scene data...\n";
-
-    auto scene = handler->BuildSceneData(*entry, wad);
-    if (!scene) {
-        std::cerr << "[CLI] BuildSceneData returned null. Check LOG output above.\n";
-        return 1;
-    }
-
-    if (scene->IsEmpty()) {
+    if (load.scene->IsEmpty())
         std::cout << "[CLI] Scene built but has no mesh parts (logical/trigger node).\n";
-    }
 
-    PrintSceneStats(*scene);
+    Onyx::Harness::PrintSceneStats(*load.scene, std::cout);
     return 0;
 }
 

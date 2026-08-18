@@ -40,8 +40,9 @@ int main(int argc, char** argv) {
             (void)freopen("CONOUT$", "w", stderr);
         }
 #endif
-        Onyx::CliApp::Run(argc, argv);
-        return 0;
+        // Propagate the CLI's status: scripts and the headless render harness
+        // need a non-zero exit to mean failure.
+        return Onyx::CliApp::Run(argc, argv);
     }
 
     Onyx::App::Window::initNative();
