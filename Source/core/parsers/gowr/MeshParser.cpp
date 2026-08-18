@@ -3,7 +3,9 @@
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Vfs/MemoryFile.h>
 #include <cstring>
+#include <cmath>
 #include <algorithm>
+#include <vector>
 
 // â”€â”€ MeshParser.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Full port of GoWRknk.cs mesh reading logic.
@@ -473,6 +475,34 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
 
             // â”€â”€ Tangent (not needed for geometry display) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             case Semantic::Tangent:
+                // Same 10/10/10 packing the normal uses. Whether the two spare
+                // top bits carry the bitangent sign is not established, so
+                // nothing here reads them: handedness is derived from the UV
+                // winding afterwards, which needs no assumption about them.
+                if (c.format == AttrFormat::R10G10B10) {
+                    uint32_t packed;
+                    gpu->Read(&packed, 4);
+                    auto unpack10 = [](uint32_t p, int shift) -> float {
+                        uint32_t u = (p >> shift) & 0x3FF;
+                        return ((float)u - 512.0f) / 512.0f;
+                    };
+                    glm::vec3 t(unpack10(packed,  0),
+                                unpack10(packed, 10),
+                                unpack10(packed, 20));
+                    const float len = glm::length(t);
+                    if (len > 1e-6f) {
+                        t /= len;
+                        v.tangent = glm::vec4(t, 1.0f);
+                    }
+                } else if (c.format == AttrFormat::Float32 && c.compCount >= 3) {
+                    glm::vec3 t;
+                    gpu->Read(&t.x, 4);
+                    gpu->Read(&t.y, 4);
+                    gpu->Read(&t.z, 4);
+                    if (c.compCount >= 4) { float w; gpu->Read(&w, 4); }
+                    const float len = glm::length(t);
+                    if (len > 1e-6f) v.tangent = glm::vec4(t / len, 1.0f);
+                }
                 break;
 
             default:
@@ -483,6 +513,52 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
 
     return true;
 }
+
+
+// Recovers the bitangent sign from the geometry itself.
+//
+// The vertex stream carries a tangent but nothing that is known to be its
+// handedness, and getting the sign wrong inverts every crevice a normal map
+// describes. Rather than guess at the two spare bits in the packed tangent,
+// this rebuilds the UV gradient per triangle - the same derivation an exporter
+// uses - and asks whether the stored tangent agrees with it.
+static void DeriveTangentHandedness(Parsers::MeshPart& part) {
+    if (part.indices.size() < 3 || part.vertices.empty()) return;
+
+    std::vector<glm::vec3> bitan(part.vertices.size(), glm::vec3(0.0f));
+
+    for (size_t i = 0; i + 2 < part.indices.size(); i += 3) {
+        const uint32_t i0 = part.indices[i], i1 = part.indices[i+1], i2 = part.indices[i+2];
+        if (i0 >= part.vertices.size() || i1 >= part.vertices.size() ||
+            i2 >= part.vertices.size()) continue;
+
+        const auto& v0 = part.vertices[i0];
+        const auto& v1 = part.vertices[i1];
+        const auto& v2 = part.vertices[i2];
+
+        const glm::vec3 e1 = v1.position - v0.position;
+        const glm::vec3 e2 = v2.position - v0.position;
+        const glm::vec2 d1 = v1.uv - v0.uv;
+        const glm::vec2 d2 = v2.uv - v0.uv;
+
+        const float det = d1.x * d2.y - d2.x * d1.y;
+        if (std::fabs(det) < 1e-12f) continue;   // degenerate UVs contribute nothing
+        const float r = 1.0f / det;
+
+        const glm::vec3 b = (e2 * d1.x - e1 * d2.x) * r;
+        bitan[i0] += b;
+        bitan[i1] += b;
+        bitan[i2] += b;
+    }
+
+    for (size_t i = 0; i < part.vertices.size(); ++i) {
+        auto& v = part.vertices[i];
+        if (glm::length(bitan[i]) < 1e-8f) continue;
+        const glm::vec3 expected = glm::cross(v.normal, glm::vec3(v.tangent));
+        v.tangent.w = (glm::dot(expected, bitan[i]) < 0.0f) ? -1.0f : 1.0f;
+    }
+}
+
 
 // â”€â”€ ReadIndices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
@@ -597,6 +673,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
 
         if (!ReadVertices(gpuFile, hdr, comps, bufOffsets, part)) { ++skipped; continue; }
         if (!ReadIndices (gpuFile, hdr, part))                    { ++skipped; continue; }
+        DeriveTangentHandedness(part);
 
         totalVerts += hdr.vertCount;
         totalFaces += hdr.faceCount;
@@ -731,6 +808,7 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
 
         if (!ReadVertices(lodFile, hdr, comps, bufOffsets, part)) { ++skipped; continue; }
         if (!ReadIndices (lodFile, hdr, part))                    { ++skipped; continue; }
+        DeriveTangentHandedness(part);
 
         totalVerts += hdr.vertCount;
         totalFaces += hdr.faceCount;

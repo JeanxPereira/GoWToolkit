@@ -964,7 +964,9 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         scene->skeleton  = skeleton;
         scene->flipZ     = true;    // mesh and bones both face -Z; flip once for screen
         scene->meshParts = std::move(data.parts);
-        scene->textures = std::move(matLayers);
+        scene->textures  = std::move(matLayers);
+        // kLayerRoles above is the order the renderer's PBR samplers expect.
+        scene->pbrLayers = true;
         vp->LoadScene(std::move(scene));
     } else {
         // The flat path carries one texture per material, so it only gets the
