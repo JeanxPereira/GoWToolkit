@@ -2,6 +2,7 @@
 #include "core/parsers/gowr/MgParser.h"
 #include <Onyx/Vfs/MemoryFile.h>
 #include <cstring>
+#include <initializer_list>
 #include <vector>
 
 // Detail levels in GOWR are declared by the MG part table, not inferred from
@@ -28,12 +29,15 @@ struct MgBuilder {
         need(off + sizeof(T));
         std::memcpy(buf.data() + off, &v, sizeof(T));
     }
-    void level(size_t at, uint32_t kind, float dist, uint16_t sm0, uint16_t sm1 = 0) {
+    // Kind is the submesh count and the indices follow it, so a block grows
+    // with the level. Counts above two are common in shipped content.
+    void level(size_t at, uint32_t kind, float dist,
+               std::initializer_list<uint16_t> sms) {
         put<uint32_t>(at + 0x00, kind);
         put<float>   (at + 0x04, dist);
         put<uint16_t>(at + 0x08, 0);
-        put<uint16_t>(at + 0x0A, sm0);
-        put<uint16_t>(at + 0x0C, sm1);
+        size_t o = at + 0x0A;
+        for (uint16_t s : sms) { put<uint16_t>(o, s); o += 2; }
     }
 };
 
@@ -68,9 +72,9 @@ std::vector<uint8_t> BuildMg() {
     b.put<uint32_t>(part0 + 0x38, 0x50);
     b.put<uint32_t>(part0 + 0x3C, 0x60);
     b.put<uint32_t>(part0 + 0x40, 0x70);
-    b.level(part0 + 0x50, 1, 6.0f, 0);
-    b.level(part0 + 0x60, 1, 30.0f, 1);
-    b.level(part0 + 0x70, 0, 32767.0f, 0);
+    b.level(part0 + 0x50, 1, 6.0f, { 0 });
+    b.level(part0 + 0x60, 1, 30.0f, { 1 });
+    b.level(part0 + 0x70, 0, 32767.0f, { 0 });
 
     // part 1 - a two-submesh level, then a level kept at any range.
     b.put<uint16_t>(part1 + 0x00, (uint16_t)4);
@@ -78,8 +82,8 @@ std::vector<uint8_t> BuildMg() {
     b.put<uint8_t> (part1 + 0x03, (uint8_t)0);     // rigid
     b.put<uint32_t>(part1 + 0x38, 0x50);
     b.put<uint32_t>(part1 + 0x3C, 0x60);
-    b.level(part1 + 0x50, 2, 5.0f, 2, 3);
-    b.level(part1 + 0x60, 1, 32767.0f, 4);
+    b.level(part1 + 0x50, 2, 5.0f, { 2, 3 });
+    b.level(part1 + 0x60, 1, 32767.0f, { 4 });
 
     b.need(part1 + 0x70);
     return b.buf;
@@ -110,6 +114,37 @@ TEST_CASE("A Kind==2 level carries both of its submeshes") {
     CHECK(lv.submeshes[0] == 2);
     CHECK(lv.submeshes[1] == 3);
     CHECK(lv.maxDistance == doctest::Approx(5.0f));
+}
+
+TEST_CASE("A level can name more than two submeshes") {
+    // r_heroa00 has 36 level blocks with counts of 3, 4, 6 and 10 across 23
+    // parts. Capping at two drops them and the part loses whole detail levels.
+    MgBuilder b;
+    b.put<uint16_t>(0x30, (uint16_t)1);
+    const size_t ptrTable = 0x44, rangeTable = 0x48, palette = 0x4C, part = 0x100;
+    b.put<uint32_t>(ptrTable, (uint32_t)part);
+    b.put<uint16_t>(rangeTable + 0, 0);
+    b.put<uint16_t>(rangeTable + 2, 1);
+    b.put<uint16_t>(palette, (uint16_t)5);
+
+    b.put<uint16_t>(part + 0x00, (uint16_t)0);
+    b.put<uint8_t> (part + 0x02, (uint8_t)2);
+    b.put<uint8_t> (part + 0x03, (uint8_t)2);
+    b.put<uint32_t>(part + 0x38, 0x50);
+    b.put<uint32_t>(part + 0x3C, 0x68);   // 24 bytes on, as a four-submesh block needs
+    b.level(part + 0x50, 4, 4.4f, { 10, 11, 12, 13 });
+    b.level(part + 0x68, 3, 32767.0f, { 14, 15, 16 });
+    b.need(part + 0x80);
+
+    auto file = std::make_shared<Onyx::Vfs::MemoryFile>(std::move(b.buf));
+    Onyx::GOWRMgParser::Data d;
+    REQUIRE(Onyx::GOWRMgParser::Parse(file, 20, d));
+    REQUIRE(d.parts.size() == 1);
+    REQUIRE(d.parts[0].levels.size() == 2);
+    CHECK(d.parts[0].levels[0].submeshes == std::vector<uint16_t>{ 10, 11, 12, 13 });
+    CHECK(d.parts[0].levels[1].submeshes == std::vector<uint16_t>{ 14, 15, 16 });
+    CHECK(d.partOfSubmesh[13] == 0);
+    CHECK(d.levelOfSubmesh[16] == 1);
 }
 
 TEST_CASE("A trailing block only terminates when it draws nothing") {

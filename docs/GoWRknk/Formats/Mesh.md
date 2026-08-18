@@ -290,17 +290,23 @@ Sixteen bytes, `LevelCount` of them per part:
 
 | Offset | Size | Type | Name | Description |
 |--------|------|------|------|-------------|
-| 0x00   | 4    | u32  | Kind | `0` = draw nothing, `1` = one submesh, `2` = two submeshes |
+| 0x00   | 4    | u32  | Kind | Number of submeshes this level draws; `0` draws nothing |
 | 0x04   | 4    | f32  | MaxDistance | Level is used while camera distance is below this |
 | 0x08   | 2    | u16  | Reserved | Observed `0` |
-| 0x0A   | 2    | u16  | Submesh0 | Index into the MESH submesh table |
-| 0x0C   | 2    | u16  | Submesh1 | Second submesh; valid only when `Kind == 2` |
-| 0x0E   | 2    | u16  | Reserved | |
+| 0x0A   | 2*Kind | u16[] | Submeshes | Consecutive indices into the MESH submesh table |
 
-**A level is not always one submesh.** `Kind == 2` splits a level across two
-submeshes that are drawn together, and both halves share the same `LodKey`, so
-one `.lodpack` blob feeds the pair. This is why consecutive submeshes sometimes
-repeat a LOD key — they are two halves of one detail level, not two levels.
+**A level is not always one submesh.** A level splits across as many submeshes
+as `Kind` names, drawn together, and halves of one level share a `LodKey` - so
+consecutive submeshes repeating a key are parts of one detail level, not two
+levels.
+
+Counts of 3, 4, 6 and 10 all occur: `r_heroa00` alone has 36 such levels across
+23 parts. A reader that assumes at most two drops them, and those parts lose
+whole detail levels.
+
+The block grows with the count and is padded to eight bytes - 16 bytes up to
+three submeshes, 24 for four. That size never has to be computed, since every
+block's offset comes from the record's pointer array.
 
 The final block of every chain carries `MaxDistance = 32767.0`. Its `Kind`
 decides what happens past the last real range:

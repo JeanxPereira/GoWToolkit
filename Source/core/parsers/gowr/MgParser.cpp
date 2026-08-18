@@ -35,6 +35,9 @@ namespace Onyx {
 namespace {
 constexpr float  kInfiniteRange = 32767.0f;
 constexpr size_t kPaletteStride = 20;
+// Highest submesh count seen in a level block is 10; the bound only
+// guards against a malformed file, not against legitimate content.
+constexpr uint32_t kMaxLevelSubmeshes = 32;
 }
 
 bool GOWRMgParser::Parse(std::shared_ptr<Vfs::IFile> file,
@@ -118,34 +121,42 @@ bool GOWRMgParser::Parse(std::shared_ptr<Vfs::IFile> file,
             const size_t block = (size_t)partOff + blockRel;
             // The final block of a record is truncated where the next record
             // begins, so only its first 12 bytes are guaranteed readable.
-            if (block + 12 > fileSize) break;
+            if (block + 10 > fileSize) break;
 
             file->Seek(block, SEEK_SET);
             uint32_t blockKind = 0;
             float    dist      = 0.0f;
-            uint16_t pad = 0, sm0 = 0, sm1 = 0;
+            uint16_t pad       = 0;
             file->Read(&blockKind, 4);
             file->Read(&dist, 4);
             file->Read(&pad, 2);
-            file->Read(&sm0, 2);
 
             if (blockKind == 0) {
                 // Nothing drawn past the previous level.
                 if (dist >= kInfiniteRange) part.culledAtRange = true;
                 continue;
             }
-            if (blockKind > 2) {
-                LOG_WARN("[GOWRMgParser] part %u level %u: unexpected kind %u",
-                         i, j, blockKind);
+            if (blockKind > kMaxLevelSubmeshes) {
+                LOG_WARN("[GOWRMgParser] part %u level %u: %u submeshes exceeds "
+                         "the sane bound", i, j, blockKind);
                 continue;
             }
 
+            // Kind is the submesh count, and the indices follow as consecutive
+            // u16. Counts of 3, 4, 6 and 10 all occur - r_heroa00 alone has 36
+            // such levels across 23 parts - so capping at two silently drops
+            // them and those parts lose whole detail levels.
+            //
+            // The block grows with the count and is padded to eight bytes, but
+            // the size never has to be computed: every block's offset comes
+            // from the record's pointer array.
             Level lv;
             lv.maxDistance = dist;
-            if (sm0 < meshSubmeshCount) lv.submeshes.push_back(sm0);
-            if (blockKind == 2) {
-                file->Read(&sm1, 2);
-                if (sm1 < meshSubmeshCount) lv.submeshes.push_back(sm1);
+            lv.submeshes.reserve(blockKind);
+            for (uint32_t s = 0; s < blockKind; ++s) {
+                uint16_t sm = 0;
+                file->Read(&sm, 2);
+                if (sm < meshSubmeshCount) lv.submeshes.push_back(sm);
             }
             if (lv.submeshes.empty()) continue;
 

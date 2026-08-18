@@ -339,24 +339,6 @@ static std::string MaterialHashKey(const std::string& matName) {
 // A texture that never streams lives entirely in this WAD, as a descriptor
 // entry and a payload entry sharing its name. 26 of r_heroa00's 2798 textures
 // are like this, up to 512 pixels, and the texpack knows nothing about them.
-static bool DecodeTextureFromWad(AssetContainer& wad,
-                                 const std::vector<const AssetEntry*>& flat,
-                                 const std::string& name,
-                                 Parsers::TextureData& out, std::string& error) {
-    const AssetEntry* desc = nullptr;
-    const AssetEntry* pay  = nullptr;
-    for (const AssetEntry* e : flat) {
-        if (e->name != name || e->size == 0) continue;
-        if (e->size >= 0xC8 && e->size <= 0x200) desc = e;   // descriptor is 0xC8
-        else                                     pay  = e;
-    }
-    if (!desc || !pay) { error = "no descriptor/payload pair in this WAD"; return false; }
-
-    auto dFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, desc->offset, desc->size);
-    auto pFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, pay->offset, pay->size);
-    return GOWRDecodeResidentTexture(dFile, pFile, name, out, error);
-}
-
 // -- Mesh material table ------------------------------------------------------
 // A mesh names its materials by index, and the table it indexes is per mesh:
 // r_heroa00's MESH_heroa00_0 uses indices 0..97 while the WAD holds 884
@@ -410,16 +392,53 @@ static std::vector<WadDescriptor> ReadWadDescriptors(AssetContainer& wad) {
     return out;
 }
 
+// A texture that never streams lives entirely in this WAD. It occupies three
+// entries sharing one name - payload, descriptor, and a third small record -
+// so they must be told apart by WAD type rather than by size: the third one
+// ranges from 0x4C to 0x124 bytes and straddles the descriptor's own 0xC8.
+constexpr uint16_t kWadTypeTexturePayload    = 0x80A2;
+constexpr uint16_t kWadTypeTextureDescriptor = 0x0022;
+
+static bool DecodeTextureFromWad(AssetContainer& wad,
+                                 const std::vector<WadDescriptor>& descs,
+                                 const std::vector<const AssetEntry*>& flat,
+                                 const std::string& name,
+                                 Parsers::TextureData& out, std::string& error) {
+    uint32_t descSize = 0, paySize = 0;
+    for (const auto& de : descs) {
+        if (de.name != name) continue;
+        if (de.type == kWadTypeTextureDescriptor) descSize = de.size;
+        else if (de.type == kWadTypeTexturePayload) paySize = de.size;
+    }
+    if (descSize == 0 || paySize == 0) {
+        error = "not present in this WAD";
+        return false;
+    }
+
+    const AssetEntry* desc = nullptr;
+    const AssetEntry* pay  = nullptr;
+    for (const AssetEntry* e : flat) {
+        if (e->name != name) continue;
+        if (e->size == descSize) desc = e;
+        if (e->size == paySize)  pay  = e;
+    }
+    if (!desc || !pay) { error = "entries not reachable from the tree"; return false; }
+
+    auto dFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, desc->offset, desc->size);
+    auto pFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, pay->offset, pay->size);
+    return GOWRDecodeResidentTexture(dFile, pFile, name, out, error);
+}
+
 // Material names for one mesh, in the order its submeshes index them. Empty
 // when the table cannot be identified, which the caller must treat as "no
 // materials" rather than falling back to a guess.
 static std::vector<std::string> ResolveMeshMaterials(
-        AssetContainer& wad, const std::vector<const AssetEntry*>& flat,
+        AssetContainer& wad, const std::vector<WadDescriptor>& descs,
+        const std::vector<const AssetEntry*>& flat,
         const AssetEntry& meshEntry, uint32_t matCount) {
     std::vector<std::string> out;
     if (matCount == 0) return out;
 
-    const auto descs = ReadWadDescriptors(wad);
     for (size_t i = 0; i + 1 < descs.size(); ++i) {
         if (descs[i].name != meshEntry.name || descs[i].size != meshEntry.size) continue;
 
@@ -757,8 +776,9 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     meshFile->Seek(0x20, SEEK_SET);
     meshFile->Read(&matCount, 4);
 
+    const std::vector<WadDescriptor> wadDescs = ReadWadDescriptors(wad);
     const std::vector<std::string> matNames =
-        ResolveMeshMaterials(wad, flat, entry, matCount);
+        ResolveMeshMaterials(wad, wadDescs, flat, entry, matCount);
 
     if (matCount > 0 && matNames.empty()) {
         LOG_WARN("[GOWRLoaders] mesh declares %u materials but its table was "
@@ -827,7 +847,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
             if (!got) {
                 // Not in a texpack means it may never stream at all.
                 std::string wadErr;
-                got = DecodeTextureFromWad(wad, flat, ref->name, *tex, wadErr);
+                got = DecodeTextureFromWad(wad, wadDescs, flat, ref->name, *tex, wadErr);
                 if (!got) err += "; " + wadErr;
             }
             if (got) {
