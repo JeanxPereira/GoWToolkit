@@ -77,11 +77,25 @@ bool LoadContainer(const LoadRequest& req, LoadResult& out)
     // -- this is new headless capability, not a port of existing behaviour.
     Onyx::Modules::Workspace& workspace = GetWorkspace();
 
+    // id is captured by reference and starts at 0 (invalid) -- Workspace::
+    // Open's synchronous path posts TreeReady before Open() itself returns,
+    // so the subscription has to exist before we have the real id. Filtered
+    // on e.id == id (not just "the last/only TreeReady we happened to see"):
+    // GetWorkspace() is a process-wide singleton, and while Open() being
+    // synchronous means no OTHER document's parse can interleave with this
+    // one today, an unfiltered handler is one refactor away from silently
+    // accepting a stale queued event for a different document. id is still
+    // 0 while the event for THIS call couldn't yet have fired, so an early,
+    // unrelated event (there shouldn't be one, but this costs nothing to
+    // guard against) simply fails the comparison instead of being trusted.
+    Onyx::Modules::DocumentId id = 0;
     bool parsedOk = false;
     auto sub = workspace.Events().On<Onyx::Modules::TreeReady>(
-        [&](const Onyx::Modules::TreeReady& e) { parsedOk = e.ok; });
+        [&](const Onyx::Modules::TreeReady& e) {
+            if (e.id == id) parsedOk = e.ok;
+        });
 
-    Onyx::Modules::DocumentId id = workspace.Open(req.archive, req.gameHint);
+    id = workspace.Open(req.archive, req.gameHint);
     workspace.Events().Pump();
 
     if (id == 0) {
@@ -89,6 +103,24 @@ bool LoadContainer(const LoadRequest& req, LoadResult& out)
                     " -- pass --game gow2|gowr, or check the extension";
         return false;
     }
+
+    // GetWorkspace() is a process-wide singleton that lives for the whole
+    // process, and Workspace::Open never gets an implicit Close() the way a
+    // short-lived caller-owned Workspace would from its own destructor --
+    // every LoadContainer call that reaches a real id therefore MUST close
+    // its own document on every exit path (including the error returns
+    // below) or it leaks the Document plus its mountedVfs and any
+    // module-owned decompressed buffers for the rest of the process's
+    // lifetime. RAII rather than repeating Close(id) at every return: out.*
+    // below is populated from copies/shared_ptrs taken out of *doc before
+    // this guard's destructor runs (out.container.entries is a copy of
+    // doc->roots, out.vfs/out.file are shared_ptr copies), so nothing in
+    // LoadResult depends on the Document surviving past this function.
+    struct DocumentCloser {
+        Onyx::Modules::Workspace& ws;
+        Onyx::Modules::DocumentId id;
+        ~DocumentCloser() { if (id != 0) ws.Close(id); }
+    } closer{workspace, id};
 
     Onyx::Modules::Document* doc = workspace.Get(id);
     if (!doc) {
@@ -107,20 +139,39 @@ bool LoadContainer(const LoadRequest& req, LoadResult& out)
     // downstream ITypeHandler still expect -- Task 4's scope is moving
     // container OPEN onto Workspace, not retiring AssetContainer itself
     // (Onyx::Domain::Wad.h documents it surviving for exactly this reason).
-    // This bridge is exact for a flat WAD: doc->fileTable has one slot (the
-    // container itself), same as AssetContainer::fileSource always assumed.
-    // It is NOT exact for a mounted ISO: Gow2Module::ParseIsoToc pushes one
-    // fileTable slot per PART*.PAK an entry actually lives in
-    // (AssetEntry::source.fileIndex names which), but AssetContainer has
-    // only ONE fileSource -- an entry whose fileIndex != 0 will read the
-    // wrong bytes through this bridge. That is a real, structural limit of
-    // AssetContainer's single-file model, not something Task 4 can close
-    // without redesigning it (Phase 4/5 territory, same place WadBrowser's
-    // own Onyx::Api::Database()/GetSelected() gap already lives) -- named
-    // here rather than silently mis-decoding. See task-4-report.md.
+    //
+    // FIX ROUND 1 CORRECTION: an earlier version of this comment claimed
+    // "doc->fileTable has one slot ... same as AssetContainer::fileSource
+    // always assumed" and resolved fileSource as doc->fileTable[0]. That
+    // was false for the NORMAL case, not an edge case: a compressed GOWR
+    // wad pushes its LZ4-decompressed buffer to fileTable slot 1 and
+    // GowrModule::ParseContainer's FinalizeEntries stamps every entry in
+    // the tree (folders included, tree-wide, same value) with
+    // source.fileIndex=1 -- so slot 0 (the still-compressed root
+    // container Workspace pre-seeds, per Workspace.cpp's PrepareDocument)
+    // was never the right file to read a compressed GOWR wad's offsets
+    // against. Resolving through roots[0]'s own fileIndex instead of a
+    // hardcoded 0 fixes exactly that: GowrModule stamps the SAME
+    // fileIndex on every node it produces (see WadNodeBuilder.cpp's
+    // FinalizeEntries doc comment), so whichever node happens to be
+    // roots[0] still names the correct slot for the whole tree.
+    //
+    // Still NOT exact for a mounted GOW2 ISO: Gow2Module::ParseIsoToc can
+    // stamp DIFFERENT entries with DIFFERENT fileIndexes, one per
+    // PART*.PAK an entry actually lives in -- AssetContainer has only ONE
+    // fileSource, so an entry whose fileIndex differs from roots[0]'s
+    // still reads the wrong bytes through this bridge. That remains the
+    // real, structural limit of AssetContainer's single-file model, not
+    // something this bridge can close without redesigning AssetContainer
+    // itself (Phase 4/5 territory, same place WadBrowser's own
+    // Onyx::Api::Database()/GetSelected() gap already lives) -- named here
+    // rather than silently mis-decoding. See task-4-report.md.
+    uint32_t primaryFileIndex = doc->roots.empty() ? 0 : doc->roots[0].source.fileIndex;
     out.container.filename   = req.archive.filename().string();
     out.container.fullPath   = req.archive.string();
-    out.container.fileSource = doc->fileTable.empty() ? doc->file : doc->fileTable[0];
+    out.container.fileSource = primaryFileIndex < doc->fileTable.size()
+                                    ? doc->fileTable[primaryFileIndex]
+                                    : doc->file;
     out.container.entries    = doc->roots;
 
     if (!parsedOk) {

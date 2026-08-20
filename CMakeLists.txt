@@ -81,8 +81,15 @@ if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*GOWR*")
     add_test(NAME Metrics
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Metrics*")
-    add_test(NAME Logger
-             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Logger*")
+    # No "Logger" entry: logger_test.cpp is excluded from TEST_SOURCES
+    # (tests/CMakeLists.txt -- it exercises a GOW_LOG_*/LOG_INFO family that
+    # never existed in this repo, Phase 6 scope). A "--test-case=*Logger*"
+    # entry against a binary with no such test case matches zero cases and
+    # reports SUCCESS (doctest: "0 | 0 passed | ... skipped") -- a passing
+    # ctest entry that tests nothing is worse than a missing one, so this
+    # entry is dropped rather than left as a green light wired to a
+    # disconnected sensor. Re-add it alongside logger_test.cpp when Phase 6
+    # re-includes the source.
     add_test(NAME Threading
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Threading*")
     add_test(NAME ThemeContrast

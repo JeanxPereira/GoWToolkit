@@ -210,12 +210,22 @@ void RunGoldenTest(std::string_view versionTag,
     // Workspace::Open's synchronous path runs ParseContainer inline and
     // returns before this call does, so subscribing before Open() and
     // pumping right after is sufficient to observe this document's own
-    // TreeReady -- no other document/job is in flight to interleave with.
+    // TreeReady -- `workspace` here is a fresh, local instance (not the
+    // process-wide singleton AssetHarness.cpp's GetWorkspace() is), so
+    // there is no other document to interleave with in practice. Filtered
+    // on e.id == id anyway (id starts at 0/invalid, captured by reference,
+    // assigned after Open() returns) to match the same discipline
+    // AssetHarness::LoadContainer uses rather than relying on "this
+    // Workspace happens to be freshly constructed" to stay correct if this
+    // function is ever reused across multiple opens.
+    Onyx::Modules::DocumentId id = 0;
     bool parsedOk = false;
     auto sub = workspace.Events().On<Onyx::Modules::TreeReady>(
-        [&](const Onyx::Modules::TreeReady& e) { parsedOk = e.ok; });
+        [&](const Onyx::Modules::TreeReady& e) {
+            if (e.id == id) parsedOk = e.ok;
+        });
 
-    Onyx::Modules::DocumentId id = workspace.Open(wadPath, versionTag);
+    id = workspace.Open(wadPath, versionTag);
     workspace.Events().Pump();
 
     REQUIRE_MESSAGE(id != 0, "no module accepted " << wadPath.string()
