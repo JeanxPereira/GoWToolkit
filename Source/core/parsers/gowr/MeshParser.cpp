@@ -1,4 +1,4 @@
-﻿#include "MeshParser.h"
+#include "MeshParser.h"
 #include "LodPackIndex.h"
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Vfs/MemoryFile.h>

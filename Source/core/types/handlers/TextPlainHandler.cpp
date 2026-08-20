@@ -1,4 +1,4 @@
-﻿// Plain-text file handler. Routes .txt / .ini / .cfg / .csv / .json / .log
+// Plain-text file handler. Routes .txt / .ini / .cfg / .csv / .json / .log
 // PAK entries (typed by ProfileGOW2's extension switch) to the
 // Viewers::TextEditorViewer. Registered by TypeId Ã¢â‚¬â€ no magic number, so this never
 // enters the magic dispatch map.

@@ -1,4 +1,4 @@
-﻿#include "MaterialParser.h"
+#include "MaterialParser.h"
 #include <Onyx/Vfs/SliceFile.h>
 #include <Onyx/Services/Logger.h>
 #include <cstring>

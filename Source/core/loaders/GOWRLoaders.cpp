@@ -1,4 +1,4 @@
-﻿#include "core/loaders/GOWRLoaders.h"
+#include "core/loaders/GOWRLoaders.h"
 #include <Onyx/Types/TypeRegistry.h>
 #include "core/WadTypes.h"
 #include <Onyx/Schema/AssetReader.h>

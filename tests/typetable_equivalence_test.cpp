@@ -1,4 +1,4 @@
-﻿#include <doctest/doctest.h>
+#include <doctest/doctest.h>
 #include "core/types/GameTypeTable.h"
 #include <Onyx/Types/TypeId.h>
 #include "core/types/GameTypes.h"

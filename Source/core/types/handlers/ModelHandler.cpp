@@ -1,4 +1,4 @@
-﻿// Model handler â€” GOW1/2 mesh container (mdl_*)
+// Model handler â€” GOW1/2 mesh container (mdl_*)
 // Magic: 0x0002000F (MODEL_MAGIC in god_of_war_browser)
 //
 // Resolution follows the Go project (god_of_war_browser):

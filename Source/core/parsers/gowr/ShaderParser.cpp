@@ -1,4 +1,4 @@
-﻿#include "ShaderParser.h"
+#include "ShaderParser.h"
 #include <Onyx/Services/Logger.h>
 #include <cstring>
 #include <algorithm>

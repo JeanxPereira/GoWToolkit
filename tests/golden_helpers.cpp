@@ -1,4 +1,4 @@
-﻿#include "golden_helpers.h"
+#include "golden_helpers.h"
 
 #include <doctest/doctest.h>
 

@@ -1,4 +1,4 @@
-﻿// InstanceParser â€” GOW1/GOW2 game object instance transform parser.
+// InstanceParser â€” GOW1/GOW2 game object instance transform parser.
 //
 // Port of god_of_war_browser/pack/wad/inst:
 //   GOW1 (size 0x5C): Position1 + Euler Rotation + Scale â†’ TRS matrix

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "core/profiles/gowr/GowrTaxonomy.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"

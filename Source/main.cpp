@@ -1,4 +1,4 @@
-﻿#include <Onyx/App/Window.h>
+#include <Onyx/App/Window.h>
 #include "AppRegistration.h"
 #include <Onyx/Services/ProfileManager.h>
 #include "core/profiles/gow2/ProfileGOW2.h"

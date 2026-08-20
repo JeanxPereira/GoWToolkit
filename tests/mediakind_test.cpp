@@ -1,4 +1,4 @@
-﻿#include <doctest/doctest.h>
+#include <doctest/doctest.h>
 #include <string>
 #include <Onyx/Domain/MediaKind.h>
 #include "core/types/GameTypes.h"

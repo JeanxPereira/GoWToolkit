@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Parsers/ObjectData.h>
 #include <memory>
 #include <cstdint>

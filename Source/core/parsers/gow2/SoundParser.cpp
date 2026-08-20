@@ -1,4 +1,4 @@
-﻿#include "SoundParser.h"
+#include "SoundParser.h"
 #include <Onyx/Vfs/SliceFile.h>
 #include <Onyx/Services/Logger.h>
 #include <cstring>

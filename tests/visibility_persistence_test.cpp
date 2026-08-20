@@ -1,4 +1,4 @@
-﻿#include <doctest/doctest.h>
+#include <doctest/doctest.h>
 #include <Onyx/Services/AssetVisibility.h>
 #include "core/types/GameTypes.h"
 #include <Onyx/Types/TypeCatalog.h>

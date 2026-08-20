@@ -1,4 +1,4 @@
-﻿#include "LodPackIndex.h"
+#include "LodPackIndex.h"
 #include <Onyx/Services/Logger.h>
 #include <algorithm>
 #include <fstream>

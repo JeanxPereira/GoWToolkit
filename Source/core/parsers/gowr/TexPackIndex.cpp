@@ -1,4 +1,4 @@
-﻿#include "core/parsers/gowr/TexPackIndex.h"
+#include "core/parsers/gowr/TexPackIndex.h"
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Services/TaskManager.h>
 #include <Onyx/Vfs/OsFile.h>

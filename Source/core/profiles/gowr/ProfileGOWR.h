@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Domain/IAssetProfile.h>
 #include <Onyx/Schema/StructDef.h>
 #include <map>

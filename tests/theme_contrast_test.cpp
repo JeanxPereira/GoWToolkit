@@ -1,4 +1,4 @@
-﻿// â”€â”€ ThemeManager contrast invariant tests (doctest) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ ThemeManager contrast invariant tests (doctest) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // Verifies that ApplyTheme produces readable text on every accent-tinted
 // surface for a battery of extreme accent colors in both Dark and Light

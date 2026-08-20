@@ -1,4 +1,4 @@
-﻿#include "SoundPlayer.h"
+#include "SoundPlayer.h"
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Services/ThemeManager.h>
 #include <Onyx/App/Widgets.h>

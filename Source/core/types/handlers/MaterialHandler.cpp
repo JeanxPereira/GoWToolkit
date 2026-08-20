@@ -1,4 +1,4 @@
-﻿// Material handler Ã¢â‚¬â€ GOW1/2 material definition
+// Material handler Ã¢â‚¬â€ GOW1/2 material definition
 // Magic: 0x00000008 (MAT_MAGIC in god_of_war_browser)
 
 #include <Onyx/Types/TypeRegistry.h>

@@ -1,4 +1,4 @@
-﻿// Object handler â€” GOW2 skeleton/joints container
+// Object handler â€” GOW2 skeleton/joints container
 // Magic: 0x00010001 (GOW2), 0x00040001 (GOW1)
 //
 // Resolution follows the Go project (god_of_war_browser):

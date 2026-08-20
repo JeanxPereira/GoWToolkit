@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Parsers/TextureData.h>
 #include "core/WadTypes.h"
 #include <memory>

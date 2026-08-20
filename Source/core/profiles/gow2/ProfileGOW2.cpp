@@ -1,4 +1,4 @@
-﻿#include "ProfileGOW2.h"
+#include "ProfileGOW2.h"
 #include "formats/MDL.h"
 #include <Onyx/Vfs/IsoFileSystem.h>
 #include <Onyx/Services/Logger.h>

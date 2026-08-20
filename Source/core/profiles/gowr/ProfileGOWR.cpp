@@ -1,4 +1,4 @@
-﻿#include "ProfileGOWR.h"
+#include "ProfileGOWR.h"
 #include "GOWRTypes.h"
 #include "WadNodeBuilder.h"
 #include <Onyx/Vfs/IsoFileSystem.h>

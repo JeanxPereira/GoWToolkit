@@ -1,4 +1,4 @@
-﻿#include "ui/WadBrowser.h"
+#include "ui/WadBrowser.h"
 #include <Onyx/App/UIHelpers.h>
 #include "ui/RoleVisuals.h"   // GOWR role Ã¢â€ â€™ color/icon (ColorForRole, IconForRole)
 #include <Onyx/App/Widgets.h>

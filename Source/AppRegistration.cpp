@@ -1,4 +1,4 @@
-﻿#include "AppRegistration.h"
+#include "AppRegistration.h"
 
 #include <Onyx/App/App.h>
 #include "imgui_internal.h"

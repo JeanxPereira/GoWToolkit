@@ -1,4 +1,4 @@
-﻿#include "core/types/GameTypes.h"
+#include "core/types/GameTypes.h"
 #include <Onyx/Types/TypeCatalog.h>
 #include "core/types/GameTypeTable.h"
 #include <cassert>

@@ -1,4 +1,4 @@
-﻿// Structural WAD tag handlers Ã¢â‚¬â€ identified by tag number, not magic.
+// Structural WAD tag handlers Ã¢â‚¬â€ identified by tag number, not magic.
 // These have no payload to parse, they just control the WAD tree structure.
 
 #include <Onyx/Types/TypeRegistry.h>

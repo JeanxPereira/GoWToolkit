@@ -1,4 +1,4 @@
-﻿#include "MeshParser.h"
+#include "MeshParser.h"
 #include <Onyx/Services/Logger.h>
 #include <cstring>
 #include <algorithm>

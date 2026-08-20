@@ -1,4 +1,4 @@
-﻿#include "MapViewer.h"
+#include "MapViewer.h"
 #include <imgui.h>
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Types/TypeRegistry.h>

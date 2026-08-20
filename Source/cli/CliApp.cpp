@@ -1,4 +1,4 @@
-﻿#include "CliApp.h"
+#include "CliApp.h"
 #include "cli/RenderCommand.h"
 #include "core/harness/AssetHarness.h"
 #include <Onyx/Services/ProfileManager.h>

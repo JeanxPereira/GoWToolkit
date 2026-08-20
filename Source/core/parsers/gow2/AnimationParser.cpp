@@ -1,4 +1,4 @@
-﻿// Animation parser â€” port of god_of_war_browser/pack/wad/anm
+// Animation parser â€” port of god_of_war_browser/pack/wad/anm
 // Handles magic 0x00000003, works for both GOW1 and GOW2.
 
 #include "AnimationParser.h"

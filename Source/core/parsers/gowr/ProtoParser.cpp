@@ -1,4 +1,4 @@
-﻿#include "ProtoParser.h"
+#include "ProtoParser.h"
 #include <Onyx/Services/Logger.h>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <cmath>

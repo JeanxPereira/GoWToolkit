@@ -1,4 +1,4 @@
-﻿// Instance handler Ã¢â‚¬â€ GOW1/GOW2 game object instances (goarcher00, gohero00, etc.)
+// Instance handler Ã¢â‚¬â€ GOW1/GOW2 game object instances (goarcher00, gohero00, etc.)
 // Magic: 0x00030001 (GOW2), 0x00020001 (GOW1)
 //
 // Resolution follows the Go project (god_of_war_browser):

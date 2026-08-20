@@ -1,4 +1,4 @@
-﻿#include "VagParser.h"
+#include "VagParser.h"
 #include <Onyx/Audio/AdpcmDecoder.h>
 #include <Onyx/Services/Logger.h>
 #include <cstring>

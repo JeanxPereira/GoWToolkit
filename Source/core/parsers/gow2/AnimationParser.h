@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Parsers/AnimationData.h>
 #include <cstdint>
 #include <memory>

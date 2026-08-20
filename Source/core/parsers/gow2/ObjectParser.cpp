@@ -1,4 +1,4 @@
-﻿// ObjectParser â€” GOW1/GOW2 skeleton/joints parser
+// ObjectParser â€” GOW1/GOW2 skeleton/joints parser
 // Port of god_of_war_browser/pack/wad/obj/obj.go + obj_gow2.go
 //
 // Magic numbers:

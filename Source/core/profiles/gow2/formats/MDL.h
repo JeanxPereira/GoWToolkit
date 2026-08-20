@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Schema/StructDef.h>
 #include <memory>
 

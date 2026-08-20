@@ -1,4 +1,4 @@
-﻿#include "VpkParser.h"
+#include "VpkParser.h"
 #include <Onyx/Audio/AdpcmDecoder.h>
 #include <Onyx/Services/Logger.h>
 #include <cstring>

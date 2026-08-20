@@ -1,4 +1,4 @@
-﻿// Mesh handler Ã¢â‚¬â€ raw GPU geometry data
+// Mesh handler Ã¢â‚¬â€ raw GPU geometry data
 // Magic: 0x0001000F (MESH_MAGIC in god_of_war_browser)
 // Also handles GMDL_MAGIC = 0x0003000F
 

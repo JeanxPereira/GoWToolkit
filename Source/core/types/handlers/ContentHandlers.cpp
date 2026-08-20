@@ -1,4 +1,4 @@
-﻿// Remaining Onyx content type handlers.
+// Remaining Onyx content type handlers.
 // Each registers by magic number for GOW1 and/or GOW2.
 
 #include "core/formats/GOW2AnimationFormat.h"
