@@ -1,6 +1,13 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
+
+// Forward-declared only: Classify() takes AssetEntry by const-ref, so the
+// full <Onyx/Domain/Entry.h> (heavier) stays out of every TU that only needs
+// the enums below. See core/domain/WadEntryRoleLegacy.h for the same
+// reasoning applied to the legacy WadEntryRole/WadBlock aliases.
+namespace Onyx { namespace Domain { struct AssetEntry; } }
 
 namespace Onyx {
 namespace Gowr {
@@ -88,6 +95,32 @@ struct WadAssetName {
                                         variant.find("vs") != std::string::npos; }
     bool IsInternal()    const { return prefix.empty() && lod < 0 && variant.empty(); }
 };
+
+// What AssetEntry::profileTag used to carry (Onyx v1.1 has no per-entry
+// storage, so nothing stores this any more — see Classify() below).
+struct GowrProfileTag {
+    WadEntryRole role       = WadEntryRole::Unknown;
+    WadBlock     block      = WadBlock::Unknown;
+    WadAssetName parsedName;
+};
+
+// Classifies a single FileDesc entry (by its own name + payload size) into a
+// WadEntryRole. Pure function — the single source of truth also used by
+// WadNodeBuilder::Pass1_Classify. Priority-ordered pattern matching; see
+// GowrTaxonomy.cpp for the rules.
+//
+// TX_* entries split into TextureGpu ("large" payload) / TextureCpu ("small"
+// descriptor) by `size >= 1024`, matching the threshold the WAD builder has
+// always used for this split.
+WadEntryRole ClassifyByName(const std::string& name, uint64_t size);
+
+// Reconstructs the tag WadNodeBuilder used to store on AssetEntry::profileTag,
+// purely from the entry's own name and payload size (Onyx v1.1 removed both
+// the tag field and all per-entry storage). `role` comes from ClassifyByName;
+// `parsedName` from WadAssetName::Parse; `block` is left at its default
+// because nothing ever read it (WadNodeBuilder.cpp wrote it but had no
+// consumer for it) — do not derive it.
+GowrProfileTag Classify(const Onyx::Domain::AssetEntry& entry);
 
 } // namespace Gowr
 } // namespace Onyx

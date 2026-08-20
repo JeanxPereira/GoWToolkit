@@ -13,8 +13,10 @@
 //
 // Shaders may also appear as bare hex hashes without a prefix:
 #include "core/profiles/gowr/GowrTaxonomy.h"
+#include <Onyx/Domain/Entry.h>
 #include <charconv>
 #include <array>
+#include <cctype>
 #include <vector>
 
 namespace Onyx {
@@ -166,6 +168,146 @@ std::string WadAssetName::CanonicalName() const {
     if (lod >= 0) { out += '_'; out += std::to_string(lod); }
     if (!variant.empty()) { out += '_'; out += variant; }
     return out;
+}
+
+// ── ClassifyByName ───────────────────────────────────────────────────────
+// Priority-ordered pattern matching. Moved verbatim from
+// WadNodeBuilder::ClassifyByName (formerly private to the builder) so this
+// is the single copy both Pass1_Classify and Classify() below call — the
+// two must never be allowed to drift apart.
+
+WadEntryRole ClassifyByName(const std::string& name, uint64_t size) {
+    if (name.empty()) return WadEntryRole::Unknown;
+
+    // ── Sentinels ────────────────────────────────────────────────────────
+    if (name == "PopHeap" || name == "autopad")
+        return WadEntryRole::Sentinel;
+
+    // ── SharedWadRef: ^[A-Z]+X_R_  (e.g. TXRX_R_Fox00, ANMX_R_Fox00) ──
+    // Must be checked BEFORE WadIdentity to avoid matching WAD_R_ (no X before _R_)
+    {
+        size_t i = 0;
+        while (i < name.size() && isupper((unsigned char)name[i])) ++i;
+        // i >= 2 ensures at least 2 uppercase chars; name[i-1] must be 'X'
+        if (i >= 2 && name[i - 1] == 'X' &&
+            name.size() > i + 2 &&
+            name[i] == '_' && name[i + 1] == 'R' && name[i + 2] == '_')
+        {
+            return WadEntryRole::SharedWadRef;
+        }
+    }
+
+    // ── WAD identity: starts with WAD_ ───────────────────────────────────
+    if (name.rfind("WAD_", 0) == 0)
+        return WadEntryRole::WadIdentity;
+
+    // ── Shader container: starts with 0x ─────────────────────────────────
+    if (name.rfind("0x", 0) == 0)
+        return WadEntryRole::ShaderContainer;
+
+    // ── Shaders: _vs_ / _ps_ anywhere in name ────────────────────────────
+    if (name.find("_vs_") != std::string::npos)
+        return WadEntryRole::ShaderVertex;
+    if (name.find("_ps_") != std::string::npos)
+        return WadEntryRole::ShaderPixel;
+    if (name.find("_hs_") != std::string::npos)
+        return WadEntryRole::ShaderHull;
+    if (name.find("_ds_") != std::string::npos)
+        return WadEntryRole::ShaderDomain;
+    if (name.find("_cs_") != std::string::npos)
+        return WadEntryRole::ShaderCompute;
+    if (name.find("_ls_") != std::string::npos)
+        return WadEntryRole::ShaderLibrary;
+
+    // Named vertex shaders without hash prefix
+    if (name.rfind("depth_vs",  0) == 0 ||
+        name.rfind("depvl_vs",  0) == 0 ||
+        name.rfind("opaque_vs", 0) == 0 ||
+        name.rfind("transp_vs", 0) == 0)
+    {
+        return WadEntryRole::ShaderVertex;
+    }
+
+    // ── Animation ────────────────────────────────────────────────────────
+    if (name.rfind("ANM_", 0) == 0)
+        return WadEntryRole::AnimClip;
+
+    // ── Textures (discriminated by size) ─────────────────────────────────
+    if (name.rfind("TX_", 0) == 0)
+        return (size >= 1024) ? WadEntryRole::TextureGpu : WadEntryRole::TextureCpu;
+
+    // ── Materials (discriminated by size) ────────────────────────────────
+    if (name.rfind("MAT_", 0) == 0)
+        return (size > 0) ? WadEntryRole::Material : WadEntryRole::MaterialRef;
+
+    // ── LOD binding table: matches /^\d+_\d+_\d+$/ ───────────────────────
+    {
+        bool isLod       = !name.empty();
+        int  underscores = 0;
+        for (char c : name) {
+            if      (c == '_')             ++underscores;
+            else if (!isdigit((unsigned char)c)) { isLod = false; break; }
+        }
+        if (isLod && underscores == 2)
+            return WadEntryRole::LodBinding;
+    }
+
+    // ── Mesh (order matters: MeshGpu before MeshDefn) ────────────────────
+    if (name.rfind("MG_", 0) == 0) {
+        if (name.size() > 4 && name.substr(name.size() - 4) == "_gpu")
+            return WadEntryRole::MeshGpu;
+        return WadEntryRole::MeshDefn;   // MG_ without _gpu = mesh group def
+    }
+    if (name.rfind("MESH_", 0) == 0)
+        return WadEntryRole::MeshDefn;
+    if (name.rfind("MDL_", 0) == 0)
+        return WadEntryRole::Model;
+
+    // ── Game objects (order matters: Override > Proto > Inst) ────────────
+    if (name.rfind("goProto", 0) == 0)
+        return WadEntryRole::GameObjectProto;
+
+    if (name.size() >= 13 &&
+        name.substr(name.size() - 13) == "_overrideInst")
+    {
+        return WadEntryRole::GameObjectOverride;
+    }
+
+    // Plain go* instance: starts with "go" followed by a lowercase letter
+    // (guards against matching "goProto" again and other non-game-object "go" names)
+    if (name.size() > 2 &&
+        name[0] == 'g' && name[1] == 'o' &&
+        islower((unsigned char)name[2]))
+    {
+        return WadEntryRole::GameObjectInst;
+    }
+
+    // ── Audio ─────────────────────────────────────────────────────────────
+    if (name.rfind("SEMW_", 0) == 0)
+        return WadEntryRole::SoundEmitter;
+
+    // ── Particle FX ───────────────────────────────────────────────────────
+    if (name == "DCClientGUID")
+        return WadEntryRole::ClientGuid;
+    if (name.rfind("PEM_emit_", 0) == 0)
+        return WadEntryRole::ParticleEmitter;
+    if (name.rfind("PTC_part_", 0) == 0)
+        return WadEntryRole::ParticleSystem;
+
+    return WadEntryRole::Unknown;
+}
+
+// ── Classify ──────────────────────────────────────────────────────────────
+// Reconstructs the tag AssetEntry::profileTag used to carry, from the entry
+// alone. `role` and `parsedName` are pure functions of (name, size) / (name)
+// respectively, so this always agrees with what WadNodeBuilder produced for
+// the same entry at parse time — see GowrTaxonomy.h for what `block` is
+// deliberately not derived.
+GowrProfileTag Classify(const Onyx::Domain::AssetEntry& entry) {
+    GowrProfileTag tag;
+    tag.role       = ClassifyByName(entry.name, entry.source.size);
+    tag.parsedName = WadAssetName::Parse(entry.name);
+    return tag;
 }
 
 } // namespace Gowr

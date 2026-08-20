@@ -87,4 +87,6 @@ if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Threading*")
     add_test(NAME ThemeContrast
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*ThemeContrast*")
+    add_test(NAME GowrClassify
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*GowrClassify*")
 endif()
