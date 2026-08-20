@@ -71,7 +71,7 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, Parsers::ObjectData&
     uint32_t jointCount = ReadU32(data + 0x04);
 
     if (jointCount == 0 || jointCount > 1024) {
-        LOG_WARN("[ObjectParser] Suspicious joint count: %u", jointCount);
+        ONYX_LOGF_WARN("[ObjectParser] Suspicious joint count: %u", jointCount);
         return false;
     }
 
@@ -79,7 +79,7 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, Parsers::ObjectData&
     uint32_t dataOffset = ReadU32(data + 0x10);
 
     if (dataOffset + DATA_HEADER_SIZE > size) {
-        LOG_ERR("[ObjectParser] Data offset 0x%X exceeds buffer size %u", dataOffset, size);
+        ONYX_LOGF_ERR("[ObjectParser] Data offset 0x%X exceeds buffer size %u", dataOffset, size);
         return false;
     }
 
@@ -92,7 +92,7 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, Parsers::ObjectData&
         uint32_t nameBufStart  = headerSize + jointCount * 0x10 + i * 0x18;
 
         if (jointBufStart + 0x10 > size || nameBufStart + 0x18 > size) {
-            LOG_ERR("[ObjectParser] Joint %u exceeds buffer", i);
+            ONYX_LOGF_ERR("[ObjectParser] Joint %u exceeds buffer", i);
             return false;
         }
 
@@ -118,7 +118,7 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, Parsers::ObjectData&
         // values into 100°+ Euler angles, contorting the skeleton mid-anim.
         j.isQuaternion = (flags & 0x8000) != 0;
         if (i < 12) {
-            LOG_INFO("[JointFlags] j[%u] flags=0x%08X skinned=%d external=%d quat=%d name='%s'",
+            ONYX_LOGF_INFO("[JointFlags] j[%u] flags=0x%08X skinned=%d external=%d quat=%d name='%s'",
                      i, flags, (int)j.isSkinned, (int)j.isExternal,
                      (int)j.isQuaternion, j.name.c_str());
         }
@@ -144,10 +144,10 @@ static bool ParseJoints(const uint8_t* data, uint32_t size, Parsers::ObjectData&
 
     // Validate invId count matches mat3count
     if (invId != static_cast<int16_t>(mat3count)) {
-        LOG_WARN("[ObjectParser] InvId mismatch: %d vs mat3count %u", invId, mat3count);
+        ONYX_LOGF_WARN("[ObjectParser] InvId mismatch: %d vs mat3count %u", invId, mat3count);
     }
 
-    LOG_INFO("[ObjectParser] mat1=%u mat2=%u mat3=%u joints=%u",
+    ONYX_LOGF_INFO("[ObjectParser] mat1=%u mat2=%u mat3=%u joints=%u",
              mat1count, mat2count, mat3count, jointCount);
 
     // ── Read matrix arrays ────────────────────────────────────────────────
@@ -238,7 +238,7 @@ std::unique_ptr<Parsers::ObjectData> GOW2ObjectParser::Parse(
         return ParseGOW2(data, size);
     }
 
-    LOG_ERR("[ObjectParser] Unknown magic: 0x%08X", magic);
+    ONYX_LOGF_ERR("[ObjectParser] Unknown magic: 0x%08X", magic);
     return nullptr;
 }
 
@@ -252,7 +252,7 @@ std::unique_ptr<Parsers::ObjectData> GOW2ObjectParser::ParseGOW2(const uint8_t* 
 
     FillJoints(*obj);
 
-    LOG_INFO("[ObjectParser] GOW2: Parsed %zu joints, %zu skinned",
+    ONYX_LOGF_INFO("[ObjectParser] GOW2: Parsed %zu joints, %zu skinned",
              obj->joints.size(),
              std::count_if(obj->joints.begin(), obj->joints.end(),
                            [](const Parsers::Joint& j) { return j.isSkinned; }));

@@ -20,7 +20,7 @@ static void hexDump(const char* label, const uint8_t* data, size_t len, size_t m
         hex += tmp;
         if ((i & 15) == 15 && i + 1 < n) hex += "| ";
     }
-    LOG_INFO("[HexDump] %s (%zu bytes): %s", label, len, hex.c_str());
+    ONYX_LOGF_INFO("[HexDump] %s (%zu bytes): %s", label, len, hex.c_str());
 }
 
 // ── Safe buffer helpers ────────────────────────────────────────────────────
@@ -420,7 +420,7 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
     SafeBuf buf(data, size);
 
     if (size < 0x18) {
-        LOG_WARN("[AnimParser] Data too small (%zu bytes)", size);
+        ONYX_LOGF_WARN("[AnimParser] Data too small (%zu bytes)", size);
         return nullptr;
     }
 
@@ -435,7 +435,7 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
     anim->parsedFlags.jointPosAnimated  = (anim->rawFlags & 0x2000) != 0;
     anim->parsedFlags.jointScaleAnimated = (anim->rawFlags & 0x4000) != 0;
 
-    LOG_INFO("[AnimParser] flags=0x%08X, dataTypes=%d, groups=%d, bufSize=%zu",
+    ONYX_LOGF_INFO("[AnimParser] flags=0x%08X, dataTypes=%d, groups=%d, bufSize=%zu",
              anim->rawFlags, dataTypeCount, groupCount, size);
 
     // Hex dump: animation buffer header (first 0x20 bytes)
@@ -449,7 +449,7 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
     // Debug: log data type IDs
     for (int i = 0; i < dataTypeCount; ++i) {
         size_t off = 0x18 + (size_t)groupCount * 4 + i * 4;
-        LOG_INFO("[AnimParser] dataType[%d]: typeId=%d, param1=%d, param2=%d (off=0x%zx, raw=0x%08X)",
+        ONYX_LOGF_INFO("[AnimParser] dataType[%d]: typeId=%d, param1=%d, param2=%d (off=0x%zx, raw=0x%08X)",
                  i, buf.u16(off), buf.u8(off+2), buf.u8(off+3), off, buf.u32(off));
     }
 
@@ -472,7 +472,7 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
 
         // Bounds check
         if (groupOffset >= size) {
-            LOG_WARN("[AnimParser] Group %d offset 0x%x out of bounds", ig, groupOffset);
+            ONYX_LOGF_WARN("[AnimParser] Group %d offset 0x%x out of bounds", ig, groupOffset);
             continue;
         }
 
@@ -485,7 +485,7 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
 
         uint32_t actCount = rawGroup.u32(0xc);
         if (actCount > 1000) {
-            LOG_WARN("[AnimParser] Group '%s' has suspicious act count %u, skipping",
+            ONYX_LOGF_WARN("[AnimParser] Group '%s' has suspicious act count %u, skipping",
                      group.name.c_str(), actCount);
             continue;
         }
@@ -500,14 +500,14 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
                 // Onyx engine uses act[0] as null state — real clips start at index 1.
                 act.name = "";
                 act.duration = 0.0f;
-                LOG_INFO("[AnimParser]   Act[%u] DUMMY (offset=0x%X < 0x30), skipped", ia, actOffset);
+                ONYX_LOGF_INFO("[AnimParser]   Act[%u] DUMMY (offset=0x%X < 0x30), skipped", ia, actOffset);
                 continue;
             }
 
             // rawAct is relative to rawGroup start (same as Go: rawGroup[actOffset:])
             SafeBuf rawAct = rawGroup.sub(actOffset);
             if (rawAct.size < 0x64) {
-                LOG_WARN("[AnimParser] Act %d rawAct too small (off=0x%x, avail=%zu)", ia, actOffset, rawAct.size);
+                ONYX_LOGF_WARN("[AnimParser] Act %d rawAct too small (off=0x%x, avail=%zu)", ia, actOffset, rawAct.size);
                 continue;
             }
 
@@ -521,7 +521,7 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
 
             // ── Diagnostic: validate act header ──
             if (ig <= 1 && ia <= 2) {
-                LOG_INFO("[AnimParser] g[%d].a[%d] actOff=0x%X name='%s' dur=%.4f"
+                ONYX_LOGF_INFO("[AnimParser] g[%d].a[%d] actOff=0x%X name='%s' dur=%.4f"
                          " f0x4=%.4f f0xc=%.4f dur@0x14=%.4f dur@0x1C_old=%.6f",
                          ig, ia, actOffset, act.name.c_str(), act.duration,
                          act.unkFloat0x4, act.unkFloat0xc,
@@ -565,7 +565,7 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
                     hexDump(sdLbl, rawAct.data + sdOff, SD_STRIDE, SD_STRIDE);
 
                     // Log each field with both hex and interpreted values
-                    LOG_INFO("[AnimParser] sd[%d] FIELDS: Unk0=0x%04X  CountOfSomething=%d"
+                    ONYX_LOGF_INFO("[AnimParser] sd[%d] FIELDS: Unk0=0x%04X  CountOfSomething=%d"
                              "  OffsetToData=0x%08X  FrameTime=%f (raw=0x%08X)"
                              "  [0xC]=0x%08X  [0x10]=0x%08X",
                              isd,
@@ -577,19 +577,19 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
                              rawAct.u32(sdOff + 0x10));
 
                     // Log the extra field at +0x0C
-                    LOG_INFO("[AnimParser] sd[%d] extra@0xC=0x%08X",
+                    ONYX_LOGF_INFO("[AnimParser] sd[%d] extra@0xC=0x%08X",
                              isd, rawAct.u32(sdOff + 0xc));
                 }
 
                 // Validate FrameTime — should be ~1/30 (0.0333) or ~1/60 (0.0167)
                 if (sd.frameTime <= 0.0f || sd.frameTime > 1.0f) {
-                    LOG_WARN("[AnimParser] sd[%d] frameTime=%.6f looks invalid, clamping to 1/30",
+                    ONYX_LOGF_WARN("[AnimParser] sd[%d] frameTime=%.6f looks invalid, clamping to 1/30",
                              isd, sd.frameTime);
                     sd.frameTime = 1.0f / 30.0f;
                 }
 
                 uint16_t dType = anim->dataTypes[isd].typeId;
-                LOG_INFO("[AnimParser]   sd[%d] dType=%d countOfSomething=%d offsetToData=0x%X frameTime=%.6f",
+                ONYX_LOGF_INFO("[AnimParser]   sd[%d] dType=%d countOfSomething=%d offsetToData=0x%X frameTime=%.6f",
                          isd, dType, sd.countOfSomething, sdOffsetToData, sd.frameTime);
                 if (dType == 0 || dType == 1) {
                     // skinData starts at rawAct[sd.OffsetToData:]
@@ -614,7 +614,7 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
                         posCount = rawAct.u16(posSdOff + 0x2);
                         posOffsetToData = rawAct.u32(posSdOff + 0x4);
                         float posFT = rawAct.f32(posSdOff + 0x8);
-                        LOG_INFO("[AnimParser]     PosSd: count=%d offsetToData=0x%X frameTime=%.4f",
+                        ONYX_LOGF_INFO("[AnimParser]     PosSd: count=%d offsetToData=0x%X frameTime=%.4f",
                                  posCount, posOffsetToData, posFT);
                     }
                     // GOW2: position state base = sd[1].OffsetToData (at 0x78)
@@ -637,18 +637,18 @@ std::unique_ptr<Parsers::AnimationData> GOW2AnimationParser::Parse(const uint8_t
                         for (auto& s : ss.positionSubStreamsRough) posSamples += s.samples.size();
                     }
 
-                    LOG_INFO("[AnimParser]     Skinning: states=%zu rotStreams=%zu, posStreams=%zu, frameTime=%.4f",
+                    ONYX_LOGF_INFO("[AnimParser]     Skinning: states=%zu rotStreams=%zu, posStreams=%zu, frameTime=%.4f",
                              sd.skinningStates.size(), rotSamples, posSamples, sd.frameTime);
                 }
             }
 
-            LOG_INFO("[AnimParser]   Act '%s' duration=%.3f", act.name.c_str(), act.duration);
+            ONYX_LOGF_INFO("[AnimParser]   Act '%s' duration=%.3f", act.name.c_str(), act.duration);
         }
 
-        LOG_INFO("[AnimParser] Group '%s': %d acts", group.name.c_str(), (int)group.acts.size());
+        ONYX_LOGF_INFO("[AnimParser] Group '%s': %d acts", group.name.c_str(), (int)group.acts.size());
     }
 
-    LOG_INFO("[AnimParser] Done: %d groups, %d total acts",
+    ONYX_LOGF_INFO("[AnimParser] Done: %d groups, %d total acts",
              (int)anim->groups.size(), anim->TotalActs());
 
     return anim;

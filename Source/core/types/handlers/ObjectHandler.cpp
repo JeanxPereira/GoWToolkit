@@ -94,7 +94,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Par
                     mat = real;
                     matEntries.push_back(mat);
                 } else {
-                    LOG_WARN("[ProcessModel] Could not resolve zero-sized material reference: '%s'", mat->name.c_str());
+                    ONYX_LOGF_WARN("[ProcessModel] Could not resolve zero-sized material reference: '%s'", mat->name.c_str());
                 }
             } else if (child.typeId == Onyx::GameTypes::Material) {
                 matEntries.push_back(mat);
@@ -103,14 +103,14 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Par
             std::string target = Onyx::Parsers::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
             if (target == "SCR_Sky") {
                 isModelSky = true;
-                LOG_INFO("[ProcessModel] Found SCR_Sky on model '%s', marking as sky", model.name.c_str());
+                ONYX_LOGF_INFO("[ProcessModel] Found SCR_Sky on model '%s', marking as sky", model.name.c_str());
             }
         }
     }
 
     uint32_t materialOffset = scene.materials.size();
 
-    LOG_INFO("[ProcessModel] Model '%s': %zu mesh children, %zu material children, materialOffset=%u",
+    ONYX_LOGF_INFO("[ProcessModel] Model '%s': %zu mesh children, %zu material children, materialOffset=%u",
              model.name.c_str(), meshSources.size(), matEntries.size(), materialOffset);
 
     // Parse materials → MaterialInfo (store all layers for main layer selection)
@@ -140,7 +140,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Par
                 }
             }
         }
-        LOG_INFO("[ProcessModel]   mat[%zu] = '%s', layers=%zu, mainLayer='%s'",
+        ONYX_LOGF_INFO("[ProcessModel]   mat[%zu] = '%s', layers=%zu, mainLayer='%s'",
                  mi + materialOffset, mat->name.c_str(), matInfo.layers.size(),
                  matInfo.layers.empty() ? "(none)" : matInfo.layers[0].textureName.c_str());
         scene.materials.push_back(std::move(matInfo));
@@ -151,7 +151,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Par
         Onyx::Vfs::SliceFile slice(wad.fileSource, src->offset, src->size);
         if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->size)) {
             for (auto& p : data->parts) {
-                LOG_INFO("[ProcessModel]   part '%s' materialId=%d (raw) → %d (offset)",
+                ONYX_LOGF_INFO("[ProcessModel]   part '%s' materialId=%d (raw) → %d (offset)",
                          p.name.c_str(), p.materialId, p.materialId + (int)materialOffset);
                 p.materialId += materialOffset;
                 p.isSky = isModelSky;
@@ -202,7 +202,7 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
             auto animData = Onyx::GOW2AnimationParser::Parse(anmBuf.data(), child.size);
             if (animData) {
                 scene->animations = std::shared_ptr<Onyx::Parsers::AnimationData>(animData.release());
-                LOG_INFO("[ObjectHandler] Parsed animation '%s': %d groups, %d acts",
+                ONYX_LOGF_INFO("[ObjectHandler] Parsed animation '%s': %d groups, %d acts",
                          child.name.c_str(), (int)scene->animations->groups.size(),
                          scene->animations->TotalActs());
             }
@@ -211,7 +211,7 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
 
     if (scene->IsEmpty()) {
         // Many nodes are purely logical (triggers, collision, sound, cameras) and will have no meshes.
-        LOG_INFO("[ObjectHandler] No meshes found for object '%s' (Expected for logical/trigger nodes)", entry.name.c_str());
+        ONYX_LOGF_INFO("[ObjectHandler] No meshes found for object '%s' (Expected for logical/trigger nodes)", entry.name.c_str());
         return scene;
     }
 
@@ -230,7 +230,7 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
         scene->textures.push_back(std::move(matTextures));
     }
 
-    LOG_INFO("[ObjectHandler] Built SceneData: %zu parts, %zu materials, %zu textures, skeleton=%s",
+    ONYX_LOGF_INFO("[ObjectHandler] Built SceneData: %zu parts, %zu materials, %zu textures, skeleton=%s",
              scene->meshParts.size(), scene->materials.size(), scene->textures.size(),
              scene->HasSkeleton() ? "yes" : "no");
 

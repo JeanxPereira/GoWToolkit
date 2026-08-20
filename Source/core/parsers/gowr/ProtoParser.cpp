@@ -44,11 +44,11 @@ std::shared_ptr<Parsers::ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs:
     file->Read(&unused, 4);
 
     if (boneCount <= 0 || boneCount > 4096) {
-        LOG_WARN("[GOWRProtoParser] Implausible bone count: %d", boneCount);
+        ONYX_LOGF_WARN("[GOWRProtoParser] Implausible bone count: %d", boneCount);
         return nullptr;
     }
 
-    LOG_INFO("[GOWRProtoParser] Bone count: %d", boneCount);
+    ONYX_LOGF_INFO("[GOWRProtoParser] Bone count: %d", boneCount);
 
     obj->joints.resize(boneCount);
 
@@ -162,7 +162,7 @@ std::shared_ptr<Parsers::ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs:
             j = obj->joints[j].parent;
         }
         if (j >= 0 && j < boneCount && onChain[j]) {
-            LOG_WARN("[GOWRProtoParser] bone %d sits on a parent cycle - "
+            ONYX_LOGF_WARN("[GOWRProtoParser] bone %d sits on a parent cycle - "
                      "treating it as a root", j);
         }
 

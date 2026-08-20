@@ -83,7 +83,7 @@ static std::vector<uint32_t> ReadSubmeshTable(std::shared_ptr<Vfs::IFile>& f) {
     if (count == 0) return out;
     if (tableAt < 0x14 ||
         static_cast<uint64_t>(tableAt) + 4ull * count > fileSize) {
-        LOG_WARN("[GOWRMeshParser] submesh table out of range: rel=%d -> 0x%llX, "
+        ONYX_LOGF_WARN("[GOWRMeshParser] submesh table out of range: rel=%d -> 0x%llX, "
                  "count=%u, file=0x%llX", tableRel,
                  (unsigned long long)tableAt, count,
                  (unsigned long long)fileSize);
@@ -102,7 +102,7 @@ static std::vector<uint32_t> ReadSubmeshTable(std::shared_ptr<Vfs::IFile>& f) {
         // padding rather than an entry.
         if (rel == 0 || abs < 0x14 ||
             static_cast<uint64_t>(abs) + 0x88 > fileSize) {
-            LOG_WARN("[GOWRMeshParser] submesh table ends at %u of %u entries",
+            ONYX_LOGF_WARN("[GOWRMeshParser] submesh table ends at %u of %u entries",
                      i, count);
             break;
         }
@@ -126,7 +126,7 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
         for (size_t b = 0; b < sizeof(hdr); ++b) {
             std::snprintf(hex + b * 3, 4, "%02X ", hdr[b]);
         }
-        LOG_DEBUG("[GOWRMeshParser] submesh @0x%X bytes[0x00..0x8F]: %s", base, hex);
+        ONYX_LOGF_DEBUG("[GOWRMeshParser] submesh @0x%X bytes[0x00..0x8F]: %s", base, hex);
     }
 
 
@@ -265,7 +265,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
         slotOf[b] = strideOf[b] ? static_cast<int>(nextSlot++) : -1;
 
     if (nextSlot != bufOffsets.size()) {
-        LOG_WARN("[GOWRMeshParser] %u buffers carry components but the offset "
+        ONYX_LOGF_WARN("[GOWRMeshParser] %u buffers carry components but the offset "
                  "table holds %zu entries", nextSlot, bufOffsets.size());
     }
 
@@ -302,7 +302,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                     v.position.y = ((float)ry / 32768.0f - 1.0f) * hdr.extent.y + hdr.origin.y;
                     v.position.z = ((float)rz / 32768.0f - 1.0f) * hdr.extent.z + hdr.origin.z;
                 } else {
-                    LOG_WARN("[GOWRMeshParser] Unknown position format %u", (uint8_t)c.format);
+                    ONYX_LOGF_WARN("[GOWRMeshParser] Unknown position format %u", (uint8_t)c.format);
                 }
                 break;
 
@@ -583,7 +583,7 @@ bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
             part.indices[i] = idx;
         }
     } else {
-        LOG_ERR("[GOWRMeshParser] Unknown index stride: %u", hdr.indicesStride);
+        ONYX_LOGF_ERR("[GOWRMeshParser] Unknown index stride: %u", hdr.indicesStride);
         return false;
     }
 
@@ -601,7 +601,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
 
     const std::vector<uint32_t> smOffsets = ReadSubmeshTable(meshFile);
     const uint32_t submeshCount = static_cast<uint32_t>(smOffsets.size());
-    LOG_INFO("[GOWRMeshParser] submeshCount=%u", submeshCount);
+    ONYX_LOGF_INFO("[GOWRMeshParser] submeshCount=%u", submeshCount);
     if (submeshCount == 0) return true;
 
     uint32_t totalVerts = 0, totalFaces = 0;
@@ -637,7 +637,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
         bool valid = true;
         for (const auto& c : comps) {
             if (c.bufferIdx >= bufOffsets.size()) {
-                LOG_WARN("[GOWRMeshParser] SM#%u: comp semantic=%u bufIdx=%u >= bufCount=%u — skip",
+                ONYX_LOGF_WARN("[GOWRMeshParser] SM#%u: comp semantic=%u bufIdx=%u >= bufCount=%u — skip",
                          smIdx, (uint8_t)c.semantic, c.bufferIdx, hdr.bufferCount);
                 valid = false;
                 break;
@@ -650,19 +650,19 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
         for (const auto& c : comps)
             if (c.semantic == Semantic::UV0) { hasUV = true; break; }
         if (!hasUV) {
-            LOG_DEBUG("[GOWRMeshParser] SM#%u dropped: no UV0 channel", smIdx);
+            ONYX_LOGF_DEBUG("[GOWRMeshParser] SM#%u dropped: no UV0 channel", smIdx);
             ++skipped; continue;
         }
 
         // Vertex-layout diagnostics. The multi-buffer path ignores each
         // component's byteOffset, so this dump is what tells us whether two
         // components share a buffer (which would make that assumption wrong).
-        LOG_DEBUG("[GOWRMeshParser] SM#%u @0x%X: %u v, %u f, bufCount=%u idxStride=%u bytesPerVert=%u comps=%u",
+        ONYX_LOGF_DEBUG("[GOWRMeshParser] SM#%u @0x%X: %u v, %u f, bufCount=%u idxStride=%u bytesPerVert=%u comps=%u",
                   smIdx, base, hdr.vertCount, hdr.faceCount, hdr.bufferCount,
                   hdr.indicesStride, hdr.bytesPerVertex, hdr.componentCount);
         for (size_t ci = 0; ci < comps.size(); ++ci) {
             const auto& c = comps[ci];
-            LOG_DEBUG("[GOWRMeshParser]   comp[%zu] sem=%u fmt=%u cnt=%u byteOff=%u buf=%u",
+            ONYX_LOGF_DEBUG("[GOWRMeshParser]   comp[%zu] sem=%u fmt=%u cnt=%u byteOff=%u buf=%u",
                       ci, (unsigned)c.semantic, (unsigned)c.format,
                       (unsigned)c.compCount, (unsigned)c.byteOffset, c.bufferIdx);
         }
@@ -681,7 +681,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
         outData.parts.push_back(std::move(part));
     }
 
-    LOG_INFO("[GOWRMeshParser] Done: %zu submeshes exported (%d skipped), %u verts, %u faces",
+    ONYX_LOGF_INFO("[GOWRMeshParser] Done: %zu submeshes exported (%d skipped), %u verts, %u faces",
              outData.parts.size(), skipped, totalVerts, totalFaces);
 
     // Bounding box from actual vertex data
@@ -710,7 +710,7 @@ bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
     for (uint32_t i = 0; i < submeshCount; ++i) {
         SubmeshHeader hdr;
         ReadSubmeshHeader(defFile, offsets[i], hdr);
-        LOG_INFO("[GOWRMeshParser] SM#%u @0x%X: %u v, %u f, %u comp, %u bufs, "
+        ONYX_LOGF_INFO("[GOWRMeshParser] SM#%u @0x%X: %u v, %u f, %u comp, %u bufs, "
                  "idxStride=%u, hash=0x%016llX",
                  i, offsets[i],
                  hdr.vertCount, hdr.faceCount,
@@ -761,11 +761,11 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
         if (hdr.meshHash == 0) {
             // Internal: use the gpuFile as-is (it IS the LOD blob)
             lodFile = gpuFile;
-            LOG_INFO("[GOWRMeshParser] SM#%u: internal LOD (hash=0, using gpuFile)", smIdx);
+            ONYX_LOGF_INFO("[GOWRMeshParser] SM#%u: internal LOD (hash=0, using gpuFile)", smIdx);
         } else {
             const LodEntry* entry = lodIdx.Find(hdr.meshHash);
             if (!entry) {
-                LOG_WARN("[GOWRMeshParser] SM#%u: LOD not found for hash=0x%016llX — skipping",
+                ONYX_LOGF_WARN("[GOWRMeshParser] SM#%u: LOD not found for hash=0x%016llX — skipping",
                          smIdx, (unsigned long long)hdr.meshHash);
                 ++skipped;
                 continue;
@@ -773,12 +773,12 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
 
             std::vector<uint8_t> blob;
             if (!lodIdx.ReadBlob(*entry, blob)) {
-                LOG_WARN("[GOWRMeshParser] SM#%u: failed to read LOD blob — skipping", smIdx);
+                ONYX_LOGF_WARN("[GOWRMeshParser] SM#%u: failed to read LOD blob — skipping", smIdx);
                 ++skipped;
                 continue;
             }
 
-            LOG_INFO("[GOWRMeshParser] SM#%u: LOD pack[%d] off=0x%llX size=%d",
+            ONYX_LOGF_INFO("[GOWRMeshParser] SM#%u: LOD pack[%d] off=0x%llX size=%d",
                      smIdx, entry->packIdx,
                      (unsigned long long)entry->offset, entry->size);
 
@@ -816,7 +816,7 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
         outData.parts.push_back(std::move(part));
     }
 
-    LOG_INFO("[GOWRMeshParser] ParseWithLodPack: %zu parts (%d skipped), %u verts, %u faces",
+    ONYX_LOGF_INFO("[GOWRMeshParser] ParseWithLodPack: %zu parts (%d skipped), %u verts, %u faces",
              outData.parts.size(), skipped, totalVerts, totalFaces);
 
     glm::vec3 bmin( 1e9f), bmax(-1e9f);

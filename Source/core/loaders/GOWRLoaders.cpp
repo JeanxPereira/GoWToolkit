@@ -84,7 +84,7 @@ static std::filesystem::path FindResource(const std::string& filename) {
 static std::filesystem::path ReadGameRootFromConfig() {
     auto configPath = FindResource("config.ini");
     if (configPath.empty()) return {};
-    LOG_INFO("[GOWRLoaders] Found config.ini at: %s", configPath.string().c_str());
+    ONYX_LOGF_INFO("[GOWRLoaders] Found config.ini at: %s", configPath.string().c_str());
 
     std::ifstream cfg(configPath);
     if (!cfg.is_open()) return {};
@@ -139,7 +139,7 @@ bool EnsureGowrConfigIni(const std::filesystem::path& wadPath) {
 
     auto gameRoot = TryDetectGowrGameRoot(wadPath);
     if (gameRoot.empty()) {
-        LOG_DEBUG("[GOWRLoaders] Could not auto-detect GOWR game root from: %s",
+        ONYX_LOGF_DEBUG("[GOWRLoaders] Could not auto-detect GOWR game root from: %s",
                   wadPath.string().c_str());
         return false;
     }
@@ -147,14 +147,14 @@ bool EnsureGowrConfigIni(const std::filesystem::path& wadPath) {
     auto target = std::filesystem::path(PathUtils::getExecutableDir()) / "config.ini";
     std::ofstream out(target, std::ios::trunc);
     if (!out.is_open()) {
-        LOG_WARN("[GOWRLoaders] Cannot write config.ini at: %s", target.string().c_str());
+        ONYX_LOGF_WARN("[GOWRLoaders] Cannot write config.ini at: %s", target.string().c_str());
         return false;
     }
     out << "; GoWToolkit auto-generated. Game root containing exec/wad/pc_le.\n";
     out << "gameroot=" << gameRoot.string() << "\n";
     out.close();
 
-    LOG_INFO("[GOWRLoaders] Auto-detected game root '%s' (saved to %s)",
+    ONYX_LOGF_INFO("[GOWRLoaders] Auto-detected game root '%s' (saved to %s)",
              gameRoot.string().c_str(), target.string().c_str());
     return true;
 }
@@ -170,9 +170,9 @@ static LodPackIndex& GetLodIndex() {
         auto gameRoot    = ReadGameRootFromConfig();
 
         if (gameRoot.empty()) {
-            LOG_WARN("[GOWRLoaders] config.ini not found - LOD lookup disabled");
+            ONYX_LOGF_WARN("[GOWRLoaders] config.ini not found - LOD lookup disabled");
         } else if (!lodpacksTxt.empty()) {
-            LOG_INFO("[GOWRLoaders] Found lodpacks.txt at: %s", lodpacksTxt.string().c_str());
+            ONYX_LOGF_INFO("[GOWRLoaders] Found lodpacks.txt at: %s", lodpacksTxt.string().c_str());
             s_lodIndex->LoadFromList(lodpacksTxt, gameRoot);
         } else {
             // A shipped install carries no lodpacks.txt (it is an artefact of the
@@ -193,7 +193,7 @@ static void StartTexIndexLoad() {
     if (!gameRoot.empty()) {
         s_texIndex->LoadFromGameRoot(gameRoot);
     } else {
-        LOG_WARN("[GOWRLoaders] config.ini not found — Texture lookup from texpack disabled");
+        ONYX_LOGF_WARN("[GOWRLoaders] config.ini not found — Texture lookup from texpack disabled");
         s_texIndex->SetLoaded();
     }
 }
@@ -544,15 +544,15 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     if (gpuEntry) {
         gpuFile = std::make_shared<Vfs::SliceFile>(
             wad.fileSource, gpuEntry->offset, gpuEntry->size);
-        LOG_INFO("[GOWRLoaders] GPU: %s (size=%u)",
+        ONYX_LOGF_INFO("[GOWRLoaders] GPU: %s (size=%u)",
                  gpuEntry->name.c_str(), gpuEntry->size);
     } else if (isInstance) {
         // Most GO instances are not meshes at all (lights, emitters, triggers),
         // so a missing sibling is the normal case rather than a problem.
-        LOG_DEBUG("[GOWRLoaders] Instance '%s' has no mesh pair - not renderable",
+        ONYX_LOGF_DEBUG("[GOWRLoaders] Instance '%s' has no mesh pair - not renderable",
                   entry.name.c_str());
     } else {
-        LOG_WARN("[GOWRLoaders] No MeshGpu sibling for '%s' - hash=0 submeshes only",
+        ONYX_LOGF_WARN("[GOWRLoaders] No MeshGpu sibling for '%s' - hash=0 submeshes only",
                  entry.name.c_str());
     }
 
@@ -570,9 +570,9 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
 
     if (!ok || data.parts.empty()) {
         if (!gpuFile && isInstance) {
-            LOG_DEBUG("[GOWRLoaders] Nothing to render for instance '%s'", entry.name.c_str());
+            ONYX_LOGF_DEBUG("[GOWRLoaders] Nothing to render for instance '%s'", entry.name.c_str());
         } else {
-            LOG_WARN("[GOWRLoaders] Parse failed or no parts for '%s'", entry.name.c_str());
+            ONYX_LOGF_WARN("[GOWRLoaders] Parse failed or no parts for '%s'", entry.name.c_str());
         }
         return std::make_shared<Viewers::Viewport3D>(entry.name);
     }
@@ -603,7 +603,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     if (mgEntry) {
         mgFile = std::make_shared<Vfs::SliceFile>(
             wad.fileSource, mgEntry->offset, mgEntry->size);
-        LOG_INFO("[GOWRLoaders] MG bone-binding: %s (size=%u)",
+        ONYX_LOGF_INFO("[GOWRLoaders] MG bone-binding: %s (size=%u)",
                  mgEntry->name.c_str(), mgEntry->size);
     }
 
@@ -650,7 +650,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                 std::snprintf(tmp, sizeof(tmp), "%02X ", buf[b]);
                 hex += tmp;
             }
-            LOG_DEBUG("[GOWRLoaders] MDL '%s' size=%u first %u bytes: %s",
+            ONYX_LOGF_DEBUG("[GOWRLoaders] MDL '%s' size=%u first %u bytes: %s",
                      mdlEntry->name.c_str(), mdlEntry->size, dumpSz, hex.c_str());
 
             // Also dump last 256 bytes if file is larger than dumpSz
@@ -664,10 +664,10 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                     std::snprintf(tmp, sizeof(tmp), "%02X ", tail[b]);
                     thex += tmp;
                 }
-                LOG_DEBUG("[GOWRLoaders] MDL tail %u bytes: %s", tailSz, thex.c_str());
+                ONYX_LOGF_DEBUG("[GOWRLoaders] MDL tail %u bytes: %s", tailSz, thex.c_str());
             }
         } else {
-            LOG_DEBUG("[GOWRLoaders] No MDL_ sibling for '%s' (base='%s')",
+            ONYX_LOGF_DEBUG("[GOWRLoaders] No MDL_ sibling for '%s' (base='%s')",
                      entry.name.c_str(), mdlBase.c_str());
         }
     }
@@ -715,11 +715,11 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                 wad.fileSource, protoEntry->offset, protoEntry->size);
             skeleton = GOWRProtoParser::Parse(protoFile);
             if (skeleton) {
-                LOG_INFO("[GOWRLoaders] Proto rig '%s': %zu bones",
+                ONYX_LOGF_INFO("[GOWRLoaders] Proto rig '%s': %zu bones",
                          protoEntry->name.c_str(), skeleton->joints.size());
             }
         } else {
-            LOG_INFO("[GOWRLoaders] No goProto sibling for '%s' (base='%s')",
+            ONYX_LOGF_INFO("[GOWRLoaders] No goProto sibling for '%s' (base='%s')",
                      entry.name.c_str(), protoBase.c_str());
         }
     }
@@ -781,7 +781,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         ResolveMeshMaterials(wad, wadDescs, flat, entry, matCount);
 
     if (matCount > 0 && matNames.empty()) {
-        LOG_WARN("[GOWRLoaders] mesh declares %u materials but its table was "
+        ONYX_LOGF_WARN("[GOWRLoaders] mesh declares %u materials but its table was "
                  "not found - rendering untextured", matCount);
     }
 
@@ -820,7 +820,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
 
         const AssetEntry* me = matEntries[mi];
         if (!me) {
-            LOG_WARN("[GOWRLoaders] material[%zu] %s: named by the mesh but "
+            ONYX_LOGF_WARN("[GOWRLoaders] material[%zu] %s: named by the mesh but "
                      "absent from this WAD", mi, matNames[mi].c_str());
             continue;
         }
@@ -831,7 +831,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         GOWRMaterial mat;
         if (!GOWRMaterialParse(matFile, refFile, mat)) continue;
         if (!refFile) {
-            LOG_WARN("[GOWRLoaders] material %s: no reference list found", me->name.c_str());
+            ONYX_LOGF_WARN("[GOWRLoaders] material %s: no reference list found", me->name.c_str());
             continue;
         }
 
@@ -855,7 +855,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                 bound += TextureRoleName(kLayerRoles[L]);
                 matLayers[mi][L] = std::move(tex);
             } else {
-                LOG_WARN("[GOWRLoaders] %s (%s): %s", ref->name.c_str(),
+                ONYX_LOGF_WARN("[GOWRLoaders] %s (%s): %s", ref->name.c_str(),
                          TextureRoleName(kLayerRoles[L]), err.c_str());
             }
         }
@@ -870,17 +870,17 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
             skipped += t->name;
         }
 
-        LOG_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",
+        ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",
                  mi, me->name.c_str(), mat.Textures().size(),
                  bound.empty() ? "none" : bound.c_str());
         if (!skipped.empty()) {
-            LOG_DEBUG("[GOWRLoaders]   not a mapped role: %s", skipped.c_str());
+            ONYX_LOGF_DEBUG("[GOWRLoaders]   not a mapped role: %s", skipped.c_str());
         }
         if (!matLayers[mi][0]) {
             // Layer 0 is what the viewport samples, so say plainly why the
             // model will render untextured rather than leaving it a mystery.
             const MatReference* diff = mat.Texture(TextureRole::Diffuse);
-            LOG_WARN("[GOWRLoaders]   no usable diffuse (%s) - this material renders untextured",
+            ONYX_LOGF_WARN("[GOWRLoaders]   no usable diffuse (%s) - this material renders untextured",
                      diff ? diff->name.c_str() : "material declares none");
         }
     }
@@ -890,7 +890,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     for (size_t i = 0; i < data.parts.size(); ++i) {
         const uint32_t mi = (i < materialOfPart.size()) ? materialOfPart[i] : 0u;
         if (mi >= matEntries.size()) {
-            LOG_WARN("[GOWRLoaders] part %zu names material %u of %zu",
+            ONYX_LOGF_WARN("[GOWRLoaders] part %zu names material %u of %zu",
                      i, mi, matEntries.size());
         }
         data.parts[i].materialId  = mi;
@@ -952,10 +952,10 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                 ++skinned;
             }
 
-            LOG_INFO("[GOWRLoaders] Skinning: %d skinned, %d rigid, %d unmapped parts",
+            ONYX_LOGF_INFO("[GOWRLoaders] Skinning: %d skinned, %d rigid, %d unmapped parts",
                      skinned, rigid, unmapped);
             if (offPalette > 0) {
-                LOG_WARN("[GOWRLoaders] %zu vertex influences referenced a bone "
+                ONYX_LOGF_WARN("[GOWRLoaders] %zu vertex influences referenced a bone "
                          "outside their part's palette", offPalette);
             }
         }
@@ -1119,7 +1119,7 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const As
 
     const AssetEntry* meshEntry = findMesh(wad.entries);
     if (meshEntry) {
-        LOG_INFO("[GOWRRigHandler] Found MESH '%s' for proto '%s'",
+        ONYX_LOGF_INFO("[GOWRRigHandler] Found MESH '%s' for proto '%s'",
                  meshEntry->name.c_str(), entry.name.c_str());
         return SharedGowrMeshLoad(*meshEntry, wad, /*attachSkeleton=*/true);
     }
@@ -1157,12 +1157,12 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const As
 
     const AssetEntry* mgEntry = findMg(wad.entries);
     if (mgEntry) {
-        LOG_INFO("[GOWRRigHandler] Found MG '%s' for proto '%s' (fallback)",
+        ONYX_LOGF_INFO("[GOWRRigHandler] Found MG '%s' for proto '%s' (fallback)",
                  mgEntry->name.c_str(), entry.name.c_str());
         return SharedGowrMeshLoad(*mgEntry, wad, /*attachSkeleton=*/true);
     }
 
-    LOG_WARN("[GOWRRigHandler] No MESH/MG found for proto '%s' (base='%s')",
+    ONYX_LOGF_WARN("[GOWRRigHandler] No MESH/MG found for proto '%s' (base='%s')",
              entry.name.c_str(), protoBase.c_str());
     return nullptr;
 }

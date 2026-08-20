@@ -187,7 +187,7 @@ static void FlushState(VifUnpackState& state, Parsers::MeshPart& outPart) {
     // Our shader will do: uJoints[jointMap[boneIndices.x]] — the remap happens
     // in the shader or in ComputeJointPalette. See SceneRenderer for details.
 
-    LOG_INFO("[FlushState] Flushing %d verts (xyzw) → building triangles", vertexCount);
+    ONYX_LOGF_INFO("[FlushState] Flushing %d verts (xyzw) → building triangles", vertexCount);
 
     // Exact port of Go's triangle strip reconstruction (export_fbx.go).
     //
@@ -363,7 +363,7 @@ bool GOW2MeshParser::ParseDmaChain(const std::vector<uint8_t>& allData, uint32_t
             if (refStart < allData.size() && refEnd <= allData.size()) {
                 ParseVifStream(allData, refStart, refEnd, state, outPart);
             } else {
-                LOG_WARN("[ParseDmaChain] REF out of bounds: addr=0x%X objOff=0x%X refStart=0x%X refEnd=0x%X bufSize=0x%zX",
+                ONYX_LOGF_WARN("[ParseDmaChain] REF out of bounds: addr=0x%X objOff=0x%X refStart=0x%X refEnd=0x%X bufSize=0x%zX",
                          dmaAddr, objectOffset, refStart, refEnd, allData.size());
             }
         } else if (dmaId == 6) { // DMA_TAG_RET
@@ -371,7 +371,7 @@ bool GOW2MeshParser::ParseDmaChain(const std::vector<uint8_t>& allData, uint32_t
             ParseVifStream(allData, pos + 8, pos + 16, state, outPart);
             break; // End of chain
         } else {
-            LOG_WARN("[ParseDmaChain] Unknown DMA tag id=%u at pos=0x%X (qwc=%u addr=0x%X)", dmaId, pos, dmaQwc, dmaAddr);
+            ONYX_LOGF_WARN("[ParseDmaChain] Unknown DMA tag id=%u at pos=0x%X (qwc=%u addr=0x%X)", dmaId, pos, dmaQwc, dmaAddr);
         }
 
         pos += 16;
@@ -403,7 +403,7 @@ bool GOW2MeshParser::ParseObject(const std::vector<uint8_t>& allData, uint32_t o
     uint8_t textureLayersCount = buffer[0x18];
     if (textureLayersCount == 0) textureLayersCount = 1;
 
-    LOG_INFO("[ParseObject] type=0x%04X matId=%u instances=%u layers=%u dmaPerPkt=%u jointMapCnt=%u objOff=0x%X objSize=%u",
+    ONYX_LOGF_INFO("[ParseObject] type=0x%04X matId=%u instances=%u layers=%u dmaPerPkt=%u jointMapCnt=%u objOff=0x%X objSize=%u",
              type, materialId, instancesCount, textureLayersCount, dmaTagsCountPerPacket, jointMapCount, objOffset, objSize);
 
     Parsers::MeshPart basePart;
@@ -464,7 +464,7 @@ std::unique_ptr<Parsers::MeshData> GOW2MeshParser::Parse(Vfs::IFile& file, uint3
     // The game version determines the header format, not the magic.
     // This parser is always called from GOW2 context, so enforce GOW2 format.
     if ((magic & 0xFFFF) != 0x000F) {
-        LOG_ERR("[GOW2MeshParser] Invalid magic: 0x%08X (expected lower 16 = 0x000F)", magic);
+        ONYX_LOGF_ERR("[GOW2MeshParser] Invalid magic: 0x%08X (expected lower 16 = 0x000F)", magic);
         return nullptr;
     }
 
@@ -478,7 +478,7 @@ std::unique_ptr<Parsers::MeshData> GOW2MeshParser::Parse(Vfs::IFile& file, uint3
         std::memcpy(&pc16, &allData[8], 2);
         partsCount = pc16;
     }
-    LOG_INFO("[GOW2MeshParser] mesh magic=0x%08X parts=%u mdlCommentStart=0x%X", magic, partsCount, mdlCommentStart);
+    ONYX_LOGF_INFO("[GOW2MeshParser] mesh magic=0x%08X parts=%u mdlCommentStart=0x%X", magic, partsCount, mdlCommentStart);
 
     auto data = std::make_unique<Parsers::MeshData>();
     constexpr uint32_t meshHeaderSize = 0x18;
@@ -549,7 +549,7 @@ std::unique_ptr<Parsers::MeshData> GOW2MeshParser::Parse(Vfs::IFile& file, uint3
     data->bounds.min = bmin;
     data->bounds.max = bmax;
 
-    LOG_INFO("[GOW2MeshParser] Parsed %zu parts.", data->parts.size());
+    ONYX_LOGF_INFO("[GOW2MeshParser] Parsed %zu parts.", data->parts.size());
     return data;
 }
 

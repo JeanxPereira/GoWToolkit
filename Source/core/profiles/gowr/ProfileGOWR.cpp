@@ -57,14 +57,14 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
 
     // ── LZ4 decompression ─────────────────────────────────────────────────
     if (initialMagic == 0x184D2204) {
-        LOG_INFO("[GOWR] WAD is LZ4-compressed. Decompressing...");
+        ONYX_LOGF_INFO("[GOWR] WAD is LZ4-compressed. Decompressing...");
 
         size_t dstCapacity = 0;
         file->Seek(0x06, SEEK_SET);
         file->Read(&dstCapacity, 4);
 
         if (dstCapacity == 0 || dstCapacity > 1024ULL * 1024 * 500) {
-            LOG_ERR("[GOWR] Invalid decompressed size: %zu", dstCapacity);
+            ONYX_LOGF_ERR("[GOWR] Invalid decompressed size: %zu", dstCapacity);
             return false;
         }
 
@@ -85,7 +85,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
 
         parsedFile = std::make_shared<Onyx::Vfs::MemoryFile>(std::move(dst));
         fileSize   = static_cast<int64_t>(outSize);
-        LOG_INFO("[GOWR] Decompressed to %lld bytes.", fileSize);
+        ONYX_LOGF_INFO("[GOWR] Decompressed to %lld bytes.", fileSize);
     }
 
     parsedFile->Seek(0, SEEK_SET);
@@ -93,31 +93,31 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
     // ── Read WTOC header ──────────────────────────────────────────────────
     GOWRWadHeader header;
     if (parsedFile->Read(&header, sizeof(GOWRWadHeader)) != sizeof(GOWRWadHeader)) {
-        LOG_ERR("[GOWR] Failed to read WAD header");
+        ONYX_LOGF_ERR("[GOWR] Failed to read WAD header");
         return false;
     }
 
     if (header.magic != 0x434F5457) {
-        LOG_ERR("[GOWR] Invalid magic: 0x%08X (expected WTOC = 0x434F5457)", header.magic);
+        ONYX_LOGF_ERR("[GOWR] Invalid magic: 0x%08X (expected WTOC = 0x434F5457)", header.magic);
         return false;
     }
     if (header.ver != 0x2) {
-        LOG_ERR("[GOWR] Unsupported version: %u (expected 2)", header.ver);
+        ONYX_LOGF_ERR("[GOWR] Unsupported version: %u (expected 2)", header.ver);
         return false;
     }
     if (header.fileCount == 0) {
-        LOG_INFO("[GOWR] WAD contains 0 files.");
+        ONYX_LOGF_INFO("[GOWR] WAD contains 0 files.");
         return true;
     }
 
-    LOG_INFO("[GOWR] WAD header: %u files, block0=%u, block1=%u, block2=%u",
+    ONYX_LOGF_INFO("[GOWR] WAD header: %u files, block0=%u, block1=%u, block2=%u",
         header.fileCount, header.block0Size, header.block1Size, header.block2Size);
 
     // ── Read all FileDesc entries ─────────────────────────────────────────
     std::vector<GOWRFileDesc> fileDescs(header.fileCount);
     for (uint32_t i = 0; i < header.fileCount; i++) {
         if (parsedFile->Read(&fileDescs[i], sizeof(GOWRFileDesc)) != sizeof(GOWRFileDesc)) {
-            LOG_ERR("[GOWR] Failed to read file descriptor %u", i);
+            ONYX_LOGF_ERR("[GOWR] Failed to read file descriptor %u", i);
             return false;
         }
     }
@@ -200,7 +200,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
     // absOffsets are relative to parsedFile, NOT the original compressed file.
     outWad.fileSource = parsedFile;
 
-    LOG_INFO("[GOWR] Parsed WAD: %u entries → %zu root nodes.",
+    ONYX_LOGF_INFO("[GOWR] Parsed WAD: %u entries → %zu root nodes.",
         header.fileCount, outWad.entries.size());
 
     // Kick off parallel TexPack indexing in the background. The call itself

@@ -131,7 +131,7 @@ public:
     auto mergedScene = std::make_unique<Onyx::Parsers::SceneData>();
     int instanceCount = 0;
 
-    LOG_INFO("[ChunkHandler] BuildSceneData started for chunk '%s'",
+    ONYX_LOGF_INFO("[ChunkHandler] BuildSceneData started for chunk '%s'",
              entry.name.c_str());
 
     // Resolve the Instance handler once
@@ -141,12 +141,12 @@ public:
                              auto &findRef) -> void {
       for (const auto &child : entries) {
         if (child.typeId == Onyx::GameTypes::Instance && instHandler) {
-          LOG_INFO("[ChunkHandler] Found instance '%s'", child.name.c_str());
+          ONYX_LOGF_INFO("[ChunkHandler] Found instance '%s'", child.name.c_str());
 
           // Delegate to InstanceHandler::BuildSceneData
           // (parses transform, resolves Object/Model child, applies transform)
           if (auto instScene = instHandler->BuildSceneData(child, wad)) {
-            LOG_INFO("[ChunkHandler] Got SceneData for instance '%s' "
+            ONYX_LOGF_INFO("[ChunkHandler] Got SceneData for instance '%s' "
                      "(meshes=%zu, isSky=%d, hasSkeleton=%d)",
                      child.name.c_str(), instScene->meshParts.size(),
                      instScene->isSky, instScene->HasSkeleton());
@@ -233,7 +233,7 @@ public:
 
               instScene->skeleton.reset();
               instScene->instanceTransform = glm::mat4(1.0f);
-              LOG_INFO("[ChunkHandler] Baked instance '%s' to world space (isSky=%d)",
+              ONYX_LOGF_INFO("[ChunkHandler] Baked instance '%s' to world space (isSky=%d)",
                        child.name.c_str(), instScene->isSky);
             }
 
@@ -260,7 +260,7 @@ public:
 
             instanceCount++;
           } else {
-            LOG_WARN("[ChunkHandler] InstanceHandler returned null for '%s'",
+            ONYX_LOGF_WARN("[ChunkHandler] InstanceHandler returned null for '%s'",
                      child.name.c_str());
           }
         }
@@ -273,7 +273,7 @@ public:
 
     findInstances(entry.children, findInstances);
 
-    LOG_INFO("[ChunkHandler] BuildSceneData completed. Found %d instances.",
+    ONYX_LOGF_INFO("[ChunkHandler] BuildSceneData completed. Found %d instances.",
              instanceCount);
     if (instanceCount > 0) {
       return mergedScene;

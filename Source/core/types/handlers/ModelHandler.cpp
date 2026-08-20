@@ -178,7 +178,7 @@ public:
                     for (auto& p : scene->meshParts) {
                         p.isSky = true;
                     }
-                    LOG_INFO("[ModelHandler] Detected SCR_Sky in model '%s' (%zu parts flagged)",
+                    ONYX_LOGF_INFO("[ModelHandler] Detected SCR_Sky in model '%s' (%zu parts flagged)",
                              model->name.c_str(), scene->meshParts.size());
                     break;
                 }
@@ -200,7 +200,7 @@ public:
             scene->textures.push_back(std::move(matTextures));
         }
 
-        LOG_INFO("[ModelHandler] Built SceneData: %zu parts, %zu materials, %zu textures",
+        ONYX_LOGF_INFO("[ModelHandler] Built SceneData: %zu parts, %zu materials, %zu textures",
                  scene->meshParts.size(), scene->materials.size(), scene->textures.size());
 
         return scene;

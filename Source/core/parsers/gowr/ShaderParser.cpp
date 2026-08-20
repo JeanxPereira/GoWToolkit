@@ -156,7 +156,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file
     char magic[4] = {};
     file->Read(magic, 4);
     if (magic[0] != 'D' || magic[1] != 'X' || magic[2] != 'B' || magic[3] != 'C') {
-        LOG_WARN("[ShaderParser] No DXBC magic at offset 0x1C");
+        ONYX_LOGF_WARN("[ShaderParser] No DXBC magic at offset 0x1C");
         return shader; // return with Onyx header only
     }
     shader->hasDxbc = true;
@@ -255,7 +255,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file
         shader->chunks.push_back(chunk);
     }
 
-    LOG_INFO("[ShaderParser] Parsed %s (%s): %zu chunks, %zu inputs, %zu outputs",
+    ONYX_LOGF_INFO("[ShaderParser] Parsed %s (%s): %zu chunks, %zu inputs, %zu outputs",
              shader->stageTag.c_str(), shader->StageName(),
              shader->chunks.size(), shader->inputs.size(), shader->outputs.size());
 

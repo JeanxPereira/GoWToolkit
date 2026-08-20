@@ -269,10 +269,10 @@ void WadBrowser::Draw() {
                                     out.write(reinterpret_cast<const char*>(dumpData.data()),
                                               dumpData.size());
                                     out.close();
-                                    LOG_INFO("Extracted %s to %s", entry.name.c_str(),
+                                    ONYX_LOGF_INFO("Extracted %s to %s", entry.name.c_str(),
                                              savePath.c_str());
                                 } else {
-                                    LOG_ERR("Failed to open path for writing: %s",
+                                    ONYX_LOGF_ERR("Failed to open path for writing: %s",
                                             savePath.c_str());
                                 }
                             }

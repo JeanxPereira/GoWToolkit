@@ -108,7 +108,7 @@ void SoundPlayer::InitAudioDevice() {
   config.pUserData = this;
 
   if (ma_device_init(NULL, &config, &m_audio->device) != MA_SUCCESS) {
-    LOG_ERR("[SoundPlayer] Failed to initialize audio device");
+    ONYX_LOGF_ERR("[SoundPlayer] Failed to initialize audio device");
     return;
   }
   m_audio->initialized = true;
@@ -134,14 +134,14 @@ void SoundPlayer::SelectSound(int index) {
   const auto &snd = m_bankData->sounds[index];
   if (!snd.hasData || snd.adpcmSize == 0) {
     m_decodedPcm.clear();
-    LOG_INFO("[SoundPlayer] Sound '%s' has no ADPCM data", snd.name.c_str());
+    ONYX_LOGF_INFO("[SoundPlayer] Sound '%s' has no ADPCM data", snd.name.c_str());
     return;
   }
 
   // Bounds check
   if (snd.adpcmOffset + snd.adpcmSize > m_bankData->bankStreamData.size()) {
     m_decodedPcm.clear();
-    LOG_ERR("[SoundPlayer] ADPCM data out of bounds for '%s': offset=0x%X "
+    ONYX_LOGF_ERR("[SoundPlayer] ADPCM data out of bounds for '%s': offset=0x%X "
             "size=0x%X streamSize=0x%zX",
             snd.name.c_str(), snd.adpcmOffset, snd.adpcmSize,
             m_bankData->bankStreamData.size());
@@ -151,7 +151,7 @@ void SoundPlayer::SelectSound(int index) {
   m_decodedPcm = Onyx::Audio::AdpcmDecoder::Decode(
       m_bankData->bankStreamData.data() + snd.adpcmOffset, snd.adpcmSize);
 
-  LOG_INFO("[SoundPlayer] Decoded '%s': %zu PCM samples", snd.name.c_str(),
+  ONYX_LOGF_INFO("[SoundPlayer] Decoded '%s': %zu PCM samples", snd.name.c_str(),
            m_decodedPcm.size());
 }
 

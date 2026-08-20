@@ -59,7 +59,7 @@ bool GOWRMgParser::Parse(std::shared_ptr<Vfs::IFile> file,
 
     const size_t ptrTable = 0x44;
     if (fileSize < ptrTable + (size_t)partCount * 4) {
-        LOG_WARN("[GOWRMgParser] part table does not fit in %zu bytes", fileSize);
+        ONYX_LOGF_WARN("[GOWRMgParser] part table does not fit in %zu bytes", fileSize);
         return false;
     }
 
@@ -78,7 +78,7 @@ bool GOWRMgParser::Parse(std::shared_ptr<Vfs::IFile> file,
             file->Read(&start, 2);
             file->Read(&count, 2);
             if (start != running) {
-                LOG_WARN("[GOWRMgParser] palette range %u starts at %u, expected %u"
+                ONYX_LOGF_WARN("[GOWRMgParser] palette range %u starts at %u, expected %u"
                          " - palette ignored", i, start, running);
                 paletteOk = false;
                 break;
@@ -89,7 +89,7 @@ bool GOWRMgParser::Parse(std::shared_ptr<Vfs::IFile> file,
     }
     const size_t paletteBase = rangeTable + (size_t)partCount * 4;
     if (paletteOk && fileSize < paletteBase + (size_t)running * kPaletteStride) {
-        LOG_WARN("[GOWRMgParser] palette of %u entries does not fit - ignored", running);
+        ONYX_LOGF_WARN("[GOWRMgParser] palette of %u entries does not fit - ignored", running);
         paletteOk = false;
     }
 
@@ -102,7 +102,7 @@ bool GOWRMgParser::Parse(std::shared_ptr<Vfs::IFile> file,
         uint32_t partOff = 0;
         file->Read(&partOff, 4);
         if (partOff + 0x38 > fileSize) {
-            LOG_WARN("[GOWRMgParser] part %u offset 0x%X out of range", i, partOff);
+            ONYX_LOGF_WARN("[GOWRMgParser] part %u offset 0x%X out of range", i, partOff);
             continue;
         }
 
@@ -137,7 +137,7 @@ bool GOWRMgParser::Parse(std::shared_ptr<Vfs::IFile> file,
                 continue;
             }
             if (blockKind > kMaxLevelSubmeshes) {
-                LOG_WARN("[GOWRMgParser] part %u level %u: %u submeshes exceeds "
+                ONYX_LOGF_WARN("[GOWRMgParser] part %u level %u: %u submeshes exceeds "
                          "the sane bound", i, j, blockKind);
                 continue;
             }
@@ -186,11 +186,11 @@ bool GOWRMgParser::Parse(std::shared_ptr<Vfs::IFile> file,
     for (uint32_t s = 0; s < meshSubmeshCount; ++s)
         if (out.partOfSubmesh[s] < 0) ++unreferenced;
 
-    LOG_INFO("[GOWRMgParser] %u parts, %d levels, %d submesh refs, %d unreferenced, "
+    ONYX_LOGF_INFO("[GOWRMgParser] %u parts, %d levels, %d submesh refs, %d unreferenced, "
              "%u palette entries", partCount, levelsTotal, submeshRefs, unreferenced,
              paletteOk ? running : 0u);
     if (unreferenced > 0) {
-        LOG_WARN("[GOWRMgParser] %d of %u submeshes are not reached by any level",
+        ONYX_LOGF_WARN("[GOWRMgParser] %d of %u submeshes are not reached by any level",
                  unreferenced, meshSubmeshCount);
     }
     return true;

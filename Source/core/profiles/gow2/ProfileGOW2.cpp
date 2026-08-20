@@ -44,7 +44,7 @@ bool ProfileGOW2::Detect(const std::filesystem::path& path) const {
 std::shared_ptr<Vfs::IVirtualFileSystem> ProfileGOW2::MountArchive(const std::filesystem::path& path) {
     auto vfs = std::make_shared<Vfs::IsoFileSystem>(path.string());
     if (vfs->Initialize()) {
-        LOG_INFO("[GOW2] Successfully mounted ISO: %s", path.string().c_str());
+        ONYX_LOGF_INFO("[GOW2] Successfully mounted ISO: %s", path.string().c_str());
         return vfs;
     }
     return nullptr;
@@ -75,7 +75,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
     int64_t fileSize = file->Tell();
     file->Seek(0, SEEK_SET);
 
-    LOG_INFO("[GOW2] Parsing WAD of size %lld bytes", fileSize);
+    ONYX_LOGF_INFO("[GOW2] Parsing WAD of size %lld bytes", fileSize);
 
     int64_t pos = 0;
 
@@ -199,11 +199,11 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
 
                         } else {
 
-                            LOG_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u magic=0x%08X", entry.name.c_str(), rawTag.size, magic);
+                            ONYX_LOGF_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u magic=0x%08X", entry.name.c_str(), rawTag.size, magic);
                         }
                     } else {
 
-                        LOG_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u (no magic)", entry.name.c_str(), rawTag.size);
+                        ONYX_LOGF_INFO("[ProfileGOW2] Unknown tag: '%s' size=%u (no magic)", entry.name.c_str(), rawTag.size);
                     }
                 }
             }
@@ -266,7 +266,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
     };
     resolveUnknowns(outWad.entries);
 
-    LOG_INFO("[GOW2] Parsed WAD: %d elements built into a tree structure.", totalTags);
+    ONYX_LOGF_INFO("[GOW2] Parsed WAD: %d elements built into a tree structure.", totalTags);
     return true;
 }
 
@@ -319,7 +319,7 @@ struct RawTocEntryGOW2 {
 
 bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<Vfs::IVirtualFileSystem> vfs,
                                         Vfs::IFile* tocFile, AssetContainer& outWad) {
-    LOG_INFO("[GOW2] Parsing TOC... size: %zu bytes.", (size_t)tocFile->Size());
+    ONYX_LOGF_INFO("[GOW2] Parsing TOC... size: %zu bytes.", (size_t)tocFile->Size());
 
     uint32_t numFiles = 0;
     if (tocFile->Read(&numFiles, 4) != 4) return false;
@@ -352,7 +352,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<Vfs::IVirtualFileSystem> v
 
         if (!pakExists(pakName)) {
             if (warnedMissingPaks.insert(pakName).second)
-                LOG_WARN("[GOW2] '%s' not found in ISO — skipping its entries. "
+                ONYX_LOGF_WARN("[GOW2] '%s' not found in ISO — skipping its entries. "
                          "(Dual-layer ISOs may need both layers merged.)", pakName.c_str());
             continue;
         }
@@ -367,7 +367,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<Vfs::IVirtualFileSystem> v
         outWad.entries.push_back(std::move(entry));
     }
 
-    LOG_INFO("[GOW2] TOC parsed: %zu files.", outWad.entries.size());
+    ONYX_LOGF_INFO("[GOW2] TOC parsed: %zu files.", outWad.entries.size());
     return !outWad.entries.empty();
 }
 
@@ -381,7 +381,7 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<Vfs::IVirtualFileSystem> vfs, 
         tocFile = vfs->OpenFile("/GODOFWAR.TOC");
 
     if (!tocFile || !tocFile->IsValid()) {
-        LOG_ERR("[Onyx] No TOC file found in ISO (tried GOW2.TOC, GODOFWAR.TOC).");
+        ONYX_LOGF_ERR("[Onyx] No TOC file found in ISO (tried GOW2.TOC, GODOFWAR.TOC).");
         return false;
     }
 
@@ -399,13 +399,13 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<Vfs::IVirtualFileSystem> vfs, 
                   ((int64_t)(possibleCount * sizeof(RawTocEntryGOW2) + 4) <= tocSize);
 
     if (!isGOW2) {
-        LOG_ERR("[Onyx] TOC header does not look like GOW2 (count=%u, size=%lld). "
+        ONYX_LOGF_ERR("[Onyx] TOC header does not look like GOW2 (count=%u, size=%lld). "
                 "GOW1 ISOs are not supported by this profile.",
                 possibleCount, (long long)tocSize);
         return false;
     }
 
-    LOG_INFO("[Onyx] Detected GOW2 TOC format (%u entries).", possibleCount);
+    ONYX_LOGF_INFO("[Onyx] Detected GOW2 TOC format (%u entries).", possibleCount);
     return LoadFromArchiveGOW2(vfs, tocFile.get(), outWad);
 }
 

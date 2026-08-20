@@ -67,7 +67,7 @@ public:
         // 1. Parse instance transform
         auto instData = Onyx::GOW2InstanceParser::Parse(entry, wad.fileSource);
         if (!instData) {
-            LOG_WARN("[InstanceHandler] Failed to parse instance data for '%s'", entry.name.c_str());
+            ONYX_LOGF_WARN("[InstanceHandler] Failed to parse instance data for '%s'", entry.name.c_str());
             return nullptr;
         }
 
@@ -122,20 +122,20 @@ public:
         }
 
         if (!objEntry) {
-            LOG_WARN("[InstanceHandler] No Object or Model found for '%s'", entry.name.c_str());
+            ONYX_LOGF_WARN("[InstanceHandler] No Object or Model found for '%s'", entry.name.c_str());
             return nullptr;
         }
 
         // 3. Delegate scene building to the child handler
         auto* handler = Onyx::Types::TypeRegistry::Get().Resolve(objEntry->typeId);
         if (!handler) {
-            LOG_WARN("[InstanceHandler] No handler for typeId=%d in '%s'", (int)objEntry->typeId.value, entry.name.c_str());
+            ONYX_LOGF_WARN("[InstanceHandler] No handler for typeId=%d in '%s'", (int)objEntry->typeId.value, entry.name.c_str());
             return nullptr;
         }
 
         auto scene = handler->BuildSceneData(*objEntry, wad);
         if (!scene) {
-            LOG_WARN("[InstanceHandler] handler->BuildSceneData returned null for '%s' → '%s'",
+            ONYX_LOGF_WARN("[InstanceHandler] handler->BuildSceneData returned null for '%s' → '%s'",
                      entry.name.c_str(), objEntry->name.c_str());
             return nullptr;
         }
@@ -158,7 +158,7 @@ public:
             for (auto& part : scene->meshParts) {
                 part.isSky = true;
             }
-            LOG_INFO("[InstanceHandler] Marking scene as sky for instance '%s' (nameMatch=%d, partFlag=%d, sceneFlag=%d)",
+            ONYX_LOGF_INFO("[InstanceHandler] Marking scene as sky for instance '%s' (nameMatch=%d, partFlag=%d, sceneFlag=%d)",
                      entry.name.c_str(), instData->isSky, partSky, scene->isSky);
         }
 

@@ -39,7 +39,7 @@ const DxcModule& Module() {
             return m;
         }
         m.ok = true;
-        LOG_INFO("[DxilDisassembler] dxcompiler.dll loaded");
+        ONYX_LOGF_INFO("[DxilDisassembler] dxcompiler.dll loaded");
         return m;
     }();
     return mod;

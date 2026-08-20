@@ -137,7 +137,7 @@ std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const AssetEntry& entry,
         data->transformMatrix[14] = ReadF32(&buf[0x58]);
         data->transformMatrix[15] = 1.0f;
 
-        LOG_INFO("[InstanceParser] GOW2 instance '%s': pos=(%.2f,%.2f,%.2f) isSky=%d",
+        ONYX_LOGF_INFO("[InstanceParser] GOW2 instance '%s': pos=(%.2f,%.2f,%.2f) isSky=%d",
                  entry.name.c_str(),
                  data->transformMatrix[12], data->transformMatrix[13], data->transformMatrix[14],
                  data->isSky);

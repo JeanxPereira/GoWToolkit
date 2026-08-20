@@ -202,7 +202,7 @@ bool GOWRMaterialParse(const std::shared_ptr<Vfs::IFile>& mat,
 
     const size_t size = mat->Size();
     if (size < 0xF0) {
-        LOG_WARN("[GOWRMaterial] entry is only %zu bytes", size);
+        ONYX_LOGF_WARN("[GOWRMaterial] entry is only %zu bytes", size);
         return false;
     }
 
@@ -221,7 +221,7 @@ bool GOWRMaterialParse(const std::shared_ptr<Vfs::IFile>& mat,
     const uint16_t paramCount  = sectionCounts[0];
     if (paramsAt >= size ||
         paramsAt + (size_t)paramCount * kParamStride > size) {
-        LOG_WARN("[GOWRMaterial] parameter table (%u entries at 0x%X) does not "
+        ONYX_LOGF_WARN("[GOWRMaterial] parameter table (%u entries at 0x%X) does not "
                  "fit in %zu bytes", paramCount, paramsAt, size);
     } else {
         out.params.reserve(paramCount);
@@ -239,7 +239,7 @@ bool GOWRMaterialParse(const std::shared_ptr<Vfs::IFile>& mat,
 
     if (refList) GOWRMaterialParseRefs(refList, out.refs);
 
-    LOG_INFO("[GOWRMaterial] %016llX: %zu params, %zu textures, %zu shaders",
+    ONYX_LOGF_INFO("[GOWRMaterial] %016llX: %zu params, %zu textures, %zu shaders",
              (unsigned long long)out.hash, out.params.size(),
              out.Textures().size(), out.Shaders().size());
     return true;
