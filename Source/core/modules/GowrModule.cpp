@@ -154,6 +154,17 @@ void GowrModule::RegisterTypes(Onyx::Types::TypeRegistrar& r) {
     m_sharedWadRef       = add("sharedWadRef",       "Shared WAD Ref",   MediaKind::Container, ICON_SF_DOCUMENT,    0.6f, 0.6f, 0.6f, 1.0f);
     m_sentinel           = add("sentinel",           "Sentinel",         MediaKind::Unknown,   ICON_SF_DOCUMENT,    0.6f, 0.6f, 0.6f, 1.0f);
     m_material           = add("material",           "Material",         MediaKind::Material,  ICON_SF_DOCUMENT,    0.6f, 0.6f, 0.6f, 1.0f);
+
+    // Not part of core/types/GameTypeTable.h's row set (that table has no
+    // "unknown" row for GOWR the way row 0 covers GOW2) -- minted here so
+    // WadNodeBuilder's RoleToTypeIdFn has somewhere honest to send
+    // WadEntryRole::Unknown and every synthetic block/group folder role
+    // Classify() cannot reconstruct (ManifestBlock/ShaderBlock/AssetBlock/
+    // ParticleBlock/ShaderGroup/FxGroup -- see WadNodeBuilder.cpp's GetRole()
+    // comment). Label matches GameTypeTable row 0 ("Unknown") exactly, so
+    // the golden fixtures' dominant "typeId": "Unknown" value is unaffected
+    // by which catalog entry actually produced it -- see task-4-report.md.
+    m_unknown            = add("unknown",            "Unknown",          MediaKind::Unknown,   ICON_SF_DOCUMENT,    0.6f, 0.6f, 0.6f, 1.0f);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -566,9 +577,52 @@ Onyx::Modules::ParseResult GowrModule::ParseContainer(ContainerContext& ctx) {
     // reads name/typeId/size/offset/childCount/kind/payloadHash, never
     // wadName, and it appears in neither golden fixture, so this value is
     // not a pinned contract; matching prior behaviour is still correct.
+    // Maps a classified WadEntryRole to this module's own minted TypeId
+    // (RegisterTypes(), above) -- Task 4's type-catalog convergence.
+    // WadNodeBuilder used to hardcode this switch itself against the legacy
+    // Onyx::GameTypes::* externs (task-2-report.md's Carried Concern 2);
+    // handing it this module's own handles instead is what makes
+    // RegisterDecoders()'s wiring reachable from a real parsed tree. Every
+    // WadEntryRole WadNodeBuilder can produce is listed explicitly (cross-
+    // checked against the free function this replaced); anything else
+    // (WadEntryRole::Unknown, and every synthetic block/group folder role
+    // Classify() cannot reconstruct from name+size alone) falls to
+    // m_unknown, matching the original's `default: return GameTypes::Unknown`.
+    auto roleToTypeId = [this](WadEntryRole role) -> Onyx::Types::TypeId {
+        switch (role) {
+            case WadEntryRole::ShaderContainer: return m_shaderContainer;
+            case WadEntryRole::ShaderVertex: return m_shaderVertex;
+            case WadEntryRole::ShaderPixel: return m_shaderPixel;
+            case WadEntryRole::ShaderHull: return m_shaderHull;
+            case WadEntryRole::ShaderDomain: return m_shaderDomain;
+            case WadEntryRole::ShaderCompute: return m_shaderCompute;
+            case WadEntryRole::ShaderLibrary: return m_shaderLibrary;
+            case WadEntryRole::MeshGpu: return m_meshGpu;
+            case WadEntryRole::MeshDefn: return m_meshDefn;
+            case WadEntryRole::GameObjectProto: return m_gameObjectProto;
+            case WadEntryRole::GameObjectInst: return m_gameObjectInst;
+            case WadEntryRole::GameObjectOverride: return m_gameObjectOverride;
+            case WadEntryRole::TexturePair: return m_texturePair;
+            case WadEntryRole::TextureGpu: return m_texturePair;
+            case WadEntryRole::TextureCpu: return m_texturePair;
+            case WadEntryRole::Material: return m_material;
+            case WadEntryRole::MaterialRef: return m_materialRef;
+            case WadEntryRole::LodBinding: return m_lodBinding;
+            case WadEntryRole::AnimClip: return m_animClip;
+            case WadEntryRole::SoundEmitter: return m_soundEmitter;
+            case WadEntryRole::ParticleEmitter: return m_particleEmitter;
+            case WadEntryRole::ParticleSystem: return m_particleSystem;
+            case WadEntryRole::ClientGuid: return m_clientGuid;
+            case WadEntryRole::WadIdentity: return m_wadIdentity;
+            case WadEntryRole::SharedWadRef: return m_sharedWadRef;
+            case WadEntryRole::Sentinel: return m_sentinel;
+            default: return m_unknown;
+        }
+    };
+
     AssetContainer scratch;
     WadNodeBuilder builder;
-    builder.Build(fileDescs, absOffsets, ctx.path.filename().string(), scratch);
+    builder.Build(fileDescs, absOffsets, ctx.path.filename().string(), roleToTypeId, scratch);
     ctx.roots = std::move(scratch.entries);
 
     // Stamps source.fileIndex tree-wide (gowrFileIndex above) and flags any

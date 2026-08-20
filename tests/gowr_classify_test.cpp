@@ -1,8 +1,10 @@
 #include <doctest/doctest.h>
 
 #include <Onyx/Domain/Entry.h>
+#include <Onyx/Types/TypeCatalog.h>
+#include <Onyx/Types/TypeRegistrar.h>
 #include "core/profiles/gowr/GowrTaxonomy.h"
-#include "core/types/GameTypes.h"
+#include "core/modules/GowrModule.h"
 
 using namespace Onyx;
 using namespace Onyx::Domain;
@@ -23,6 +25,24 @@ AssetEntry MakeTypedEntry(const std::string& name, uint64_t size, Onyx::Types::T
     AssetEntry e = MakeEntry(name, size);
     e.typeId     = type;
     return e;
+}
+
+// GowrTaxonomy.cpp's Classify() looks up "gowr.texturePair" by catalog key
+// (Phase 2 Task 4 convergence -- see GowrTaxonomy.cpp's Classify() comment),
+// not the legacy Onyx::GameTypes::TexturePair extern this file used to type
+// its pair-node fixture with. Registers GowrModule's real types once (self-
+// contained -- does not depend on any other test's ordering) and returns
+// the handle a real GowrModule-built tree actually stamps on a synthesised
+// texture-pair node, so "a TexturePair-typed node..." below exercises the
+// same id production code produces, not a stale/unrelated one.
+Types::TypeId TexturePairTypeId() {
+    static const Types::TypeId id = [] {
+        GowrModule module;
+        Types::TypeRegistrar registrar(Types::TypeCatalog::Get(), "gowr");
+        module.RegisterTypes(registrar);
+        return Types::TypeCatalog::Get().Find("gowr.texturePair");
+    }();
+    return id;
 }
 
 } // namespace
@@ -90,13 +110,13 @@ TEST_CASE("GowrClassify: an UNTYPED TX_* below 1024 bytes classifies as TextureC
 // this would mislabel every texture in the browser and the inspector.
 TEST_CASE("GowrClassify: a TexturePair-typed node stays TexturePair despite GPU size") {
     auto pairNode = MakeTypedEntry("TX_angrboda_head_0d_1D293ECA4DE04637", 65536,
-                                    GameTypes::TexturePair);
+                                    TexturePairTypeId());
     CHECK(Classify(pairNode).role == WadEntryRole::TexturePair);
 
     // And a small one too -- the pair node's size is whatever the GPU side had,
     // so neither side of the threshold may flip it.
     auto smallPair = MakeTypedEntry("TX_angrboda_head_0d_1D293ECA4DE04637", 512,
-                                     GameTypes::TexturePair);
+                                     TexturePairTypeId());
     CHECK(Classify(smallPair).role == WadEntryRole::TexturePair);
 }
 

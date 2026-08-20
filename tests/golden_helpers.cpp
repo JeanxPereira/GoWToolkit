@@ -9,10 +9,10 @@
 #include <sstream>
 #include <vector>
 
-#include "core/profiles/gow2/ProfileGOW2.h"
-#include "core/profiles/gowr/ProfileGOWR.h"
+#include "core/modules/Gow2Module.h"
+#include "core/modules/GowrModule.h"
+#include <Onyx/Modules/Workspace.h>
 #include <Onyx/Types/TypeId.h>
-#include "core/types/GameTypes.h"
 #include <Onyx/Types/TypeCatalog.h>
 #include <Onyx/Vfs/MemoryFile.h>
 #include <Onyx/Vfs/OsFile.h>
@@ -49,8 +49,14 @@ uint64_t HashEntryPayload(Onyx::Vfs::IFile& source, uint64_t offset, uint64_t si
     return XXH64(buf.data(), buf.size(), /*seed=*/0);
 }
 
+// Hashes through doc.fileTable[entry.source.fileIndex], not a single
+// container-wide source: Onyx v1.1 modules can address any file table slot
+// (GowrModule's LZ4-decompressed buffer, Gow2Module's ISO PAK slices), and
+// getting this wrong would silently hash the wrong bytes -- exactly the
+// class of bug FinalizeEntries' range-salvage checks (GowrModule.cpp,
+// Gow2Module.cpp) exist to catch on the production side.
 void FlattenEntry(const AssetEntry& entry,
-                  Onyx::Vfs::IFile* source,
+                  const std::vector<std::shared_ptr<Onyx::Vfs::IFile>>& fileTable,
                   std::vector<ordered_json>& out) {
     ordered_json e;
     e["name"]        = entry.name;
@@ -59,6 +65,11 @@ void FlattenEntry(const AssetEntry& entry,
     e["offset"]      = entry.source.offset;
     e["childCount"]  = static_cast<uint64_t>(entry.children.size());
     e["kind"]        = std::string(Onyx::Domain::Name(entry.kind));
+
+    Onyx::Vfs::IFile* source = nullptr;
+    if (entry.source.fileIndex < fileTable.size()) {
+        source = fileTable[entry.source.fileIndex].get();
+    }
     if (source && entry.source.size > 0) {
         e["payloadHash"] = ToHex64(HashEntryPayload(*source, entry.source.offset, entry.source.size));
     } else {
@@ -67,17 +78,16 @@ void FlattenEntry(const AssetEntry& entry,
     out.push_back(std::move(e));
 
     for (const auto& child : entry.children) {
-        FlattenEntry(child, source, out);
+        FlattenEntry(child, fileTable, out);
     }
 }
 
 } // anonymous namespace
 
-ordered_json SnapshotEntries(const AssetContainer& wad) {
+ordered_json SnapshotEntries(const Onyx::Modules::Document& doc) {
     std::vector<ordered_json> flat;
-    auto* source = wad.fileSource.get();
-    for (const auto& entry : wad.entries) {
-        FlattenEntry(entry, source, flat);
+    for (const auto& entry : doc.roots) {
+        FlattenEntry(entry, doc.fileTable, flat);
     }
 
     std::sort(flat.begin(), flat.end(), [](const ordered_json& a, const ordered_json& b) {
@@ -89,11 +99,11 @@ ordered_json SnapshotEntries(const AssetContainer& wad) {
         return a.value("name", std::string{}) < b.value("name", std::string{});
     });
 
-    ordered_json doc;
-    doc["wad"]        = wad.filename;
-    doc["entryCount"] = static_cast<uint64_t>(flat.size());
-    doc["entries"]    = std::move(flat);
-    return doc;
+    ordered_json out;
+    out["wad"]        = doc.path.filename().string();
+    out["entryCount"] = static_cast<uint64_t>(flat.size());
+    out["entries"]    = std::move(flat);
+    return out;
 }
 
 ordered_json LoadGolden(const fs::path& path) {
@@ -172,34 +182,50 @@ bool ShouldUpdateGoldens() {
 void RunGoldenTest(std::string_view versionTag,
                    const fs::path& wadPath,
                    const fs::path& expectedJsonPath) {
-    // Type catalog must be populated before parsing so handles/labels resolve.
-    Onyx::GameTypes::RegisterGameTypes();
-
     REQUIRE_MESSAGE(fs::exists(wadPath),
                     "fixture WAD not found: " << wadPath.string());
 
-    auto file = std::make_shared<Onyx::Vfs::OsFile>(wadPath.string());
-    REQUIRE_MESSAGE(file->IsValid(),
-                    "failed to open fixture WAD: " << wadPath.string());
+    // TypeCatalog::Get() is the same process-wide singleton the app seeds
+    // via Onyx::GameTypes::RegisterGameTypes() -- but the tree this test
+    // parses no longer carries those legacy ids (Phase 2 Task 4 converged
+    // WadNodeBuilder/Gow2Module onto each module's own TypeRegistrar-minted
+    // handles), so registering the module on a fresh Workspace here is what
+    // actually populates the labels Label(typeId) below reads. A new
+    // Workspace per call is safe to repeat across TEST_CASEs sharing the
+    // same process: TypeRegistrar::Add and TypeCatalog::Register are both
+    // idempotent by key ("re-adding the same bare key returns the existing
+    // handle"), and Workspace::AddModule's duplicate-id refusal is scoped
+    // to one Workspace instance, not the catalog.
+    Onyx::Types::TypeCatalog& catalog = Onyx::Types::TypeCatalog::Get();
+    Onyx::Modules::Workspace workspace(catalog);
 
-    AssetContainer wad;
-    wad.filename = wadPath.filename().string();
-    wad.fullPath = wadPath.string();
-    wad.fileSource = file;
-
-    bool parsed = false;
     if (versionTag == "gow2") {
-        Onyx::ProfileGOW2 profile;
-        parsed = profile.ParseContainer(file, wad);
+        workspace.AddModule(std::make_unique<Onyx::Gow2::Gow2Module>());
     } else if (versionTag == "gowr") {
-        Onyx::ProfileGOWR profile;
-        parsed = profile.ParseContainer(file, wad);
+        workspace.AddModule(std::make_unique<Onyx::Gowr::GowrModule>());
     } else {
         FAIL("unknown versionTag: " << versionTag);
     }
-    REQUIRE_MESSAGE(parsed, "ParseContainer failed for " << wadPath.string());
 
-    ordered_json actual = SnapshotEntries(wad);
+    // Workspace::Open's synchronous path runs ParseContainer inline and
+    // returns before this call does, so subscribing before Open() and
+    // pumping right after is sufficient to observe this document's own
+    // TreeReady -- no other document/job is in flight to interleave with.
+    bool parsedOk = false;
+    auto sub = workspace.Events().On<Onyx::Modules::TreeReady>(
+        [&](const Onyx::Modules::TreeReady& e) { parsedOk = e.ok; });
+
+    Onyx::Modules::DocumentId id = workspace.Open(wadPath, versionTag);
+    workspace.Events().Pump();
+
+    REQUIRE_MESSAGE(id != 0, "no module accepted " << wadPath.string()
+                    << " (moduleHint=" << versionTag << ")");
+    Onyx::Modules::Document* doc = workspace.Get(id);
+    REQUIRE_MESSAGE(doc != nullptr,
+                    "Workspace::Get returned no document for " << wadPath.string());
+    REQUIRE_MESSAGE(parsedOk, "ParseContainer failed for " << wadPath.string());
+
+    ordered_json actual = SnapshotEntries(*doc);
 
     if (ShouldUpdateGoldens()) {
         fs::create_directories(expectedJsonPath.parent_path());

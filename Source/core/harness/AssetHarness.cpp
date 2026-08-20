@@ -1,16 +1,42 @@
 #include "core/harness/AssetHarness.h"
 
-#include <Onyx/Domain/IAssetProfile.h>
-#include <Onyx/Services/ProfileManager.h>
+#include <Onyx/Modules/Workspace.h>
 #include <Onyx/Types/ITypeHandler.h>
 #include <Onyx/Types/TypeCatalog.h>
 #include <Onyx/Types/TypeRegistry.h>
 #include <Onyx/Vfs/OsFile.h>
 
+#include "core/modules/Gow2Module.h"
+#include "core/modules/GowrModule.h"
+
 #include <algorithm>
+#include <memory>
 #include <ostream>
 
 namespace Onyx::Harness {
+
+namespace {
+
+// One Workspace, shared by every headless caller in this process, with both
+// game modules registered exactly once. Onyx::Types::TypeCatalog::Get() is a
+// process-wide singleton (see Gow2Module/GowrModule::RegisterTypes()), so a
+// second Workspace instance here would just re-resolve the same module-
+// namespaced keys to the same handles (TypeRegistrar::Add's "re-adding the
+// same bare key returns the existing handle") -- this Meyer's singleton
+// exists to avoid rebuilding the module set on every LoadContainer call, not
+// to work around any registration hazard.
+Onyx::Modules::Workspace& GetWorkspace() {
+    static Onyx::Modules::Workspace workspace(Onyx::Types::TypeCatalog::Get());
+    static bool modulesRegistered = [] {
+        workspace.AddModule(std::make_unique<Onyx::Gowr::GowrModule>());
+        workspace.AddModule(std::make_unique<Onyx::Gow2::Gow2Module>());
+        return true;
+    }();
+    (void)modulesRegistered;
+    return workspace;
+}
+
+} // namespace
 
 const AssetEntry* FindEntryByName(const std::vector<AssetEntry>& entries,
                                   std::string_view name)
@@ -40,51 +66,65 @@ bool LoadContainer(const LoadRequest& req, LoadResult& out)
         return false;
     }
 
-    // Profile selection mirrors AssetDatabase::LoadWad — an explicit hint wins,
-    // and auto-detection is the fallback rather than a mutually exclusive
-    // branch, so a wrong hint degrades to detection instead of hard-failing.
-    auto& profiles = Onyx::Services::ProfileManager::Get();
-    std::shared_ptr<Onyx::Domain::IAssetProfile> profile;
-    if (!req.gameHint.empty())
-        profile = profiles.FindProfileByHint(req.gameHint);
-    if (!profile)
-        profile = profiles.DetectProfileForFile(req.archive);
-    if (!profile) {
-        out.error = "no profile matched. Pass --game gow2|gowr";
+    // Module selection mirrors the old ProfileManager hint/detect split: an
+    // explicit hint is passed straight through as Workspace::Open's
+    // moduleHint (which itself wins outright over probing, never falling
+    // back to it on a bad hint -- see Workspace::PrepareDocument); an empty
+    // hint lets Workspace::Probe rank the registered modules by evidence
+    // (RankProbes). Unlike the old harness, ISO input is no longer refused
+    // here: Gow2Module declares a MountSpec for .iso (Phase 2 Task 3), so
+    // Workspace::Open mounts and walks it the same way the GUI always could
+    // -- this is new headless capability, not a port of existing behaviour.
+    Onyx::Modules::Workspace& workspace = GetWorkspace();
+
+    bool parsedOk = false;
+    auto sub = workspace.Events().On<Onyx::Modules::TreeReady>(
+        [&](const Onyx::Modules::TreeReady& e) { parsedOk = e.ok; });
+
+    Onyx::Modules::DocumentId id = workspace.Open(req.archive, req.gameHint);
+    workspace.Events().Pump();
+
+    if (id == 0) {
+        out.error = "no module matched " + req.archive.string() +
+                    " -- pass --game gow2|gowr, or check the extension";
         return false;
     }
 
-    // An ISO needs the PAK-slice walk AssetDatabase::LoadPakFromIso does; the
-    // harness deliberately does not reimplement it. Say so instead of failing
-    // deeper down with a confusing parse error.
-    auto ext = req.archive.extension().string();
-    std::transform(ext.begin(), ext.end(), ext.begin(),
-                   [](unsigned char c) { return (char)std::tolower(c); });
-    if (ext == ".iso") {
-        out.error = "ISO input is not supported headlessly yet. Run "
-                    "`GoWTool extract <iso> <dir>` first, then point at a WAD.";
+    Onyx::Modules::Document* doc = workspace.Get(id);
+    if (!doc) {
+        out.error = "internal error: Workspace::Open returned an id with no document";
         return false;
     }
-
-    // The GUI calls this before every ParseContainer. For GOWR it materialises
-    // config.ini and drops a LOD index cached without it; skipping it is how
-    // the CLI used to parse a different mesh set than the app.
-    profile->PrepareForParse(req.archive);
-
-    auto file = std::make_shared<Vfs::OsFile>(req.archive.string());
-    if (!file->IsValid()) {
+    if (!doc->file || !doc->file->IsValid()) {
         out.error = "cannot open file: " + req.archive.string();
         return false;
     }
-    out.file = file;
 
+    out.vfs  = doc->mountedVfs;
+    out.file = doc->file;
+
+    // Bridge onto the legacy AssetContainer BuildSceneData (below) and every
+    // downstream ITypeHandler still expect -- Task 4's scope is moving
+    // container OPEN onto Workspace, not retiring AssetContainer itself
+    // (Onyx::Domain::Wad.h documents it surviving for exactly this reason).
+    // This bridge is exact for a flat WAD: doc->fileTable has one slot (the
+    // container itself), same as AssetContainer::fileSource always assumed.
+    // It is NOT exact for a mounted ISO: Gow2Module::ParseIsoToc pushes one
+    // fileTable slot per PART*.PAK an entry actually lives in
+    // (AssetEntry::source.fileIndex names which), but AssetContainer has
+    // only ONE fileSource -- an entry whose fileIndex != 0 will read the
+    // wrong bytes through this bridge. That is a real, structural limit of
+    // AssetContainer's single-file model, not something Task 4 can close
+    // without redesigning it (Phase 4/5 territory, same place WadBrowser's
+    // own Onyx::Api::Database()/GetSelected() gap already lives) -- named
+    // here rather than silently mis-decoding. See task-4-report.md.
     out.container.filename   = req.archive.filename().string();
     out.container.fullPath   = req.archive.string();
-    out.container.profile    = profile;
-    out.container.fileSource = file;
+    out.container.fileSource = doc->fileTable.empty() ? doc->file : doc->fileTable[0];
+    out.container.entries    = doc->roots;
 
-    if (!profile->ParseContainer(file, out.container)) {
-        out.error = "ParseContainer failed (profile: " + profile->GetName() + ")";
+    if (!parsedOk) {
+        out.error = "ParseContainer failed (module: " + doc->module->Info().id + ")";
         return false;
     }
 

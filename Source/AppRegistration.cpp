@@ -21,12 +21,27 @@
 // Game viewers
 #include "ui/viewers/SoundPlayer.h"
 
+// Game modules (Onyx v1.1 IGameModule contract). Replaces the pre-v1.1
+// Onyx::Services::ProfileManager::Get().RegisterProfile(...) calls that used
+// to live in main.cpp's registerProfiles() -- see task-4-report.md.
+#include "core/modules/Gow2Module.h"
+#include "core/modules/GowrModule.h"
+
 #include <memory>
 
 namespace Onyx {
 
 void InstallGoWPanels(Onyx::App::App& app) {
   app.SetRegistrar([](Onyx::App::App& a) {
+    // Register the game modules with the Workspace. App::AddModule is valid
+    // only pre-init ("a call after init() has completed is refused" --
+    // App.h), and this registrar runs from inside App::init() (via
+    // registerPanels(), before init() returns), which satisfies that
+    // window -- the same place the old ProfileManager registration used to
+    // run from indirectly (main.cpp, before window.run()).
+    a.AddModule(std::make_unique<Onyx::Gowr::GowrModule>());
+    a.AddModule(std::make_unique<Onyx::Gow2::Gow2Module>());
+
     // Generic panels GoWToolkit opts into (previously auto-registered by the
     // engine; now app-composed after Onyx panel-composition change).
     // Default-hidden: ISO Browser, Anim Curves, WAD Stats, Dopesheet.

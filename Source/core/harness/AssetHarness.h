@@ -8,10 +8,19 @@
 // reasons that have nothing to do with the asset — which would make the
 // screenshot worthless as evidence. Everything non-GUI now goes through here.
 //
-// The copy this replaces skipped `IAssetProfile::PrepareForParse`, which the
-// GUI calls (AssetDatabase.cpp:150). For GOWR that call is what writes
-// `config.ini` and invalidates a LOD index cached without it, so the old CLI
-// could parse a different mesh set than the app did from the same file.
+// Onyx v1.1 deleted IAssetProfile/ProfileManager/AssetDatabase; opening a
+// container now goes through Onyx::Modules::Workspace + IGameModule
+// (Gow2Module/GowrModule, Phase 2 Tasks 2/3). LoadContainer (below) opens
+// through a Workspace the same way the GUI's registrar does (App::AddModule,
+// see AppRegistration.cpp) -- the GOWR config.ini/LOD-index ordering that
+// used to be IAssetProfile::PrepareForParse's job now runs at the top of
+// GowrModule::ParseContainer itself (see GowrModule.cpp), so there is no
+// separate pre-parse step for this harness to call or skip. `out.container`
+// is a bridge onto the legacy AssetContainer BuildSceneData below still
+// expects (Onyx::Domain::Wad.h: "AssetContainer survives as the generic
+// per-entry type ViewerRegistry/ITypeHandler still pass around for viewer
+// dispatch") -- see LoadContainer's own comment for what that bridge does
+// and does not cover.
 
 #include <filesystem>
 #include <iosfwd>

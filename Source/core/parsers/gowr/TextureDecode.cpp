@@ -81,7 +81,14 @@ bool DecodeMip0(const std::shared_ptr<Vfs::IFile>& file, int64_t dataOffset,
     out.width            = width;
     out.height           = height;
     out.isCompressed     = false;
-    out.glInternalFormat = 0x1908;   // GL_RGBA
+    // No out.glInternalFormat: Onyx::Parsers::TextureData (current SDK) has
+    // no such field -- its own header comment says the struct is "always
+    // RGBA8 output", so there is nothing left to record here. This line
+    // used to set the GL_RGBA constant unconditionally (never anything
+    // else), which is exactly the fixed contract the struct's comment now
+    // documents directly; dropping it changes no decoded output. Pre-
+    // existing drift from an earlier SDK pin, first surfaced when Phase 2
+    // Task 4 linked this file into gowtoolkit_tests for the first time.
     out.dataSize         = (uint32_t)rgba.size();
     out.pixels           = std::move(rgba);
     return true;
@@ -216,7 +223,8 @@ bool GOWRDecodeTexture(TexPackIndex& index,
     out.width            = width;
     out.height           = height;
     out.isCompressed     = false;
-    out.glInternalFormat = 0x1908;   // GL_RGBA
+    // No out.glInternalFormat -- see the identical comment above in this
+    // file's other decode path.
     out.dataSize         = static_cast<uint32_t>(rgba.size());
     out.pixels           = std::move(rgba);
     return true;

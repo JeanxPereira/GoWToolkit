@@ -17,7 +17,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "core/types/GameTypes.h"
 #include "core/types/WadDispatch.h"
 #include "core/parsers/gow2/TextureParser.h"
 
@@ -450,26 +449,35 @@ static void FinalizeEntries(std::vector<AssetEntryT>& nodes,
 // Shared helper — ISO-path type assignment (ProfileGOW2's assignSchemaType)
 // ═══════════════════════════════════════════════════════════════════════════
 
-static void AssignSchemaType(AssetEntryT& entry) {
+void Gow2Module::AssignSchemaType(AssetEntryT& entry) const {
+    // Explicit default (Task 4 convergence): the pre-convergence code relied
+    // on AssetEntryT::typeId's default-constructed value happening to equal
+    // GameTypes::Unknown's legacy numeric value (0) -- a coincidence of the
+    // old force-value registration, not a Types::TypeId{} guarantee under
+    // this module's own TypeRegistrar-minted catalog. Set it explicitly so
+    // "no extension" and "extension we don't recognise" both land on
+    // m_unknown regardless of what value a default TypeId happens to carry.
+    entry.typeId = m_unknown;
+
     size_t dot = entry.name.find_last_of('.');
     if (dot != std::string::npos) {
         std::string ext = entry.name.substr(dot + 1);
         std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
 
-        if      (ext == "MDL") { entry.typeId = Onyx::GameTypes::Model;    }
-        else if (ext == "TXR") { entry.typeId = Onyx::GameTypes::Texture;  }
-        else if (ext == "ANM") { entry.typeId = Onyx::GameTypes::Animation; }
-        else if (ext == "WAD") { entry.typeId = Onyx::GameTypes::WadFile;  }
-        else if (ext == "VAG") { entry.typeId = Onyx::GameTypes::VagAudio; }
+        if      (ext == "MDL") { entry.typeId = m_model;    }
+        else if (ext == "TXR") { entry.typeId = m_texture;  }
+        else if (ext == "ANM") { entry.typeId = m_animation; }
+        else if (ext == "WAD") { entry.typeId = m_wadFile;  }
+        else if (ext == "VAG") { entry.typeId = m_vagAudio; }
         else if (ext == "VPK" || ext == "VP1" || ext == "VP2" ||
                  ext == "VP3" || ext == "VP4")
-                              { entry.typeId = Onyx::GameTypes::VpkVideo; }
-        else if (ext == "PSS") { entry.typeId = Onyx::GameTypes::PssVideo; }
-        else if (ext == "PSW") { entry.typeId = Onyx::GameTypes::PswVideo; }
+                              { entry.typeId = m_vpkVideo; }
+        else if (ext == "PSS") { entry.typeId = m_pssVideo; }
+        else if (ext == "PSW") { entry.typeId = m_pswVideo; }
         else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
                  ext == "CSV" || ext == "JSON" || ext == "LOG")
-                              { entry.typeId = Onyx::GameTypes::TextPlain; }
-        // else: leave as GameTypes::Unknown (its default-constructed value).
+                              { entry.typeId = m_textPlain; }
+        // else: leave as m_unknown, set above.
     }
     entry.kind = Types::KindOf(entry.typeId);
 }
@@ -600,35 +608,41 @@ ParseResult Gow2Module::ParseWadTagStream(ContainerContext& ctx) {
         }
 
         auto* handler = Gow::WadTypeRegistry::Get().ResolveByTag(Gow::GameVersion::GOW2, rawTag.tag, payloadMagic, payloadSizeAvailable);
-        entry.typeId = handler ? handler->GetId() : GameTypes::Unknown;
+        // handler->GetId(), when non-null, is still a legacy GameTypes::*
+        // id sourced from the separate Source/core/types/handlers/*.cpp
+        // self-registration subsystem -- a known, out-of-scope residual gap
+        // documented on Gow2Module.h's member list, not exercised by
+        // gowtoolkit_tests (those handler .cpp files aren't part of
+        // APP_TEST_SOURCES, so ResolveByTag always returns nullptr here).
+        entry.typeId = handler ? handler->GetId() : m_unknown;
 
         // Fallback type resolution for types not yet in Types::TypeRegistry
-        if (entry.typeId == GameTypes::Unknown) {
+        if (entry.typeId == m_unknown) {
             size_t dotPos = entry.name.find_last_of('.');
             if (dotPos != std::string::npos) {
                 std::string ext = entry.name.substr(dotPos + 1);
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
 
-                if      (ext == "WAD") { entry.typeId = GameTypes::WadFile; }
-                else if (ext == "VAG") { entry.typeId = GameTypes::VagAudio; }
-                else if (ext == "VPK" || ext == "VP1") { entry.typeId = GameTypes::VpkVideo; }
-                else if (ext == "PSS") { entry.typeId = GameTypes::PssVideo; }
-                else if (ext == "PSW") { entry.typeId = GameTypes::PswVideo; }
+                if      (ext == "WAD") { entry.typeId = m_wadFile; }
+                else if (ext == "VAG") { entry.typeId = m_vagAudio; }
+                else if (ext == "VPK" || ext == "VP1") { entry.typeId = m_vpkVideo; }
+                else if (ext == "PSS") { entry.typeId = m_pssVideo; }
+                else if (ext == "PSW") { entry.typeId = m_pswVideo; }
                 else if (ext == "TXT" || ext == "INI" || ext == "CFG" ||
                          ext == "CSV" || ext == "JSON" || ext == "LOG") {
-                    entry.typeId = GameTypes::TextPlain;
+                    entry.typeId = m_textPlain;
                 }
             } else {
                 std::string nameLower = entry.name;
                 std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
                 if (nameLower.find("pal_") == 0) {
-                    entry.typeId = GameTypes::PalData;
+                    entry.typeId = m_palData;
                 } else {
                     if (rawTag.size >= 4) {
                         uint32_t magic;
                         std::memcpy(&magic, payloadMagic, 4);
                         if ((magic & 0x80000000) != 0) {
-                            entry.typeId = GameTypes::Chunk;
+                            entry.typeId = m_chunk;
                         } else {
                             ONYX_LOGF_INFO("[Gow2Module] Unknown tag: '%s' size=%u magic=0x%08X", entry.name.c_str(), rawTag.size, magic);
                         }
@@ -686,7 +700,7 @@ ParseResult Gow2Module::ParseWadTagStream(ContainerContext& ctx) {
     // complete. Recurses into children so nested groups are covered too.
     std::function<void(std::vector<AssetEntryT>&)> resolveUnknowns = [&](std::vector<AssetEntryT>& list) {
         for (auto& n : list) {
-            if (n.source.size == 0 && n.typeId == GameTypes::Unknown && !n.name.empty()) {
+            if (n.source.size == 0 && n.typeId == m_unknown && !n.name.empty()) {
                 auto it = nameToDefinition.find(n.name);
                 if (it != nameToDefinition.end()) {
                     n.typeId = it->second.typeId;

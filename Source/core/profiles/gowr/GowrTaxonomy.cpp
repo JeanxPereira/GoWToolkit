@@ -14,7 +14,7 @@
 // Shaders may also appear as bare hex hashes without a prefix:
 #include "core/profiles/gowr/GowrTaxonomy.h"
 #include <Onyx/Domain/Entry.h>
-#include "core/types/GameTypes.h"
+#include <Onyx/Types/TypeCatalog.h>
 #include <charconv>
 #include <array>
 #include <cctype>
@@ -317,9 +317,32 @@ WadEntryRole ClassifyByName(const std::string& name, uint64_t size) {
 GowrProfileTag Classify(const Onyx::Domain::AssetEntry& entry) {
     GowrProfileTag tag;
     tag.parsedName = WadAssetName::Parse(entry.name);
-    tag.role       = (entry.typeId == GameTypes::TexturePair)
-                        ? WadEntryRole::TexturePair
-                        : ClassifyByName(entry.name, entry.source.size);
+
+    // Looked up by catalog KEY ("gowr.texturePair"), not the legacy
+    // Onyx::GameTypes::TexturePair extern: Phase 2 Task 4 converged
+    // GowrModule's own tree production onto its TypeRegistrar-minted
+    // handles (see WadNodeBuilder.h's RoleToTypeIdFn / GowrModule::
+    // RegisterTypes()), so a real GOWR entry's typeId is that module-scoped
+    // id, not the legacy one -- comparing against GameTypes::TexturePair
+    // here would silently never match a tree GowrModule actually produced.
+    // TypeCatalog::Find is a plain key lookup (process-wide singleton,
+    // Types::TypeCatalog::Get()), so this works regardless of which
+    // Workspace/module instance registered "gowr.texturePair", and returns
+    // an invalid ({} / value 0) handle -- never equal to any *real*
+    // texture-pair entry's typeId -- if GowrModule hasn't registered its
+    // types yet (e.g. a caller that never opened a Workspace).
+    // Looked up fresh every call, deliberately not cached in a function-
+    // local static: GowrModule::RegisterTypes() may not have run yet the
+    // first time Classify() is called (module registration order is a
+    // Workspace/composition-root concern, not this function's), and a
+    // stale "not found" cached from too-early a call would wrongly stick
+    // forever. TypeCatalog::Find is a hash-map lookup -- cheap enough for
+    // Classify()'s call pattern (per-entry, not per-frame).
+    const Onyx::Types::TypeId texturePairId =
+        Onyx::Types::TypeCatalog::Get().Find("gowr.texturePair");
+    tag.role = (texturePairId.valid() && entry.typeId == texturePairId)
+                   ? WadEntryRole::TexturePair
+                   : ClassifyByName(entry.name, entry.source.size);
     return tag;
 }
 

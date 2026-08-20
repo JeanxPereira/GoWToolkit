@@ -76,18 +76,21 @@ private:
         DecodeMeshStub(Onyx::Modules::DecodeContext&);
 
     // ── Types minted in RegisterTypes(), consumed by RegisterDecoders() ───
-    // NOTE: WadNodeBuilder (unchanged, see this header's top comment) still
-    // stamps AssetEntry::typeId from the legacy Onyx::GameTypes::* externs
-    // (core/types/GameTypes.h), not from these module-scoped handles -- see
-    // task-2-report.md for why that disconnect exists and who owns closing
-    // it. These are registered because RegisterTypes()/RegisterDecoders()
-    // are part of the IGameModule contract regardless.
+    // Phase 2 Task 4 closed the disconnect task-2-report.md flagged:
+    // WadNodeBuilder no longer hardcodes Onyx::GameTypes::* -- ParseContainer
+    // hands it a RoleToTypeIdFn (WadNodeBuilder.h) built from these handles,
+    // so a real parsed tree's AssetEntry::typeId values ARE these
+    // module-scoped ids, and RegisterDecoders()'s wiring (below) now fires
+    // against entries this module's own ParseContainer produces. m_unknown
+    // is new in Task 4 -- RegisterTypes() previously minted no "unknown"
+    // key even though WadEntryRole::Unknown (and every synthetic-folder
+    // role Classify() can't reconstruct) needs one; see task-4-report.md.
     Onyx::Types::TypeId m_shaderContainer, m_shaderVertex, m_shaderPixel, m_shaderHull,
         m_shaderDomain, m_shaderCompute, m_shaderLibrary, m_meshGpu, m_meshDefn,
         m_gameObjectProto, m_gameObjectInst, m_gameObjectOverride, m_texturePair,
         m_materialRef, m_lodBinding, m_animClip, m_soundEmitter, m_particleEmitter,
         m_particleSystem, m_clientGuid, m_wadIdentity, m_sharedWadRef, m_sentinel,
-        m_material;
+        m_material, m_unknown;
 };
 
 } // namespace Onyx::Gowr

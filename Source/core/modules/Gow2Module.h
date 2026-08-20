@@ -42,8 +42,17 @@ public:
 
 private:
     // ── The two ParseContainer bodies (dispatched on ctx.mountedVfs) ──────
-    static Onyx::Modules::ParseResult ParseWadTagStream(Onyx::Modules::ContainerContext&);
-    static Onyx::Modules::ParseResult ParseIsoToc(Onyx::Modules::ContainerContext&);
+    // Non-static (were static pre-Task-4): both stamp AssetEntry::typeId
+    // through this module's own minted handles now (RegisterTypes(), below)
+    // rather than the legacy Onyx::GameTypes::* externs, so they need an
+    // instance. See task-4-report.md's type-convergence section.
+    Onyx::Modules::ParseResult ParseWadTagStream(Onyx::Modules::ContainerContext&);
+    Onyx::Modules::ParseResult ParseIsoToc(Onyx::Modules::ContainerContext&);
+
+    // ISO-path type assignment (ProfileGOW2's assignSchemaType), same
+    // convergence reason as the two functions above -- non-static so it can
+    // read this module's minted handles.
+    void AssignSchemaType(Onyx::Domain::AssetEntry& entry) const;
 
     // ── Decoders (bound in RegisterDecoders) ──────────────────────────────
 
@@ -73,14 +82,30 @@ private:
         DecodeImage(Onyx::Modules::DecodeContext&);
 
     // ── Types minted in RegisterTypes(), consumed by RegisterDecoders() ───
-    // NOTE (Decision 5, task-3-brief.md): the tag-stream walker and the ISO
-    // TOC loader (ParseWadTagStream / ParseIsoToc, see Gow2Module.cpp) still
-    // stamp AssetEntry::typeId from the legacy Onyx::GameTypes::* externs
-    // (core/types/GameTypes.h), not from these module-scoped handles -- same
-    // disconnect GowrModule.h documents for GOWR, deliberately left alone;
-    // it is Task 4's reconciliation. These are registered because
-    // RegisterTypes()/RegisterDecoders() are part of the IGameModule
-    // contract regardless of whether the tree's real typeIds reach them yet.
+    // Phase 2 Task 4 closed most of the disconnect Decision 5 (task-3-
+    // brief.md) deliberately left open: ParseWadTagStream's own fallback
+    // resolution and ParseIsoToc's AssignSchemaType now stamp
+    // AssetEntry::typeId from these module-scoped handles, not the legacy
+    // Onyx::GameTypes::* externs, so RegisterDecoders()'s wiring (below)
+    // fires against entries this module's own ParseContainer produces.
+    //
+    // ONE residual gap, named precisely rather than papered over: when
+    // ParseWadTagStream's Gow::WadTypeRegistry::ResolveByTag(...) call
+    // finds a registered IWadTypeHandler (a legacy per-type handler from
+    // Source/core/types/handlers/*.cpp, self-registered via
+    // REGISTER_GOW_TAG/REGISTER_GOW_TYPE), entry.typeId is still
+    // handler->GetId() -- a legacy Onyx::GameTypes::* id, since those
+    // handler classes are a separate, still-live subsystem (feeding
+    // Onyx::Types::TypeRegistry / AssetHarness::Load()'s BuildSceneData
+    // dispatch) this task does not touch. It is unreachable from
+    // gowtoolkit_tests today (none of those handler .cpp files are part of
+    // APP_TEST_SOURCES, so ResolveByTag always returns nullptr there and
+    // every entry falls through to this module's own fallback/m_unknown),
+    // so it does not affect the goldens, but it is a real, live disconnect
+    // in the app target: converging it needs those handler classes' GetId()
+    // to source from a module's minted ids too, which is Phase 3/5
+    // territory (materials/handlers, and the CLI), not this task's. See
+    // task-4-report.md.
     Onyx::Types::TypeId m_unknown, m_entityCount, m_groupStart, m_groupEnd, m_headerStart,
         m_headerPop, m_instance, m_object, m_model, m_mesh, m_material, m_texture,
         m_gfxData, m_palData, m_animation, m_script, m_light, m_sound, m_collision,
