@@ -17,13 +17,12 @@
 #include <functional>
 #include <string>
 #include <fstream>
-#include "core/profiles/gowr/GowrProfileTag.h"
+#include "core/profiles/gowr/GowrTaxonomy.h"
 
+// Onyx v1.1 removed AssetEntry::profileTag; role is reclassified on demand
+// from the entry's own name + size via Gowr::Classify().
 static Onyx::Gowr::WadEntryRole GetRole(const AssetEntry& e) {
-    if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
-        return t->role;
-    }
-    return Onyx::Gowr::WadEntryRole::Unknown;
+    return Onyx::Gowr::Classify(e).role;
 }
 
 WadBrowser::WadBrowser() {

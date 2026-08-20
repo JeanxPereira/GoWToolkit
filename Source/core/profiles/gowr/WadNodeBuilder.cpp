@@ -1,5 +1,5 @@
 #include "WadNodeBuilder.h"
-#include "core/profiles/gowr/GowrProfileTag.h"
+#include "core/profiles/gowr/GowrTaxonomy.h"
 #include <Onyx/Types/TypeCatalog.h>
 #include "core/types/GameTypes.h"
 #include <algorithm>
@@ -12,11 +12,22 @@
 
 namespace Onyx {
 
+// Onyx v1.1 removed AssetEntry::profileTag (and all per-entry storage), so
+// role is no longer stored — it is reclassified on demand from the entry's
+// own name + size via Gowr::Classify(). This exactly reproduces the role
+// every *leaf* entry got in Pass1_Classify (Classify() calls the same
+// ClassifyByName the builder does).
+//
+// It does NOT reproduce the four synthetic block-folder roles (ManifestBlock/
+// ShaderBlock/AssetBlock/ParticleBlock) or ShaderGroup/FxGroup: those were
+// assigned directly by MakeFolder(), never derived from a name pattern, so
+// Classify() correctly has no way to recover them (their MakeFolder-built
+// names/sizes don't match any ClassifyByName rule and fall to Unknown).
+// Pass4_Finalize below identifies those synthetic folders structurally
+// instead of through GetRole(), which preserves the original behaviour
+// exactly rather than silently losing it.
 static Gowr::WadEntryRole GetRole(const AssetEntry& e) {
-    if (auto* t = e.profileTag.As<Gowr::GowrProfileTag>()) {
-        return t->role;
-    }
-    return Gowr::WadEntryRole::Unknown;
+    return Gowr::Classify(e).role;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -62,8 +73,10 @@ void WadNodeBuilder::Pass1_Classify() {
     for (size_t i = 0; i < m_entries.size(); ++i) {
         auto& e = m_entries[i];
 
-        // Classify role from name + size
-        e.role  = ClassifyByName(e.name, e.size);
+        // Classify role from name + size (Gowr::ClassifyByName is also what
+        // Gowr::Classify() calls to reconstruct role from an AssetEntry —
+        // single source of truth, see GowrTaxonomy.cpp).
+        e.role  = Gowr::ClassifyByName(e.name, e.size);
 
         // Assign current block (may be overridden by transition logic below)
         e.block = currentBlock;
@@ -116,129 +129,9 @@ void WadNodeBuilder::Pass1_Classify() {
     }
 }
 
-// ── ClassifyByName ─────────────────────────────────────────────────────────
-// Priority-ordered pattern matching. Rules mirror §6.2 of the planning spec.
-
-WadEntryRole WadNodeBuilder::ClassifyByName(const std::string& name, uint32_t size) {
-    if (name.empty()) return WadEntryRole::Unknown;
-
-    // ── Sentinels ────────────────────────────────────────────────────────
-    if (name == "PopHeap" || name == "autopad")
-        return WadEntryRole::Sentinel;
-
-    // ── SharedWadRef: ^[A-Z]+X_R_  (e.g. TXRX_R_Fox00, ANMX_R_Fox00) ──
-    // Must be checked BEFORE WadIdentity to avoid matching WAD_R_ (no X before _R_)
-    {
-        size_t i = 0;
-        while (i < name.size() && isupper((unsigned char)name[i])) ++i;
-        // i >= 2 ensures at least 2 uppercase chars; name[i-1] must be 'X'
-        if (i >= 2 && name[i - 1] == 'X' &&
-            name.size() > i + 2 &&
-            name[i] == '_' && name[i + 1] == 'R' && name[i + 2] == '_')
-        {
-            return WadEntryRole::SharedWadRef;
-        }
-    }
-
-    // ── WAD identity: starts with WAD_ ───────────────────────────────────
-    if (name.rfind("WAD_", 0) == 0)
-        return WadEntryRole::WadIdentity;
-
-    // ── Shader container: starts with 0x ─────────────────────────────────
-    if (name.rfind("0x", 0) == 0)
-        return WadEntryRole::ShaderContainer;
-
-    // ── Shaders: _vs_ / _ps_ anywhere in name ────────────────────────────
-    if (name.find("_vs_") != std::string::npos)
-        return WadEntryRole::ShaderVertex;
-    if (name.find("_ps_") != std::string::npos)
-        return WadEntryRole::ShaderPixel;
-    if (name.find("_hs_") != std::string::npos)
-        return WadEntryRole::ShaderHull;
-    if (name.find("_ds_") != std::string::npos)
-        return WadEntryRole::ShaderDomain;
-    if (name.find("_cs_") != std::string::npos)
-        return WadEntryRole::ShaderCompute;
-    if (name.find("_ls_") != std::string::npos)
-        return WadEntryRole::ShaderLibrary;
-
-    // Named vertex shaders without hash prefix
-    if (name.rfind("depth_vs",  0) == 0 ||
-        name.rfind("depvl_vs",  0) == 0 ||
-        name.rfind("opaque_vs", 0) == 0 ||
-        name.rfind("transp_vs", 0) == 0)
-    {
-        return WadEntryRole::ShaderVertex;
-    }
-
-    // ── Animation ────────────────────────────────────────────────────────
-    if (name.rfind("ANM_", 0) == 0)
-        return WadEntryRole::AnimClip;
-
-    // ── Textures (discriminated by size) ─────────────────────────────────
-    if (name.rfind("TX_", 0) == 0)
-        return (size >= 1024) ? WadEntryRole::TextureGpu : WadEntryRole::TextureCpu;
-
-    // ── Materials (discriminated by size) ────────────────────────────────
-    if (name.rfind("MAT_", 0) == 0)
-        return (size > 0) ? WadEntryRole::Material : WadEntryRole::MaterialRef;
-
-    // ── LOD binding table: matches /^\d+_\d+_\d+$/ ───────────────────────
-    {
-        bool isLod       = !name.empty();
-        int  underscores = 0;
-        for (char c : name) {
-            if      (c == '_')             ++underscores;
-            else if (!isdigit((unsigned char)c)) { isLod = false; break; }
-        }
-        if (isLod && underscores == 2)
-            return WadEntryRole::LodBinding;
-    }
-
-    // ── Mesh (order matters: MeshGpu before MeshDefn) ────────────────────
-    if (name.rfind("MG_", 0) == 0) {
-        if (name.size() > 4 && name.substr(name.size() - 4) == "_gpu")
-            return WadEntryRole::MeshGpu;
-        return WadEntryRole::MeshDefn;   // MG_ without _gpu = mesh group def
-    }
-    if (name.rfind("MESH_", 0) == 0)
-        return WadEntryRole::MeshDefn;
-    if (name.rfind("MDL_", 0) == 0)
-        return WadEntryRole::Model;
-
-    // ── Game objects (order matters: Override > Proto > Inst) ────────────
-    if (name.rfind("goProto", 0) == 0)
-        return WadEntryRole::GameObjectProto;
-
-    if (name.size() >= 13 &&
-        name.substr(name.size() - 13) == "_overrideInst")
-    {
-        return WadEntryRole::GameObjectOverride;
-    }
-
-    // Plain go* instance: starts with "go" followed by a lowercase letter
-    // (guards against matching "goProto" again and other non-game-object "go" names)
-    if (name.size() > 2 &&
-        name[0] == 'g' && name[1] == 'o' &&
-        islower((unsigned char)name[2]))
-    {
-        return WadEntryRole::GameObjectInst;
-    }
-
-    // ── Audio ─────────────────────────────────────────────────────────────
-    if (name.rfind("SEMW_", 0) == 0)
-        return WadEntryRole::SoundEmitter;
-
-    // ── Particle FX ───────────────────────────────────────────────────────
-    if (name == "DCClientGUID")
-        return WadEntryRole::ClientGuid;
-    if (name.rfind("PEM_emit_", 0) == 0)
-        return WadEntryRole::ParticleEmitter;
-    if (name.rfind("PTC_part_", 0) == 0)
-        return WadEntryRole::ParticleSystem;
-
-    return WadEntryRole::Unknown;
-}
+// ClassifyByName moved to Gowr::ClassifyByName (GowrTaxonomy.cpp) so
+// Gowr::Classify() can call the exact same rules when reconstructing role
+// from an AssetEntry — see the comment on Pass1_Classify's call site above.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Pass 2 — Pair
@@ -438,12 +331,19 @@ void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
             if (e.role == WadEntryRole::TextureGpu) {
                 // TexturePair flat node — GPU + CPU sub-entries are internal
                 // streaming plumbing with no standalone view, so we hide them.
+                //
+                // This used to relabel the node's stored role TextureGpu ->
+                // TexturePair via profileTag (typeId was already TexturePair
+                // either way — RoleToTypeId collapses all three texture
+                // roles onto it). That storage is gone in Onyx v1.1; the
+                // relabel is dropped rather than reproduced because it was
+                // unobservable: every consumer of role (RoleVisuals'
+                // IconForRole/ColorForRole, AssetSortKey) groups
+                // TexturePair/TextureGpu/TextureCpu identically, so nothing
+                // downstream can tell the difference. Gowr::Classify() now
+                // reconstructs TextureGpu for this node from its own name +
+                // size, which is the same outcome by a different name.
                 AssetEntry pairNode = ToNode(e, m_wadFilename);
-                if (auto* t = pairNode.profileTag.As<Gowr::GowrProfileTag>()) {
-                    auto newTag = *t;
-                    newTag.role = WadEntryRole::TexturePair;
-                    pairNode.profileTag = Onyx::Domain::ProfileTag::Of(newTag);
-                }
                 pairNode.displayName = StripTextureHash(e.name);
                 assetsFolder.children.push_back(std::move(pairNode));
 
@@ -542,14 +442,21 @@ int WadNodeBuilder::AssetSortKey(WadEntryRole role) {
 }
 
 void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
+    // outWad.entries holds only the (up to) four block folders Pass3 built —
+    // manifestFolder/shadersFolder/assetsFolder/particlesFolder — each
+    // pushed under one of these exact literal names and nothing else. Their
+    // synthetic roles (ManifestBlock/ShaderBlock/AssetBlock/ParticleBlock)
+    // were never derivable from a name pattern in the first place (MakeFolder
+    // assigns them directly, ClassifyByName has no rule that would produce
+    // them), so identify them by that name rather than through GetRole().
     for (auto& blockNode : outWad.entries) {
 
         // ── Manifest: already in order; no sort needed ─────────────────
-        if (GetRole(blockNode) == WadEntryRole::ManifestBlock)
+        if (blockNode.name == "Manifest")
             continue;
 
         // ── Shaders: sort groups alphabetically ─────────────────────
-        if (GetRole(blockNode) == WadEntryRole::ShaderBlock) {
+        if (blockNode.name == "Shaders") {
             for (auto& subFolder : blockNode.children) {
                 if (subFolder.name == "[Vertex Shaders]" ||
                     subFolder.name == "[Pixel Shaders]" ||
@@ -577,7 +484,7 @@ void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
         }
 
         // ── Assets: textures → materials → mesh/model → gameobj → audio ─
-        if (GetRole(blockNode) == WadEntryRole::AssetBlock) {
+        if (blockNode.name == "Assets") {
             std::stable_sort(blockNode.children.begin(), blockNode.children.end(),
                 [](const AssetEntry& a, const AssetEntry& b) {
                     int ka = AssetSortKey(GetRole(a));
@@ -592,7 +499,7 @@ void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
         }
 
         // ── Particles: FX groups sorted alphabetically ─────────────────
-        if (GetRole(blockNode) == WadEntryRole::ParticleBlock) {
+        if (blockNode.name == "Particles") {
             std::sort(blockNode.children.begin(), blockNode.children.end(),
                 [](const AssetEntry& a, const AssetEntry& b) {
                     // Folders before singletons
@@ -602,8 +509,14 @@ void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
                     return a.name < b.name;
                 });
             // Within each FxGroup: emitters → systems → material refs → protos → insts
+            // blockNode.children here is either an FxGroup folder (MakeFolder,
+            // always >=1 child — see Pass3_GroupByBlock) or a singleton leaf
+            // from ToNode (which never populates .children), so a non-empty
+            // children vector identifies an FxGroup exactly as GetRole() used
+            // to (FxGroup names are arbitrary FX contexts extracted from a
+            // go* name, not a pattern Classify() could recognise).
             for (auto& fxGroup : blockNode.children) {
-                if (GetRole(fxGroup) == WadEntryRole::FxGroup) {
+                if (!fxGroup.children.empty()) {
                     std::stable_sort(fxGroup.children.begin(), fxGroup.children.end(),
                         [](const AssetEntry& a, const AssetEntry& b) {
                             auto fxKey = [](WadEntryRole r) {
@@ -669,11 +582,8 @@ AssetEntry WadNodeBuilder::ToNode(const RawEntry& r, const std::string& wadFilen
     e.typeId      = RoleToTypeId(r.role);
     e.kind        = Types::KindOf(e.typeId);
     e.displayName = r.displayName;
-    e.profileTag  = Onyx::Domain::ProfileTag::Of(Gowr::GowrProfileTag{
-        r.role,
-        r.block,
-        Onyx::Gowr::WadAssetName::Parse(r.name)
-    });
+    // No profileTag write: Onyx v1.1 has no per-entry storage. role is
+    // reconstructed on demand by Gowr::Classify(e) from e.name + e.source.size.
     return e;
 }
 
@@ -687,11 +597,9 @@ AssetEntry WadNodeBuilder::MakeFolder(
     f.typeId     = RoleToTypeId(role);
     f.wadName    = m_wadFilename;
     f.kind       = Types::KindOf(f.typeId);
-    f.profileTag = Onyx::Domain::ProfileTag::Of(Gowr::GowrProfileTag{
-        role,
-        block,
-        Onyx::Gowr::WadAssetName::Parse(name)
-    });
+    // No profileTag write: see ToNode() above. Synthetic folder roles like
+    // this one are not recoverable from (name, size) — Pass4_Finalize
+    // identifies these folders structurally instead of via GetRole/Classify.
     return f;
 }
 

@@ -62,9 +62,6 @@ private:
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    // Classify a single entry by name + size → WadEntryRole
-    static WadEntryRole ClassifyByName(const std::string& name, uint32_t size);
-
     // Convert "ANMX_R_Fox00" → "ANMX → ANMX_Shared_Fox00"
     static std::string MakeSharedWadName(const std::string& entryName);
 

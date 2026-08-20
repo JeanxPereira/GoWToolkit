@@ -2,7 +2,7 @@
 #include <Onyx/App/UIHelpers.h>
 #include "ui/RoleVisuals.h"   // GOWR role → color/icon (ColorForRole, IconForRole)
 #include <Onyx/Api/ToolkitApi.h>
-#include "core/profiles/gowr/GowrProfileTag.h"
+#include "core/profiles/gowr/GowrTaxonomy.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
 
@@ -27,10 +27,11 @@ void Inspector::Draw() {
     ImGui::PushID("InspectorHeader");
 
     const char* icon = IconForType(entry->typeId);
-    if (auto* t = entry->profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
-        if (t->role != Onyx::Gowr::WadEntryRole::Unknown) {
-            icon = IconForRole(t->role);
-        }
+    // Onyx v1.1 removed AssetEntry::profileTag; role is reclassified on
+    // demand from the entry's own name + size via Gowr::Classify().
+    Onyx::Gowr::WadEntryRole role = Onyx::Gowr::Classify(*entry).role;
+    if (role != Onyx::Gowr::WadEntryRole::Unknown) {
+        icon = IconForRole(role);
     }
 
     ImGui::TextColored(ColorForType(entry->typeId),
