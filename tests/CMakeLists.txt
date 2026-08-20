@@ -31,6 +31,12 @@ set(APP_TEST_SOURCES
     "${CMAKE_SOURCE_DIR}/Source/core/profiles/gowr/GowrTaxonomy.cpp"
     "${CMAKE_SOURCE_DIR}/Source/core/parsers/gowr/MgParser.cpp"
     "${CMAKE_SOURCE_DIR}/Source/core/parsers/gowr/MaterialParser.cpp"
+    # GowrModule (Onyx v1.1 IGameModule port of ProfileGOWR, Phase 2 Task 2).
+    # Not yet exercised by golden_helpers.cpp -- that rewiring is Phase 2
+    # Task 4 -- but compiled here so the module itself is build-verified by
+    # this target rather than only by the (GLOB_RECURSE, app-only) main
+    # executable target.
+    "${CMAKE_SOURCE_DIR}/Source/core/modules/GowrModule.cpp"
 )
 
 add_executable(gowtoolkit_tests ${TEST_SOURCES} ${APP_TEST_SOURCES})
