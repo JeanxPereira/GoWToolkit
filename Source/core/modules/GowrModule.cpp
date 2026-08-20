@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <string>
 #include <vector>
 
 #include <lz4frame.h>
@@ -45,6 +46,7 @@
 namespace Onyx::Gowr {
 
 using Onyx::Domain::MediaKind;
+using Onyx::Domain::NodeFlags;
 using Onyx::Modules::ContainerContext;
 using Onyx::Modules::DecodeContext;
 using Onyx::Modules::DecoderRegistry;
@@ -54,6 +56,7 @@ using Onyx::Modules::ParseResult;
 using Onyx::Modules::ProbeInput;
 using Onyx::Modules::ProbeResult;
 using Onyx::Services::Diag;
+using Onyx::Services::DiagSink;
 using Onyx::Services::Severity;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -204,14 +207,31 @@ std::unique_ptr<Onyx::Parsers::TextureData> GowrModule::DecodeTexturePair(Decode
 
     // GetTexIndex() is a process-wide singleton (core/loaders/GOWRLoaders.cpp)
     // that lazily kicks off a background indexing pass the first time it's
-    // called -- see this file's ParseContainer for the detached-thread note.
+    // called and returns immediately -- see this file's ParseContainer for
+    // the detached-thread note. GOWRDecodeTexture below can therefore fail
+    // for two very different reasons: the hash genuinely is not in any
+    // texpack, or the index just hasn't finished (possibly hasn't even
+    // started) enumerating packs yet. The original viewer
+    // (GOWRTextureViewer::Draw(), GOWRLoaders.cpp:1021-1036) is polled every
+    // frame and only ever declares a real failure once
+    // `!texIdx.IsLoading()`; a one-shot decoder call has no next frame to
+    // retry on, so it must at least tell those two cases apart via distinct
+    // diag codes rather than report every cold-process first decode as
+    // "decode-failed".
     TexPackIndex& index = GetTexIndex();
 
     auto tex = std::make_unique<Onyx::Parsers::TextureData>();
     std::string error;
     if (!GOWRDecodeTexture(index, hash, name, *tex, error)) {
-        ctx.diags.Report(Diag{Severity::Warning, "gowr.texture.decode-failed",
-                               name + ": " + error, std::nullopt});
+        if (index.IsLoading()) {
+            ctx.diags.Report(Diag{Severity::Info, "gowr.texture.still-indexing",
+                                   name + ": texpack index is still loading, "
+                                   "retry the decode once indexing completes",
+                                   std::nullopt});
+        } else {
+            ctx.diags.Report(Diag{Severity::Warning, "gowr.texture.decode-failed",
+                                   name + ": " + error, std::nullopt});
+        }
         return nullptr;
     }
     return tex;
@@ -225,6 +245,53 @@ std::unique_ptr<Onyx::Parsers::SceneData> GowrModule::DecodeMeshStub(DecodeConte
             ctx.entry.name + "' was not decoded",
         std::nullopt});
     return nullptr;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FinalizeEntries -- fileIndex stamping + range salvage
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Walks every produced node (recursing into folders) and:
+//
+//   1. Stamps AssetEntry::source.fileIndex with `fileIndex` -- the slot in
+//      ctx.fileTable the bytes this tree's offsets are relative to actually
+//      live at. `fileIndex` is 0 (the table's pre-seeded root-container
+//      slot) when the container was never LZ4-decompressed, or the index
+//      ParseContainer got back from pushing the decompressed MemoryFile
+//      otherwise (see the push_back call in ParseContainer below). Every
+//      entry needs this, not only leaves -- folders carry no payload of
+//      their own (source.size == 0, skipped below) but stamping them too is
+//      harmless and keeps the field consistent tree-wide.
+//
+//   2. Flags an entry whose payload range runs past the end of the file it
+//      addresses: Domain::NodeFlags::Failed is set and a diag names the
+//      entry and the offending range, but the node stays in the tree
+//      (salvage, spec sec7.1) rather than being dropped -- mirrors
+//      OnyxBoxModule's reference pattern (Examples/OnyxBox/OnyxBoxModule.cpp
+//      :479,491, "obx.entry.range").
+static void FinalizeEntries(std::vector<AssetEntry>& nodes, uint32_t fileIndex,
+                             uint64_t fileSize, DiagSink& diags) {
+    for (auto& node : nodes) {
+        node.source.fileIndex = fileIndex;
+
+        if (!node.children.empty()) {
+            FinalizeEntries(node.children, fileIndex, fileSize, diags);
+            continue;
+        }
+        if (node.source.size == 0) continue;  // folder/back-ref, no payload
+
+        const uint64_t end = static_cast<uint64_t>(node.source.offset) +
+                              static_cast<uint64_t>(node.source.size);
+        if (end > fileSize) {
+            node.flags = NodeFlags::Failed;
+            diags.Report(Diag{Severity::Error, "gowr.entry.range",
+                "entry '" + node.name + "' payload out of bounds: offset=" +
+                    std::to_string(node.source.offset) + " size=" +
+                    std::to_string(node.source.size) + " exceeds file size " +
+                    std::to_string(fileSize),
+                std::nullopt});
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -302,16 +369,20 @@ Onyx::Modules::ParseResult GowrModule::ParseContainer(ContainerContext& ctx) {
         size_t ret = LZ4F_decompress(lz4ctx, dst.data(), &outSize, src.data(), &srcSize, &opn);
         LZ4F_freeDecompressionContext(lz4ctx);
 
-        // ProfileGOWR::ParseContainer never checked this return value either
-        // (a latent gap in the ported code, not introduced here) -- reported
-        // now rather than silently ignored, but non-fatal to match the
-        // original control flow exactly (the golden fixture decompresses
-        // cleanly).
+        // ProfileGOWR::ParseContainer never checked this return value at all
+        // (a latent gap in the ported code, not introduced here). Reported
+        // as a hard failure rather than a continue-anyway Warning: a failed
+        // LZ4F_decompress leaves `dst` partially filled, and a truncated
+        // buffer still contains a plausible-looking WTOC header at offset 0
+        // (the header is the first bytes written) -- so continuing would
+        // silently hand WadNodeBuilder a "valid" tree built over wholly
+        // wrong bytes past whatever point decompression actually stopped.
         if (LZ4F_isError(ret)) {
-            ctx.diags.Report(Diag{Severity::Warning, "gowr.lz4.decode-error",
+            ctx.diags.Report(Diag{Severity::Error, "gowr.lz4.decode-error",
                                    std::string("LZ4F_decompress reported: ") +
                                        LZ4F_getErrorName(ret),
                                    std::nullopt});
+            return ParseResult{false};
         }
 
         decompressed = std::make_shared<Vfs::MemoryFile>(std::move(dst));
@@ -354,6 +425,39 @@ Onyx::Modules::ParseResult GowrModule::ParseContainer(ContainerContext& ctx) {
     auto state = std::make_shared<GowrModuleState>();
     state->decompressedFile = decompressed;
     ctx.state = state;
+
+    // ── Register the decompressed buffer in the Document's file table ─────
+    // Every ByteRange this tree hands out below is an offset into `parsed`
+    // -- the decompressed MemoryFile when the container was LZ4-framed,
+    // the container's own file otherwise. ctx.fileTable's slot 0 is
+    // pre-seeded by the Workspace with the STILL-COMPRESSED container file
+    // (Include/Onyx/Modules/Workspace.h's ContainerContext::fileTable doc
+    // comment), so leaving every entry's source.fileIndex at its default 0
+    // would point extraction at the wrong bytes entirely for a compressed
+    // WAD -- exactly the "reads the compressed file at decompressed
+    // offsets" bug this addendum exists to close. Per that same doc
+    // comment, ctx.fileTable is unconditional as of the 5d5aeb9 SDK repin
+    // (guarded here anyway, defensively, should that guarantee ever
+    // regress). The index is never guessed: it is read back from
+    // fileTable->size() taken immediately before the push, the same
+    // pattern OnyxBoxModule uses for its own mounted-inner-file pushes
+    // (Examples/OnyxBox/OnyxBoxModule.cpp, the `fileIndex`/`push_back` pair
+    // in its mount branch of ParseContainer). A plain (never-compressed)
+    // WTOC container pushes nothing and every entry correctly stays at
+    // fileIndex 0 -- the container file the Workspace already seeded.
+    uint32_t gowrFileIndex = 0;
+    if (decompressed) {
+        if (ctx.fileTable) {
+            gowrFileIndex = static_cast<uint32_t>(ctx.fileTable->size());
+            ctx.fileTable->push_back(decompressed);
+        } else {
+            ctx.diags.Report(Diag{Severity::Error, "gowr.filetable.unavailable",
+                "decompressed container has no file table slot to address; "
+                "downstream byte ranges will incorrectly resolve against "
+                "the still-compressed container",
+                std::nullopt});
+        }
+    }
 
     if (header.fileCount == 0) {
         ONYX_LOGF_INFO("[GOWR] WAD contains 0 files.");
@@ -466,6 +570,15 @@ Onyx::Modules::ParseResult GowrModule::ParseContainer(ContainerContext& ctx) {
     WadNodeBuilder builder;
     builder.Build(fileDescs, absOffsets, ctx.path.filename().string(), scratch);
     ctx.roots = std::move(scratch.entries);
+
+    // Stamps source.fileIndex tree-wide (gowrFileIndex above) and flags any
+    // entry whose byte range runs past the end of `parsed` -- see
+    // FinalizeEntries' doc comment. `fileSize` here is the decompressed
+    // size when a decompression pass ran (reassigned above), or the
+    // original container's size otherwise -- either way it is the size of
+    // the file at `gowrFileIndex`, which is exactly the range every entry
+    // needs validating against.
+    FinalizeEntries(ctx.roots, gowrFileIndex, static_cast<uint64_t>(fileSize), ctx.diags);
 
     ONYX_LOGF_INFO("[GOWR] Parsed WAD: %u entries -> %zu root nodes.",
                     header.fileCount, ctx.roots.size());
