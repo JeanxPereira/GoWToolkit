@@ -61,11 +61,20 @@ regression from work done in this repo — but it is real, and a report of
 The application is built on **OnyxSDK**, an external engine library consumed
 via CMake `FetchContent` (see `CMakeLists.txt`). Onyx owns the window/App
 lifecycle, ImGui docking shell, asset database, profile dispatch, schema
-system, VFS, and rendering (Vulkan since Onyx v1.0.0). This repo (`Source/`)
-supplies the GoW-specific content on top: format parsers, per-game profile
-logic, byte-layout schemas, and the surviving game-specific UI panels/viewers.
-Entry point is `Source/main.cpp`, which selects GUI (default, via
-`Onyx::App::Window`) or CLI mode (`Source/cli/CliApp`) at startup.
+system, VFS, and rendering. This repo (`Source/`) supplies the GoW-specific
+content on top: format parsers, per-game profile logic, byte-layout schemas,
+and the surviving game-specific UI panels/viewers. Entry point is
+`Source/main.cpp`, which selects GUI (default, via `Onyx::App::Window`) or
+CLI mode (`Source/cli/CliApp`) at startup.
+
+At the OnyxSDK version currently pinned (`v0.6.0`, `CMakeLists.txt:17`),
+rendering is **OpenGL**, not Vulkan — `glad` (an OpenGL loader) is among the
+transitive Onyx deps (`CMakeLists.txt`), and this repo's own
+`Source/cli/HeadlessGL.cpp` includes `<glad/glad.h>` and drives a GL
+framebuffer directly for the headless render harness. Onyx becomes
+Vulkan-based starting at v1.0.0; that rewrite reaches this repo only once a
+later task in this port plan moves the pin off v0.6.0. Until then, treat
+Platform Notes below (OpenGL 3.2/3.3) as accurate.
 
 ### What Onyx owns (do not look for these in this repo)
 
@@ -78,8 +87,9 @@ Entry point is `Source/main.cpp`, which selects GUI (default, via
 - **Schema tree** — `<Onyx/Schema/AssetFormat.h>` and friends replace the old
   local `StructDef`/`NodeInstance` system.
 - **VFS** — `<Onyx/Vfs/...>` (`IFile`, `SliceFile`, ISO/PAK abstractions).
-- **Rendering** — Vulkan-based scene rendering, entirely Onyx-owned. There is
-  no local `rendering/` directory; OpenGL is gone.
+- **Rendering** — scene rendering is entirely Onyx-owned; there is no local
+  `rendering/` directory. At the currently pinned Onyx `v0.6.0` this means
+  OpenGL (see the note above); the port to Onyx v1.1 brings Vulkan.
 - `IAssetLoader` as a distinct interface does not exist anywhere in the
   current codebase.
 
