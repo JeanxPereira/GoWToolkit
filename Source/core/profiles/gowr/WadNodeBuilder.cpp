@@ -6,8 +6,8 @@
 #include <cctype>
 #include <cstring>
 
-// â”€â”€ WadNodeBuilder.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Four-pass WAD entry tree builder for God of War RagnarÃ¶k.
+// ── WadNodeBuilder.cpp ─────────────────────────────────────────────────────
+// Four-pass WAD entry tree builder for God of War Ragnarök.
 // See WadNodeBuilder.h for architecture overview.
 
 namespace Onyx {
@@ -19,9 +19,9 @@ static Gowr::WadEntryRole GetRole(const AssetEntry& e) {
     return Gowr::WadEntryRole::Unknown;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 // Public entry point
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 void WadNodeBuilder::Build(
     const std::vector<GOWRFileDesc>& descs,
@@ -51,10 +51,10 @@ void WadNodeBuilder::Build(
     Pass4_Finalize(outWad);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// Pass 1 â€” Classify
+// ═══════════════════════════════════════════════════════════════════════════
+// Pass 1 — Classify
 // Assign WadEntryRole and WadBlock to every RawEntry.
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 void WadNodeBuilder::Pass1_Classify() {
     WadBlock currentBlock = WadBlock::Manifest;
@@ -68,10 +68,10 @@ void WadNodeBuilder::Pass1_Classify() {
         // Assign current block (may be overridden by transition logic below)
         e.block = currentBlock;
 
-        // â”€â”€ Block state machine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Block state machine ──────────────────────────────────────────
         switch (currentBlock) {
             case WadBlock::Manifest:
-                // PopHeap marks end of Manifest â†’ transition to Shaders
+                // PopHeap marks end of Manifest → transition to Shaders
                 if (e.role == WadEntryRole::Sentinel && e.name == "PopHeap") {
                     currentBlock = WadBlock::Shaders;
                 }
@@ -116,17 +116,17 @@ void WadNodeBuilder::Pass1_Classify() {
     }
 }
 
-// â”€â”€ ClassifyByName â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Priority-ordered pattern matching. Rules mirror Â§6.2 of the planning spec.
+// ── ClassifyByName ─────────────────────────────────────────────────────────
+// Priority-ordered pattern matching. Rules mirror §6.2 of the planning spec.
 
 WadEntryRole WadNodeBuilder::ClassifyByName(const std::string& name, uint32_t size) {
     if (name.empty()) return WadEntryRole::Unknown;
 
-    // â”€â”€ Sentinels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Sentinels ────────────────────────────────────────────────────────
     if (name == "PopHeap" || name == "autopad")
         return WadEntryRole::Sentinel;
 
-    // â”€â”€ SharedWadRef: ^[A-Z]+X_R_  (e.g. TXRX_R_Fox00, ANMX_R_Fox00) â”€â”€
+    // ── SharedWadRef: ^[A-Z]+X_R_  (e.g. TXRX_R_Fox00, ANMX_R_Fox00) ──
     // Must be checked BEFORE WadIdentity to avoid matching WAD_R_ (no X before _R_)
     {
         size_t i = 0;
@@ -140,15 +140,15 @@ WadEntryRole WadNodeBuilder::ClassifyByName(const std::string& name, uint32_t si
         }
     }
 
-    // â”€â”€ WAD identity: starts with WAD_ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── WAD identity: starts with WAD_ ───────────────────────────────────
     if (name.rfind("WAD_", 0) == 0)
         return WadEntryRole::WadIdentity;
 
-    // â”€â”€ Shader container: starts with 0x â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Shader container: starts with 0x ─────────────────────────────────
     if (name.rfind("0x", 0) == 0)
         return WadEntryRole::ShaderContainer;
 
-    // â”€â”€ Shaders: _vs_ / _ps_ anywhere in name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Shaders: _vs_ / _ps_ anywhere in name ────────────────────────────
     if (name.find("_vs_") != std::string::npos)
         return WadEntryRole::ShaderVertex;
     if (name.find("_ps_") != std::string::npos)
@@ -171,19 +171,19 @@ WadEntryRole WadNodeBuilder::ClassifyByName(const std::string& name, uint32_t si
         return WadEntryRole::ShaderVertex;
     }
 
-    // â”€â”€ Animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Animation ────────────────────────────────────────────────────────
     if (name.rfind("ANM_", 0) == 0)
         return WadEntryRole::AnimClip;
 
-    // â”€â”€ Textures (discriminated by size) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Textures (discriminated by size) ─────────────────────────────────
     if (name.rfind("TX_", 0) == 0)
         return (size >= 1024) ? WadEntryRole::TextureGpu : WadEntryRole::TextureCpu;
 
-    // â”€â”€ Materials (discriminated by size) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Materials (discriminated by size) ────────────────────────────────
     if (name.rfind("MAT_", 0) == 0)
         return (size > 0) ? WadEntryRole::Material : WadEntryRole::MaterialRef;
 
-    // â”€â”€ LOD binding table: matches /^\d+_\d+_\d+$/ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LOD binding table: matches /^\d+_\d+_\d+$/ ───────────────────────
     {
         bool isLod       = !name.empty();
         int  underscores = 0;
@@ -195,7 +195,7 @@ WadEntryRole WadNodeBuilder::ClassifyByName(const std::string& name, uint32_t si
             return WadEntryRole::LodBinding;
     }
 
-    // â”€â”€ Mesh (order matters: MeshGpu before MeshDefn) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Mesh (order matters: MeshGpu before MeshDefn) ────────────────────
     if (name.rfind("MG_", 0) == 0) {
         if (name.size() > 4 && name.substr(name.size() - 4) == "_gpu")
             return WadEntryRole::MeshGpu;
@@ -206,7 +206,7 @@ WadEntryRole WadNodeBuilder::ClassifyByName(const std::string& name, uint32_t si
     if (name.rfind("MDL_", 0) == 0)
         return WadEntryRole::Model;
 
-    // â”€â”€ Game objects (order matters: Override > Proto > Inst) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Game objects (order matters: Override > Proto > Inst) ────────────
     if (name.rfind("goProto", 0) == 0)
         return WadEntryRole::GameObjectProto;
 
@@ -225,11 +225,11 @@ WadEntryRole WadNodeBuilder::ClassifyByName(const std::string& name, uint32_t si
         return WadEntryRole::GameObjectInst;
     }
 
-    // â”€â”€ Audio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Audio ─────────────────────────────────────────────────────────────
     if (name.rfind("SEMW_", 0) == 0)
         return WadEntryRole::SoundEmitter;
 
-    // â”€â”€ Particle FX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Particle FX ───────────────────────────────────────────────────────
     if (name == "DCClientGUID")
         return WadEntryRole::ClientGuid;
     if (name.rfind("PEM_emit_", 0) == 0)
@@ -240,13 +240,13 @@ WadEntryRole WadNodeBuilder::ClassifyByName(const std::string& name, uint32_t si
     return WadEntryRole::Unknown;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// Pass 2 â€” Pair
+// ═══════════════════════════════════════════════════════════════════════════
+// Pass 2 — Pair
 // Merge GPU+CPU texture pairs; fold DCClientGUID entries.
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 void WadNodeBuilder::Pass2_Pair() {
-    // â”€â”€ Texture pairing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Texture pairing ───────────────────────────────────────────────────
     // For each TextureGpu, find the nearest forward TextureCpu with the same name.
     for (size_t i = 0; i < m_entries.size(); ++i) {
         if (m_entries[i].consumed) continue;
@@ -264,7 +264,7 @@ void WadNodeBuilder::Pass2_Pair() {
         }
     }
 
-    // â”€â”€ DCClientGUID folding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── DCClientGUID folding ──────────────────────────────────────────────
     // DCClientGUID is internal engine plumbing (registration handle for wadContext).
     // It carries no displayable content and always precedes the actual asset entry.
     // Mark them consumed so they are omitted from the tree entirely.
@@ -275,14 +275,14 @@ void WadNodeBuilder::Pass2_Pair() {
     }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// Pass 3 â€” GroupByBlock
+// ═══════════════════════════════════════════════════════════════════════════
+// Pass 3 — GroupByBlock
 // Build the four top-level block folders and populate their children.
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
 
-    // â”€â”€ MANIFEST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── MANIFEST ──────────────────────────────────────────────────────────
     {
         AssetEntry manifestFolder = MakeFolder(
             "Manifest",
@@ -303,7 +303,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
             outWad.entries.push_back(std::move(manifestFolder));
     }
 
-    // â”€â”€ SHADERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── SHADERS ───────────────────────────────────────────────────────────
     {
         AssetEntry shadersFolder = MakeFolder(
             "Shaders",
@@ -395,7 +395,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
         {
             for (auto& [prefix, group] : groups) {
                 if (group.children.size() == 1) {
-                    // Only one variant â€” no need for a sub-folder
+                    // Only one variant — no need for a sub-folder
                     targetFolder.children.push_back(std::move(group.children[0]));
                 } else {
                     targetFolder.children.push_back(std::move(group));
@@ -422,7 +422,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
             outWad.entries.push_back(std::move(shadersFolder));
     }
 
-    // â”€â”€ ASSETS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── ASSETS ────────────────────────────────────────────────────────────
     {
         AssetEntry assetsFolder = MakeFolder(
             "Assets",
@@ -436,7 +436,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
             if (e.block != WadBlock::Assets || e.consumed) continue;
 
             if (e.role == WadEntryRole::TextureGpu) {
-                // TexturePair flat node â€” GPU + CPU sub-entries are internal
+                // TexturePair flat node — GPU + CPU sub-entries are internal
                 // streaming plumbing with no standalone view, so we hide them.
                 AssetEntry pairNode = ToNode(e, m_wadFilename);
                 if (auto* t = pairNode.profileTag.As<Gowr::GowrProfileTag>()) {
@@ -452,7 +452,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
 
             } else {
                 AssetEntry node = ToNode(e, m_wadFilename);
-                // MaterialRef (sz=0) is a back-reference â€” prefix with arrow
+                // MaterialRef (sz=0) is a back-reference — prefix with arrow
                 if (e.role == WadEntryRole::MaterialRef)
                     node.displayName = "-> " + e.name;
                 assetsFolder.children.push_back(std::move(node));
@@ -468,7 +468,7 @@ void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
             outWad.entries.push_back(std::move(assetsFolder));
     }
 
-    // â”€â”€ PARTICLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PARTICLES ─────────────────────────────────────────────────────────
     // Group strategy: scan sequentially; each go* (GameObjectInst) entry marks
     // the end of one FX context group. All preceding ungrouped PEM/PTC/MAT entries
     // belong to that context.
@@ -515,10 +515,10 @@ void WadNodeBuilder::Pass3_GroupByBlock(AssetContainer& outWad) {
     }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// Pass 4 â€” Finalize
+// ═══════════════════════════════════════════════════════════════════════════
+// Pass 4 — Finalize
 // Set missing displayNames; sort children within each block.
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 // Sort priority within the Assets block (lower = earlier)
 int WadNodeBuilder::AssetSortKey(WadEntryRole role) {
@@ -544,11 +544,11 @@ int WadNodeBuilder::AssetSortKey(WadEntryRole role) {
 void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
     for (auto& blockNode : outWad.entries) {
 
-        // â”€â”€ Manifest: already in order; no sort needed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Manifest: already in order; no sort needed ─────────────────
         if (GetRole(blockNode) == WadEntryRole::ManifestBlock)
             continue;
 
-        // â”€â”€ Shaders: sort groups alphabetically â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Shaders: sort groups alphabetically ─────────────────────
         if (GetRole(blockNode) == WadEntryRole::ShaderBlock) {
             for (auto& subFolder : blockNode.children) {
                 if (subFolder.name == "[Vertex Shaders]" ||
@@ -576,7 +576,7 @@ void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
             continue;
         }
 
-        // â”€â”€ Assets: textures â†’ materials â†’ mesh/model â†’ gameobj â†’ audio â”€
+        // ── Assets: textures → materials → mesh/model → gameobj → audio ─
         if (GetRole(blockNode) == WadEntryRole::AssetBlock) {
             std::stable_sort(blockNode.children.begin(), blockNode.children.end(),
                 [](const AssetEntry& a, const AssetEntry& b) {
@@ -591,7 +591,7 @@ void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
             continue;
         }
 
-        // â”€â”€ Particles: FX groups sorted alphabetically â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Particles: FX groups sorted alphabetically ─────────────────
         if (GetRole(blockNode) == WadEntryRole::ParticleBlock) {
             std::sort(blockNode.children.begin(), blockNode.children.end(),
                 [](const AssetEntry& a, const AssetEntry& b) {
@@ -601,7 +601,7 @@ void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
                     if (aFolder != bFolder) return aFolder > bFolder;
                     return a.name < b.name;
                 });
-            // Within each FxGroup: emitters â†’ systems â†’ material refs â†’ protos â†’ insts
+            // Within each FxGroup: emitters → systems → material refs → protos → insts
             for (auto& fxGroup : blockNode.children) {
                 if (GetRole(fxGroup) == WadEntryRole::FxGroup) {
                     std::stable_sort(fxGroup.children.begin(), fxGroup.children.end(),
@@ -624,9 +624,9 @@ void WadNodeBuilder::Pass4_Finalize(AssetContainer& outWad) {
     }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 // Helpers
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 static Types::TypeId RoleToTypeId(WadEntryRole role) {
     switch (role) {
@@ -696,7 +696,7 @@ AssetEntry WadNodeBuilder::MakeFolder(
     return f;
 }
 
-// "ANMX_R_Fox00" â†’ "ANMX â†’ ANMX_Shared_Fox00"
+// "ANMX_R_Fox00" → "ANMX → ANMX_Shared_Fox00"
 std::string WadNodeBuilder::MakeSharedWadName(const std::string& entryName) {
     auto pos = entryName.find("_R_");
     if (pos == std::string::npos) return entryName;
@@ -708,7 +708,7 @@ std::string WadNodeBuilder::MakeSharedWadName(const std::string& entryName) {
 }
 
 // Strip trailing hex content hash from a texture name.
-// "TX_angrboda_fox00_head_gen_0d_1D293ECA4DE04637" â†’ "TX_angrboda_fox00_head_gen_0d"
+// "TX_angrboda_fox00_head_gen_0d_1D293ECA4DE04637" → "TX_angrboda_fox00_head_gen_0d"
 std::string WadNodeBuilder::StripTextureHash(const std::string& name) {
     auto lastUs = name.rfind('_');
     if (lastUs == std::string::npos) return name;
@@ -724,8 +724,8 @@ std::string WadNodeBuilder::StripTextureHash(const std::string& name) {
 }
 
 // Extract FX context from a go* or goProto* name.
-// "goProtofox00_envRaceIntro_dust_landing" â†’ "envRaceIntro_dust_landing"
-// "gofox00_envraceintro_dust_landing"      â†’ "envraceintro_dust_landing"
+// "goProtofox00_envRaceIntro_dust_landing" → "envRaceIntro_dust_landing"
+// "gofox00_envraceintro_dust_landing"      → "envraceintro_dust_landing"
 // Returns empty string if no context can be extracted.
 std::string WadNodeBuilder::ExtractGoContext(const std::string& name) {
     // Strip leading prefix (goProto* or go*)
@@ -740,7 +740,7 @@ std::string WadNodeBuilder::ExtractGoContext(const std::string& name) {
 
     // Skip the base name (everything up to the first underscore after the prefix)
     auto us = name.find('_', prefixEnd);
-    if (us == std::string::npos) return "";  // no underscore â†’ no context
+    if (us == std::string::npos) return "";  // no underscore → no context
 
     return name.substr(us + 1);  // e.g. "envRaceIntro_dust_landing"
 }

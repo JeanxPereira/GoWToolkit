@@ -3,7 +3,7 @@
 
 namespace Onyx {
 
-// â”€â”€ GOW2 Model Format â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GOW2 Model Format ──────────────────────────────────────────────────────
 // Used to map the headers of mdl_ files into the InfoTab properties grid.
 // Magic: 0x000F (typically 0x0002000F or 0x0001000F)
 class GOW2ModelFormat : public Schema::AssetFormat {

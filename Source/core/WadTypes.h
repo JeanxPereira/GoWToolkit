@@ -1,6 +1,6 @@
 #pragma once
 
-// â”€â”€ Legacy umbrella header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Legacy umbrella header ────────────────────────────────────────────────
 //
 // `WadTypes.h` historically held `WadAssetName`, `WadEntryRole`,
 // `WadBlock`, `AssetEntry`, `AssetContainer`, and type-string helpers. M1.T1

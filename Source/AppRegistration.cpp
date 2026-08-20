@@ -67,15 +67,15 @@ void InstallGoWPanels(Onyx::App::App& app) {
     // Audio-volume <-> config sync. SoundPlayer (a game viewer) hosts the live
     // volume; App used to bridge it to AppConfig directly. Keep that bridge on
     // the app side via lifecycle events so the engine stays game-agnostic:
-    //   â€¢ restore config -> SoundPlayer once at startup,
-    //   â€¢ mirror SoundPlayer -> config every frame so it persists on exit.
+    //   • restore config -> SoundPlayer once at startup,
+    //   • mirror SoundPlayer -> config every frame so it persists on exit.
     // The registrar runs during App::init() after the config pointer is set,
     // so getConfig() is valid here.
     //
     // The mirror runs on EventFrameEnd (posted AFTER panels/documents draw),
     // not EventFrameTick (posted before the draw). The SoundPlayer volume
     // slider mutates s_volume during the draw, so reading it post-draw captures
-    // a same-frame change the same frame â€" matching the original frameEnd()
+    // a same-frame change the same frame — matching the original frameEnd()
     // write-back timing.
     Onyx::Services::AppConfig* config = a.getConfig();
     EventStartupFinished::subscribe([config] {

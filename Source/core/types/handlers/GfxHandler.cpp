@@ -1,4 +1,4 @@
-// GFX handler Ã¢â‚¬â€ raw GS pixel data
+// GFX handler — raw GS pixel data
 // Magic: 0x0C
 
 #include <Onyx/Types/ITypeHandler.h>

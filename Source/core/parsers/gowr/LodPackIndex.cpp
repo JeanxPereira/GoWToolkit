@@ -4,12 +4,12 @@
 #include <fstream>
 #include <cstring>
 
-// â”€â”€ LodPackIndex.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LodPackIndex.cpp ───────────────────────────────────────────────────────
 // See LodPackIndex.h for the binary layout documentation.
 
 namespace Onyx {
 
-// â”€â”€ AddPack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── AddPack ────────────────────────────────────────────────────────────────
 int LodPackIndex::AddPack(const std::filesystem::path& path,
                            const std::string& packName)
 {
@@ -25,7 +25,7 @@ int LodPackIndex::AddPack(const std::filesystem::path& path,
     const std::string label = packName.empty() ? path.filename().string() : packName;
     LOG_INFO("[LodPackIndex]   [%d] Opening: %s", packIdx, label.c_str());
 
-    // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Header ─────────────────────────────────────────────────────────────
     int32_t segCount = 0, lodCount = 0, skip1 = 0, skip2 = 0;
     fs.read(reinterpret_cast<char*>(&segCount), 4);
     fs.read(reinterpret_cast<char*>(&lodCount),  4);
@@ -36,11 +36,11 @@ int LodPackIndex::AddPack(const std::filesystem::path& path,
 
     if (segCount <= 0 || lodCount <= 0 ||
         segCount > 100000 || lodCount > 5000000) {
-        LOG_ERR("[LodPackIndex] Implausible header values â€” skipping pack");
+        LOG_ERR("[LodPackIndex] Implausible header values — skipping pack");
         return 0;
     }
 
-    // â”€â”€ Segment base-offset table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Segment base-offset table ─────────────────────────────────────────
     // Each segment entry is 24 bytes: int64 baseOffset + two uint64 skips.
     std::vector<int64_t> segBases(segCount);
     for (int s = 0; s < segCount; ++s) {
@@ -55,7 +55,7 @@ int LodPackIndex::AddPack(const std::filesystem::path& path,
         }
     }
 
-    // â”€â”€ LOD entry table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LOD entry table ───────────────────────────────────────────────────
     // Each entry is 20 bytes:
     //   int32  segIndex
     //   int32  relOffset
@@ -82,7 +82,7 @@ int LodPackIndex::AddPack(const std::filesystem::path& path,
         }
 
         if (segIdx < 0 || segIdx >= segCount) {
-            LOG_WARN("[LodPackIndex] lod[%d]: invalid segIdx=%d â€” skipping", j, segIdx);
+            LOG_WARN("[LodPackIndex] lod[%d]: invalid segIdx=%d — skipping", j, segIdx);
             continue;
         }
 
@@ -110,7 +110,7 @@ int LodPackIndex::AddPack(const std::filesystem::path& path,
     return added;
 }
 
-// â”€â”€ LoadFromList â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LoadFromList ───────────────────────────────────────────────────────────
 int LodPackIndex::LoadFromList(const std::filesystem::path& lodpacksTxtPath,
                                 const std::filesystem::path& gameRoot)
 {
@@ -168,7 +168,7 @@ int LodPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
     return total;
 }
 
-// â”€â”€ Find â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Find ──────────────────────────────────────────────────────────────────
 const LodEntry* LodPackIndex::Find(uint64_t key) const {
     auto it = m_index.find(key);
     if (it != m_index.end())
@@ -185,7 +185,7 @@ const LodEntry* LodPackIndex::Find(uint64_t key) const {
     return nullptr;
 }
 
-// â”€â”€ ReadBlob â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReadBlob ──────────────────────────────────────────────────────────────
 bool LodPackIndex::ReadBlob(const LodEntry& entry,
                              std::vector<uint8_t>& outData) const
 {

@@ -1,8 +1,8 @@
-// InstanceParser â€” GOW1/GOW2 game object instance transform parser.
+// InstanceParser — GOW1/GOW2 game object instance transform parser.
 //
 // Port of god_of_war_browser/pack/wad/inst:
-//   GOW1 (size 0x5C): Position1 + Euler Rotation + Scale â†’ TRS matrix
-//   GOW2 (size 0x68): 3Ã—3 orientation columns + Vec3 position â†’ 4Ã—4 matrix
+//   GOW1 (size 0x5C): Position1 + Euler Rotation + Scale → TRS matrix
+//   GOW2 (size 0x68): 3×3 orientation columns + Vec3 position → 4×4 matrix
 
 #include "InstanceParser.h"
 #include <Onyx/Services/Logger.h>
@@ -11,7 +11,7 @@
 
 namespace Onyx {
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 static float ReadF32(const uint8_t* buf) {
     float v; std::memcpy(&v, buf, 4); return v;
@@ -23,7 +23,7 @@ static float ReadF32(const uint8_t* buf) {
 // Here we work in radians directly since we build the matrix ourselves.
 //
 // Note: The Go source reads Rotation.xyz as radians and multiplies by (180/PI)
-// before passing to EulerToQuat, which internally converts degreesâ†’radians.
+// before passing to EulerToQuat, which internally converts degrees→radians.
 // So effectively the values ARE in radians. We just use them directly.
 static void BuildTRSMatrix(float out[16],
                            float tx, float ty, float tz,
@@ -64,7 +64,7 @@ static void BuildTRSMatrix(float out[16],
     out[15] = 1.0f;
 }
 
-// â”€â”€ Detect sky by instance name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Detect sky by instance name ────────────────────────────────────────────
 
 static bool IsSkyInstance(const std::string& name) {
     // Case-insensitive check for "sky" anywhere in the name
@@ -73,7 +73,7 @@ static bool IsSkyInstance(const std::string& name) {
     return lower.find("sky") != std::string::npos;
 }
 
-// â”€â”€ Parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parser ─────────────────────────────────────────────────────────────────
 
 std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const AssetEntry& entry, std::shared_ptr<Vfs::IFile> parentFile) {
     if (!parentFile || entry.size < 0x60) return nullptr;
@@ -88,17 +88,17 @@ std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const AssetEntry& entry,
     // Sky detection from entry name
     data->isSky = IsSkyInstance(entry.name);
 
-    // â”€â”€ GOW2 Instance (size 0x68) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── GOW2 Instance (size 0x68) ──────────────────────────────────────
     // Layout (from god_of_war_browser/pack/wad/inst/gow2.go):
     //   [0x00:0x04] magic (0x00030001)
     //   [0x04:0x1C] unused (GOW2 has no inline object name)
     //   [0x1C:0x1E] Id  (uint16)
     //   [0x1E:0x20] Params (uint16)
-    //   [0x20:0x30] UnkVec1 (Vec4) â€” orientation col 0
-    //   [0x30:0x40] UnkVec2 (Vec4) â€” orientation col 1
-    //   [0x40:0x50] UnkVec3 (Vec4) â€” orientation col 2
-    //   [0x50:0x5C] Position (Vec3) â€” 12 bytes
-    //   [0x5C:0x68] Unk (3 Ã— uint32)
+    //   [0x20:0x30] UnkVec1 (Vec4) — orientation col 0
+    //   [0x30:0x40] UnkVec2 (Vec4) — orientation col 1
+    //   [0x40:0x50] UnkVec3 (Vec4) — orientation col 2
+    //   [0x50:0x5C] Position (Vec3) — 12 bytes
+    //   [0x5C:0x68] Unk (3 × uint32)
     {
         data->objectName = ""; // GOW2: resolved via child tree
 
@@ -106,8 +106,8 @@ std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const AssetEntry& entry,
         std::memcpy(&data->params, &buf[0x1E], 2);
 
         // GOW2 instance layout (from god_of_war_browser/pack/wad/inst/gow2.go):
-        //   [0x20..0x50] = UnkVec1, UnkVec2, UnkVec3 â€” NOT orientation! Never used for rendering.
-        //   [0x50..0x5C] = Position (Vec3) â€” the only transform data used.
+        //   [0x20..0x50] = UnkVec1, UnkVec2, UnkVec3 — NOT orientation! Never used for rendering.
+        //   [0x50..0x5C] = Position (Vec3) — the only transform data used.
         //
         // The Go reference NEVER builds a rotation matrix from UnkVec1/2/3.
         // Using them as a 3x3 orientation matrix produces a corrupt transform

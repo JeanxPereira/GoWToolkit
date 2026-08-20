@@ -1,4 +1,4 @@
-// Model handler â€” GOW1/2 mesh container (mdl_*)
+// Model handler — GOW1/2 mesh container (mdl_*)
 // Magic: 0x0002000F (MODEL_MAGIC in god_of_war_browser)
 //
 // Resolution follows the Go project (god_of_war_browser):
@@ -96,7 +96,7 @@ public:
     std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
 
-        // Resolve the Model entry itself â€” if it's a reference, find the definition
+        // Resolve the Model entry itself — if it's a reference, find the definition
         const AssetEntry* model = &entry;
         if (model->children.empty()) {
             if (auto resolved = ResolveRef(wad.entries, entry.name, Onyx::GameTypes::Model))
@@ -125,7 +125,7 @@ public:
 
         uint32_t materialOffset = scene->materials.size();
 
-        // Parse materials â†’ MaterialInfo (store all layers for main layer selection)
+        // Parse materials → MaterialInfo (store all layers for main layer selection)
         for (const auto* mat : matEntries) {
             Onyx::Parsers::MaterialInfo matInfo;
             if (auto matData = Onyx::GOW2MaterialParser::Parse(*mat, wad.fileSource)) {
@@ -167,7 +167,7 @@ public:
 
         if (scene->IsEmpty()) return nullptr;
 
-        // Detect Sky script â€” flag both scene and individual parts so
+        // Detect Sky script — flag both scene and individual parts so
         // SceneRenderer (which reads part.isSky into RenderBatch::isSky) can
         // route them through the sky pass.
         for (const auto& child : model->children) {

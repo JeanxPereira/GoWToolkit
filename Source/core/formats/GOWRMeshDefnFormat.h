@@ -3,7 +3,7 @@
 
 namespace Onyx {
 
-// â”€â”€ GOWR Mesh Definition â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GOWR Mesh Definition ───────────────────────────────────────────────────
 class GOWRMeshDefnFormat : public Schema::AssetFormat {
 protected:
     void Build() override {

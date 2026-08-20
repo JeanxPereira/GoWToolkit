@@ -15,7 +15,7 @@
 #include "core/loaders/GOWRLoaders.h"
 #include "core/types/GameTypes.h"
 
-// â”€â”€ ProfileGOWR.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ProfileGOWR.cpp ────────────────────────────────────────────────────────
 // Binary structures (GOWRWadHeader, GOWRFileDesc, GOWRTypeToString) have been
 // moved to GOWRTypes.h so that WadNodeBuilder.cpp can share them.
 
@@ -39,7 +39,7 @@ bool ProfileGOWR::Detect(const std::filesystem::path& path) const {
 std::shared_ptr<Vfs::IVirtualFileSystem> ProfileGOWR::MountArchive(
     const std::filesystem::path& path)
 {
-    // RagnarÃ¶k doesn't use ISO mounting
+    // Ragnarök doesn't use ISO mounting
     return nullptr;
 }
 
@@ -55,7 +55,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
 
     std::shared_ptr<Vfs::IFile> parsedFile = file;
 
-    // â”€â”€ LZ4 decompression â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LZ4 decompression ─────────────────────────────────────────────────
     if (initialMagic == 0x184D2204) {
         LOG_INFO("[GOWR] WAD is LZ4-compressed. Decompressing...");
 
@@ -90,7 +90,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
 
     parsedFile->Seek(0, SEEK_SET);
 
-    // â”€â”€ Read WTOC header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Read WTOC header ──────────────────────────────────────────────────
     GOWRWadHeader header;
     if (parsedFile->Read(&header, sizeof(GOWRWadHeader)) != sizeof(GOWRWadHeader)) {
         LOG_ERR("[GOWR] Failed to read WAD header");
@@ -113,7 +113,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
     LOG_INFO("[GOWR] WAD header: %u files, block0=%u, block1=%u, block2=%u",
         header.fileCount, header.block0Size, header.block1Size, header.block2Size);
 
-    // â”€â”€ Read all FileDesc entries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Read all FileDesc entries ─────────────────────────────────────────
     std::vector<GOWRFileDesc> fileDescs(header.fileCount);
     for (uint32_t i = 0; i < header.fileCount; i++) {
         if (parsedFile->Read(&fileDescs[i], sizeof(GOWRFileDesc)) != sizeof(GOWRFileDesc)) {
@@ -122,7 +122,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
         }
     }
 
-    // â”€â”€ Compute absolute offsets via blockBitSet/flush-queue algorithm â”€â”€â”€â”€
+    // ── Compute absolute offsets via blockBitSet/flush-queue algorithm ────
     // Ported from GOWTool (Wad.cpp). This must run before WadNodeBuilder
     // because it resolves the correct in-file offset for each entry.
     std::vector<size_t> absOffsets(header.fileCount, 0);
@@ -191,7 +191,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
         }
     }
 
-    // â”€â”€ Build semantic tree â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Build semantic tree ───────────────────────────────────────────────
     WadNodeBuilder builder;
     builder.Build(fileDescs, absOffsets, outWad.filename, outWad);
 
@@ -200,11 +200,11 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
     // absOffsets are relative to parsedFile, NOT the original compressed file.
     outWad.fileSource = parsedFile;
 
-    LOG_INFO("[GOWR] Parsed WAD: %u entries â†’ %zu root nodes.",
+    LOG_INFO("[GOWR] Parsed WAD: %u entries → %zu root nodes.",
         header.fileCount, outWad.entries.size());
 
     // Kick off parallel TexPack indexing in the background. The call itself
-    // returns immediately â€” fan-out happens inside LoadFromGameRoot via
+    // returns immediately — fan-out happens inside LoadFromGameRoot via
     // TaskManager. By the time the user clicks a texture, most packs are
     // already indexed.
     GetTexIndex();
@@ -215,7 +215,7 @@ bool ProfileGOWR::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
 bool ProfileGOWR::LoadFromArchive(
     std::shared_ptr<Vfs::IVirtualFileSystem> vfs, AssetContainer& outWad)
 {
-    // RagnarÃ¶k doesn't use ISO archives
+    // Ragnarök doesn't use ISO archives
     return false;
 }
 

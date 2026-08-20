@@ -1,5 +1,5 @@
 #pragma once
-// â”€â”€ MeshParser.h â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MeshParser.h ───────────────────────────────────────────────────────────
 #include <Onyx/Parsers/MeshData.h>
 #include <Onyx/Vfs/IFile.h>
 #include "LodPackIndex.h"
@@ -17,7 +17,7 @@ class GpuMesh;
 
 class GOWRMeshParser {
 public:
-    // â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Public API ────────────────────────────────────────────────────────
 
     // Full parse from a pre-resolved GPU file (hash=0 submeshes, or already
     // externally resolved LOD blobs). Does NOT do lodpack lookup.
@@ -27,8 +27,8 @@ public:
                       std::vector<uint32_t>* outMaterialOfPart = nullptr);
 
     // Full parse with lodpack lookup.
-    // For each submesh: if meshHash != 0 â†’ reads blob from lodIdx;
-    //                   if meshHash == 0 â†’ uses gpuFile directly.
+    // For each submesh: if meshHash != 0 → reads blob from lodIdx;
+    //                   if meshHash == 0 → uses gpuFile directly.
     // This is the primary production entry point.
     static bool ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
                                   std::shared_ptr<Vfs::IFile>    gpuFile,
@@ -41,7 +41,7 @@ public:
                                std::shared_ptr<Vfs::IFile> lodpackFile,
                                std::vector<std::shared_ptr<GpuMesh>>& outMeshes);
 
-    // â”€â”€ Public enums â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Public enums ──────────────────────────────────────────────────────
 
     enum class Semantic : uint8_t {
         Position = 0,
@@ -56,15 +56,15 @@ public:
     };
 
     enum class AttrFormat : uint8_t {
-        Float32   = 0,  // N Ã— float32
+        Float32   = 0,  // N × float32
         R10G10B10 = 3,  // packed uint32, 10 bits per channel
-        Uint16    = 6,  // N Ã— uint16, unorm (value/65535 for UV, /32768-1 for position)
-        Int16     = 7,  // N Ã— int16 snorm, /32767
-        Uint8     = 8,  // N Ã— uint8
+        Uint16    = 6,  // N × uint16, unorm (value/65535 for UV, /32768-1 for position)
+        Int16     = 7,  // N × int16 snorm, /32767
+        Uint8     = 8,  // N × uint8
     };
 
 private:
-    // â”€â”€ Internal structures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Internal structures ───────────────────────────────────────────────
 
     struct ComponentDesc {
         Semantic   semantic;
@@ -99,7 +99,7 @@ private:
         uint8_t  componentCount;  // +0x84
     };
 
-    // â”€â”€ Private helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Private helpers ───────────────────────────────────────────────────
 
     static bool ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& meshFile,
                                   uint32_t submeshBase,

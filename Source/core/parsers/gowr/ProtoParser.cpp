@@ -5,28 +5,28 @@
 #include <glm/gtc/quaternion.hpp>
 #include <cstdio>
 
-// â”€â”€ ProtoParser.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ProtoParser.cpp ────────────────────────────────────────────────────────
 // goProto* file layout (port of GoWRknk.cs:210-285):
 //
 //   +0x00   16 bytes header (unused fields)
 //   +0x10   int32 boneCount
 //   +0x14   int32 (unused)
 //
-//   +0x18   bone entry table (boneCount Ã— 8 bytes):
+//   +0x18   bone entry table (boneCount × 8 bytes):
 //             int16 (skip)
 //             int16 (skip)
 //             int16 (skip)
-//             int16 parentIdx  â† used
+//             int16 parentIdx  ← used
 //
 //   +0x18 + 8*N     padding (8 * N bytes)
 //   +0x18 + 16*N    padding (16 * N bytes)
 //
 //   then:
 //             int64 (skip)
-//             int32 Ã— 4 (skip)
+//             int32 × 4 (skip)
 //             64 bytes (skip)
 //
-//   local transform table (boneCount Ã— 64 bytes):
+//   local transform table (boneCount × 64 bytes):
 //             float[3][4]  rotation 3x3 (last column ignored)  = 48 bytes
 //             float[4]     position (last component ignored)   = 16 bytes
 
@@ -52,7 +52,7 @@ std::shared_ptr<Parsers::ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs:
 
     obj->joints.resize(boneCount);
 
-    // â”€â”€ Parent table @ +0x18 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Parent table @ +0x18 ────────────────────────────────────────────────
     for (int j = 0; j < boneCount; ++j) {
         int16_t a, b, c, parent;
         file->Read(&a, 2);
@@ -79,7 +79,7 @@ std::shared_ptr<Parsers::ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs:
     file->Read(&skip32, 4); file->Read(&skip32, 4);
     file->Seek(64, SEEK_CUR);
 
-    // â”€â”€ Table A: local parentâ†’joint matrices (mat4, COLUMN-major, 64B/bone) â”€â”€
+    // ── Table A: local parent→joint matrices (mat4, COLUMN-major, 64B/bone) ──
     // Confirmed via Ghidra FUN_140699110 matmul ordering: proto stores each mat
     // as 4 columns of 4 floats each. Runtime memcpies Table A directly into
     // skel[+0x90] and consumes column-major in the compose pass.
@@ -96,7 +96,7 @@ std::shared_ptr<Parsers::ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs:
     std::vector<glm::mat4> local(boneCount, glm::mat4(1.0f));
 
     for (int j = 0; j < boneCount; ++j) {
-        // 4 columns Ã— 4 floats each, sequential. Last float of each column is
+        // 4 columns × 4 floats each, sequential. Last float of each column is
         // padding/homogeneous (0 for basis vectors, 1 for translation column).
         glm::mat4 M(1.0f);
         file->Read(&M[0].x, 4); file->Read(&M[0].y, 4); file->Read(&M[0].z, 4); file->Read(&M[0].w, 4);
@@ -138,7 +138,7 @@ std::shared_ptr<Parsers::ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs:
         obj->joints[j].isQuaternion = true;
     }
 
-    // â”€â”€ Hierarchical world rest pose (column-major matmul) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Hierarchical world rest pose (column-major matmul) ──────────────────
     // Mirror of FUN_140699110: world[i] = world[parent[i]] * local[i].
     //
     // Bones are NOT in topological order: goProtoathena10 opens with
@@ -176,7 +176,7 @@ std::shared_ptr<Parsers::ObjectData> GOWRProtoParser::Parse(std::shared_ptr<Vfs:
         }
     }
 
-    // â”€â”€ Table B: read raw (column-major), purpose unknown at runtime â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Table B: read raw (column-major), purpose unknown at runtime ────────
     // FUN_1406ed6b0 copies only Table A into the runtime buffer; Table B is
     // never consumed by the skinning pipeline we traced. We read it to keep
     // file-position correct for any downstream consumer, but do not use it

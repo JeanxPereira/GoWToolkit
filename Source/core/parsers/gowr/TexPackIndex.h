@@ -26,14 +26,14 @@ struct TexpackEntry {
 // and fans out one background TaskManager task per pack. Heavy work (LZ4
 // decompression + TOC parsing) runs OUTSIDE the mutex; only the final merge
 // into the shared entry map briefly takes the lock. `FindTexture` is a
-// non-blocking cache lookup â€” viewers poll until their hash is published or
+// non-blocking cache lookup — viewers poll until their hash is published or
 // `IsLoaded()` reports completion.
 class TexPackIndex {
 public:
     void LoadFromGameRoot(const std::filesystem::path& gameRoot);
 
     // Non-blocking cache lookup. Returns false if the hash hasn't been
-    // indexed yet â€” caller should poll until `IsLoaded()` is true.
+    // indexed yet — caller should poll until `IsLoaded()` is true.
     bool FindTexture(uint64_t hash, TexpackEntry& outEntry);
 
     std::shared_ptr<Vfs::IFile> GetFile(uint32_t packIdx);
@@ -58,7 +58,7 @@ private:
     };
 
     // Decompresses one pack's TOC, parses it, merges entries into the
-    // shared map under a brief lock. Safe to call concurrently â€” workers
+    // shared map under a brief lock. Safe to call concurrently — workers
     // racing on the same pack are deduplicated by the `indexed` flag.
     bool IndexPack(uint32_t packIdx);
 

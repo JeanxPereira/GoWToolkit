@@ -5,7 +5,7 @@
 
 namespace Onyx {
 
-// Helper para ler strings de tamanho fixo (O MSVC precisa desta definiÃ§Ã£o antes do uso)
+// Helper para ler strings de tamanho fixo (O MSVC precisa desta definição antes do uso)
 static std::string ReadFixedString(const uint8_t* buf, size_t maxLen) {
     size_t len = strnlen((const char*)buf, maxLen);
     return std::string((const char*)buf, len);
@@ -42,14 +42,14 @@ std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(cons
     uint32_t layerCount = *(uint32_t*)(buf.data() + 0x34);
     if (layerCount > 10) layerCount = 10; // Sanity check
 
-    uint32_t offset = 0x38; // InÃ­cio das layers
+    uint32_t offset = 0x38; // Início das layers
     for (uint32_t i = 0; i < layerCount; i++) {
         if (offset + 0x40 > buf.size()) break;
 
         MaterialLayer layer;
         const uint8_t* lBuf = buf.data() + offset;
 
-        // Flags de renderizaÃ§Ã£o (Equivalente ao mat.go ParsedFlags)
+        // Flags de renderização (Equivalente ao mat.go ParsedFlags)
         uint32_t f0 = *(uint32_t*)(lBuf + 0x00);
         layer.hasTexture = (f0 >> 7) & 1;
         layer.filterLinear = (f0 >> 16) & 1;
@@ -73,7 +73,7 @@ std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(cons
         layer.blendColor[2] = ReadFloat(lBuf, 0x30);
         layer.blendColor[3] = ReadFloat(lBuf, 0x34);
 
-        // Flags de AnimaÃ§Ã£o (GameFlags 0x3C)
+        // Flags de Animação (GameFlags 0x3C)
         uint32_t gFlags = *(uint32_t*)(lBuf + 0x3C);
         layer.uvAnimEnabled = (gFlags & 1) != 0;
         layer.colorAnimEnabled = (gFlags & 2) != 0;

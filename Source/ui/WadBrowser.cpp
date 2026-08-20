@@ -1,6 +1,6 @@
 #include "ui/WadBrowser.h"
 #include <Onyx/App/UIHelpers.h>
-#include "ui/RoleVisuals.h"   // GOWR role Ã¢â€ â€™ color/icon (ColorForRole, IconForRole)
+#include "ui/RoleVisuals.h"   // GOWR role → color/icon (ColorForRole, IconForRole)
 #include <Onyx/App/Widgets.h>
 #include <Onyx/Services/AssetDatabase.h>
 #include <Onyx/Services/AssetVisibility.h>
@@ -34,10 +34,10 @@ WadBrowser::~WadBrowser() {
     EventWadOpened::unsubscribe(this);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Asset visibility Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Asset visibility ──────────────────────────────────────────────────────
 // Determines whether an entry should appear in the browser tree.
 // Delegates to the centralized AssetVisibility registry which handles both
-// GOW2 (TypeId-based) and GOWR (roleÃ¢â€ â€™TypeId mapping) in one code path.
+// GOW2 (TypeId-based) and GOWR (role→TypeId mapping) in one code path.
 // Users can toggle visibility per type via the Asset Filters panel.
 static bool IsEntryVisible(const AssetEntry& entry) {
     return Onyx::Services::AssetVisibility::Get().IsVisible(entry.typeId);
@@ -152,7 +152,7 @@ void WadBrowser::Draw() {
                     }
                 }
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Asset visibility filter (GOW2 + GOWR) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Asset visibility filter (GOW2 + GOWR) ───────────
                 // Delegates to AssetVisibility registry. Users can toggle
                 // types on/off via the Asset Filters panel.
                 if (!IsEntryVisible(entry)) {
@@ -162,7 +162,7 @@ void WadBrowser::Draw() {
                 ImGui::PushID(idx);
                 bool has_children = !entry.children.empty();
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Flags Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Flags ────────────────────────────────────────────
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
                 if (!has_children) {
                     flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -172,7 +172,7 @@ void WadBrowser::Draw() {
                 if (hasFilter) flags |= ImGuiTreeNodeFlags_DefaultOpen;
                 if (Onyx::Api::GetSelected() == &entry) flags |= ImGuiTreeNodeFlags_Selected;
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Icon + color (prefer role-based for GOWR entries) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Icon + color (prefer role-based for GOWR entries) ────
                 const char* icon;
                 ImVec4 color;
                 auto role = GetRole(entry);
@@ -188,17 +188,17 @@ void WadBrowser::Draw() {
                 const std::string& label_name =
                     entry.displayName.empty() ? entry.name : entry.displayName;
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ TreeNode with formatted label Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── TreeNode with formatted label ────────────────────
                 bool isSelected = (Onyx::Api::GetSelected() == &entry);
                 bool node_open = Onyx::App::Widgets::ColoredTreeNode("", label_name.c_str(), icon, color, flags, isSelected);
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Selection (single click) Ã¢â‚¬â€ via Api::SetSelected Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Selection (single click) — via Api::SetSelected ──
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
                     db.EnsureNodeData(&entry, wad);
                     Onyx::Api::SetSelected(&entry, &wad);
                 }
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Double-click action Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Double-click action ────────────────────────────────
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     if (wad.fileSource) {
                         auto viewer = Onyx::Api::Viewers().Open(entry, wad);
@@ -206,7 +206,7 @@ void WadBrowser::Draw() {
                     }
                 }
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Tooltip on hover Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Tooltip on hover ─────────────────────────────────
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
                     ImGui::BeginTooltip();
                     ImGui::Text("Type: %s", TypeName(entry.typeId));
@@ -215,7 +215,7 @@ void WadBrowser::Draw() {
                     ImGui::EndTooltip();
                 }
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Right-click Context Menu Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Right-click Context Menu ─────────────────────────
                 if (ImGui::BeginPopupContextItem()) {
                     ImGui::TextDisabled("%s", entry.name.c_str());
                     ImGui::TextDisabled("%s  |  %s", TypeName(entry.typeId),

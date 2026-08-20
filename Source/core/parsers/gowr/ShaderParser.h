@@ -7,14 +7,14 @@
 
 namespace Onyx {
 
-// â”€â”€ DXBC Chunk descriptor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── DXBC Chunk descriptor ──────────────────────────────────────────────────
 struct DxbcChunk {
     char     tag[5] = {};     // FourCC + null terminator (e.g. "ISG1", "DXIL")
     uint32_t offset = 0;      // offset within DXBC payload
     uint32_t size   = 0;      // chunk data size (excludes 8-byte header)
 };
 
-// â”€â”€ Signature element (parsed from ISG1/OSG1/PSG1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Signature element (parsed from ISG1/OSG1/PSG1) ─────────────────────────
 struct SignatureElement {
     std::string semanticName;
     uint32_t    semanticIndex    = 0;
@@ -25,7 +25,7 @@ struct SignatureElement {
     uint8_t     readWriteMask    = 0;
 };
 
-// â”€â”€ STAT chunk summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── STAT chunk summary ─────────────────────────────────────────────────────
 struct ShaderStats {
     bool     valid = false;
     // DXIL STAT has a different layout than DXBC STAT.
@@ -38,7 +38,7 @@ struct ShaderStats {
     uint32_t textureOps        = 0;
 };
 
-// â”€â”€ DXIL sub-header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── DXIL sub-header ────────────────────────────────────────────────────────
 struct DxilInfo {
     bool     valid = false;
     uint8_t  majorVersion = 0;
@@ -46,7 +46,7 @@ struct DxilInfo {
     uint32_t bitcodeSize  = 0;
 };
 
-// â”€â”€ Full parsed shader result â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Full parsed shader result ──────────────────────────────────────────────
 struct GOWRShaderData {
     // Onyx custom header (28 bytes)
     uint16_t    formatVersion = 0;
@@ -92,7 +92,7 @@ struct GOWRShaderData {
     static const char* ComponentTypeName(uint32_t type);
     // System value display name
     static const char* SystemValueName(uint32_t sv);
-    // Mask â†’ "xyzw" string
+    // Mask → "xyzw" string
     static std::string MaskString(uint8_t mask);
 };
 

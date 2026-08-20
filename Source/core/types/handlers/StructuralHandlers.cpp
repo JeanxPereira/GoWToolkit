@@ -1,4 +1,4 @@
-// Structural WAD tag handlers Ã¢â‚¬â€ identified by tag number, not magic.
+// Structural WAD tag handlers — identified by tag number, not magic.
 // These have no payload to parse, they just control the WAD tree structure.
 
 #include <Onyx/Types/TypeRegistry.h>
@@ -52,7 +52,7 @@ public:
 
 } // anonymous namespace
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Self-registration for GOW2 Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Self-registration for GOW2 ──
 REGISTER_GOW_TAG(GOW2, 0,  EntityCountHandler);
 REGISTER_GOW_TAG(GOW2, 2,  GroupStartHandler);
 REGISTER_GOW_TAG(GOW2, 3,  GroupEndHandler);

@@ -212,7 +212,7 @@ void RunGoldenTest(std::string_view versionTag,
 
     ordered_json expected = LoadGolden(expectedJsonPath);
     REQUIRE_MESSAGE(!expected.is_null(),
-                    "golden JSON missing Ã¢â‚¬â€ rerun with GOWTOOLKIT_GOLDEN_UPDATE=1 to create it: "
+                    "golden JSON missing — rerun with GOWTOOLKIT_GOLDEN_UPDATE=1 to create it: "
                     << expectedJsonPath.string());
 
     std::string diff = DiffSnapshots(actual, expected);

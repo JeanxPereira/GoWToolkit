@@ -28,7 +28,7 @@
 
 namespace {
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Animation Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000003 (ANIMATIONS_MAGIC)
+// ── Animation ── magic 0x00000003 (ANIMATIONS_MAGIC)
 class AnimationHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Animation; }
@@ -49,7 +49,7 @@ public:
   }
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Script Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00010004 (SCRIPT_MAGIC)
+// ── Script ── magic 0x00010004 (SCRIPT_MAGIC)
 class ScriptHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Script; }
@@ -63,7 +63,7 @@ public:
   } // green
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Light Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000006 (LIGHT_MAGIC)
+// ── Light ── magic 0x00000006 (LIGHT_MAGIC)
 class LightHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Light; }
@@ -75,7 +75,7 @@ public:
   } // yellow
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Sound (GOW2) Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000015 (GOW2_SBP_MAGIC)
+// ── Sound (GOW2) ── magic 0x00000015 (GOW2_SBP_MAGIC)
 class SoundHandlerGOW2 : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Sound; }
@@ -98,7 +98,7 @@ public:
   }
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Collision Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000011 (COLLISION_MAGIC)
+// ── Collision ── magic 0x00000011 (COLLISION_MAGIC)
 class CollisionHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Collision; }
@@ -107,7 +107,7 @@ public:
   Color4f GetColor() const override { return {0.7f, 0.7f, 0.7f, 1.0f}; }
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Flipbook (GOW2) Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x0000001B
+// ── Flipbook (GOW2) ── magic 0x0000001B
 class FlipbookHandlerGOW2 : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Flipbook; }
@@ -116,7 +116,7 @@ public:
   Color4f GetColor() const override { return {1.0f, 0.6f, 0.9f, 1.0f}; }
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Chunk Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x80000001 (CHUNK_MAGIC / context)
+// ── Chunk ── magic 0x80000001 (CHUNK_MAGIC / context)
 class ChunkHandler : public Onyx::Gow::IWadTypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::Chunk; }
@@ -157,9 +157,9 @@ public:
             //
             // Critical reference (god_of_war_browser/web/.../BrowserWad.js:1365):
             //   if (inst.IsGow2) {
-            //     // instNode.setLocalMatrix(instMat);  Ã¢â€ Â COMMENTED OUT
+            //     // instNode.setLocalMatrix(instMat);  ← COMMENTED OUT
             //   }
-            // For GOW2, `inst.Position` is NOT applied to the rendered object Ã¢â‚¬â€
+            // For GOW2, `inst.Position` is NOT applied to the rendered object —
             // the joint world transforms (Matrixes1 chain via renderMat) already
             // place the geometry in world space. Applying instance translation
             // on top double-counts the position.
@@ -169,7 +169,7 @@ public:
             //   pos           = boneTransform * pos
             // where umJoints[i] = joint.renderMat * joint.bindToJointMat.
             //
-            // Sky instances: same rule Ã¢â‚¬â€ joint world transform only.
+            // Sky instances: same rule — joint world transform only.
             {
               std::vector<glm::mat4> palette;
               if (instScene->HasSkeleton()) {
@@ -292,7 +292,7 @@ public:
   }
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Shader Group Ã¢â€â‚¬Ã¢â€â‚¬ magic 0x00000027 (SHG_MAGIC)
+// ── Shader Group ── magic 0x00000027 (SHG_MAGIC)
 // Only GOW1
 class ShaderGroupHandler : public Onyx::Gow::IWadTypeHandler {
 public:
@@ -305,7 +305,7 @@ public:
   Color4f GetColor() const override { return {0.5f, 1.0f, 0.5f, 1.0f}; }
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Audio/Video (File level) Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Audio/Video (File level) ──
 class VagHandler : public Onyx::Types::ITypeHandler {
 public:
   Onyx::Types::TypeId GetId() const override { return Onyx::GameTypes::VagAudio; }
@@ -393,7 +393,7 @@ REGISTER_GOW_TYPE(GOW2, FlipbookHandlerGOW2);
 REGISTER_GOW_TYPE(GOW2, ChunkHandler);
 
 // File-level handlers (identified by extension in TOC/PAK, not by magic).
-// Registered by TypeId only Ã¢â‚¬â€ avoids the magic=0x00 collision.
+// Registered by TypeId only — avoids the magic=0x00 collision.
 REGISTER_FILE_TYPE(VagHandler);
 REGISTER_FILE_TYPE(VpkHandler);
 REGISTER_FILE_TYPE(PssHandler);

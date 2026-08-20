@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <vector>
 
-// â”€â”€ MeshParser.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MeshParser.cpp ─────────────────────────────────────────────────────────
 // Full port of GoWRknk.cs mesh reading logic.
 //
 // Submesh field map (all offsets relative to submeshBase in MESH file):
@@ -39,7 +39,7 @@
 
 namespace Onyx {
 
-// â”€â”€ ElementSize â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ElementSize ────────────────────────────────────────────────────────────
 // Bytes per element, keyed by the raw format enum. Transcribed from the
 // game's own vertex-view builder, which switches on the format byte:
 //   {0,2,3} -> 4    {1,4,5,6,7} -> 2    {8,9,10,11} -> 1
@@ -111,13 +111,13 @@ static std::vector<uint32_t> ReadSubmeshTable(std::shared_ptr<Vfs::IFile>& f) {
     return out;
 }
 
-// â”€â”€ ReadSubmeshHeader â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReadSubmeshHeader ──────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
                                        uint32_t base,
                                        SubmeshHeader& h)
 {
-    // â”€â”€ DIAGNOSTIC: dump first 0x90 bytes of submesh header so we can hunt
-    // for MAT hash field placement. Remove once meshâ†’MAT link is identified.
+    // ── DIAGNOSTIC: dump first 0x90 bytes of submesh header so we can hunt
+    // for MAT hash field placement. Remove once mesh→MAT link is identified.
     {
         uint8_t hdr[0x90] = {};
         f->Seek(base, SEEK_SET);
@@ -176,7 +176,7 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
     return true;
 }
 
-// â”€â”€ ReadComponents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReadComponents ─────────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadComponents(std::shared_ptr<Vfs::IFile>& f,
                                      const SubmeshHeader& hdr,
                                      std::vector<ComponentDesc>& out)
@@ -202,7 +202,7 @@ bool GOWRMeshParser::ReadComponents(std::shared_ptr<Vfs::IFile>& f,
     return true;
 }
 
-// â”€â”€ ReadBufferOffsets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReadBufferOffsets ──────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadBufferOffsets(std::shared_ptr<Vfs::IFile>& f,
                                         const SubmeshHeader& hdr,
                                         std::vector<uint32_t>& out)
@@ -214,7 +214,7 @@ bool GOWRMeshParser::ReadBufferOffsets(std::shared_ptr<Vfs::IFile>& f,
     return true;
 }
 
-// â”€â”€ ReadVertices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReadVertices ───────────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                                    const SubmeshHeader& hdr,
                                    const std::vector<ComponentDesc>& comps,
@@ -225,7 +225,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
     part.vertices.resize(N);
 
     // Detect rigid: submesh has no BoneIdx (semantic 9) / BoneWgt (semantic 10).
-    // Rigid verts are authored in joint-local space â€” bind them to local-palette
+    // Rigid verts are authored in joint-local space — bind them to local-palette
     // slot 0 with full weight so the shader transforms by jointMap[0] only.
     bool hasBoneSemantic = false;
     for (const auto& c : comps) {
@@ -244,7 +244,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
         v.boneIndices = defaultI;
     }
 
-    // â”€â”€ Per-buffer strides, derived exactly as the game derives them â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Per-buffer strides, derived exactly as the game derives them ────────
     // Every buffer is interleaved: its stride is the sum of the sizes of the
     // components that name it. Treating each component as its own tightly
     // packed stream is only correct when a buffer holds a single component.
@@ -285,7 +285,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
 
             switch (c.semantic) {
 
-            // â”€â”€ Position â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Position ────────────────────────────────────────────────
             case Semantic::Position:
                 if (c.format == AttrFormat::Float32) {
                     gpu->Read(&v.position.x, 4);
@@ -306,10 +306,10 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                 }
                 break;
 
-            // â”€â”€ Normal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Normal ──────────────────────────────────────────────────
             case Semantic::Normal:
                 if (c.format == AttrFormat::R10G10B10) {
-                    // 3 Ã— 10-bit biased-unsigned packed in uint32 (DirectX style).
+                    // 3 × 10-bit biased-unsigned packed in uint32 (DirectX style).
                     // Port of GoWRknk.cs:839-843:
                     //   num4 = (float)(num59 & 0x3FF) - 512f) / 512f
                     // Encoding: X=[9:0], Y=[19:10], Z=[29:20], W=[31:30] ignored
@@ -326,7 +326,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                 }
                 break;
 
-            // â”€â”€ UV0 (primary UV, stream UV1 in C# naming) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── UV0 (primary UV, stream UV1 in C# naming) ───────────────
             // Port of GoWRknk.cs:865-879:
             //   fmt=0 (float32): raw
             //   fmt=6 (unorm16): raw/65536
@@ -350,7 +350,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                 }
                 break;
 
-            // â”€â”€ UV1 / UV2 / UV3 (lightmap, detail, etc.) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── UV1 / UV2 / UV3 (lightmap, detail, etc.) ────────────────
             case Semantic::UV1:
                 if (c.format == AttrFormat::Float32 && c.compCount >= 2) {
                     gpu->Read(&v.uv1.x, 4);
@@ -376,12 +376,12 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
             case Semantic::UV3:
                 break;
 
-            // â”€â”€ Bone indices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Bone indices ─────────────────────────────────────────────
             // C# ref (GoWRknk.cs:707-805): the BoneIdx element's compCount
             // selects the encoding mode (`num46` in C#):
-            //   compCount=1, fmt=Uint8 / Uint16: 4 Ã— raw indices (4-influence)
-            //   compCount=2, fmt=Uint16:         7 Ã— u16 + 1 u16 pad (7-influence)
-            //   compCount=3, fmt=R10G10B10:      4 Ã— u32 holding 10 Ã— 11-bit
+            //   compCount=1, fmt=Uint8 / Uint16: 4 × raw indices (4-influence)
+            //   compCount=2, fmt=Uint16:         7 × u16 + 1 u16 pad (7-influence)
+            //   compCount=3, fmt=R10G10B10:      4 × u32 holding 10 × 11-bit
             //                                    bone indices (10-influence)
             // We only store the first 4 in v.boneIndices regardless.
             // The index width comes from the format byte, not from compCount.
@@ -473,7 +473,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                 break;
             }
 
-            // â”€â”€ Tangent (not needed for geometry display) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Tangent (not needed for geometry display) ────────────────
             case Semantic::Tangent:
                 // Same 10/10/10 packing the normal uses. Whether the two spare
                 // top bits carry the bitangent sign is not established, so
@@ -560,7 +560,7 @@ static void DeriveTangentHandedness(Parsers::MeshPart& part) {
 }
 
 
-// â”€â”€ ReadIndices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReadIndices ────────────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
                                   const SubmeshHeader& hdr,
                                   Parsers::MeshPart& part)
@@ -590,7 +590,7 @@ bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
     return true;
 }
 
-// â”€â”€ Parse (full geometry pass) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parse (full geometry pass) ─────────────────────────────────────────────
 bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
                             std::shared_ptr<Vfs::IFile> gpuFile,
                             Parsers::MeshData& outData,
@@ -637,7 +637,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
         bool valid = true;
         for (const auto& c : comps) {
             if (c.bufferIdx >= bufOffsets.size()) {
-                LOG_WARN("[GOWRMeshParser] SM#%u: comp semantic=%u bufIdx=%u >= bufCount=%u â€” skip",
+                LOG_WARN("[GOWRMeshParser] SM#%u: comp semantic=%u bufIdx=%u >= bufCount=%u — skip",
                          smIdx, (uint8_t)c.semantic, c.bufferIdx, hdr.bufferCount);
                 valid = false;
                 break;
@@ -697,7 +697,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
     return !outData.parts.empty();
 }
 
-// â”€â”€ ParseMeshDefn (header-only, for tree inspector + lodpack lookup) â”€â”€â”€â”€â”€â”€â”€
+// ── ParseMeshDefn (header-only, for tree inspector + lodpack lookup) ───────
 bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
                                     std::shared_ptr<Vfs::IFile> /*lodpackFile*/,
                                     std::vector<std::shared_ptr<GpuMesh>>& /*outMeshes*/)
@@ -722,7 +722,7 @@ bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
     return true;
 }
 
-// â”€â”€ ParseWithLodPack (full parse using a LodPackIndex) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ParseWithLodPack (full parse using a LodPackIndex) ─────────────────────
 // This is the main entry point for production use.
 // It mirrors the C# Main() loop: for each submesh, looks up the LOD blob in
 // the lodpack, wraps it in a MemoryFile, and calls the standard ReadVertices/
@@ -753,9 +753,9 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
             continue;
         }
 
-        // â”€â”€ LOD source selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // meshHash == 0 â†’ data is embedded in the GPU file (internal LOD)
-        // meshHash != 0 â†’ look up in lodpack
+        // ── LOD source selection ─────────────────────────────────────────
+        // meshHash == 0 → data is embedded in the GPU file (internal LOD)
+        // meshHash != 0 → look up in lodpack
         std::shared_ptr<Vfs::IFile> lodFile;
 
         if (hdr.meshHash == 0) {
@@ -765,7 +765,7 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
         } else {
             const LodEntry* entry = lodIdx.Find(hdr.meshHash);
             if (!entry) {
-                LOG_WARN("[GOWRMeshParser] SM#%u: LOD not found for hash=0x%016llX â€” skipping",
+                LOG_WARN("[GOWRMeshParser] SM#%u: LOD not found for hash=0x%016llX — skipping",
                          smIdx, (unsigned long long)hdr.meshHash);
                 ++skipped;
                 continue;
@@ -773,7 +773,7 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
 
             std::vector<uint8_t> blob;
             if (!lodIdx.ReadBlob(*entry, blob)) {
-                LOG_WARN("[GOWRMeshParser] SM#%u: failed to read LOD blob â€” skipping", smIdx);
+                LOG_WARN("[GOWRMeshParser] SM#%u: failed to read LOD blob — skipping", smIdx);
                 ++skipped;
                 continue;
             }

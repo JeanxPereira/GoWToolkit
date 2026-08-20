@@ -3,7 +3,7 @@
 #include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
 
-// â”€â”€ Role-based color / icon (GOWR WAD entries) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Role-based color / icon (GOWR WAD entries) ────────────────────────────
 
 inline ImVec4 ColorForRole(Onyx::Gowr::WadEntryRole role) {
   switch (role) {

@@ -21,7 +21,7 @@ struct SoundPlayer::AudioDevice {
   bool initialized = false;
 };
 
-// â”€â”€ Audio callback (runs on audio thread) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Audio callback (runs on audio thread) ─────────────────────────────────
 
 static void ma_data_callback(ma_device *pDevice, void *pOutput,
                              const void * /*pInput*/, ma_uint32 frameCount) {
@@ -62,7 +62,7 @@ void SoundPlayer::FillAudioBuffer(int16_t *output, uint32_t frameCount) {
   }
 }
 
-// â”€â”€ Constructor / Destructor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Constructor / Destructor ──────────────────────────────────────────────
 
 SoundPlayer::SoundPlayer(
     const std::string &name,
@@ -97,7 +97,7 @@ SoundPlayer::~SoundPlayer() { ShutdownAudioDevice(); }
 
 std::string SoundPlayer::GetName() const { return m_name; }
 
-// â”€â”€ Audio device management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Audio device management ───────────────────────────────────────────────
 
 void SoundPlayer::InitAudioDevice() {
   ma_device_config config = ma_device_config_init(ma_device_type_playback);
@@ -122,7 +122,7 @@ void SoundPlayer::ShutdownAudioDevice() {
   }
 }
 
-// â”€â”€ Playback controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Playback controls ─────────────────────────────────────────────────────
 
 void SoundPlayer::SelectSound(int index) {
   if (index < 0 || index >= (int)m_bankData->sounds.size())
@@ -184,7 +184,7 @@ void SoundPlayer::Stop() {
     ma_device_stop(&m_audio->device);
 }
 
-// â”€â”€ Drawing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Drawing ───────────────────────────────────────────────────────────────
 
 void SoundPlayer::Draw() {
   if (!m_bankData && !m_singleSoundMode) {

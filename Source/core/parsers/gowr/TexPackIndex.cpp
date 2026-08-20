@@ -30,7 +30,7 @@ struct RawBlockInfo {
 };
 #pragma pack(pop)
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 // Decompress a complete LZ4 frame file into `out`. Returns true on success.
 static bool DecompressLz4Frame(const std::filesystem::path& path,
@@ -94,7 +94,7 @@ static bool DecompressLz4Frame(const std::filesystem::path& path,
 void TexPackIndex::LoadFileHashes(const std::filesystem::path& csvLz4Path) {
     std::vector<char> buf;
     if (!DecompressLz4Frame(csvLz4Path, buf)) {
-        LOG_INFO("[TexPackIndex] filehashes.csv missing or unreadable â€” patch-hint disabled");
+        LOG_INFO("[TexPackIndex] filehashes.csv missing or unreadable — patch-hint disabled");
         return;
     }
 
@@ -126,7 +126,7 @@ void TexPackIndex::LoadFileHashes(const std::filesystem::path& csvLz4Path) {
     LOG_INFO("[TexPackIndex] filehashes.csv: %zu hash hints loaded", m_hashToPack.size());
 }
 
-// â”€â”€ LoadFromGameRoot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LoadFromGameRoot ───────────────────────────────────────────────────────
 
 void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
     if (gameRoot.empty()) { SetLoaded(); return; }
@@ -172,7 +172,7 @@ void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
 
     if (packCount == 0) { SetLoaded(); return; }
 
-    // Heuristic: prioritize `root.texpack` first â€” it holds cross-pack
+    // Heuristic: prioritize `root.texpack` first — it holds cross-pack
     // textures referenced by character WADs and is the most common early hit.
     std::vector<uint32_t> order;
     order.reserve(packCount);
@@ -184,7 +184,7 @@ void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
         }
     }
 
-    // Fan out â€” one background task per pack. Heavy work (LZ4 + parse) runs
+    // Fan out — one background task per pack. Heavy work (LZ4 + parse) runs
     // outside the mutex; only the final merge into m_entries holds it briefly.
     for (uint32_t packIdx : order) {
         Services::TaskManager::createBackgroundTask(
@@ -199,7 +199,7 @@ void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
     }
 }
 
-// â”€â”€ IndexPack â€” heavy work outside lock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── IndexPack — heavy work outside lock ────────────────────────────────────
 
 bool TexPackIndex::IndexPack(uint32_t packIdx) {
     std::filesystem::path tocPath;
@@ -215,7 +215,7 @@ bool TexPackIndex::IndexPack(uint32_t packIdx) {
         texpackPath = m_packs[packIdx].texpackPath;
     }
 
-    // No lock held below â€” parallel workers can run in parallel.
+    // No lock held below — parallel workers can run in parallel.
     std::vector<char> buffer;
     if (!DecompressLz4Frame(tocPath, buffer)) {
         LOG_WARN("[TexPackIndex] Failed to decompress %s", tocPath.string().c_str());
@@ -304,7 +304,7 @@ bool TexPackIndex::IndexPack(uint32_t packIdx) {
     return true;
 }
 
-// â”€â”€ FindTexture â€” cache lookup only, non-blocking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── FindTexture — cache lookup only, non-blocking ──────────────────────────
 
 bool TexPackIndex::FindTexture(uint64_t hash, TexpackEntry& outEntry) {
     std::lock_guard<std::mutex> lock(m_mutex);

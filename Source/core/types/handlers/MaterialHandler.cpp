@@ -1,4 +1,4 @@
-// Material handler Ã¢â‚¬â€ GOW1/2 material definition
+// Material handler — GOW1/2 material definition
 // Magic: 0x00000008 (MAT_MAGIC in god_of_war_browser)
 
 #include <Onyx/Types/TypeRegistry.h>
@@ -74,7 +74,7 @@ public:
                 entry.name, 
                 std::move(matData), 
                 [](const std::string& texName) -> unsigned int {
-                    return 0; // Fallback Ã¢â‚¬â€ textures are now passed directly
+                    return 0; // Fallback — textures are now passed directly
                 },
                 std::move(textures)
             );
