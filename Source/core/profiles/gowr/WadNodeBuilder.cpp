@@ -663,8 +663,8 @@ static Types::TypeId RoleToTypeId(WadEntryRole role) {
 AssetEntry WadNodeBuilder::ToNode(const RawEntry& r, const std::string& wadFilename) {
     AssetEntry e;
     e.name        = r.name;
-    e.size        = r.size;
-    e.offset      = r.offset;
+    e.source.size   = r.size;
+    e.source.offset = r.offset;
     e.wadName     = wadFilename;
     e.typeId      = RoleToTypeId(r.role);
     e.kind        = Types::KindOf(e.typeId);
@@ -686,7 +686,7 @@ AssetEntry WadNodeBuilder::MakeFolder(
     f.name       = name;
     f.typeId     = RoleToTypeId(role);
     f.wadName    = m_wadFilename;
-    f.offset     = 0;
+    f.source.offset = 0;
     f.kind       = Types::KindOf(f.typeId);
     f.profileTag = Onyx::Domain::ProfileTag::Of(Gowr::GowrProfileTag{
         role,

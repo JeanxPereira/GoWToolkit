@@ -21,12 +21,12 @@ std::unique_ptr<GOW2MaterialParser::MaterialData> GOW2MaterialParser::Parse(cons
     if (!fileSource) return nullptr;
 
     // Header MAT tem 0x38 bytes
-    if (matEntry.size < 0x38) return nullptr;
+    if (matEntry.source.size < 0x38) return nullptr;
 
-    std::vector<uint8_t> buf(matEntry.size);
-    Vfs::SliceFile slice(fileSource, matEntry.offset, matEntry.size);
+    std::vector<uint8_t> buf(matEntry.source.size);
+    Vfs::SliceFile slice(fileSource, matEntry.source.offset, matEntry.source.size);
     slice.Seek(0, SEEK_SET);
-    slice.Read(buf.data(), matEntry.size);
+    slice.Read(buf.data(), matEntry.source.size);
 
     uint32_t magic = *(uint32_t*)(buf.data());
     if (magic != 0x08) return nullptr;

@@ -149,8 +149,8 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
 
         AssetEntry entry;
         entry.name   = std::string(rawTag.name, strnlen(rawTag.name, 24));
-        entry.size   = rawTag.size;
-        entry.offset = pos;
+        entry.source.size   = rawTag.size;
+        entry.source.offset = pos;
         entry.wadName = outWad.filename;
 
         // ── Type Identification ──
@@ -216,13 +216,13 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
             auto it = nameToDefinition.find(entry.name);
             if (it != nameToDefinition.end()) {
                 entry.typeId  = it->second.typeId;
-                entry.offset  = it->second.offset;
-                entry.size    = it->second.size;
+                entry.source.offset  = it->second.offset;
+                entry.source.size    = it->second.size;
 
             }
         } else if (rawTag.size > 0 && !entry.name.empty()) {
             // Cache real definitions for reference resolution above
-            nameToDefinition[entry.name] = { entry.typeId, entry.offset, entry.size };
+            nameToDefinition[entry.name] = { entry.typeId, entry.source.offset, entry.source.size };
         }
 
         entry.kind = KindOf(entry.typeId);
@@ -251,12 +251,12 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
     // Pass 2: resolve zero-sized and unknown types from forward references
     std::function<void(std::vector<AssetEntry>&)> resolveUnknowns = [&](std::vector<AssetEntry>& list) {
         for (auto& n : list) {
-            if (n.size == 0 && n.typeId == GameTypes::Unknown && !n.name.empty()) {
+            if (n.source.size == 0 && n.typeId == GameTypes::Unknown && !n.name.empty()) {
                 auto it = nameToDefinition.find(n.name);
                 if (it != nameToDefinition.end()) {
                     n.typeId = it->second.typeId;
-                    n.offset = it->second.offset;
-                    n.size   = it->second.size;
+                    n.source.offset = it->second.offset;
+                    n.source.size   = it->second.size;
 
                     n.kind = KindOf(n.typeId);
                 }
@@ -359,8 +359,8 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<Vfs::IVirtualFileSystem> v
 
         AssetEntry entry;
         entry.name = std::string(raw.name, strnlen(raw.name, 24));
-        entry.size   = raw.size;
-        entry.offset = (int64_t)realSector * SECTOR_SIZE;
+        entry.source.size   = raw.size;
+        entry.source.offset = (int64_t)realSector * SECTOR_SIZE;
         entry.wadName = pakName;
         entry.hash = std::hash<std::string>{}(entry.name);
         assignSchemaType(entry);

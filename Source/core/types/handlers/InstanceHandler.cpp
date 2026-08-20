@@ -45,7 +45,7 @@ static const AssetEntry* FindEntryByName(
     const std::string& name)
 {
     for (const auto& n : tree) {
-        if (n.name == name && (!n.children.empty() || n.size > 0))
+        if (n.name == name && (!n.children.empty() || n.source.size > 0))
             return &n;
         if (auto found = FindEntryByName(n.children, name))
             return found;
@@ -86,7 +86,7 @@ public:
 
             // If this instance is a zero-sized reference (no children),
             // try to find the original definition with children
-            if (entry.children.empty() && entry.size > 0 && !entry.name.empty()) {
+            if (entry.children.empty() && entry.source.size > 0 && !entry.name.empty()) {
                 std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findOriginal =
                     [&](const std::vector<AssetEntry>& list) -> const AssetEntry* {
                     for (const auto& n : list) {

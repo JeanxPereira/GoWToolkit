@@ -46,7 +46,7 @@ static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
 static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
                                           const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& n : tree) {
-        if (n.typeId == type && n.name == name && n.size > 0)
+        if (n.typeId == type && n.name == name && n.source.size > 0)
             return &n;
         if (auto found = ResolvePayload(n.children, name, type))
             return found;
@@ -111,11 +111,11 @@ public:
         std::vector<const AssetEntry*> matEntries;
 
         for (const auto& child : model->children) {
-            if (child.typeId == Onyx::GameTypes::Mesh && child.size > 0) {
+            if (child.typeId == Onyx::GameTypes::Mesh && child.source.size > 0) {
                 meshSources.push_back(&child);
             } else if (child.typeId == Onyx::GameTypes::Material) {
                 const AssetEntry* mat = &child;
-                if (mat->size == 0) {
+                if (mat->source.size == 0) {
                     if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::GameTypes::Material))
                         mat = real;
                 }
@@ -156,8 +156,8 @@ public:
 
         // Parse mesh geometry
         for (const auto* src : meshSources) {
-            Onyx::Vfs::SliceFile slice(wad.fileSource, src->offset, src->size);
-            if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->size)) {
+            Onyx::Vfs::SliceFile slice(wad.fileSource, src->source.offset, src->source.size);
+            if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->source.size)) {
                 for (auto& p : data->parts) {
                     p.materialId += materialOffset;
                     scene->meshParts.push_back(std::move(p));
@@ -171,7 +171,7 @@ public:
         // SceneRenderer (which reads part.isSky into RenderBatch::isSky) can
         // route them through the sky pass.
         for (const auto& child : model->children) {
-            if (child.typeId == Onyx::GameTypes::Script && child.size > 0) {
+            if (child.typeId == Onyx::GameTypes::Script && child.source.size > 0) {
                 std::string target = Onyx::Parsers::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
                 if (target == "SCR_Sky") {
                     scene->isSky = true;

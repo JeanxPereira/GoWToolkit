@@ -76,14 +76,14 @@ static bool IsSkyInstance(const std::string& name) {
 // ── Parser ─────────────────────────────────────────────────────────────────
 
 std::shared_ptr<InstanceData> GOW2InstanceParser::Parse(const AssetEntry& entry, std::shared_ptr<Vfs::IFile> parentFile) {
-    if (!parentFile || entry.size < 0x60) return nullptr;
+    if (!parentFile || entry.source.size < 0x60) return nullptr;
 
     auto data = std::make_shared<InstanceData>();
 
     // Read the entire buffer for this instance
-    std::vector<uint8_t> buf(entry.size);
-    parentFile->Seek(entry.offset, SEEK_SET);
-    if (parentFile->Read(buf.data(), entry.size) != entry.size) return nullptr;
+    std::vector<uint8_t> buf(entry.source.size);
+    parentFile->Seek(entry.source.offset, SEEK_SET);
+    if (parentFile->Read(buf.data(), entry.source.size) != entry.source.size) return nullptr;
 
     // Sky detection from entry name
     data->isSky = IsSkyInstance(entry.name);

@@ -71,17 +71,17 @@ void CliApp::PrintHelp() {
 static void PrintEntryTree(const AssetEntry& entry, int depth) {
     std::string indent(depth * 2, ' ');
     std::string sizeStr;
-    if (entry.size >= 1024 * 1024)
-        sizeStr = std::to_string(entry.size / (1024 * 1024)) + " MB";
-    else if (entry.size >= 1024)
-        sizeStr = std::to_string(entry.size / 1024) + " KB";
+    if (entry.source.size >= 1024 * 1024)
+        sizeStr = std::to_string(entry.source.size / (1024 * 1024)) + " MB";
+    else if (entry.source.size >= 1024)
+        sizeStr = std::to_string(entry.source.size / 1024) + " KB";
     else
-        sizeStr = std::to_string(entry.size) + " B";
+        sizeStr = std::to_string(entry.source.size) + " B";
 
     std::cout << indent << entry.name
               << "  [" << Onyx::Types::TypeCatalog::Get().Label(entry.typeId) << "]"
               << "  size=" << sizeStr
-              << "  off=0x" << std::hex << std::setfill('0') << std::setw(8) << entry.offset << std::dec
+              << "  off=0x" << std::hex << std::setfill('0') << std::setw(8) << entry.source.offset << std::dec
               << "\n";
 
     for (const auto& child : entry.children)
@@ -174,7 +174,7 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
     std::cout << "[CLI] Parsed " << load.container.entries.size() << " top-level entries.\n";
     std::cout << "[CLI] Found: '" << load.entry->name << "' ["
               << Onyx::Types::TypeCatalog::Get().Label(load.entry->typeId) << "]"
-              << " size=" << load.entry->size
+              << " size=" << load.entry->source.size
               << " children=" << load.entry->children.size() << "\n";
 
     if (load.scene->IsEmpty())
@@ -231,11 +231,11 @@ int CliApp::HandleExtract(const std::vector<std::string>& args) {
         std::ofstream out(outPath, std::ios::binary);
         if (!out) { std::cerr << "[CLI] Cannot write: " << outPath << "\n"; continue; }
 
-        std::vector<uint8_t> buf(e.size);
+        std::vector<uint8_t> buf(e.source.size);
         childFile->Seek(0, SEEK_SET);
-        childFile->Read(buf.data(), e.size);
+        childFile->Read(buf.data(), e.source.size);
         out.write(reinterpret_cast<const char*>(buf.data()), buf.size());
-        std::cout << "  Extracted: " << e.name << " (" << e.size << " bytes)\n";
+        std::cout << "  Extracted: " << e.name << " (" << e.source.size << " bytes)\n";
         ++extracted;
     }
 

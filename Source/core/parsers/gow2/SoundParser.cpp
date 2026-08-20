@@ -27,16 +27,16 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
         ONYX_LOGF_ERR("[GOW2Sound] fileSource is null for SFX %s", entry.name.c_str());
         return nullptr;
     }
-    if (entry.size < 8) {
-        ONYX_LOGF_ERR("[GOW2Sound] SFX %s is too small: %u bytes", entry.name.c_str(), entry.size);
+    if (entry.source.size < 8) {
+        ONYX_LOGF_ERR("[GOW2Sound] SFX %s is too small: %u bytes", entry.name.c_str(), entry.source.size);
         return nullptr;
     }
 
     // Read entire entry data
-    std::vector<uint8_t> buf(entry.size);
-    Vfs::SliceFile slice(fileSource, entry.offset, entry.size);
+    std::vector<uint8_t> buf(entry.source.size);
+    Vfs::SliceFile slice(fileSource, entry.source.offset, entry.source.size);
     slice.Seek(0, SEEK_SET);
-    size_t bytesRead = slice.Read(buf.data(), entry.size);
+    size_t bytesRead = slice.Read(buf.data(), entry.source.size);
     if (bytesRead < 8) {
         ONYX_LOGF_ERR("[GOW2Sound] Failed to read SFX data for %s", entry.name.c_str());
         return nullptr;
@@ -47,7 +47,7 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     uint32_t soundsCount = ReadU32LE(buf.data() + 4);
 
     ONYX_LOGF_INFO("[GOW2Sound] Parsing SFX '%s': serverId=0x%X, soundsCount=%u, totalSize=%u",
-             entry.name.c_str(), serverId, soundsCount, entry.size);
+             entry.name.c_str(), serverId, soundsCount, entry.source.size);
 
     if (soundsCount == 0 || soundsCount > 10000) {
         ONYX_LOGF_ERR("[GOW2Sound] Suspicious sound count: %u for %s", soundsCount, entry.name.c_str());

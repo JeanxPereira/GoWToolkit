@@ -16,7 +16,7 @@ namespace {
 
 static const AssetEntry* FindEntryWithPayload(const std::vector<AssetEntry>& entries, const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& entry : entries) {
-        if (entry.typeId == type && entry.name == name && entry.size > 0)
+        if (entry.typeId == type && entry.name == name && entry.source.size > 0)
             return &entry;
         if (!entry.children.empty()) {
             if (auto found = FindEntryWithPayload(entry.children, name, type))
@@ -50,7 +50,7 @@ public:
         if (!wad.fileSource) return nullptr;
         
         const AssetEntry* matEntryToParse = &entry;
-        if (matEntryToParse->size == 0) {
+        if (matEntryToParse->source.size == 0) {
             if (auto realMat = FindEntryWithPayload(wad.entries, matEntryToParse->name, Onyx::GameTypes::Material))
                 matEntryToParse = realMat;
         }

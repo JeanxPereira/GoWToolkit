@@ -210,8 +210,8 @@ void WadBrowser::Draw() {
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
                     ImGui::BeginTooltip();
                     ImGui::Text("Type: %s", TypeName(entry.typeId));
-                    ImGui::Text("Offset: 0x%08X", entry.offset);
-                    ImGui::Text("Size: %s", FormatBytes(entry.size).c_str());
+                    ImGui::Text("Offset: 0x%08X", entry.source.offset);
+                    ImGui::Text("Size: %s", FormatBytes(entry.source.size).c_str());
                     ImGui::EndTooltip();
                 }
 
@@ -219,7 +219,7 @@ void WadBrowser::Draw() {
                 if (ImGui::BeginPopupContextItem()) {
                     ImGui::TextDisabled("%s", entry.name.c_str());
                     ImGui::TextDisabled("%s  |  %s", TypeName(entry.typeId),
-                                        FormatBytes(entry.size).c_str());
+                                        FormatBytes(entry.source.size).c_str());
                     ImGui::Separator();
 
                     if (wad.fileSource &&
@@ -260,9 +260,9 @@ void WadBrowser::Draw() {
                         ImGui::MenuItem(ICON_SF_SQUARE_AND_ARROW_DOWN " Extract File")) {
                         std::string savePath = SystemSaveFileDialog(entry.name);
                         if (!savePath.empty()) {
-                            std::vector<uint8_t> dumpData(entry.size);
-                            wad.fileSource->Seek(entry.offset, 0);
-                            wad.fileSource->Read(dumpData.data(), entry.size);
+                            std::vector<uint8_t> dumpData(entry.source.size);
+                            wad.fileSource->Seek(entry.source.offset, 0);
+                            wad.fileSource->Read(dumpData.data(), entry.source.size);
                             if (!dumpData.empty()) {
                                 std::ofstream out(savePath, std::ios::binary);
                                 if (out.is_open()) {

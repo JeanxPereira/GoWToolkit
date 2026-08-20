@@ -39,7 +39,7 @@ void Inspector::Draw() {
 
     // Second line: WAD + size
     ImGui::TextDisabled("%s  |  %s", entry->wadName.c_str(),
-                        FormatBytes(entry->size).c_str());
+                        FormatBytes(entry->source.size).c_str());
 
     // ── Context menu on header ──────────────────────────────────────────
     if (ImGui::BeginPopupContextItem("InspectorHeaderCtx")) {
@@ -53,7 +53,7 @@ void Inspector::Draw() {
         }
         {
             char offsetStr[32];
-            snprintf(offsetStr, sizeof(offsetStr), "0x%08X", entry->offset);
+            snprintf(offsetStr, sizeof(offsetStr), "0x%08X", entry->source.offset);
             if (ImGui::MenuItem(ICON_SF_ARROW_RIGHT "  Copy Offset")) {
                 ImGui::SetClipboardText(offsetStr);
             }

@@ -200,16 +200,16 @@ std::unique_ptr<Parsers::TextureData> GOW2TextureParser::Parse(
     const std::vector<AssetEntry>& siblingEntries,
     const std::shared_ptr<Vfs::IFile>& fileSource)
 {
-    if (!fileSource || txrEntry.size < 0x58) {
-        ONYX_LOGF_ERR("[GOW2Texture] TXR entry too small: %u bytes", txrEntry.size);
+    if (!fileSource || txrEntry.source.size < 0x58) {
+        ONYX_LOGF_ERR("[GOW2Texture] TXR entry too small: %u bytes", txrEntry.source.size);
         return nullptr;
     }
-    
+
     // Read TXR tag data
-    std::vector<uint8_t> txrBuf(txrEntry.size);
-    Vfs::SliceFile txrSlice(fileSource, txrEntry.offset, txrEntry.size);
+    std::vector<uint8_t> txrBuf(txrEntry.source.size);
+    Vfs::SliceFile txrSlice(fileSource, txrEntry.source.offset, txrEntry.source.size);
     txrSlice.Seek(0, SEEK_SET);
-    txrSlice.Read(txrBuf.data(), txrEntry.size);
+    txrSlice.Read(txrBuf.data(), txrEntry.source.size);
     
     uint32_t magic = *(uint32_t*)(txrBuf.data() + 0);
     if (magic != 0x07) {
@@ -241,24 +241,24 @@ std::unique_ptr<Parsers::TextureData> GOW2TextureParser::Parse(
     }
     
     // Read and parse GFX (pixel data)
-    std::vector<uint8_t> gfxBuf(gfxEntry->size);
-    Vfs::SliceFile gfxSlice(fileSource, gfxEntry->offset, gfxEntry->size);
+    std::vector<uint8_t> gfxBuf(gfxEntry->source.size);
+    Vfs::SliceFile gfxSlice(fileSource, gfxEntry->source.offset, gfxEntry->source.size);
     gfxSlice.Seek(0, SEEK_SET);
-    gfxSlice.Read(gfxBuf.data(), gfxEntry->size);
-    
-    auto gfxData = ParseGFX(gfxBuf.data(), gfxEntry->size);
+    gfxSlice.Read(gfxBuf.data(), gfxEntry->source.size);
+
+    auto gfxData = ParseGFX(gfxBuf.data(), gfxEntry->source.size);
     if (!gfxData) {
         ONYX_LOGF_ERR("[GOW2Texture] Failed to parse GFX '%s'", gfxName.c_str());
         return nullptr;
     }
-    
+
     // Read and parse PAL (palette data)
-    std::vector<uint8_t> palBuf(palEntry->size);
-    Vfs::SliceFile palSlice(fileSource, palEntry->offset, palEntry->size);
+    std::vector<uint8_t> palBuf(palEntry->source.size);
+    Vfs::SliceFile palSlice(fileSource, palEntry->source.offset, palEntry->source.size);
     palSlice.Seek(0, SEEK_SET);
-    palSlice.Read(palBuf.data(), palEntry->size);
-    
-    auto palData = ParseGFX(palBuf.data(), palEntry->size);
+    palSlice.Read(palBuf.data(), palEntry->source.size);
+
+    auto palData = ParseGFX(palBuf.data(), palEntry->source.size);
     if (!palData) {
         ONYX_LOGF_ERR("[GOW2Texture] Failed to parse PAL '%s'", palName.c_str());
         return nullptr;

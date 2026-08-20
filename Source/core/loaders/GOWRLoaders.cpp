@@ -419,13 +419,13 @@ static bool DecodeTextureFromWad(AssetContainer& wad,
     const AssetEntry* pay  = nullptr;
     for (const AssetEntry* e : flat) {
         if (e->name != name) continue;
-        if (e->size == descSize) desc = e;
-        if (e->size == paySize)  pay  = e;
+        if (e->source.size == descSize) desc = e;
+        if (e->source.size == paySize)  pay  = e;
     }
     if (!desc || !pay) { error = "entries not reachable from the tree"; return false; }
 
-    auto dFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, desc->offset, desc->size);
-    auto pFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, pay->offset, pay->size);
+    auto dFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, desc->source.offset, desc->source.size);
+    auto pFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, pay->source.offset, pay->source.size);
     return GOWRDecodeResidentTexture(dFile, pFile, name, out, error);
 }
 
@@ -440,13 +440,13 @@ static std::vector<std::string> ResolveMeshMaterials(
     if (matCount == 0) return out;
 
     for (size_t i = 0; i + 1 < descs.size(); ++i) {
-        if (descs[i].name != meshEntry.name || descs[i].size != meshEntry.size) continue;
+        if (descs[i].name != meshEntry.name || descs[i].size != meshEntry.source.size) continue;
 
         const WadDescriptor& next = descs[i + 1];
         for (const AssetEntry* e : flat) {
-            if (e->name != next.name || e->size != next.size) continue;
+            if (e->name != next.name || e->source.size != next.size) continue;
 
-            auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, e->offset, e->size);
+            auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, e->source.offset, e->source.size);
             std::vector<MatReference> refs;
             if (!GOWRMaterialParseRefs(file, refs)) continue;
             if (refs.size() != matCount) continue;
@@ -474,9 +474,9 @@ static MaterialRefIndex BuildMaterialRefIndex(
     MaterialRefIndex index;
 
     for (const AssetEntry* e : flat) {
-        if (e->size < 8 + 76 || e->size > (1u << 20)) continue;
+        if (e->source.size < 8 + 76 || e->source.size > (1u << 20)) continue;
 
-        auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, e->offset, e->size);
+        auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, e->source.offset, e->source.size);
         std::vector<MatReference> refs;
         if (!GOWRMaterialParseRefs(file, refs)) continue;
 
@@ -496,7 +496,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
 
     // ── Slice the MESH file ────────────────────────────────────────────
     auto meshFile = std::make_shared<Vfs::SliceFile>(
-        wad.fileSource, entry.offset, entry.size);
+        wad.fileSource, entry.source.offset, entry.source.size);
 
     // ── Find the paired MG_GPU sibling ────────────────────────────────
     // Strip prefix (MESH_ or MG_) and trailing ---NNNNN hash to get the base name.
@@ -543,9 +543,9 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     const AssetEntry* gpuEntry = findGpu(wad.entries);
     if (gpuEntry) {
         gpuFile = std::make_shared<Vfs::SliceFile>(
-            wad.fileSource, gpuEntry->offset, gpuEntry->size);
+            wad.fileSource, gpuEntry->source.offset, gpuEntry->source.size);
         ONYX_LOGF_INFO("[GOWRLoaders] GPU: %s (size=%u)",
-                 gpuEntry->name.c_str(), gpuEntry->size);
+                 gpuEntry->name.c_str(), gpuEntry->source.size);
     } else if (isInstance) {
         // Most GO instances are not meshes at all (lights, emitters, triggers),
         // so a missing sibling is the normal case rather than a problem.
@@ -602,9 +602,9 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     const AssetEntry* mgEntry = findMg(wad.entries);
     if (mgEntry) {
         mgFile = std::make_shared<Vfs::SliceFile>(
-            wad.fileSource, mgEntry->offset, mgEntry->size);
+            wad.fileSource, mgEntry->source.offset, mgEntry->source.size);
         ONYX_LOGF_INFO("[GOWRLoaders] MG bone-binding: %s (size=%u)",
-                 mgEntry->name.c_str(), mgEntry->size);
+                 mgEntry->name.c_str(), mgEntry->source.size);
     }
 
     // ── DIAGNOSTIC: locate paired MDL_<base> and dump first 512 bytes plus
@@ -640,9 +640,9 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         };
 
         if (const AssetEntry* mdlEntry = findMdl(wad.entries)) {
-            const uint32_t dumpSz = std::min<uint32_t>(mdlEntry->size, 512u);
+            const uint32_t dumpSz = std::min<uint32_t>(mdlEntry->source.size, 512u);
             std::vector<uint8_t> buf(dumpSz);
-            wad.fileSource->Seek(mdlEntry->offset, 0);
+            wad.fileSource->Seek(mdlEntry->source.offset, 0);
             wad.fileSource->Read(buf.data(), dumpSz);
             std::string hex; hex.reserve(dumpSz * 3 + 8);
             char tmp[4];
@@ -651,13 +651,13 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                 hex += tmp;
             }
             ONYX_LOGF_DEBUG("[GOWRLoaders] MDL '%s' size=%u first %u bytes: %s",
-                     mdlEntry->name.c_str(), mdlEntry->size, dumpSz, hex.c_str());
+                     mdlEntry->name.c_str(), mdlEntry->source.size, dumpSz, hex.c_str());
 
             // Also dump last 256 bytes if file is larger than dumpSz
-            if (mdlEntry->size > 512) {
-                const uint32_t tailSz = std::min<uint32_t>(mdlEntry->size - 512, 256u);
+            if (mdlEntry->source.size > 512) {
+                const uint32_t tailSz = std::min<uint32_t>(mdlEntry->source.size - 512, 256u);
                 std::vector<uint8_t> tail(tailSz);
-                wad.fileSource->Seek(mdlEntry->offset + mdlEntry->size - tailSz, 0);
+                wad.fileSource->Seek(mdlEntry->source.offset + mdlEntry->source.size - tailSz, 0);
                 wad.fileSource->Read(tail.data(), tailSz);
                 std::string thex; thex.reserve(tailSz * 3 + 8);
                 for (uint32_t b = 0; b < tailSz; ++b) {
@@ -712,7 +712,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         const AssetEntry* protoEntry = findProto(wad.entries);
         if (protoEntry) {
             auto protoFile = std::make_shared<Vfs::SliceFile>(
-                wad.fileSource, protoEntry->offset, protoEntry->size);
+                wad.fileSource, protoEntry->source.offset, protoEntry->source.size);
             skeleton = GOWRProtoParser::Parse(protoFile);
             if (skeleton) {
                 ONYX_LOGF_INFO("[GOWRLoaders] Proto rig '%s': %zu bones",
@@ -787,7 +787,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
 
     std::unordered_map<std::string, const AssetEntry*> matByName;
     for (const AssetEntry* e : flat)
-        if (GetRole(*e) == Gowr::WadEntryRole::Material && e->size > 0)
+        if (GetRole(*e) == Gowr::WadEntryRole::Material && e->source.size > 0)
             matByName.emplace(e->name, e);
 
     std::vector<const AssetEntry*> matEntries;
@@ -824,7 +824,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                      "absent from this WAD", mi, matNames[mi].c_str());
             continue;
         }
-        auto matFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, me->offset, me->size);
+        auto matFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, me->source.offset, me->source.size);
         auto it      = refIndex.find(MaterialHashKey(me->name));
         auto refFile = (it != refIndex.end()) ? it->second : nullptr;
 
@@ -1410,9 +1410,9 @@ private:
 };
 
 std::shared_ptr<Viewers::IDocumentContent> GOWRShaderHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    if (!wad.fileSource || entry.size == 0) return nullptr;
+    if (!wad.fileSource || entry.source.size == 0) return nullptr;
 
-    auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.offset, entry.size);
+    auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.source.offset, entry.source.size);
     auto data = GOWRShaderParse(file);
     if (!data) return nullptr;
 
@@ -1557,12 +1557,12 @@ private:
 
 std::shared_ptr<Viewers::IDocumentContent> GOWRMaterialHandler::CreateViewer(
         const AssetEntry& entry, AssetContainer& wad) {
-    if (!wad.fileSource || entry.size == 0) return nullptr;
+    if (!wad.fileSource || entry.source.size == 0) return nullptr;
 
     std::vector<const AssetEntry*> flat;
     FlattenEntries(wad.entries, flat);
 
-    auto matFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.offset, entry.size);
+    auto matFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.source.offset, entry.source.size);
     const MaterialRefIndex refIndex = BuildMaterialRefIndex(wad, flat);
     auto it      = refIndex.find(MaterialHashKey(entry.name));
     auto refFile = (it != refIndex.end()) ? it->second : nullptr;

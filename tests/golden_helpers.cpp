@@ -55,12 +55,12 @@ void FlattenEntry(const AssetEntry& entry,
     ordered_json e;
     e["name"]        = entry.name;
     e["typeId"]      = Onyx::Types::TypeCatalog::Get().Label(entry.typeId);
-    e["size"]        = entry.size;
-    e["offset"]      = entry.offset;
+    e["size"]        = entry.source.size;
+    e["offset"]      = entry.source.offset;
     e["childCount"]  = static_cast<uint64_t>(entry.children.size());
     e["kind"]        = std::string(Onyx::Domain::Name(entry.kind));
-    if (source && entry.size > 0) {
-        e["payloadHash"] = ToHex64(HashEntryPayload(*source, entry.offset, entry.size));
+    if (source && entry.source.size > 0) {
+        e["payloadHash"] = ToHex64(HashEntryPayload(*source, entry.source.offset, entry.source.size));
     } else {
         e["payloadHash"] = "0x0000000000000000";
     }

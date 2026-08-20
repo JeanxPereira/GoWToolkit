@@ -359,8 +359,8 @@ public:
                                                       AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
-    auto slice = std::make_shared<Onyx::Vfs::SliceFile>(wad.fileSource, entry.offset,
-                                                  entry.size);
+    auto slice = std::make_shared<Onyx::Vfs::SliceFile>(wad.fileSource, entry.source.offset,
+                                                  entry.source.size);
     return std::make_shared<Onyx::Viewers::VideoPlayer>(entry.name, slice);
   }
 };
@@ -376,8 +376,8 @@ public:
                                                       AssetContainer &wad) override {
     if (!wad.fileSource)
       return nullptr;
-    auto slice = std::make_shared<Onyx::Vfs::SliceFile>(wad.fileSource, entry.offset,
-                                                  entry.size);
+    auto slice = std::make_shared<Onyx::Vfs::SliceFile>(wad.fileSource, entry.source.offset,
+                                                  entry.source.size);
     return std::make_shared<Onyx::Viewers::VideoPlayer>(entry.name, slice);
   }
 };
