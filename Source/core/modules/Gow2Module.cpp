@@ -19,6 +19,7 @@
 
 #include "core/types/GameTypes.h"
 #include "core/types/WadDispatch.h"
+#include "core/parsers/gow2/TextureParser.h"
 
 // ── Gow2Module.cpp ─────────────────────────────────────────────────────────
 // Ported from ProfileGOW2.{h,cpp} (core/profiles/gow2/). Two independent
@@ -38,11 +39,19 @@
 //     task-3-report.md for how this was verified against every entry, not
 //     only the ones touched by hand.
 //
-// Both bodies end by running FinalizeEntries (below), which stamps
-// source.fileIndex tree-wide (folders included, harmless) and flags -- but
-// keeps in the tree -- any entry whose computed byte range runs past the
-// end of the file it addresses (salvage, task-3-brief.md Decision 4),
-// mirroring GowrModule.cpp's FinalizeEntries (Task 2).
+// Both bodies end by running FinalizeEntries (below), which VALIDATES --
+// it does NOT stamp -- source.fileIndex tree-wide, flagging (but keeping in
+// the tree) any entry whose computed byte range runs past the end of the
+// file it addresses (salvage, task-3-brief.md Decision 4). This is a
+// narrower contract than GowrModule.cpp's FinalizeEntries (Task 2), which
+// genuinely stamps fileIndex tree-wide because GOWR's tree can have folders
+// synthesised after the fact by WadNodeBuilder. GOW2's ISO path builds a
+// flat list with fileIndex already set correctly at each entry's
+// construction site (see ParseIsoToc), and its WAD path never pushes
+// anything beyond fileTable's pre-seeded slot 0 -- so there is nothing left
+// for this function to stamp. A future GOW2 path that pushes a file into
+// fileTable MUST stamp source.fileIndex itself; this function will not do
+// it.
 
 namespace Onyx::Gow2 {
 
@@ -137,11 +146,27 @@ ProbeResult Gow2Module::Probe(const ProbeInput& in) const {
         // its declared payload size does not already overrun the file --
         // the same class of sanity check LoadFromArchive's isGOW2 check
         // applies to the TOC header, just for the tag stream instead.
-        bool knownTag = (t.tag <= WADTAG_GROUP_END) ||
-                        (t.tag >= 11 && t.tag <= 16) ||
-                        t.tag == WADTAG_HEADER_POP ||
-                        t.tag == WADTAG_HEADER_START;
-        bool sizeSane = (uint64_t)sizeof(RawWadTag) + t.size <= in.fileSize;
+        //
+        // Excludes the all-zero record (tag=0, flags=0, size=0) explicitly:
+        // WADTAG_ENTITY_COUNT is 0, so a naive `tag <= WADTAG_GROUP_END`
+        // check alone would score 80 for ANY file whose first 8 bytes
+        // happen to be zero -- not evidence of a GOW2 tag stream, just an
+        // empty/zeroed header many unrelated formats could have.
+        bool allZeroHeader = (t.tag == 0 && t.flags == 0 && t.size == 0);
+        bool knownTag = !allZeroHeader &&
+                        ((t.tag <= WADTAG_GROUP_END) ||
+                         (t.tag >= 11 && t.tag <= 16) ||
+                         t.tag == WADTAG_HEADER_POP ||
+                         t.tag == WADTAG_HEADER_START);
+
+        // RankProbes' ProbeInput overload lets a caller leave fileSize == 0
+        // (unknown), which must NOT be read as "the file is 0 bytes, so any
+        // positive tag size overruns it" -- that would silently demote a
+        // genuine GOW2 wad from 80 to 45 just because the caller didn't
+        // populate fileSize. Only fail the check when fileSize is actually
+        // known and the declared payload provably overruns it.
+        bool sizeSane = (in.fileSize == 0) ||
+                        ((uint64_t)sizeof(RawWadTag) + t.size <= in.fileSize);
 
         if (knownTag && sizeSane) {
             return ProbeResult{80, "readable GOW2 tag stream in header"};
@@ -245,10 +270,9 @@ void Gow2Module::RegisterDecoders(DecoderRegistry& reg) {
     reg.Scene(m_mesh,   &Gow2Module::DecodeSceneStub);
     reg.Scene(m_object, &Gow2Module::DecodeSceneStub);
 
-    // Texture needs sibling GFX/PAL resolution DecodeContext cannot supply
-    // (see Gow2Module.h) -- stubbed for a DIFFERENT reason than the Scene
-    // types above, named distinctly in the diag code below.
-    reg.Image(m_texture, &Gow2Module::DecodeImageStub);
+    // Texture is implemented: GOW2TextureParser::Parse's sibling-resolution
+    // need is satisfied by ctx.doc.roots (see DecodeImage below).
+    reg.Image(m_texture, &Gow2Module::DecodeImage);
 
     // No decoder slot fits Material/Instance (Map)/GfxData/PalData/
     // Animation/Script/Light/Sound/Collision/Flipbook/Chunk/WadFile/
@@ -265,6 +289,16 @@ std::optional<Onyx::Modules::DecodedText> Gow2Module::DecodeTextPlain(DecodeCont
                                "'" + e.name + "' has no payload", std::nullopt});
         return std::nullopt;
     }
+    // FinalizeEntries already validated this entry's range during parse and
+    // flags a node it found out-of-bounds as NodeFlags::Failed -- honor
+    // that instead of re-deciding (and instead of blindly allocating for)
+    // an entry already known to be bad.
+    if (e.flags == NodeFlags::Failed) {
+        ctx.diags.Report(Diag{Severity::Warning, "gow2.text.flagged-failed",
+                               "'" + e.name + "' was flagged Failed during parse "
+                               "(out-of-bounds range) -- not decoded", std::nullopt});
+        return std::nullopt;
+    }
     if (e.source.fileIndex >= ctx.doc.fileTable.size() ||
         !ctx.doc.fileTable[e.source.fileIndex]) {
         ctx.diags.Report(Diag{Severity::Error, "gow2.text.bad-file-index",
@@ -274,10 +308,32 @@ std::optional<Onyx::Modules::DecodedText> Gow2Module::DecodeTextPlain(DecodeCont
         return std::nullopt;
     }
 
-    Vfs::SliceFile slice(ctx.doc.fileTable[e.source.fileIndex],
-                          static_cast<size_t>(e.source.offset),
-                          static_cast<size_t>(e.source.size));
-    std::string text(static_cast<size_t>(e.source.size), '\0');
+    auto& file = ctx.doc.fileTable[e.source.fileIndex];
+    const uint64_t fileSize = static_cast<uint64_t>(file->Size());
+    if (e.source.offset >= fileSize) {
+        ctx.diags.Report(Diag{Severity::Error, "gow2.text.offset-out-of-range",
+                               "'" + e.name + "' offset " + std::to_string(e.source.offset) +
+                                   " is past its file's size " + std::to_string(fileSize),
+                               std::nullopt});
+        return std::nullopt;
+    }
+
+    // Clamp to the file's remaining bytes rather than trusting
+    // e.source.size outright: a corrupt tag stream could otherwise request
+    // an allocation up to ~4 GiB (uint32_t size field) before any content
+    // is even read.
+    const uint64_t available   = fileSize - static_cast<uint64_t>(e.source.offset);
+    const uint64_t clampedSize = std::min<uint64_t>(e.source.size, available);
+    if (clampedSize == 0) {
+        ctx.diags.Report(Diag{Severity::Error, "gow2.text.empty-after-clamp",
+                               "'" + e.name + "' has no readable bytes within its file",
+                               std::nullopt});
+        return std::nullopt;
+    }
+
+    Vfs::SliceFile slice(file, static_cast<size_t>(e.source.offset),
+                          static_cast<size_t>(clampedSize));
+    std::string text(static_cast<size_t>(clampedSize), '\0');
     size_t got = slice.Read(text.data(), text.size());
     text.resize(got);
 
@@ -308,14 +364,43 @@ std::unique_ptr<Onyx::Parsers::SceneData> Gow2Module::DecodeSceneStub(DecodeCont
     return nullptr;
 }
 
-std::unique_ptr<Onyx::Parsers::TextureData> Gow2Module::DecodeImageStub(DecodeContext& ctx) {
-    ctx.diags.Report(Diag{
-        Severity::Info, "gow2.texture.siblings-deferred",
-        "GOW2 texture decoding needs the entry's sibling GFX/PAL blocks "
-        "(same parent group), which DecodeContext has no way to resolve "
-        "(no parent/sibling link) -- '" + ctx.entry.name + "' was not decoded",
-        std::nullopt});
-    return nullptr;
+std::unique_ptr<Onyx::Parsers::TextureData> Gow2Module::DecodeImage(DecodeContext& ctx) {
+    const AssetEntryT& e = ctx.entry;
+
+    if (e.flags == NodeFlags::Failed) {
+        ctx.diags.Report(Diag{Severity::Warning, "gow2.texture.flagged-failed",
+                               "'" + e.name + "' was flagged Failed during parse "
+                               "(out-of-bounds range) -- not decoded", std::nullopt});
+        return nullptr;
+    }
+    if (e.source.fileIndex >= ctx.doc.fileTable.size() ||
+        !ctx.doc.fileTable[e.source.fileIndex]) {
+        ctx.diags.Report(Diag{Severity::Error, "gow2.texture.bad-file-index",
+                               "'" + e.name + "' addresses file table slot " +
+                                   std::to_string(e.source.fileIndex) + ", which is unavailable",
+                               std::nullopt});
+        return nullptr;
+    }
+
+    // GOW2TextureParser::Parse needs the TXR entry's sibling GFX/PAL blocks
+    // to decode pixels (not materials) -- mirrors the legacy call site
+    // (TextureHandler.cpp:25, `GOW2TextureParser::Parse(entry, wad.entries,
+    // wad.fileSource)`) exactly: ctx.doc.roots IS the same root-level
+    // entry list `wad.entries` used to be (GOW2TextureParser's own
+    // FindSibling walks that list plus one level of children, unchanged
+    // here), and the bytes come from this entry's own fileIndex rather
+    // than a single fixed fileSource, since GOW2 entries can now live in
+    // any slot ParseIsoToc pushed into ctx.fileTable.
+    auto tex = GOW2TextureParser::Parse(e, ctx.doc.roots, ctx.doc.fileTable[e.source.fileIndex]);
+    if (!tex) {
+        ctx.diags.Report(Diag{Severity::Warning, "gow2.texture.decode-failed",
+                               "'" + e.name + "': GOW2TextureParser::Parse failed "
+                               "(bad TXR magic, missing GFX/PAL sibling, or a GFX/PAL "
+                               "parse failure -- see the log for which)",
+                               std::nullopt});
+        return nullptr;
+    }
+    return tex;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -695,13 +780,39 @@ ParseResult Gow2Module::ParseIsoToc(ContainerContext& ctx) {
     // returned for ITS pak, never a guessed constant, so entries split
     // across PART1.PAK/PART2.PAK/... resolve against the right bytes.
     std::unordered_map<std::string, uint32_t> pakFileIndex;
-    std::set<std::string> warnedMissingPaks;
+    // Paks already confirmed missing/unopenable. Checked BEFORE calling
+    // OpenFile again, not just before re-reporting the diag: a missing pak
+    // (e.g. the second layer of a dual-layer disc that wasn't merged in) is
+    // typically referenced by many TOC rows, and re-opening a file that is
+    // already known not to exist for every one of them is wasted I/O on top
+    // of the wasted diag the old (deduped-diag-only) code already avoided.
+    std::set<std::string> missingPaks;
 
     for (const auto& raw : rawEntries) {
         if (raw.encountersCount == 0) continue;
 
+        // offsetsStart + encountersStart*4 is a computed file position that
+        // has never been validated against the TOC's actual size -- a
+        // corrupt/truncated TOC can point this past EOF. Reading past EOF
+        // wouldn't crash (Seek/Read just fail), but readSector would then
+        // stay zero-initialized and silently produce a fabricated entry at
+        // PART1.PAK sector 0, indistinguishable from a real one. Diag and
+        // skip constructing an entry for this row instead of inventing one.
+        const uint64_t offsetPos =
+            static_cast<uint64_t>(offsetsStart) +
+            static_cast<uint64_t>(raw.encountersStart) * 4;
+        if (offsetPos + 4 > static_cast<uint64_t>(tocSize)) {
+            ctx.diags.Report(Diag{Severity::Error, "gow2.iso.offset-out-of-range",
+                "TOC entry '" + std::string(raw.name, strnlen(raw.name, 24)) +
+                    "' encountersStart offset " + std::to_string(offsetPos) +
+                    " is past the TOC's size " + std::to_string(tocSize) +
+                    " -- skipped rather than resolving a fabricated sector 0",
+                std::nullopt});
+            continue;
+        }
+
         uint32_t rawSector = 0;
-        tocFile->Seek(offsetsStart + raw.encountersStart * 4, SEEK_SET);
+        tocFile->Seek(static_cast<int64_t>(offsetPos), SEEK_SET);
         tocFile->Read(&rawSector, 4);
 
         uint32_t pakIndex   = rawSector / DVDDL_SPLITLINE;
@@ -712,18 +823,19 @@ ParseResult Gow2Module::ParseIsoToc(ContainerContext& ctx) {
         auto cached = pakFileIndex.find(pakName);
         if (cached != pakFileIndex.end()) {
             fileIndex = cached->second;
+        } else if (missingPaks.count(pakName)) {
+            continue;  // already confirmed missing -- diag already reported once
         } else {
             auto pakFile = vfs->OpenFile("/" + pakName);
             if (!pakFile || !pakFile->IsValid()) {
                 pakFile = vfs->OpenFile(pakName);
             }
             if (!pakFile || !pakFile->IsValid()) {
-                if (warnedMissingPaks.insert(pakName).second) {
-                    ctx.diags.Report(Diag{Severity::Warning, "gow2.iso.pak-missing",
-                        "'" + pakName + "' not found in ISO — skipping its entries "
-                        "(dual-layer ISOs may need both layers merged)",
-                        std::nullopt});
-                }
+                missingPaks.insert(pakName);
+                ctx.diags.Report(Diag{Severity::Warning, "gow2.iso.pak-missing",
+                    "'" + pakName + "' not found in ISO — skipping its entries "
+                    "(dual-layer ISOs may need both layers merged)",
+                    std::nullopt});
                 continue;
             }
             if (!ctx.fileTable) {

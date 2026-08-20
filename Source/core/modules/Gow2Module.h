@@ -62,15 +62,15 @@ private:
     static std::unique_ptr<Onyx::Parsers::SceneData>
         DecodeSceneStub(Onyx::Modules::DecodeContext&);
 
-    // Texture -> TextureData is NOT ported either, for a DIFFERENT reason
-    // than Model/Mesh: GOW2TextureParser::Parse (core/parsers/gow2/
-    // TextureParser.h) needs the TXR entry's *sibling* GFX/PAL blocks
-    // (same parent group) to decode pixels, not materials -- but
-    // DecodeContext exposes only the single entry being decoded, no parent/
-    // sibling link. See task-3-report.md for why this was not worked
-    // around with a doc.roots pointer search.
+    // Texture -> TextureData IS ported (fix round 1 corrected an earlier,
+    // wrong "DecodeContext has no sibling link" premise this comment used
+    // to record here -- it does: GOW2TextureParser::Parse's siblingEntries
+    // parameter is satisfied directly by ctx.doc.roots, exactly what the
+    // legacy call site (TextureHandler.cpp) passes as wad.entries; bytes
+    // come from ctx.doc.fileTable[entry.source.fileIndex]. See
+    // task-3-report.md's fix-round addendum.
     static std::unique_ptr<Onyx::Parsers::TextureData>
-        DecodeImageStub(Onyx::Modules::DecodeContext&);
+        DecodeImage(Onyx::Modules::DecodeContext&);
 
     // ── Types minted in RegisterTypes(), consumed by RegisterDecoders() ───
     // NOTE (Decision 5, task-3-brief.md): the tag-stream walker and the ISO
