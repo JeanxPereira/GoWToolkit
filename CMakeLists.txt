@@ -17,7 +17,7 @@ FetchContent_Declare(OnyxSDK
     # v1.1.0's tag does not exist yet -- PR #1 is open and the tag is cut at
     # merge. Pinned to the branch head until then; swap this for v1.1.0 once
     # the tag exists.
-    GIT_TAG        74f0c73ea1a20d3bbbcc728b9c6872303566b086)
+    GIT_TAG        5d5aeb9ee00ffb2ad382d91450a83baa2147155c)
 set(ONYX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(ONYX_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(OnyxSDK)
