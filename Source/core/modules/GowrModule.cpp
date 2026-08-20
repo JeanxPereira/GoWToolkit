@@ -34,9 +34,13 @@
 //     ctx.state, instead of AssetContainer::fileSource (see GowrModule.h).
 //   - Failures report through ctx.diags (Severity + a namespaced code), not
 //     only ONYX_LOGF_ERR.
-//   - PrepareForParse's job (EnsureGowrConfigIni + InvalidateLodIndex) is
-//     NOT reproduced here — see the comment at the top of ParseContainer for
-//     why (a real SDK gap, not an oversight), and task-2-report.md.
+//   - PrepareForParse's job (EnsureGowrConfigIni + InvalidateLodIndex) now
+//     runs at the top of ParseContainer itself, using ctx.path (the
+//     container path ContainerContext gained in the 74f0c73 SDK repin) —
+//     see the comment at the top of ParseContainer.
+//   - AssetEntry::wadName is filled from ctx.path.filename().string(),
+//     passed to WadNodeBuilder::Build as wadFilename — see the comment
+//     above that call.
 
 namespace Onyx::Gowr {
 
@@ -234,28 +238,21 @@ Onyx::Modules::ParseResult GowrModule::ParseContainer(ContainerContext& ctx) {
     // config.ini (auto-detecting the game root) the first time a WAD opens,
     // and InvalidateLodIndex() drops any LOD/texpack index singleton that
     // may have been built (and cached) without one -- AssetHarness.h's
-    // header comment documents this as a real, previously-shipped bug.
-    // IGameModule has no pre-parse hook, so this belongs at the top of
-    // ParseContainer instead.
+    // header comment documents this as a real, previously-shipped bug (the
+    // old CLI, which skipped PrepareForParse, could parse a different mesh
+    // set than the GUI from the same file). IGameModule has no pre-parse
+    // hook, so this now runs at the very top of ParseContainer instead,
+    // before anything touches the LOD index.
     //
-    // It is NOT reproduced here. EnsureGowrConfigIni needs the container's
-    // filesystem path to walk upward looking for exec/wad/pc_le, and
-    // ContainerContext carries no path -- confirmed by reading both the
-    // struct (Include/Onyx/Modules/Workspace.h) and its one call site
-    // (Source/Modules/Workspace.cpp:174, RunParse), which constructs it from
-    // *doc.file, m_settings, doc.diags, progress, doc.state, doc.roots and
-    // the mount fields only. This is a genuine SDK gap, not an oversight --
-    // see task-2-report.md. Safe fallback: leave any already-cached
-    // LOD/texpack index alone (the common case already has a config.ini
-    // from a previous session) rather than guessing a path or invalidating
-    // a good cache on every single parse.
-    ctx.diags.Report(Diag{
-        Severity::Info, "gowr.config.path-unavailable",
-        "ContainerContext carries no filesystem path, so GOWR's config.ini "
-        "auto-detection (previously run before every parse) was skipped; "
-        "texture/LOD lookups need a config.ini already present next to the "
-        "executable",
-        std::nullopt});
+    // ContainerContext now carries the container's path (SDK repin to
+    // 74f0c73 / Onyx commit 6a9a980 here): `ctx.path`
+    // (Include/Onyx/Modules/Workspace.h) -- for a mounted container this
+    // still names the OUTER container (the file the user opened), which is
+    // exactly what PrepareForParse walked from originally, so this is a
+    // faithful, not approximate, port.
+    if (EnsureGowrConfigIni(ctx.path)) {
+        InvalidateLodIndex();
+    }
 
     Vfs::IFile& file = ctx.file;
     if (!file.IsValid()) {
@@ -455,15 +452,19 @@ Onyx::Modules::ParseResult GowrModule::ParseContainer(ContainerContext& ctx) {
     // WadNodeBuilder is unchanged (core/profiles/gowr/WadNodeBuilder.h/.cpp);
     // it still takes an AssetContainer&, not ContainerContext::roots
     // directly, so a scratch container receives its output and ctx.roots
-    // takes the entries by move. wadFilename is passed empty: ContainerContext
-    // carries no path (see this function's top comment), and the only
-    // consumer of that argument is AssetEntry::wadName, a cosmetic
-    // display-only field the golden snapshot does not check (SnapshotEntries
-    // in tests/golden_helpers.cpp reads name/typeId/size/offset/childCount/
-    // kind/payloadHash, never wadName).
+    // takes the entries by move. wadFilename is ctx.path's filename
+    // component only (not the full path, not the stem) -- matching every
+    // other constructor of this value in the tree: AssetHarness.cpp's
+    // `out.container.filename = req.archive.filename().string()` and
+    // golden_helpers.cpp's `wad.filename = wadPath.filename().string()`.
+    // The only consumer of this argument is AssetEntry::wadName, a cosmetic
+    // display-only field -- SnapshotEntries in tests/golden_helpers.cpp
+    // reads name/typeId/size/offset/childCount/kind/payloadHash, never
+    // wadName, and it appears in neither golden fixture, so this value is
+    // not a pinned contract; matching prior behaviour is still correct.
     AssetContainer scratch;
     WadNodeBuilder builder;
-    builder.Build(fileDescs, absOffsets, /*wadFilename=*/std::string(), scratch);
+    builder.Build(fileDescs, absOffsets, ctx.path.filename().string(), scratch);
     ctx.roots = std::move(scratch.entries);
 
     ONYX_LOGF_INFO("[GOWR] Parsed WAD: %u entries -> %zu root nodes.",
