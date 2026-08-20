@@ -89,7 +89,7 @@ bool ProfileGOW2::ParseContainer(std::shared_ptr<Vfs::IFile> file, AssetContaine
     // Name → (typeId, offset, size) for resolving zero-sized reference entries.
     // A SERVER_INSTANCE with size=0 is a pointer to a previous definition with the same name.
     // When accessed, we redirect to the real definition's data (same as reference GetNodeById).
-    struct DefInfo { Types::TypeId typeId; int64_t offset; uint32_t size; };
+    struct DefInfo { Types::TypeId typeId; uint64_t offset; uint64_t size; };
     std::unordered_map<std::string, DefInfo> nameToDefinition;
 
     while (pos < fileSize) {
@@ -353,7 +353,7 @@ bool ProfileGOW2::LoadFromArchiveGOW2(std::shared_ptr<Vfs::IVirtualFileSystem> v
         if (!pakExists(pakName)) {
             if (warnedMissingPaks.insert(pakName).second)
                 ONYX_LOGF_WARN("[GOW2] '%s' not found in ISO — skipping its entries. "
-                         "(Dual-layer ISOs may need both layers merged.)", pakName.c_str());
+                               "(Dual-layer ISOs may need both layers merged.)", pakName.c_str());
             continue;
         }
 
@@ -400,8 +400,8 @@ bool ProfileGOW2::LoadFromArchive(std::shared_ptr<Vfs::IVirtualFileSystem> vfs, 
 
     if (!isGOW2) {
         ONYX_LOGF_ERR("[Onyx] TOC header does not look like GOW2 (count=%u, size=%lld). "
-                "GOW1 ISOs are not supported by this profile.",
-                possibleCount, (long long)tocSize);
+                      "GOW1 ISOs are not supported by this profile.",
+                      possibleCount, (long long)tocSize);
         return false;
     }
 

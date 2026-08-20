@@ -686,7 +686,6 @@ AssetEntry WadNodeBuilder::MakeFolder(
     f.name       = name;
     f.typeId     = RoleToTypeId(role);
     f.wadName    = m_wadFilename;
-    f.source.offset = 0;
     f.kind       = Types::KindOf(f.typeId);
     f.profileTag = Onyx::Domain::ProfileTag::Of(Gowr::GowrProfileTag{
         role,
