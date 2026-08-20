@@ -14,6 +14,7 @@
 // Shaders may also appear as bare hex hashes without a prefix:
 #include "core/profiles/gowr/GowrTaxonomy.h"
 #include <Onyx/Domain/Entry.h>
+#include "core/types/GameTypes.h"
 #include <charconv>
 #include <array>
 #include <cctype>
@@ -299,14 +300,26 @@ WadEntryRole ClassifyByName(const std::string& name, uint64_t size) {
 
 // ── Classify ──────────────────────────────────────────────────────────────
 // Reconstructs the tag AssetEntry::profileTag used to carry, from the entry
-// alone. `role` and `parsedName` are pure functions of (name, size) / (name)
-// respectively, so this always agrees with what WadNodeBuilder produced for
-// the same entry at parse time — see GowrTaxonomy.h for what `block` is
-// deliberately not derived.
+// alone. `parsedName` is a pure function of the name; `block` is deliberately
+// not derived (see GowrTaxonomy.h).
+//
+// `role` is name+size classification EXCEPT for textures, and that exception is
+// load-bearing. ClassifyByName splits TX_* on size (>= 1024 => TextureGpu, else
+// TextureCpu) because that is how the raw FileDesc stream is classified during
+// the parse walk. But no raw texture entry ever reaches the tree: the builder
+// consumes each TextureCpu into its matching TextureGpu ("CPU will become a
+// child of GPU") and emits ONE node for the pair, which the pre-port code then
+// relabelled TexturePair by overwriting the stored tag.
+//
+// So a tree node typed TexturePair is always that synthesised pair node, and
+// classifying it by size would report TextureGpu -- the very label the builder
+// overwrote. Trust the typeId here; it is the only place the two disagree.
 GowrProfileTag Classify(const Onyx::Domain::AssetEntry& entry) {
     GowrProfileTag tag;
-    tag.role       = ClassifyByName(entry.name, entry.source.size);
     tag.parsedName = WadAssetName::Parse(entry.name);
+    tag.role       = (entry.typeId == GameTypes::TexturePair)
+                        ? WadEntryRole::TexturePair
+                        : ClassifyByName(entry.name, entry.source.size);
     return tag;
 }
 
