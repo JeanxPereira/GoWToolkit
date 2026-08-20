@@ -11,7 +11,7 @@ include(CTest)
 # and CACHE vars ONYX_FFMPEG_DLLS / ONYX_FONTS_DIR.
 #
 # Local-dev override (iterate against local OnyxSDK without re-tagging):
-#   cmake -DFETCHCONTENT_SOURCE_DIR_ONYXSDK=C:/CodingProjects/Personal/OnyxSDK ...
+#   cmake -DFETCHCONTENT_SOURCE_DIR_ONYXSDK=E:/CodingProjects/OnyxSDK ...
 FetchContent_Declare(OnyxSDK
     GIT_REPOSITORY https://github.com/JeanxPereira/OnyxSDK.git
     GIT_TAG        v0.6.0)
