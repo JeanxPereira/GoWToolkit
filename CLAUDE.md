@@ -4,58 +4,108 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build Commands
 
+MSVC is required on Windows. A bare `cmake` invocation can resolve to a GCC
+toolchain earlier on PATH (e.g. Strawberry Perl's) instead of MSVC, and the
+configure will fail *inside OnyxSDK itself* (not in this repo's own code) —
+symptoms like an undeclared `DWMWA_USE_IMMERSIVE_DARK_MODE` mean the wrong
+compiler got picked up. Load the MSVC environment first:
+
 ```bash
-# Standard build
-mkdir -p build && cd build
+"C:\Program Files\Microsoft Visual Studio\18\Professional\VC\Auxiliary\Build\vcvars64.bat"
+
+mkdir -p build-msvc && cd build-msvc
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
 ninja
+```
 
+```bash
 # Debug build
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
 ninja
 ```
 
-Dependencies are auto-fetched via CMake FetchContent (ImGui docking, GLFW 3.3.9, GLM 1.0.1, lz4 1.9.4). FFmpeg is fetched from prebuilt BtbN binaries on Windows, or via pkg-config on Linux/macOS.
+Dependencies are auto-fetched via CMake FetchContent, primarily as transitive
+deps of OnyxSDK (ImGui docking, GLFW, GLM, lz4, glad, miniaudio, implot). This
+repo additionally fetches doctest and nlohmann_json for the test suite (see
+below). FFmpeg is fetched from prebuilt BtbN binaries on Windows, or via
+pkg-config on Linux/macOS.
 
 On macOS, a Release build produces a `GoWToolkit.app` bundle. Debug builds produce a plain executable.
 
-There is no test suite — testing is done manually via the GUI or CLI mode.
+### Test suite
+
+There **is** a test suite — `tests/` holds ~20 sources built on doctest +
+nlohmann_json (both fetched via `FetchContent`, gated on
+`GOWTOOLKIT_BUILD_TESTS`, default `ON`). It is wired into CTest as seven
+named tests: `unit`, `Golden_GOW2`, `Golden_GOWR`, `Metrics`, `Logger`,
+`Threading`, `ThemeContrast`. Run it with `ctest --test-dir build-msvc`
+(or whichever build directory was configured).
+
+`Golden_GOW2` and `Golden_GOWR` parse real truncated game WADs
+(`tests/fixtures/gow2/wad_minimal.wad` from `R_BOAR00.WAD`, PS2 USA;
+`tests/fixtures/gowr/wad_minimal.wad` from `r_athena00.wad`, PC) against
+pinned JSON snapshot goldens — they are the regression gate for parser
+changes. Fixture provenance is documented in `tests/fixtures/README.md`;
+`tools/make_test_fixtures.py` regenerates them.
+
+**Current baseline is 5/7, not 7/7.** `Golden_GOW2`, `Golden_GOWR`, `Metrics`,
+`Logger`, and `Threading` pass. `unit` and `ThemeContrast` fail on the same
+underlying assertion (`tests/theme_contrast_test.cpp:94`, dark-theme surface
+luminance ≤ 0.35) because the Onyx theme engine now returns 0.38–0.55 for
+those surfaces. This is pre-existing debt from the previous SDK bump, not a
+regression from work done in this repo — but it is real, and a report of
+"tests pass" without qualifying it is wrong.
 
 ## Architecture Overview
 
-The application has two entry modes, selected at startup in `src/main.cpp`: GUI (default) and CLI (`src/cli/CliApp`).
+The application is built on **OnyxSDK**, an external engine library consumed
+via CMake `FetchContent` (see `CMakeLists.txt`). Onyx owns the window/App
+lifecycle, ImGui docking shell, asset database, profile dispatch, schema
+system, VFS, and rendering (Vulkan since Onyx v1.0.0). This repo (`Source/`)
+supplies the GoW-specific content on top: format parsers, per-game profile
+logic, byte-layout schemas, and the surviving game-specific UI panels/viewers.
+Entry point is `Source/main.cpp`, which selects GUI (default, via
+`Onyx::App::Window`) or CLI mode (`Source/cli/CliApp`) at startup.
 
-### Layer Stack
+### What Onyx owns (do not look for these in this repo)
 
-**Window** (`src/window/`) — GLFW + ImGui lifecycle, per-platform setup (`.cpp` Win/Linux, `.mm` macOS). Runs the frame loop and calls into App.
+- **Window/App lifecycle** — `<Onyx/App/Window.h>`, `<Onyx/App/App.h>`. This
+  repo's `Source/AppRegistration.{h,cpp}` is a thin registrar shim that
+  installs the GoW-specific panels/viewers onto the engine-generic `App`
+  before it initializes; it is not the app coordinator itself.
+- **Asset database, profile dispatch** — `AssetDatabase`, `ProfileManager`,
+  `IAssetProfile` are all Onyx types (`<Onyx/Services/ProfileManager.h>` etc).
+- **Schema tree** — `<Onyx/Schema/AssetFormat.h>` and friends replace the old
+  local `StructDef`/`NodeInstance` system.
+- **VFS** — `<Onyx/Vfs/...>` (`IFile`, `SliceFile`, ISO/PAK abstractions).
+- **Rendering** — Vulkan-based scene rendering, entirely Onyx-owned. There is
+  no local `rendering/` directory; OpenGL is gone.
+- `IAssetLoader` as a distinct interface does not exist anywhere in the
+  current codebase.
 
-**App** (`src/App.h/cpp`) — Main UI coordinator. Manages the ImGui DockSpace, panel registration, menu bar, and config persistence.
+### What is local (`Source/`)
 
-**UI** (`src/ui/`) — Panels (IsoBrowser, PakBrowser, WadBrowser, Inspector, StatusBar, SettingsWindow) and document viewers (Viewport3D, ImageViewer, MaterialViewer, SoundPlayer, VideoPlayer, MapViewer). Panels are registered via `PanelRegistry`; viewers via `ViewerRegistry`. Each panel receives an `AppContext` reference for cross-panel communication.
-
-**Core** (`src/core/`) — All game-format logic, no UI dependency:
-- `AssetDatabase`: loads WADs/ISOs, manages async loading state
-- `ProfileManager` + `IAssetProfile`: game variant detection and dispatch (GOW2, GOWR implementations)
-- `IAssetLoader` / loaders: per-asset-type parsing (mesh, texture, material, sound)
-- `schema/`: `StructDef` + `NodeInstance` tree representing parsed game data
-- `vfs/`: virtual filesystem abstractions (`IsoFileSystem`, PAK support)
-- `AppConfig`: binary config format "GTKC" v2 persisted to `gowtool.cfg`
-
-**Rendering** (`src/rendering/`) — OpenGL scene rendering: `SceneRenderer`, `GpuMesh`, `Camera`, `GridRenderer`, `ShaderManager`.
-
-### Data Flow
-
-1. User opens ISO/PAK → `AssetDatabase::LoadWadAsync` → `ProfileManager` detects game → `IAssetProfile::ParseContainer` → populates database
-2. Each frame: `App` iterates panels → panels query `AppContext` for loaded assets → active `DocumentWindow` renders its `IDocumentContent` viewer
-3. Config is loaded at startup and persisted on exit via `AppConfig`
-
-### Key Interfaces
-
-- `IAssetProfile` — implemented by `ProfileGOW2` and `ProfileGOWR`
-- `IAssetLoader` — one per asset type per game
-- `IPanel` — all dockable panels
-- `IDocumentContent` — all document viewers
-- `IVirtualFileSystem` / `IFile` — filesystem abstraction over ISO and PAK
+- `Source/core/parsers/gow2/` and `Source/core/parsers/gowr/` — the format
+  parsers (mesh, texture, material, animation, etc.), touching only leaf Onyx
+  API (`Vfs::IFile`, `Logger`, `Parsers::*Data`).
+- `Source/core/profiles/gow2/` and `Source/core/profiles/gowr/` — per-game
+  container/profile logic (`ProfileGOW2`, `ProfileGOWR`) that Onyx's
+  `ProfileManager` dispatches into.
+- `Source/core/formats/` — byte-layout schemas subclassing
+  `Onyx::Schema::AssetFormat` (e.g. `GOW2InstanceFormat.h`,
+  `GOWRMeshDefnFormat.h`) — the reverse-engineered struct layouts themselves.
+- `Source/core/types/` and `Source/core/types/handlers/` — the asset-type
+  catalog (`GameTypes`, `WadDispatch`) and per-type content handlers
+  (`MeshHandler`, `MaterialHandler`, `TextureHandler`, `InstanceHandler`, etc).
+- `Source/core/shaders/DxilDisassembler` — local shader-disassembly tooling.
+- `Source/core/domain/`, `Source/core/harness/`, `Source/core/loaders/` — the
+  rest of the app-core surface not covered above.
+- `Source/ui/` — the surviving local UI: `WadBrowser`, `Inspector`,
+  `RoleVisuals`, `CodeView`, plus document viewers under `Source/ui/viewers/`
+  such as `MapViewer`, `MaterialViewer`, `SoundPlayer`.
+- `Source/cli/` — `CliApp`, plus `HeadlessGL`/`RenderCommand` for the headless
+  render harness.
+- `Source/AppRegistration.{h,cpp}` — see above.
 
 ## Platform Notes
 
@@ -67,7 +117,7 @@ The application has two entry modes, selected at startup in `src/main.cpp`: GUI 
 
 ## Reference Implementation (Go)
 
-`/Users/jeanxpereira/CodingProjects/god_of_war_browser` is the authoritative reference for all GOW2 (PS2) file format parsing. It is a working Go implementation that correctly parses WAD, VPK, mesh, texture, material, animation, and other formats. When porting or implementing a parser in this C++ project, consult the corresponding Go source:
+`/Users/jeanxpereira/CodingProjects/god_of_war_browser` is the authoritative reference for all GOW2 (PS2) file format parsing. It is a working Go implementation that correctly parses WAD, VPK, mesh, texture, material, animation, and other formats. **This is a macOS path, unreachable from a Windows checkout** — it is only valid on the owner's macOS machine. Keep it as the reference regardless; when working from Windows, treat the table below as a map of what to ask for rather than a path you can `cd` into. When porting or implementing a parser in this C++ project, consult the corresponding Go source:
 
 | Format | Go reference path |
 |--------|------------------|
