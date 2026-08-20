@@ -37,6 +37,10 @@ set(APP_TEST_SOURCES
     # this target rather than only by the (GLOB_RECURSE, app-only) main
     # executable target.
     "${CMAKE_SOURCE_DIR}/Source/core/modules/GowrModule.cpp"
+    # Gow2Module (Onyx v1.1 IGameModule port of ProfileGOW2, Phase 2 Task 3).
+    # Same rationale as GowrModule above -- not yet exercised by
+    # golden_helpers.cpp (Task 4), but build-verified here.
+    "${CMAKE_SOURCE_DIR}/Source/core/modules/Gow2Module.cpp"
 )
 
 add_executable(gowtoolkit_tests ${TEST_SOURCES} ${APP_TEST_SOURCES})
