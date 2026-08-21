@@ -1,4 +1,4 @@
-﻿#include "MaterialViewer.h"
+#include "MaterialViewer.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include <Onyx/App/Widgets.h>
 #include <glad/glad.h>

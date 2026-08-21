@@ -1,4 +1,4 @@
-﻿#include "MapViewer.h"
+#include "MapViewer.h"
 #include <imgui.h>
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Types/TypeRegistry.h>
@@ -56,7 +56,7 @@ void MapViewer::LoadMap() {
     };
     findChunks(m_wad.entries, findChunks);
     
-    LOG_INFO("[MapViewer] Found %zu chunks in %s", chunks.size(), m_wadName.c_str());
+    ONYX_LOGF_INFO("[MapViewer] Found %zu chunks in %s", chunks.size(), m_wadName.c_str());
     
     // 2. Load each chunk into Parsers::SceneData and merge
     size_t processed = 0;
@@ -68,12 +68,12 @@ void MapViewer::LoadMap() {
         if (handler) {
             auto printTree = [&](const AssetEntry& e, int depth, auto& pr) -> void {
                 std::string indent(depth * 2, ' ');
-                LOG_INFO("[MapViewer] %s- %s (type=%d, children=%zu)", indent.c_str(), e.name.c_str(), (int)e.typeId.value, e.children.size());
+                ONYX_LOGF_INFO("[MapViewer] %s- %s (type=%d, children=%zu)", indent.c_str(), e.name.c_str(), (int)e.typeId.value, e.children.size());
                 for (const auto& c : e.children) {
                     pr(c, depth + 1, pr);
                 }
             };
-            LOG_INFO("[MapViewer] Printing Chunk Tree for '%s':", chunk->name.c_str());
+            ONYX_LOGF_INFO("[MapViewer] Printing Chunk Tree for '%s':", chunk->name.c_str());
             printTree(*chunk, 0, printTree);
 
             if (auto chunkScene = handler->BuildSceneData(*chunk, m_wad)) {

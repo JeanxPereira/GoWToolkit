@@ -1,4 +1,4 @@
-﻿// Object handler â€” GOW2 skeleton/joints container
+// Object handler — GOW2 skeleton/joints container
 // Magic: 0x00010001 (GOW2), 0x00040001 (GOW1)
 //
 // Resolution follows the Go project (god_of_war_browser):
@@ -26,7 +26,7 @@
 
 namespace {
 
-// â”€â”€ Resolve reference: find a node with exact name + type that has children â”€â”€
+// ── Resolve reference: find a node with exact name + type that has children ──
 // Mirrors Go's GetNodeByName: when a child node is a reference (no children/no payload),
 // the real definition with the same name exists elsewhere in the WAD tree.
 static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
@@ -44,7 +44,7 @@ static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
 static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
                                           const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& n : tree) {
-        if (n.typeId == type && n.name == name && n.size > 0)
+        if (n.typeId == type && n.name == name && n.source.size > 0)
             return &n;
         if (auto found = ResolvePayload(n.children, name, type))
             return found;
@@ -52,7 +52,7 @@ static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
     return nullptr;
 }
 
-// Find texture by exact name (Material â†’ Texture uses name lookup, same as Go)
+// Find texture by exact name (Material → Texture uses name lookup, same as Go)
 static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const std::string& name) {
     for (const auto& c : nodes) {
         if (c.typeId == Onyx::GameTypes::Texture && c.name == name) return &c;
@@ -61,7 +61,7 @@ static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const
     return nullptr;
 }
 
-// â”€â”€ Select main texture layer (same priority as Go: StrangeBlended > Usual > first) â”€â”€
+// ── Select main texture layer (same priority as Go: StrangeBlended > Usual > first) ──
 static const Onyx::Parsers::MaterialInfo::Layer* SelectMainLayer(const Onyx::Parsers::MaterialInfo& mat) {
     const Onyx::Parsers::MaterialInfo::Layer* main = nullptr;
     for (const auto& layer : mat.layers) {
@@ -76,7 +76,7 @@ static const Onyx::Parsers::MaterialInfo::Layer* SelectMainLayer(const Onyx::Par
     return main;
 }
 
-// â”€â”€ Process a single Model node: extract meshes + materials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Process a single Model node: extract meshes + materials ─────────────────
 static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Parsers::SceneData& scene) {
     std::vector<const AssetEntry*> meshSources;
     std::vector<const AssetEntry*> matEntries;
@@ -84,36 +84,36 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Par
 
     // Iterate children by type (like Go's mdl.Marshal iterating SubGroupNodes)
     for (const auto& child : model.children) {
-        if (child.typeId == Onyx::GameTypes::Mesh && child.size > 0) {
+        if (child.typeId == Onyx::GameTypes::Mesh && child.source.size > 0) {
             meshSources.push_back(&child);
-        } else if (child.typeId == Onyx::GameTypes::Material || (child.size == 0 && child.typeId == Onyx::GameTypes::Unknown)) {
+        } else if (child.typeId == Onyx::GameTypes::Material || (child.source.size == 0 && child.typeId == Onyx::GameTypes::Unknown)) {
             const AssetEntry* mat = &child;
             // Material reference? Resolve by exact name
-            if (mat->size == 0) {
+            if (mat->source.size == 0) {
                 if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::GameTypes::Material)) {
                     mat = real;
                     matEntries.push_back(mat);
                 } else {
-                    LOG_WARN("[ProcessModel] Could not resolve zero-sized material reference: '%s'", mat->name.c_str());
+                    ONYX_LOGF_WARN("[ProcessModel] Could not resolve zero-sized material reference: '%s'", mat->name.c_str());
                 }
             } else if (child.typeId == Onyx::GameTypes::Material) {
                 matEntries.push_back(mat);
             }
-        } else if (child.typeId == Onyx::GameTypes::Script && child.size > 0) {
+        } else if (child.typeId == Onyx::GameTypes::Script && child.source.size > 0) {
             std::string target = Onyx::Parsers::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
             if (target == "SCR_Sky") {
                 isModelSky = true;
-                LOG_INFO("[ProcessModel] Found SCR_Sky on model '%s', marking as sky", model.name.c_str());
+                ONYX_LOGF_INFO("[ProcessModel] Found SCR_Sky on model '%s', marking as sky", model.name.c_str());
             }
         }
     }
 
     uint32_t materialOffset = scene.materials.size();
 
-    LOG_INFO("[ProcessModel] Model '%s': %zu mesh children, %zu material children, materialOffset=%u",
+    ONYX_LOGF_INFO("[ProcessModel] Model '%s': %zu mesh children, %zu material children, materialOffset=%u",
              model.name.c_str(), meshSources.size(), matEntries.size(), materialOffset);
 
-    // Parse materials â†’ MaterialInfo (store all layers for main layer selection)
+    // Parse materials → MaterialInfo (store all layers for main layer selection)
     for (size_t mi = 0; mi < matEntries.size(); ++mi) {
         const auto* mat = matEntries[mi];
         Onyx::Parsers::MaterialInfo matInfo;
@@ -140,7 +140,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Par
                 }
             }
         }
-        LOG_INFO("[ProcessModel]   mat[%zu] = '%s', layers=%zu, mainLayer='%s'",
+        ONYX_LOGF_INFO("[ProcessModel]   mat[%zu] = '%s', layers=%zu, mainLayer='%s'",
                  mi + materialOffset, mat->name.c_str(), matInfo.layers.size(),
                  matInfo.layers.empty() ? "(none)" : matInfo.layers[0].textureName.c_str());
         scene.materials.push_back(std::move(matInfo));
@@ -148,10 +148,10 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Par
 
     // Parse mesh geometry
     for (const auto* src : meshSources) {
-        Onyx::Vfs::SliceFile slice(wad.fileSource, src->offset, src->size);
-        if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->size)) {
+        Onyx::Vfs::SliceFile slice(wad.fileSource, src->source.offset, src->source.size);
+        if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->source.size)) {
             for (auto& p : data->parts) {
-                LOG_INFO("[ProcessModel]   part '%s' materialId=%d (raw) â†’ %d (offset)",
+                ONYX_LOGF_INFO("[ProcessModel]   part '%s' materialId=%d (raw) → %d (offset)",
                          p.name.c_str(), p.materialId, p.materialId + (int)materialOffset);
                 p.materialId += materialOffset;
                 p.isSky = isModelSky;
@@ -161,7 +161,7 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad, Onyx::Par
     }
 }
 
-// â”€â”€ Build SceneData from Object entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Build SceneData from Object entry ──────────────────────────────────────
 
 static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
     const AssetEntry& entry, AssetContainer& wad, uint32_t magic)
@@ -170,13 +170,13 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
     auto scene = std::make_unique<Onyx::Parsers::SceneData>();
 
     // 1. Parse skeleton from Object payload
-    if (entry.size > 0) {
-        std::vector<uint8_t> objBuf(entry.size);
-        Onyx::Vfs::SliceFile slice(wad.fileSource, entry.offset, entry.size);
+    if (entry.source.size > 0) {
+        std::vector<uint8_t> objBuf(entry.source.size);
+        Onyx::Vfs::SliceFile slice(wad.fileSource, entry.source.offset, entry.source.size);
         slice.Seek(0, SEEK_SET);
-        slice.Read(objBuf.data(), entry.size);
+        slice.Read(objBuf.data(), entry.source.size);
         scene->skeleton = std::shared_ptr<Onyx::Parsers::ObjectData>(
-            Onyx::GOW2ObjectParser::Parse(objBuf.data(), entry.size, magic).release());
+            Onyx::GOW2ObjectParser::Parse(objBuf.data(), entry.source.size, magic).release());
     }
 
     // 2. Iterate children by type (like Go's obj.Marshal iterating SubGroupNodes)
@@ -185,7 +185,7 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
         if (child.typeId == Onyx::GameTypes::Model) {
             const AssetEntry* model = &child;
             if (model->children.empty()) {
-                // Reference node â€” resolve definition by exact name
+                // Reference node — resolve definition by exact name
                 if (auto resolved = ResolveRef(wad.entries, child.name, Onyx::GameTypes::Model))
                     model = resolved;
             }
@@ -194,15 +194,15 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
             }
         }
         // 2b. Parse Animation child (like Go's obj.Marshal case *anm.Animations)
-        else if (child.typeId == Onyx::GameTypes::Animation && child.size > 0) {
-            Onyx::Vfs::SliceFile slice(wad.fileSource, child.offset, child.size);
-            std::vector<uint8_t> anmBuf(child.size);
+        else if (child.typeId == Onyx::GameTypes::Animation && child.source.size > 0) {
+            Onyx::Vfs::SliceFile slice(wad.fileSource, child.source.offset, child.source.size);
+            std::vector<uint8_t> anmBuf(child.source.size);
             slice.Seek(0, SEEK_SET);
-            slice.Read(anmBuf.data(), child.size);
-            auto animData = Onyx::GOW2AnimationParser::Parse(anmBuf.data(), child.size);
+            slice.Read(anmBuf.data(), child.source.size);
+            auto animData = Onyx::GOW2AnimationParser::Parse(anmBuf.data(), child.source.size);
             if (animData) {
                 scene->animations = std::shared_ptr<Onyx::Parsers::AnimationData>(animData.release());
-                LOG_INFO("[ObjectHandler] Parsed animation '%s': %d groups, %d acts",
+                ONYX_LOGF_INFO("[ObjectHandler] Parsed animation '%s': %d groups, %d acts",
                          child.name.c_str(), (int)scene->animations->groups.size(),
                          scene->animations->TotalActs());
             }
@@ -211,7 +211,7 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
 
     if (scene->IsEmpty()) {
         // Many nodes are purely logical (triggers, collision, sound, cameras) and will have no meshes.
-        LOG_INFO("[ObjectHandler] No meshes found for object '%s' (Expected for logical/trigger nodes)", entry.name.c_str());
+        ONYX_LOGF_INFO("[ObjectHandler] No meshes found for object '%s' (Expected for logical/trigger nodes)", entry.name.c_str());
         return scene;
     }
 
@@ -230,14 +230,14 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
         scene->textures.push_back(std::move(matTextures));
     }
 
-    LOG_INFO("[ObjectHandler] Built SceneData: %zu parts, %zu materials, %zu textures, skeleton=%s",
+    ONYX_LOGF_INFO("[ObjectHandler] Built SceneData: %zu parts, %zu materials, %zu textures, skeleton=%s",
              scene->meshParts.size(), scene->materials.size(), scene->textures.size(),
              scene->HasSkeleton() ? "yes" : "no");
 
     return scene;
 }
 
-// â”€â”€ Handler classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Handler classes ────────────────────────────────────────────────────────
 
 class ObjectHandlerGOW2 : public Onyx::Gow::IWadTypeHandler {
 public:
@@ -250,7 +250,7 @@ public:
     std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         uint32_t actualMagic = 0;
         if (wad.fileSource) {
-            wad.fileSource->Seek(entry.offset, SEEK_SET);
+            wad.fileSource->Seek(entry.source.offset, SEEK_SET);
             wad.fileSource->Read(&actualMagic, 4);
         }
         return BuildSceneFromObjectEntry(entry, wad, actualMagic);
@@ -259,7 +259,7 @@ public:
     std::shared_ptr<Onyx::Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override {
         uint32_t actualMagic = 0;
         if (wad.fileSource) {
-            wad.fileSource->Seek(entry.offset, SEEK_SET);
+            wad.fileSource->Seek(entry.source.offset, SEEK_SET);
             wad.fileSource->Read(&actualMagic, 4);
         }
         auto scene = BuildSceneFromObjectEntry(entry, wad, actualMagic);

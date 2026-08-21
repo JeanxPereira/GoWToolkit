@@ -1,8 +1,5 @@
-﻿#include <Onyx/App/Window.h>
+#include <Onyx/App/Window.h>
 #include "AppRegistration.h"
-#include <Onyx/Services/ProfileManager.h>
-#include "core/profiles/gow2/ProfileGOW2.h"
-#include "core/profiles/gowr/ProfileGOWR.h"
 #include "core/types/GameTypes.h"
 #include "core/profiles/AssetVisibilityDefaults.h"
 #include <Onyx/Services/Threading.h>
@@ -14,24 +11,28 @@
 #include <stdlib.h>
 #endif
 
-static void registerProfiles() {
-    Onyx::Services::ProfileManager::Get().RegisterProfile(std::make_shared<Onyx::ProfileGOW2>());
-    Onyx::Services::ProfileManager::Get().RegisterProfile(std::make_shared<Onyx::ProfileGOWR>());
-}
-
 int main(int argc, char** argv) {
     // Record the main thread before anything else spawns workers.
     Onyx::Threading::MarkMainThread();
 
-    // Populate the asset-type catalog before any parse or UI draw â€” every
-    // GameTypes:: handle is invalid until this runs.
+    // Populates the legacy Onyx::GameTypes:: catalog. This is now UNRELATED
+    // to how Gow2Module/GowrModule stamp a parsed tree's AssetEntry::typeId
+    // (Phase 2 Task 4 converged both onto their own TypeRegistrar-minted
+    // handles, registered when InstallGoWPanels' registrar calls
+    // App::AddModule -- see AppRegistration.cpp). It is still required,
+    // separately, by the older per-type Onyx::Types::ITypeHandler system
+    // (Source/core/types/handlers/*.cpp, self-registered via
+    // ONYX_REGISTER_FILE_TYPE/REGISTER_GOW_TYPE/REGISTER_GOW_TAG) that
+    // AssetHarness::Load()'s BuildSceneData dispatch and the GUI's
+    // viewer-creation path still read through -- those handlers' GetId()
+    // stays an invalid/zero handle until this runs. Retiring that system
+    // onto the module/DecoderRegistry contract is out of this phase's
+    // scope (Phase 3/5); until then, both catalogs must be populated.
     Onyx::GameTypes::RegisterGameTypes();
 
     // Seed the game-specific default asset visibility table. The store itself
     // holds no game knowledge; this app-level call owns the GoW defaults.
     Onyx::RegisterGameVisibilityDefaults();
-
-    registerProfiles();
 
     if (argc > 1) {
 #ifdef _WIN32
@@ -40,13 +41,14 @@ int main(int argc, char** argv) {
             (void)freopen("CONOUT$", "w", stderr);
         }
 #endif
-        Onyx::CliApp::Run(argc, argv);
-        return 0;
+        // Propagate the CLI's status: scripts and the headless render harness
+        // need a non-zero exit to mean failure.
+        return Onyx::CliApp::Run(argc, argv);
     }
 
     Onyx::App::Window::initNative();
     Onyx::App::Window window;
-    // Inject the game panel/viewer registrar BEFORE the App initializes â€” run()
+    // Inject the game panel/viewer registrar BEFORE the App initializes — run()
     // calls App::init(), which invokes the registrar from registerPanels().
     Onyx::InstallGoWPanels(window.app());
     window.run();

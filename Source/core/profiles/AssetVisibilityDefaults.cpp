@@ -1,4 +1,4 @@
-﻿#include "core/profiles/AssetVisibilityDefaults.h"
+#include "core/profiles/AssetVisibilityDefaults.h"
 #include <Onyx/Services/AssetVisibility.h>
 #include "core/types/GameTypes.h"
 

@@ -1,4 +1,4 @@
-﻿#include <doctest/doctest.h>
+#include <doctest/doctest.h>
 #include <Onyx/App/ViewerRegistry.h>
 #include <Onyx/Domain/MediaKind.h>
 #include "core/WadTypes.h"

@@ -1,4 +1,4 @@
-﻿// â”€â”€ ThemeManager contrast invariant tests (doctest) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ThemeManager contrast invariant tests (doctest) ──────────────────────
 //
 // Verifies that ApplyTheme produces readable text on every accent-tinted
 // surface for a battery of extreme accent colors in both Dark and Light
@@ -12,7 +12,7 @@
 #include "imgui.h"
 #include <cmath>
 
-// â”€â”€ Helpers (mirror the production ones so the test is self-contained) â”€â”€â”€â”€
+// ── Helpers (mirror the production ones so the test is self-contained) ────
 
 static float TestLuminance(const ImVec4& c) {
     return 0.2126f * c.x + 0.7152f * c.y + 0.0722f * c.z;
@@ -26,7 +26,7 @@ static float TestBlendedLuminance(const ImVec4& fg, const ImVec4& bg) {
     return 0.2126f * r + 0.7152f * g + 0.0722f * b;
 }
 
-// â”€â”€ Fixtures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Fixtures ─────────────────────────────────────────────────────────────
 
 struct AccentFixture {
     const char* name;
@@ -51,7 +51,7 @@ static const int kSurfaceSlots[] = {
     ImGuiCol_Header,            ImGuiCol_HeaderHovered,      ImGuiCol_HeaderActive,
 };
 
-// â”€â”€ Ensure ImGui context exists for the test suite â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Ensure ImGui context exists for the test suite ───────────────────────
 
 static ImGuiContext* EnsureImGuiContext() {
     if (!ImGui::GetCurrentContext()) {
@@ -60,11 +60,11 @@ static ImGuiContext* EnsureImGuiContext() {
     return ImGui::GetCurrentContext();
 }
 
-// â”€â”€ Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tests ────────────────────────────────────────────────────────────────
 
 // Production bounds enforced by Phase 3 of ThemeManager:
-//   Dark mode  â†’ accent surface luminance â‰¤ 0.30 (so white text stays readable)
-//   Light mode â†’ accent surface luminance â‰¥ 0.70 (so black text stays readable)
+//   Dark mode  → accent surface luminance ≤ 0.30 (so white text stays readable)
+//   Light mode → accent surface luminance ≥ 0.70 (so black text stays readable)
 //
 // We assert slightly looser values in the test (0.35 / 0.65) to leave
 // headroom for floating-point rounding in the binary-search solver.
@@ -127,23 +127,23 @@ TEST_CASE("ThemeContrast: Text color flips correctly for WindowBg") {
     auto* ctx = EnsureImGuiContext();
     (void)ctx;
 
-    // Dark mode with white accent â†’ text should be light (high luminance).
+    // Dark mode with white accent → text should be light (high luminance).
     Onyx::Theme::ApplyTheme(ImVec4{1, 1, 1, 1}, Onyx::Theme::ThemeMode::Dark,
                            false);
     {
         ImVec4 text = ImGui::GetStyle().Colors[ImGuiCol_Text];
         float textLum = TestLuminance(text);
-        // Dark bg â†’ text should be white/near-white.
+        // Dark bg → text should be white/near-white.
         CHECK(textLum > 0.7f);
     }
 
-    // Light mode with black accent â†’ text should be dark (low luminance).
+    // Light mode with black accent → text should be dark (low luminance).
     Onyx::Theme::ApplyTheme(ImVec4{0, 0, 0, 1}, Onyx::Theme::ThemeMode::Light,
                            false);
     {
         ImVec4 text = ImGui::GetStyle().Colors[ImGuiCol_Text];
         float textLum = TestLuminance(text);
-        // Light bg â†’ text should be black/near-black.
+        // Light bg → text should be black/near-black.
         CHECK(textLum < 0.3f);
     }
 }

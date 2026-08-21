@@ -1,11 +1,13 @@
-﻿#include "MeshParser.h"
+#include "MeshParser.h"
 #include "LodPackIndex.h"
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Vfs/MemoryFile.h>
 #include <cstring>
+#include <cmath>
 #include <algorithm>
+#include <vector>
 
-// â”€â”€ MeshParser.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MeshParser.cpp ─────────────────────────────────────────────────────────
 // Full port of GoWRknk.cs mesh reading logic.
 //
 // Submesh field map (all offsets relative to submeshBase in MESH file):
@@ -37,25 +39,85 @@
 
 namespace Onyx {
 
-// â”€â”€ ElementSize â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ElementSize ────────────────────────────────────────────────────────────
+// Bytes per element, keyed by the raw format enum. Transcribed from the
+// game's own vertex-view builder, which switches on the format byte:
+//   {0,2,3} -> 4    {1,4,5,6,7} -> 2    {8,9,10,11} -> 1
+// A component's total size is always elemBytes * compCount.
 static uint32_t ElementSize(GOWRMeshParser::AttrFormat fmt, uint8_t compCount) {
-    switch (fmt) {
-        case GOWRMeshParser::AttrFormat::Float32:   return compCount * 4;
-        case GOWRMeshParser::AttrFormat::R10G10B10: return 4;
-        case GOWRMeshParser::AttrFormat::Uint16:    return compCount * 2;
-        case GOWRMeshParser::AttrFormat::Int16:     return compCount * 2;
-        case GOWRMeshParser::AttrFormat::Uint8:     return compCount * 1;
-        default:                                    return compCount * 4;
+    uint32_t elem;
+    switch (static_cast<uint8_t>(fmt)) {
+        case 0: case 2: case 3:                   elem = 4; break;
+        case 1: case 4: case 5: case 6: case 7:   elem = 2; break;
+        case 8: case 9: case 10: case 11:         elem = 1; break;
+        default:                                  elem = 4; break;
     }
+    return elem * compCount;
 }
 
-// â”€â”€ ReadSubmeshHeader â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- ReadSubmeshTable ---------------------------------------------------------
+// Resolves a MESH file's submesh offset table, mirroring the game's own walker.
+//
+// The game does:  table = (M + 0x0C) + int32_at(M + 0x0C)
+//                 count = uint32_at(M + 0x10)
+// and each table slot is itself self-relative: submesh = &slot + int32_at(slot).
+//
+// The table is NOT pinned at 0x40 -- that is just where the common rel value of
+// 0x34 lands it. Hardcoding 0x40 walks straight into padding on any file that
+// places it elsewhere, which is how a zero region used to be mistaken for tens
+// of thousands of submeshes.
+static std::vector<uint32_t> ReadSubmeshTable(std::shared_ptr<Vfs::IFile>& f) {
+    std::vector<uint32_t> out;
+    if (!f || !f->IsValid()) return out;
+
+    const uint64_t fileSize = f->Size();
+    if (fileSize < 0x14) return out;
+
+    int32_t  tableRel = 0;
+    uint32_t count    = 0;
+    f->Seek(0x0C, SEEK_SET);
+    f->Read(&tableRel, 4);
+    f->Read(&count,    4);   // +0x10, u32
+
+    const int64_t tableAt = static_cast<int64_t>(0x0C) + tableRel;
+    if (count == 0) return out;
+    if (tableAt < 0x14 ||
+        static_cast<uint64_t>(tableAt) + 4ull * count > fileSize) {
+        ONYX_LOGF_WARN("[GOWRMeshParser] submesh table out of range: rel=%d -> 0x%llX, "
+                 "count=%u, file=0x%llX", tableRel,
+                 (unsigned long long)tableAt, count,
+                 (unsigned long long)fileSize);
+        return out;
+    }
+
+    out.reserve(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        const uint32_t slot = static_cast<uint32_t>(tableAt) + i * 4;
+        int32_t rel = 0;
+        f->Seek(slot, SEEK_SET);
+        if (f->Read(&rel, 4) != 4) break;
+
+        const int64_t abs = static_cast<int64_t>(slot) + rel;
+        // A submesh header runs to +0x88, so anything that cannot hold one is
+        // padding rather than an entry.
+        if (rel == 0 || abs < 0x14 ||
+            static_cast<uint64_t>(abs) + 0x88 > fileSize) {
+            ONYX_LOGF_WARN("[GOWRMeshParser] submesh table ends at %u of %u entries",
+                     i, count);
+            break;
+        }
+        out.push_back(static_cast<uint32_t>(abs));
+    }
+    return out;
+}
+
+// ── ReadSubmeshHeader ──────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
                                        uint32_t base,
                                        SubmeshHeader& h)
 {
-    // â”€â”€ DIAGNOSTIC: dump first 0x90 bytes of submesh header so we can hunt
-    // for MAT hash field placement. Remove once meshâ†’MAT link is identified.
+    // ── DIAGNOSTIC: dump first 0x90 bytes of submesh header so we can hunt
+    // for MAT hash field placement. Remove once mesh→MAT link is identified.
     {
         uint8_t hdr[0x90] = {};
         f->Seek(base, SEEK_SET);
@@ -64,7 +126,7 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
         for (size_t b = 0; b < sizeof(hdr); ++b) {
             std::snprintf(hex + b * 3, 4, "%02X ", hdr[b]);
         }
-        LOG_INFO("[GOWRMeshParser] submesh @0x%X bytes[0x00..0x8F]: %s", base, hex);
+        ONYX_LOGF_DEBUG("[GOWRMeshParser] submesh @0x%X bytes[0x00..0x8F]: %s", base, hex);
     }
 
 
@@ -73,6 +135,9 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
 
     f->Seek(base + 0x1C, SEEK_SET);
     f->Read(&h.origin, 12);
+
+    f->Seek(base + 0x28, SEEK_SET);
+    f->Read(&h.materialIndex, 4);
 
     f->Seek(base + 0x30, SEEK_SET);
     f->Read(&h.gpuIndexOffset, 4);
@@ -89,15 +154,21 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
     f->Read(&bufOffRel,  4);   // +0x64
     f->Read(&h.meshHash, 8);   // +0x68
 
-    // +0x80: u8 bufferCount
-    // +0x81: u8 indicesStride (2 = u16 indices, 4 = u32)
-    // +0x82: u16 bytesPerVertex (interleaved stride when bufferCount==1)
-    // +0x84: u8 componentCount
+    // +0x80 u8 bufferCount, +0x81 u8 indicesStride, +0x82 u8 bytesPerVertex,
+    // +0x83 u8 topology, +0x84 u8 componentCount.
+    //
+    // +0x82 and +0x83 are two distinct bytes, not one u16: the game reads
+    // +0x83 on its own as a primitive-topology enum (masked with 7) and
+    // never reads +0x82 at all -- it derives every stride from the
+    // component table instead. Reading the pair as a u16 stride yields
+    // (topology << 8) | bytesPerVertex, which shreds the geometry of any
+    // submesh whose topology is non-zero.
     f->Seek(base + 0x80, SEEK_SET);
     f->Read(&h.bufferCount,    1);
     f->Read(&h.indicesStride,  1);
-    f->Read(&h.bytesPerVertex, 2);  // u16 stride; field at +0x82..+0x83
-    f->Read(&h.componentCount, 1);  // +0x84
+    f->Read(&h.bytesPerVertex, 1);
+    f->Read(&h.topology,       1);
+    f->Read(&h.componentCount, 1);
 
     h.componentOffsetAbs = base + compOffRel;
     h.bufOffsetsAbs      = base + bufOffRel;
@@ -105,7 +176,7 @@ bool GOWRMeshParser::ReadSubmeshHeader(std::shared_ptr<Vfs::IFile>& f,
     return true;
 }
 
-// â”€â”€ ReadComponents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReadComponents ─────────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadComponents(std::shared_ptr<Vfs::IFile>& f,
                                      const SubmeshHeader& hdr,
                                      std::vector<ComponentDesc>& out)
@@ -113,13 +184,15 @@ bool GOWRMeshParser::ReadComponents(std::shared_ptr<Vfs::IFile>& f,
     out.resize(hdr.componentCount);
     f->Seek(hdr.componentOffsetAbs, SEEK_SET);
     for (auto& c : out) {
-        uint8_t s, fmt, cnt, off;
-        uint32_t bufIdx;
+        // 8 bytes per component: semantic, format, count, byteOffset,
+        // bufferIdx, then 3 bytes the game never reads.
+        uint8_t s, fmt, cnt, off, bufIdx, pad[3];
         f->Read(&s,      1);
         f->Read(&fmt,    1);
         f->Read(&cnt,    1);
         f->Read(&off,    1);
-        f->Read(&bufIdx, 4);
+        f->Read(&bufIdx, 1);
+        f->Read(pad,     3);
         c.semantic   = static_cast<Semantic>(s);
         c.format     = static_cast<AttrFormat>(fmt);
         c.compCount  = cnt;
@@ -129,7 +202,7 @@ bool GOWRMeshParser::ReadComponents(std::shared_ptr<Vfs::IFile>& f,
     return true;
 }
 
-// â”€â”€ ReadBufferOffsets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReadBufferOffsets ──────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadBufferOffsets(std::shared_ptr<Vfs::IFile>& f,
                                         const SubmeshHeader& hdr,
                                         std::vector<uint32_t>& out)
@@ -141,7 +214,7 @@ bool GOWRMeshParser::ReadBufferOffsets(std::shared_ptr<Vfs::IFile>& f,
     return true;
 }
 
-// â”€â”€ ReadVertices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReadVertices ───────────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                                    const SubmeshHeader& hdr,
                                    const std::vector<ComponentDesc>& comps,
@@ -152,7 +225,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
     part.vertices.resize(N);
 
     // Detect rigid: submesh has no BoneIdx (semantic 9) / BoneWgt (semantic 10).
-    // Rigid verts are authored in joint-local space â€” bind them to local-palette
+    // Rigid verts are authored in joint-local space — bind them to local-palette
     // slot 0 with full weight so the shader transforms by jointMap[0] only.
     bool hasBoneSemantic = false;
     for (const auto& c : comps) {
@@ -171,26 +244,48 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
         v.boneIndices = defaultI;
     }
 
+    // ── Per-buffer strides, derived exactly as the game derives them ────────
+    // Every buffer is interleaved: its stride is the sum of the sizes of the
+    // components that name it. Treating each component as its own tightly
+    // packed stream is only correct when a buffer holds a single component.
+    //
+    // The buffer-offsets table is *packed*: the game walks logical buffers
+    // 0..14 in order and consumes one offset per buffer that has a non-zero
+    // stride, so a logical index is not an index into that table.
+    constexpr uint32_t kMaxBuffers = 15;
+    uint32_t strideOf[kMaxBuffers] = {};
     for (const auto& c : comps) {
-        if (c.bufferIdx >= bufOffsets.size()) continue;
+        if (c.bufferIdx >= kMaxBuffers) continue;
+        strideOf[c.bufferIdx] += ElementSize(c.format, c.compCount);
+    }
 
-        const uint32_t streamBase = bufOffsets[c.bufferIdx];
-        const uint32_t elemBytes  = ElementSize(c.format, c.compCount);
-        const uint32_t stride     = (hdr.bufferCount == 1)
-                                      ? hdr.bytesPerVertex
-                                      : elemBytes;
+    int slotOf[kMaxBuffers];
+    uint32_t nextSlot = 0;
+    for (uint32_t b = 0; b < kMaxBuffers; ++b)
+        slotOf[b] = strideOf[b] ? static_cast<int>(nextSlot++) : -1;
+
+    if (nextSlot != bufOffsets.size()) {
+        ONYX_LOGF_WARN("[GOWRMeshParser] %u buffers carry components but the offset "
+                 "table holds %zu entries", nextSlot, bufOffsets.size());
+    }
+
+    for (const auto& c : comps) {
+        if (c.bufferIdx >= kMaxBuffers) continue;
+        const int slot = slotOf[c.bufferIdx];
+        if (slot < 0 || static_cast<size_t>(slot) >= bufOffsets.size()) continue;
+
+        const uint32_t streamBase = bufOffsets[slot];
+        const uint32_t stride     = strideOf[c.bufferIdx];
 
         for (uint32_t vi = 0; vi < N; ++vi) {
-            const uint32_t vertOff = streamBase
-                                   + vi * stride
-                                   + (hdr.bufferCount == 1 ? c.byteOffset : 0u);
+            const uint32_t vertOff = streamBase + vi * stride + c.byteOffset;
             gpu->Seek(vertOff, SEEK_SET);
 
             Domain::GpuVertex& v = part.vertices[vi];
 
             switch (c.semantic) {
 
-            // â”€â”€ Position â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Position ────────────────────────────────────────────────
             case Semantic::Position:
                 if (c.format == AttrFormat::Float32) {
                     gpu->Read(&v.position.x, 4);
@@ -207,14 +302,14 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                     v.position.y = ((float)ry / 32768.0f - 1.0f) * hdr.extent.y + hdr.origin.y;
                     v.position.z = ((float)rz / 32768.0f - 1.0f) * hdr.extent.z + hdr.origin.z;
                 } else {
-                    LOG_WARN("[GOWRMeshParser] Unknown position format %u", (uint8_t)c.format);
+                    ONYX_LOGF_WARN("[GOWRMeshParser] Unknown position format %u", (uint8_t)c.format);
                 }
                 break;
 
-            // â”€â”€ Normal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Normal ──────────────────────────────────────────────────
             case Semantic::Normal:
                 if (c.format == AttrFormat::R10G10B10) {
-                    // 3 Ã— 10-bit biased-unsigned packed in uint32 (DirectX style).
+                    // 3 × 10-bit biased-unsigned packed in uint32 (DirectX style).
                     // Port of GoWRknk.cs:839-843:
                     //   num4 = (float)(num59 & 0x3FF) - 512f) / 512f
                     // Encoding: X=[9:0], Y=[19:10], Z=[29:20], W=[31:30] ignored
@@ -231,7 +326,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                 }
                 break;
 
-            // â”€â”€ UV0 (primary UV, stream UV1 in C# naming) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── UV0 (primary UV, stream UV1 in C# naming) ───────────────
             // Port of GoWRknk.cs:865-879:
             //   fmt=0 (float32): raw
             //   fmt=6 (unorm16): raw/65536
@@ -255,7 +350,7 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
                 }
                 break;
 
-            // â”€â”€ UV1 / UV2 / UV3 (lightmap, detail, etc.) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── UV1 / UV2 / UV3 (lightmap, detail, etc.) ────────────────
             case Semantic::UV1:
                 if (c.format == AttrFormat::Float32 && c.compCount >= 2) {
                     gpu->Read(&v.uv1.x, 4);
@@ -281,111 +376,133 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
             case Semantic::UV3:
                 break;
 
-            // â”€â”€ Bone indices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Bone indices ─────────────────────────────────────────────
             // C# ref (GoWRknk.cs:707-805): the BoneIdx element's compCount
             // selects the encoding mode (`num46` in C#):
-            //   compCount=1, fmt=Uint8 / Uint16: 4 Ã— raw indices (4-influence)
-            //   compCount=2, fmt=Uint16:         7 Ã— u16 + 1 u16 pad (7-influence)
-            //   compCount=3, fmt=R10G10B10:      4 Ã— u32 holding 10 Ã— 11-bit
+            //   compCount=1, fmt=Uint8 / Uint16: 4 × raw indices (4-influence)
+            //   compCount=2, fmt=Uint16:         7 × u16 + 1 u16 pad (7-influence)
+            //   compCount=3, fmt=R10G10B10:      4 × u32 holding 10 × 11-bit
             //                                    bone indices (10-influence)
             // We only store the first 4 in v.boneIndices regardless.
-            case Semantic::BoneIdx:
-                if (c.compCount >= 3) {
-                    // 10-influence â€” 11-bit packed across 4 uint32s
-                    uint32_t u0, u1, u2, u3;
+            // The index width comes from the format byte, not from compCount.
+            // The game's vertex shader switches on the format code to decide
+            // how to fetch an attribute, and compCount is simply how many
+            // values follow. Dispatching on compCount reads a 4-byte tuple of
+            // uint8 indices as an 11-bit packed block and yields nonsense
+            // (bone 901 out of a 318-bone skeleton).
+            //
+            // Indices are GLOBAL skeleton indices, not palette-local ones:
+            // measured on r_athena00, a part's distinct vertex indices are
+            // exactly the set of values in its MG palette.
+            // Index width comes from the format byte, matching the engine's own
+            // vertex-pulling shader, which switches on it:
+            //   format 2 -> four raw u32   (302 submeshes of r_heroa00)
+            //   format 4 -> four u16
+            //   otherwise -> four u8
+            // Dispatching on compCount instead reads a four-byte tuple of uint8
+            // indices as an 11-bit packed block and reports bone 901 out of a
+            // 318-bone skeleton.
+            //
+            // Indices are GLOBAL skeleton indices; the loader rebases them onto
+            // the part's palette.
+            case Semantic::BoneIdx: {
+                const uint32_t elemBytes = ElementSize(c.format, 1);
+                const int      n         = (c.compCount < 4) ? c.compCount : 4;
+                uint32_t idx[4] = { 0, 0, 0, 0 };
+
+                if (elemBytes == 1) {
+                    for (int k = 0; k < n; ++k) {
+                        uint8_t b = 0; gpu->Read(&b, 1); idx[k] = b;
+                    }
+                } else if (elemBytes == 2) {
+                    for (int k = 0; k < n; ++k) {
+                        uint16_t b = 0; gpu->Read(&b, 2); idx[k] = b;
+                    }
+                } else if (c.format != AttrFormat::R10G10B10) {
+                    for (int k = 0; k < n; ++k) {
+                        uint32_t b = 0; gpu->Read(&b, 4); idx[k] = b;
+                    }
+                } else {
+                    // Packed: 11-bit indices across uint32 words.
+                    uint32_t u0 = 0, u1 = 0;
                     gpu->Read(&u0, 4);
                     gpu->Read(&u1, 4);
-                    gpu->Read(&u2, 4);
-                    gpu->Read(&u3, 4);
-                    uint32_t idx0 = u0 >> 21;
-                    uint32_t idx1 = (u0 >> 10) & 0x7FF;
-                    uint32_t low10 = (u0 & 0x3FF) << 1;
-                    uint32_t idx2 = (u1 >> 31) | low10;
-                    uint32_t idx3 = (u1 >> 20) & 0x7FF;
-                    v.boneIndices = glm::uvec4(idx0, idx1, idx2, idx3);
-                } else if (c.compCount == 2) {
-                    // 7-influence â€” 8 u16 (7 indices + 1 pad), keep first 4
-                    uint16_t b0, b1, b2, b3, b4, b5, b6, padb;
-                    gpu->Read(&b0, 2);
-                    gpu->Read(&b1, 2);
-                    gpu->Read(&b2, 2);
-                    gpu->Read(&b3, 2);
-                    gpu->Read(&b4, 2);
-                    gpu->Read(&b5, 2);
-                    gpu->Read(&b6, 2);
-                    gpu->Read(&padb, 2);
-                    v.boneIndices = glm::uvec4(b0, b1, b2, b3);
-                } else if (c.format == AttrFormat::Uint8) {
-                    uint8_t b0, b1, b2, b3;
-                    gpu->Read(&b0, 1);
-                    gpu->Read(&b1, 1);
-                    gpu->Read(&b2, 1);
-                    gpu->Read(&b3, 1);
-                    v.boneIndices = glm::uvec4(b0, b1, b2, b3);
-                } else if (c.format == AttrFormat::Uint16) {
-                    uint16_t b0, b1, b2, b3;
-                    gpu->Read(&b0, 2);
-                    gpu->Read(&b1, 2);
-                    gpu->Read(&b2, 2);
-                    gpu->Read(&b3, 2);
-                    v.boneIndices = glm::uvec4(b0, b1, b2, b3);
+                    idx[0] = u0 >> 21;
+                    idx[1] = (u0 >> 10) & 0x7FF;
+                    idx[2] = (u1 >> 31) | ((u0 & 0x3FF) << 1);
+                    idx[3] = (u1 >> 20) & 0x7FF;
                 }
+                v.boneIndices = glm::uvec4(idx[0], idx[1], idx[2], idx[3]);
                 break;
+            }
 
-            // â”€â”€ Bone weights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            // Three sub-formats (directly mirroring C# num46 cases):
-            //
-            //   compCount=1, fmt=R10G10B10 (num46==3, 10 influences):
-            //     Three consecutive uint32s, each holding 3 Ã— 10-bit weights.
-            //     Total 9 weights packed; 10th is implied (1 - sum).
-            //     We store only the first 4 in boneWeights.
-            //
-            //   compCount=1, fmt=R10G10B10 (num46==2, 6 influences):
-            //     Two uint32s Ã— 3 weights each. We store first 4.
-            //
-            //   compCount=1, fmt=R10G10B10 (num46==1, 4 influences):
-            //     Standard: single uint32 with 3 packed 10-bit values.
-            //     4th weight = 1 - (w0+w1+w2).
-            //
-            //   compCount=1, fmt=Uint8 (byte weights, GoW 2018):
-            //     4 bytes, each /255.
-            case Semantic::BoneWgt:
+            // The stored weights are always one short of the influence count:
+            // the shader derives the last as 1 - sum, which is why only three
+            // fields are read from the packed form and why a float form can
+            // carry two or three values.
+            case Semantic::BoneWgt: {
+                float w[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                int   n    = 0;
+
                 if (c.format == AttrFormat::R10G10B10) {
-                    // compCount tells us how many packed uint32s to read
-                    // compCount=1 â†’ 1 uint32 â†’ 3 packed weights (4th implicit)
-                    // compCount=2 â†’ 2 uint32s â†’ 6 weights
-                    // compCount=3 â†’ 3 uint32s â†’ 9 weights
+                    // Three 10-bit fields per uint32, scaled by 1/1023.
                     const float kScale = 1.0f / 1023.0f;
-                    float w[9] = {};
-                    int wIdx = 0;
-                    for (int pack = 0; pack < c.compCount; ++pack) {
-                        uint32_t u32;
-                        gpu->Read(&u32, 4);
-                        w[wIdx++] = (float)((u32      ) & 0x3FF) * kScale;
-                        w[wIdx++] = (float)((u32 >> 10) & 0x3FF) * kScale;
-                        w[wIdx++] = (float)((u32 >> 20) & 0x3FF) * kScale;
+                    for (int pack = 0; pack < c.compCount && n < 3; ++pack) {
+                        uint32_t u = 0;
+                        gpu->Read(&u, 4);
+                        for (int f = 0; f < 3 && n < 3; ++f, ++n)
+                            w[n] = (float)((u >> (f * 10)) & 0x3FF) * kScale;
                     }
-                    // For 4-influence (compCount=1): 4th = 1 - (w0+w1+w2), clamped
-                    if (c.compCount == 1) {
-                        float sum = w[0] + w[1] + w[2];
-                        w[3] = (sum < 1.0f) ? (1.0f - sum) : 0.0f;
+                } else {
+                    const uint32_t elemBytes = ElementSize(c.format, 1);
+                    const int      take      = (c.compCount < 3) ? c.compCount : 3;
+                    for (int k = 0; k < take; ++k, ++n) {
+                        if (elemBytes == 4) {
+                            gpu->Read(&w[n], 4);
+                        } else if (elemBytes == 2) {
+                            uint16_t r = 0; gpu->Read(&r, 2); w[n] = r / 65535.0f;
+                        } else {
+                            uint8_t r = 0; gpu->Read(&r, 1); w[n] = r / 255.0f;
+                        }
                     }
-                    v.boneWeights = glm::vec4(w[0], w[1], w[2], w[3]);
-                } else if (c.format == AttrFormat::Uint8) {
-                    // 4 Ã— uint8/255
-                    uint8_t b0, b1, b2, b3;
-                    gpu->Read(&b0, 1);
-                    gpu->Read(&b1, 1);
-                    gpu->Read(&b2, 1);
-                    gpu->Read(&b3, 1);
-                    v.boneWeights = glm::vec4(
-                        b0 / 255.0f, b1 / 255.0f,
-                        b2 / 255.0f, b3 / 255.0f);
                 }
-                break;
 
-            // â”€â”€ Tangent (not needed for geometry display) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                const float sum = w[0] + w[1] + w[2];
+                w[3] = (sum < 1.0f) ? (1.0f - sum) : 0.0f;
+                v.boneWeights = glm::vec4(w[0], w[1], w[2], w[3]);
+                break;
+            }
+
+            // ── Tangent (not needed for geometry display) ────────────────
             case Semantic::Tangent:
+                // Same 10/10/10 packing the normal uses. Whether the two spare
+                // top bits carry the bitangent sign is not established, so
+                // nothing here reads them: handedness is derived from the UV
+                // winding afterwards, which needs no assumption about them.
+                if (c.format == AttrFormat::R10G10B10) {
+                    uint32_t packed;
+                    gpu->Read(&packed, 4);
+                    auto unpack10 = [](uint32_t p, int shift) -> float {
+                        uint32_t u = (p >> shift) & 0x3FF;
+                        return ((float)u - 512.0f) / 512.0f;
+                    };
+                    glm::vec3 t(unpack10(packed,  0),
+                                unpack10(packed, 10),
+                                unpack10(packed, 20));
+                    const float len = glm::length(t);
+                    if (len > 1e-6f) {
+                        t /= len;
+                        v.tangent = glm::vec4(t, 1.0f);
+                    }
+                } else if (c.format == AttrFormat::Float32 && c.compCount >= 3) {
+                    glm::vec3 t;
+                    gpu->Read(&t.x, 4);
+                    gpu->Read(&t.y, 4);
+                    gpu->Read(&t.z, 4);
+                    if (c.compCount >= 4) { float w; gpu->Read(&w, 4); }
+                    const float len = glm::length(t);
+                    if (len > 1e-6f) v.tangent = glm::vec4(t / len, 1.0f);
+                }
                 break;
 
             default:
@@ -397,7 +514,53 @@ bool GOWRMeshParser::ReadVertices(std::shared_ptr<Vfs::IFile>& gpu,
     return true;
 }
 
-// â”€â”€ ReadIndices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+// Recovers the bitangent sign from the geometry itself.
+//
+// The vertex stream carries a tangent but nothing that is known to be its
+// handedness, and getting the sign wrong inverts every crevice a normal map
+// describes. Rather than guess at the two spare bits in the packed tangent,
+// this rebuilds the UV gradient per triangle - the same derivation an exporter
+// uses - and asks whether the stored tangent agrees with it.
+static void DeriveTangentHandedness(Parsers::MeshPart& part) {
+    if (part.indices.size() < 3 || part.vertices.empty()) return;
+
+    std::vector<glm::vec3> bitan(part.vertices.size(), glm::vec3(0.0f));
+
+    for (size_t i = 0; i + 2 < part.indices.size(); i += 3) {
+        const uint32_t i0 = part.indices[i], i1 = part.indices[i+1], i2 = part.indices[i+2];
+        if (i0 >= part.vertices.size() || i1 >= part.vertices.size() ||
+            i2 >= part.vertices.size()) continue;
+
+        const auto& v0 = part.vertices[i0];
+        const auto& v1 = part.vertices[i1];
+        const auto& v2 = part.vertices[i2];
+
+        const glm::vec3 e1 = v1.position - v0.position;
+        const glm::vec3 e2 = v2.position - v0.position;
+        const glm::vec2 d1 = v1.uv - v0.uv;
+        const glm::vec2 d2 = v2.uv - v0.uv;
+
+        const float det = d1.x * d2.y - d2.x * d1.y;
+        if (std::fabs(det) < 1e-12f) continue;   // degenerate UVs contribute nothing
+        const float r = 1.0f / det;
+
+        const glm::vec3 b = (e2 * d1.x - e1 * d2.x) * r;
+        bitan[i0] += b;
+        bitan[i1] += b;
+        bitan[i2] += b;
+    }
+
+    for (size_t i = 0; i < part.vertices.size(); ++i) {
+        auto& v = part.vertices[i];
+        if (glm::length(bitan[i]) < 1e-8f) continue;
+        const glm::vec3 expected = glm::cross(v.normal, glm::vec3(v.tangent));
+        v.tangent.w = (glm::dot(expected, bitan[i]) < 0.0f) ? -1.0f : 1.0f;
+    }
+}
+
+
+// ── ReadIndices ────────────────────────────────────────────────────────────
 bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
                                   const SubmeshHeader& hdr,
                                   Parsers::MeshPart& part)
@@ -420,38 +583,26 @@ bool GOWRMeshParser::ReadIndices(std::shared_ptr<Vfs::IFile>& gpu,
             part.indices[i] = idx;
         }
     } else {
-        LOG_ERR("[GOWRMeshParser] Unknown index stride: %u", hdr.indicesStride);
+        ONYX_LOGF_ERR("[GOWRMeshParser] Unknown index stride: %u", hdr.indicesStride);
         return false;
     }
 
     return true;
 }
 
-// â”€â”€ Parse (full geometry pass) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parse (full geometry pass) ─────────────────────────────────────────────
 bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
                             std::shared_ptr<Vfs::IFile> gpuFile,
-                            Parsers::MeshData& outData)
+                            Parsers::MeshData& outData,
+                            std::vector<uint32_t>* outMaterialOfPart)
 {
     if (!meshFile || !meshFile->IsValid()) return false;
     if (!gpuFile  || !gpuFile->IsValid())  return false;
 
-    // Submesh count: uint16 at +0x10
-    meshFile->Seek(0x10, SEEK_SET);
-    uint16_t submeshCount = 0;
-    meshFile->Read(&submeshCount, 2);
-
-    LOG_INFO("[GOWRMeshParser] submeshCount=%u", submeshCount);
+    const std::vector<uint32_t> smOffsets = ReadSubmeshTable(meshFile);
+    const uint32_t submeshCount = static_cast<uint32_t>(smOffsets.size());
+    ONYX_LOGF_INFO("[GOWRMeshParser] submeshCount=%u", submeshCount);
     if (submeshCount == 0) return true;
-
-    // Offset table at 0x40. Each entry:  absolute = pos + readValue
-    std::vector<uint32_t> smOffsets(submeshCount);
-    for (uint32_t i = 0; i < submeshCount; ++i) {
-        const uint32_t pos = 0x40 + i * 4;
-        uint32_t rel;
-        meshFile->Seek(pos, SEEK_SET);
-        meshFile->Read(&rel, 4);
-        smOffsets[i] = pos + rel;
-    }
 
     uint32_t totalVerts = 0, totalFaces = 0;
     int      skipped = 0;
@@ -486,7 +637,7 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
         bool valid = true;
         for (const auto& c : comps) {
             if (c.bufferIdx >= bufOffsets.size()) {
-                LOG_WARN("[GOWRMeshParser] SM#%u: comp semantic=%u bufIdx=%u >= bufCount=%u â€” skip",
+                ONYX_LOGF_WARN("[GOWRMeshParser] SM#%u: comp semantic=%u bufIdx=%u >= bufCount=%u — skip",
                          smIdx, (uint8_t)c.semantic, c.bufferIdx, hdr.bufferCount);
                 valid = false;
                 break;
@@ -498,12 +649,22 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
         bool hasUV = false;
         for (const auto& c : comps)
             if (c.semantic == Semantic::UV0) { hasUV = true; break; }
-        if (!hasUV) { ++skipped; continue; }
+        if (!hasUV) {
+            ONYX_LOGF_DEBUG("[GOWRMeshParser] SM#%u dropped: no UV0 channel", smIdx);
+            ++skipped; continue;
+        }
 
-        if (smIdx < 3) {
-            LOG_INFO("[GOWRMeshParser] SM#%u @0x%X: %u v, %u f, bufCount=%u stride=%u",
-                     smIdx, base, hdr.vertCount, hdr.faceCount,
-                     hdr.bufferCount, hdr.indicesStride);
+        // Vertex-layout diagnostics. The multi-buffer path ignores each
+        // component's byteOffset, so this dump is what tells us whether two
+        // components share a buffer (which would make that assumption wrong).
+        ONYX_LOGF_DEBUG("[GOWRMeshParser] SM#%u @0x%X: %u v, %u f, bufCount=%u idxStride=%u bytesPerVert=%u comps=%u",
+                  smIdx, base, hdr.vertCount, hdr.faceCount, hdr.bufferCount,
+                  hdr.indicesStride, hdr.bytesPerVertex, hdr.componentCount);
+        for (size_t ci = 0; ci < comps.size(); ++ci) {
+            const auto& c = comps[ci];
+            ONYX_LOGF_DEBUG("[GOWRMeshParser]   comp[%zu] sem=%u fmt=%u cnt=%u byteOff=%u buf=%u",
+                      ci, (unsigned)c.semantic, (unsigned)c.format,
+                      (unsigned)c.compCount, (unsigned)c.byteOffset, c.bufferIdx);
         }
 
         Parsers::MeshPart part;
@@ -512,13 +673,15 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
 
         if (!ReadVertices(gpuFile, hdr, comps, bufOffsets, part)) { ++skipped; continue; }
         if (!ReadIndices (gpuFile, hdr, part))                    { ++skipped; continue; }
+        DeriveTangentHandedness(part);
 
         totalVerts += hdr.vertCount;
         totalFaces += hdr.faceCount;
+        if (outMaterialOfPart) outMaterialOfPart->push_back(hdr.materialIndex);
         outData.parts.push_back(std::move(part));
     }
 
-    LOG_INFO("[GOWRMeshParser] Done: %zu submeshes exported (%d skipped), %u verts, %u faces",
+    ONYX_LOGF_INFO("[GOWRMeshParser] Done: %zu submeshes exported (%d skipped), %u verts, %u faces",
              outData.parts.size(), skipped, totalVerts, totalFaces);
 
     // Bounding box from actual vertex data
@@ -534,30 +697,20 @@ bool GOWRMeshParser::Parse(std::shared_ptr<Vfs::IFile> meshFile,
     return !outData.parts.empty();
 }
 
-// â”€â”€ ParseMeshDefn (header-only, for tree inspector + lodpack lookup) â”€â”€â”€â”€â”€â”€â”€
+// ── ParseMeshDefn (header-only, for tree inspector + lodpack lookup) ───────
 bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
                                     std::shared_ptr<Vfs::IFile> /*lodpackFile*/,
                                     std::vector<std::shared_ptr<GpuMesh>>& /*outMeshes*/)
 {
     if (!defFile || !defFile->IsValid()) return false;
 
-    defFile->Seek(0x10, SEEK_SET);
-    uint16_t submeshCount = 0;
-    defFile->Read(&submeshCount, 2);
-
-    std::vector<uint32_t> offsets(submeshCount);
-    for (uint32_t i = 0; i < submeshCount; ++i) {
-        const uint32_t pos = 0x40 + i * 4;
-        uint32_t rel;
-        defFile->Seek(pos, SEEK_SET);
-        defFile->Read(&rel, 4);
-        offsets[i] = pos + rel;
-    }
+    const std::vector<uint32_t> offsets = ReadSubmeshTable(defFile);
+    const uint32_t submeshCount = static_cast<uint32_t>(offsets.size());
 
     for (uint32_t i = 0; i < submeshCount; ++i) {
         SubmeshHeader hdr;
         ReadSubmeshHeader(defFile, offsets[i], hdr);
-        LOG_INFO("[GOWRMeshParser] SM#%u @0x%X: %u v, %u f, %u comp, %u bufs, "
+        ONYX_LOGF_INFO("[GOWRMeshParser] SM#%u @0x%X: %u v, %u f, %u comp, %u bufs, "
                  "idxStride=%u, hash=0x%016llX",
                  i, offsets[i],
                  hdr.vertCount, hdr.faceCount,
@@ -569,7 +722,7 @@ bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
     return true;
 }
 
-// â”€â”€ ParseWithLodPack (full parse using a LodPackIndex) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ParseWithLodPack (full parse using a LodPackIndex) ─────────────────────
 // This is the main entry point for production use.
 // It mirrors the C# Main() loop: for each submesh, looks up the LOD blob in
 // the lodpack, wraps it in a MemoryFile, and calls the standard ReadVertices/
@@ -577,24 +730,14 @@ bool GOWRMeshParser::ParseMeshDefn(std::shared_ptr<Vfs::IFile> defFile,
 bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
                                        std::shared_ptr<Vfs::IFile>    gpuFile,
                                        const LodPackIndex&       lodIdx,
-                                       Parsers::MeshData&                 outData)
+                                       Parsers::MeshData&                 outData,
+                                       std::vector<uint32_t>* outMaterialOfPart)
 {
     if (!meshFile || !meshFile->IsValid()) return false;
 
-    meshFile->Seek(0x10, SEEK_SET);
-    uint16_t submeshCount = 0;
-    meshFile->Read(&submeshCount, 2);
-
+    const std::vector<uint32_t> smOffsets = ReadSubmeshTable(meshFile);
+    const uint32_t submeshCount = static_cast<uint32_t>(smOffsets.size());
     if (submeshCount == 0) return true;
-
-    std::vector<uint32_t> smOffsets(submeshCount);
-    for (uint32_t i = 0; i < submeshCount; ++i) {
-        const uint32_t pos = 0x40 + i * 4;
-        uint32_t rel;
-        meshFile->Seek(pos, SEEK_SET);
-        meshFile->Read(&rel, 4);
-        smOffsets[i] = pos + rel;
-    }
 
     uint32_t totalVerts = 0, totalFaces = 0;
     int      skipped = 0;
@@ -610,19 +753,19 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
             continue;
         }
 
-        // â”€â”€ LOD source selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // meshHash == 0 â†’ data is embedded in the GPU file (internal LOD)
-        // meshHash != 0 â†’ look up in lodpack
+        // ── LOD source selection ─────────────────────────────────────────
+        // meshHash == 0 → data is embedded in the GPU file (internal LOD)
+        // meshHash != 0 → look up in lodpack
         std::shared_ptr<Vfs::IFile> lodFile;
 
         if (hdr.meshHash == 0) {
             // Internal: use the gpuFile as-is (it IS the LOD blob)
             lodFile = gpuFile;
-            LOG_INFO("[GOWRMeshParser] SM#%u: internal LOD (hash=0, using gpuFile)", smIdx);
+            ONYX_LOGF_INFO("[GOWRMeshParser] SM#%u: internal LOD (hash=0, using gpuFile)", smIdx);
         } else {
             const LodEntry* entry = lodIdx.Find(hdr.meshHash);
             if (!entry) {
-                LOG_WARN("[GOWRMeshParser] SM#%u: LOD not found for hash=0x%016llX â€” skipping",
+                ONYX_LOGF_WARN("[GOWRMeshParser] SM#%u: LOD not found for hash=0x%016llX — skipping",
                          smIdx, (unsigned long long)hdr.meshHash);
                 ++skipped;
                 continue;
@@ -630,12 +773,12 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
 
             std::vector<uint8_t> blob;
             if (!lodIdx.ReadBlob(*entry, blob)) {
-                LOG_WARN("[GOWRMeshParser] SM#%u: failed to read LOD blob â€” skipping", smIdx);
+                ONYX_LOGF_WARN("[GOWRMeshParser] SM#%u: failed to read LOD blob — skipping", smIdx);
                 ++skipped;
                 continue;
             }
 
-            LOG_INFO("[GOWRMeshParser] SM#%u: LOD pack[%d] off=0x%llX size=%d",
+            ONYX_LOGF_INFO("[GOWRMeshParser] SM#%u: LOD pack[%d] off=0x%llX size=%d",
                      smIdx, entry->packIdx,
                      (unsigned long long)entry->offset, entry->size);
 
@@ -665,13 +808,15 @@ bool GOWRMeshParser::ParseWithLodPack(std::shared_ptr<Vfs::IFile>    meshFile,
 
         if (!ReadVertices(lodFile, hdr, comps, bufOffsets, part)) { ++skipped; continue; }
         if (!ReadIndices (lodFile, hdr, part))                    { ++skipped; continue; }
+        DeriveTangentHandedness(part);
 
         totalVerts += hdr.vertCount;
         totalFaces += hdr.faceCount;
+        if (outMaterialOfPart) outMaterialOfPart->push_back(hdr.materialIndex);
         outData.parts.push_back(std::move(part));
     }
 
-    LOG_INFO("[GOWRMeshParser] ParseWithLodPack: %zu parts (%d skipped), %u verts, %u faces",
+    ONYX_LOGF_INFO("[GOWRMeshParser] ParseWithLodPack: %zu parts (%d skipped), %u verts, %u faces",
              outData.parts.size(), skipped, totalVerts, totalFaces);
 
     glm::vec3 bmin( 1e9f), bmax(-1e9f);

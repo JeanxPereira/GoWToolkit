@@ -1,11 +1,11 @@
-﻿#include "ShaderParser.h"
+#include "ShaderParser.h"
 #include <Onyx/Services/Logger.h>
 #include <cstring>
 #include <algorithm>
 
 namespace Onyx {
 
-// â”€â”€ Display helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Display helpers ────────────────────────────────────────────────────────
 
 const char* GOWRShaderData::StageName() const {
     if (stageTag == "vs") return "Vertex Shader";
@@ -63,7 +63,7 @@ std::string GOWRShaderData::MaskString(uint8_t mask) {
     return s.empty() ? "none" : s;
 }
 
-// â”€â”€ Signature parser (ISG1 / OSG1 / PSG1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Signature parser (ISG1 / OSG1 / PSG1) ─────────────────────────────────
 // Layout: uint32 elementCount, uint32 headerSize (always 8),
 //         then per element: 6 dwords (24 bytes) for ISGN/OSGN,
 //         or 8 dwords (32 bytes) for ISG1/OSG1 (has stream field).
@@ -128,7 +128,7 @@ static bool ParseSignature(const uint8_t* data, uint32_t size,
     return true;
 }
 
-// â”€â”€ Main parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main parser ────────────────────────────────────────────────────────────
 
 std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file) {
     if (!file || file->Size() < 0x1C + 4) return nullptr;
@@ -136,7 +136,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file
     auto shader = std::make_unique<GOWRShaderData>();
     file->Seek(0, 0);
 
-    // â”€â”€ Onyx custom header (28 bytes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Onyx custom header (28 bytes) ───────────────────────────────────
     file->Read(&shader->formatVersion, 2);
     file->Read(&shader->subVersion, 2);
 
@@ -152,11 +152,11 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file
 
     file->Read(&shader->variantId, 4);
 
-    // â”€â”€ DXBC container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── DXBC container ─────────────────────────────────────────────────
     char magic[4] = {};
     file->Read(magic, 4);
     if (magic[0] != 'D' || magic[1] != 'X' || magic[2] != 'B' || magic[3] != 'C') {
-        LOG_WARN("[ShaderParser] No DXBC magic at offset 0x1C");
+        ONYX_LOGF_WARN("[ShaderParser] No DXBC magic at offset 0x1C");
         return shader; // return with Onyx header only
     }
     shader->hasDxbc = true;
@@ -185,6 +185,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file
     std::vector<uint8_t> payload(payloadSize);
     file->Seek(dxbcStart, 0);
     file->Read(payload.data(), payloadSize);
+    shader->dxbc = payload;
 
     // Parse each chunk
     for (uint32_t i = 0; i < chunkCount; i++) {
@@ -254,7 +255,7 @@ std::unique_ptr<GOWRShaderData> GOWRShaderParse(std::shared_ptr<Vfs::IFile> file
         shader->chunks.push_back(chunk);
     }
 
-    LOG_INFO("[ShaderParser] Parsed %s (%s): %zu chunks, %zu inputs, %zu outputs",
+    ONYX_LOGF_INFO("[ShaderParser] Parsed %s (%s): %zu chunks, %zu inputs, %zu outputs",
              shader->stageTag.c_str(), shader->StageName(),
              shader->chunks.size(), shader->inputs.size(), shader->outputs.size());
 

@@ -1,4 +1,4 @@
-﻿#include <doctest/doctest.h>
+#include <doctest/doctest.h>
 
 #include <atomic>
 #include <thread>
@@ -30,7 +30,7 @@ TEST_CASE("[Threading] Worker thread sees IsMainThread() == false") {
 TEST_CASE("[Threading] ASSERT_MAIN_THREAD is a no-op in NDEBUG builds") {
 #ifdef NDEBUG
     // Release: macro must expand to (void)0. We can verify by checking
-    // that the expansion does not reference Threading at all â€” calling
+    // that the expansion does not reference Threading at all — calling
     // it from a worker thread without first MarkMainThread()ing must
     // not abort.
     bool ranWithoutAbort = false;

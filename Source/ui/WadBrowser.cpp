@@ -1,6 +1,6 @@
-﻿#include "ui/WadBrowser.h"
+#include "ui/WadBrowser.h"
 #include <Onyx/App/UIHelpers.h>
-#include "ui/RoleVisuals.h"   // GOWR role Ã¢â€ â€™ color/icon (ColorForRole, IconForRole)
+#include "ui/RoleVisuals.h"   // GOWR role → color/icon (ColorForRole, IconForRole)
 #include <Onyx/App/Widgets.h>
 #include <Onyx/Services/AssetDatabase.h>
 #include <Onyx/Services/AssetVisibility.h>
@@ -17,13 +17,12 @@
 #include <functional>
 #include <string>
 #include <fstream>
-#include "core/profiles/gowr/GowrProfileTag.h"
+#include "core/profiles/gowr/GowrTaxonomy.h"
 
+// Onyx v1.1 removed AssetEntry::profileTag; role is reclassified on demand
+// from the entry's own name + size via Gowr::Classify().
 static Onyx::Gowr::WadEntryRole GetRole(const AssetEntry& e) {
-    if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
-        return t->role;
-    }
-    return Onyx::Gowr::WadEntryRole::Unknown;
+    return Onyx::Gowr::Classify(e).role;
 }
 
 WadBrowser::WadBrowser() {
@@ -34,10 +33,10 @@ WadBrowser::~WadBrowser() {
     EventWadOpened::unsubscribe(this);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Asset visibility Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Asset visibility ──────────────────────────────────────────────────────
 // Determines whether an entry should appear in the browser tree.
 // Delegates to the centralized AssetVisibility registry which handles both
-// GOW2 (TypeId-based) and GOWR (roleÃ¢â€ â€™TypeId mapping) in one code path.
+// GOW2 (TypeId-based) and GOWR (role→TypeId mapping) in one code path.
 // Users can toggle visibility per type via the Asset Filters panel.
 static bool IsEntryVisible(const AssetEntry& entry) {
     return Onyx::Services::AssetVisibility::Get().IsVisible(entry.typeId);
@@ -152,7 +151,7 @@ void WadBrowser::Draw() {
                     }
                 }
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Asset visibility filter (GOW2 + GOWR) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Asset visibility filter (GOW2 + GOWR) ───────────
                 // Delegates to AssetVisibility registry. Users can toggle
                 // types on/off via the Asset Filters panel.
                 if (!IsEntryVisible(entry)) {
@@ -162,7 +161,7 @@ void WadBrowser::Draw() {
                 ImGui::PushID(idx);
                 bool has_children = !entry.children.empty();
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Flags Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Flags ────────────────────────────────────────────
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
                 if (!has_children) {
                     flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -172,7 +171,7 @@ void WadBrowser::Draw() {
                 if (hasFilter) flags |= ImGuiTreeNodeFlags_DefaultOpen;
                 if (Onyx::Api::GetSelected() == &entry) flags |= ImGuiTreeNodeFlags_Selected;
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Icon + color (prefer role-based for GOWR entries) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Icon + color (prefer role-based for GOWR entries) ────
                 const char* icon;
                 ImVec4 color;
                 auto role = GetRole(entry);
@@ -188,17 +187,17 @@ void WadBrowser::Draw() {
                 const std::string& label_name =
                     entry.displayName.empty() ? entry.name : entry.displayName;
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ TreeNode with formatted label Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── TreeNode with formatted label ────────────────────
                 bool isSelected = (Onyx::Api::GetSelected() == &entry);
                 bool node_open = Onyx::App::Widgets::ColoredTreeNode("", label_name.c_str(), icon, color, flags, isSelected);
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Selection (single click) Ã¢â‚¬â€ via Api::SetSelected Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Selection (single click) — via Api::SetSelected ──
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
                     db.EnsureNodeData(&entry, wad);
                     Onyx::Api::SetSelected(&entry, &wad);
                 }
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Double-click action Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Double-click action ────────────────────────────────
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     if (wad.fileSource) {
                         auto viewer = Onyx::Api::Viewers().Open(entry, wad);
@@ -206,20 +205,20 @@ void WadBrowser::Draw() {
                     }
                 }
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Tooltip on hover Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Tooltip on hover ─────────────────────────────────
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
                     ImGui::BeginTooltip();
                     ImGui::Text("Type: %s", TypeName(entry.typeId));
-                    ImGui::Text("Offset: 0x%08X", entry.offset);
-                    ImGui::Text("Size: %s", FormatBytes(entry.size).c_str());
+                    ImGui::Text("Offset: 0x%08X", entry.source.offset);
+                    ImGui::Text("Size: %s", FormatBytes(entry.source.size).c_str());
                     ImGui::EndTooltip();
                 }
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Right-click Context Menu Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Right-click Context Menu ─────────────────────────
                 if (ImGui::BeginPopupContextItem()) {
                     ImGui::TextDisabled("%s", entry.name.c_str());
                     ImGui::TextDisabled("%s  |  %s", TypeName(entry.typeId),
-                                        FormatBytes(entry.size).c_str());
+                                        FormatBytes(entry.source.size).c_str());
                     ImGui::Separator();
 
                     if (wad.fileSource &&
@@ -260,19 +259,19 @@ void WadBrowser::Draw() {
                         ImGui::MenuItem(ICON_SF_SQUARE_AND_ARROW_DOWN " Extract File")) {
                         std::string savePath = SystemSaveFileDialog(entry.name);
                         if (!savePath.empty()) {
-                            std::vector<uint8_t> dumpData(entry.size);
-                            wad.fileSource->Seek(entry.offset, 0);
-                            wad.fileSource->Read(dumpData.data(), entry.size);
+                            std::vector<uint8_t> dumpData(entry.source.size);
+                            wad.fileSource->Seek(entry.source.offset, 0);
+                            wad.fileSource->Read(dumpData.data(), entry.source.size);
                             if (!dumpData.empty()) {
                                 std::ofstream out(savePath, std::ios::binary);
                                 if (out.is_open()) {
                                     out.write(reinterpret_cast<const char*>(dumpData.data()),
                                               dumpData.size());
                                     out.close();
-                                    LOG_INFO("Extracted %s to %s", entry.name.c_str(),
+                                    ONYX_LOGF_INFO("Extracted %s to %s", entry.name.c_str(),
                                              savePath.c_str());
                                 } else {
-                                    LOG_ERR("Failed to open path for writing: %s",
+                                    ONYX_LOGF_ERR("Failed to open path for writing: %s",
                                             savePath.c_str());
                                 }
                             }

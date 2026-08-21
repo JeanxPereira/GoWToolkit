@@ -1,4 +1,4 @@
-﻿#include "core/parsers/gowr/TexPackIndex.h"
+#include "core/parsers/gowr/TexPackIndex.h"
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Services/TaskManager.h>
 #include <Onyx/Vfs/OsFile.h>
@@ -30,7 +30,7 @@ struct RawBlockInfo {
 };
 #pragma pack(pop)
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 // Decompress a complete LZ4 frame file into `out`. Returns true on success.
 static bool DecompressLz4Frame(const std::filesystem::path& path,
@@ -94,7 +94,7 @@ static bool DecompressLz4Frame(const std::filesystem::path& path,
 void TexPackIndex::LoadFileHashes(const std::filesystem::path& csvLz4Path) {
     std::vector<char> buf;
     if (!DecompressLz4Frame(csvLz4Path, buf)) {
-        LOG_INFO("[TexPackIndex] filehashes.csv missing or unreadable â€” patch-hint disabled");
+        ONYX_LOGF_INFO("[TexPackIndex] filehashes.csv missing or unreadable — patch-hint disabled");
         return;
     }
 
@@ -123,17 +123,17 @@ void TexPackIndex::LoadFileHashes(const std::filesystem::path& csvLz4Path) {
         }
         while (p < end && *p != '\n') ++p;
     }
-    LOG_INFO("[TexPackIndex] filehashes.csv: %zu hash hints loaded", m_hashToPack.size());
+    ONYX_LOGF_INFO("[TexPackIndex] filehashes.csv: %zu hash hints loaded", m_hashToPack.size());
 }
 
-// â”€â”€ LoadFromGameRoot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LoadFromGameRoot ───────────────────────────────────────────────────────
 
 void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
     if (gameRoot.empty()) { SetLoaded(); return; }
 
     auto pcLeDir = gameRoot / "exec" / "wad" / "pc_le";
     if (!std::filesystem::exists(pcLeDir)) {
-        LOG_WARN("[TexPackIndex] pc_le directory not found: %s", pcLeDir.string().c_str());
+        ONYX_LOGF_WARN("[TexPackIndex] pc_le directory not found: %s", pcLeDir.string().c_str());
         SetLoaded();
         return;
     }
@@ -168,11 +168,11 @@ void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
     }
     m_loaded = false;
 
-    LOG_INFO("[TexPackIndex] Lazy mode: %u packs enumerated, dispatching parallel index", packCount);
+    ONYX_LOGF_INFO("[TexPackIndex] Lazy mode: %u packs enumerated, dispatching parallel index", packCount);
 
     if (packCount == 0) { SetLoaded(); return; }
 
-    // Heuristic: prioritize `root.texpack` first â€” it holds cross-pack
+    // Heuristic: prioritize `root.texpack` first — it holds cross-pack
     // textures referenced by character WADs and is the most common early hit.
     std::vector<uint32_t> order;
     order.reserve(packCount);
@@ -184,7 +184,7 @@ void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
         }
     }
 
-    // Fan out â€” one background task per pack. Heavy work (LZ4 + parse) runs
+    // Fan out — one background task per pack. Heavy work (LZ4 + parse) runs
     // outside the mutex; only the final merge into m_entries holds it briefly.
     for (uint32_t packIdx : order) {
         Services::TaskManager::createBackgroundTask(
@@ -193,13 +193,13 @@ void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
                 this->IndexPack(packIdx);
                 if (m_packsLoaded.load(std::memory_order_acquire) >= m_packCount.load()) {
                     SetLoaded();
-                    LOG_INFO("[TexPackIndex] All packs indexed (background)");
+                    ONYX_LOGF_INFO("[TexPackIndex] All packs indexed (background)");
                 }
             });
     }
 }
 
-// â”€â”€ IndexPack â€” heavy work outside lock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── IndexPack — heavy work outside lock ────────────────────────────────────
 
 bool TexPackIndex::IndexPack(uint32_t packIdx) {
     std::filesystem::path tocPath;
@@ -215,10 +215,10 @@ bool TexPackIndex::IndexPack(uint32_t packIdx) {
         texpackPath = m_packs[packIdx].texpackPath;
     }
 
-    // No lock held below â€” parallel workers can run in parallel.
+    // No lock held below — parallel workers can run in parallel.
     std::vector<char> buffer;
     if (!DecompressLz4Frame(tocPath, buffer)) {
-        LOG_WARN("[TexPackIndex] Failed to decompress %s", tocPath.string().c_str());
+        ONYX_LOGF_WARN("[TexPackIndex] Failed to decompress %s", tocPath.string().c_str());
         m_packsLoaded.fetch_add(1, std::memory_order_release);
         return false;
     }
@@ -298,13 +298,13 @@ bool TexPackIndex::IndexPack(uint32_t packIdx) {
     }
     m_packsLoaded.fetch_add(1, std::memory_order_release);
 
-    LOG_INFO("[TexPackIndex] Indexed %s: %u/%u",
+    ONYX_LOGF_INFO("[TexPackIndex] Indexed %s: %u/%u",
              tocPath.stem().filename().string().c_str(),
              indexed, texsCount);
     return true;
 }
 
-// â”€â”€ FindTexture â€” cache lookup only, non-blocking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── FindTexture — cache lookup only, non-blocking ──────────────────────────
 
 bool TexPackIndex::FindTexture(uint64_t hash, TexpackEntry& outEntry) {
     std::lock_guard<std::mutex> lock(m_mutex);

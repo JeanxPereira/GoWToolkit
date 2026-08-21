@@ -1,4 +1,4 @@
-﻿#include "core/loaders/GOWRLoaders.h"
+#include "core/loaders/GOWRLoaders.h"
 #include <Onyx/Types/TypeRegistry.h>
 #include "core/WadTypes.h"
 #include <Onyx/Schema/AssetReader.h>
@@ -9,40 +9,45 @@
 #include "core/parsers/gowr/ProtoParser.h"
 #include "core/parsers/gowr/MgParser.h"
 #include "core/parsers/gowr/ShaderParser.h"
+#include "core/parsers/gowr/MaterialParser.h"
+#include "core/parsers/gowr/TextureDecode.h"
+#include "core/shaders/DxilDisassembler.h"
+#include "ui/CodeView.h"
 #include <Onyx/Parsers/SceneNode.h>
 #include <Onyx/Viewers/ImageViewer.h>
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Vfs/SliceFile.h>
 #include <Onyx/Vfs/MemoryFile.h>
 #include <Onyx/Viewers/Viewport3D.h>
+#include <Onyx/Rendering/SceneRenderer.h>
+#include <imgui.h>
+#include <algorithm>
+#include <string>
 #include <cctype>
 #include <cstring>
 #include <filesystem>
 #include <functional>
+#include <unordered_map>
 #include <mutex>
 #include <thread>
 #include <fstream>
-#include "core/parsers/gowr/Rdna2Detiler.h"
-#include "core/parsers/gowr/BcDecoder.h"
-#include "core/profiles/gowr/GowrProfileTag.h"
+#include "core/profiles/gowr/GowrTaxonomy.h"
 #include <Onyx/Services/PathUtils.h>
 
-using Onyx::Rdna2::Detile;
 
+// Onyx v1.1 removed AssetEntry::profileTag; role is reclassified on demand
+// from the entry's own name + size via Gowr::Classify().
 static Onyx::Gowr::WadEntryRole GetRole(const AssetEntry& e) {
-    if (auto* t = e.profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
-        return t->role;
-    }
-    return Onyx::Gowr::WadEntryRole::Unknown;
+    return Onyx::Gowr::Classify(e).role;
 }
 
 #include <Onyx/Services/PathUtils.h>
 
-// â”€â”€ GOWRLoaders.cpp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GOWRLoaders.cpp ────────────────────────────────────────────────────────
 
 namespace Onyx {
 
-// â”€â”€ Search candidates for runtime files (config.ini, lodpacks.txt) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Search candidates for runtime files (config.ini, lodpacks.txt) ─────────
 static std::vector<std::filesystem::path> ResourceSearchDirs() {
     std::vector<std::filesystem::path> candidates;
     candidates.push_back(std::filesystem::current_path());
@@ -74,11 +79,11 @@ static std::filesystem::path FindResource(const std::string& filename) {
     return {};
 }
 
-// â”€â”€ Resolve game root from config.ini â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Resolve game root from config.ini ─────────────────────────────────────
 static std::filesystem::path ReadGameRootFromConfig() {
     auto configPath = FindResource("config.ini");
     if (configPath.empty()) return {};
-    LOG_INFO("[GOWRLoaders] Found config.ini at: %s", configPath.string().c_str());
+    ONYX_LOGF_INFO("[GOWRLoaders] Found config.ini at: %s", configPath.string().c_str());
 
     std::ifstream cfg(configPath);
     if (!cfg.is_open()) return {};
@@ -101,7 +106,7 @@ static std::filesystem::path ReadGameRootFromConfig() {
     return std::filesystem::path(line);
 }
 
-// â”€â”€ Auto-detect game root from a WAD path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Auto-detect game root from a WAD path ──────────────────────────────────
 //
 // GOWR layout puts WADs under <gameRoot>/exec/wad/pc_le/. We walk up from the
 // WAD's parent dir looking for an ancestor that contains exec/wad/pc_le, so we
@@ -133,7 +138,7 @@ bool EnsureGowrConfigIni(const std::filesystem::path& wadPath) {
 
     auto gameRoot = TryDetectGowrGameRoot(wadPath);
     if (gameRoot.empty()) {
-        LOG_DEBUG("[GOWRLoaders] Could not auto-detect GOWR game root from: %s",
+        ONYX_LOGF_DEBUG("[GOWRLoaders] Could not auto-detect GOWR game root from: %s",
                   wadPath.string().c_str());
         return false;
     }
@@ -141,19 +146,19 @@ bool EnsureGowrConfigIni(const std::filesystem::path& wadPath) {
     auto target = std::filesystem::path(PathUtils::getExecutableDir()) / "config.ini";
     std::ofstream out(target, std::ios::trunc);
     if (!out.is_open()) {
-        LOG_WARN("[GOWRLoaders] Cannot write config.ini at: %s", target.string().c_str());
+        ONYX_LOGF_WARN("[GOWRLoaders] Cannot write config.ini at: %s", target.string().c_str());
         return false;
     }
     out << "; GoWToolkit auto-generated. Game root containing exec/wad/pc_le.\n";
     out << "gameroot=" << gameRoot.string() << "\n";
     out.close();
 
-    LOG_INFO("[GOWRLoaders] Auto-detected game root '%s' (saved to %s)",
+    ONYX_LOGF_INFO("[GOWRLoaders] Auto-detected game root '%s' (saved to %s)",
              gameRoot.string().c_str(), target.string().c_str());
     return true;
 }
 
-// â”€â”€ LodPackIndex singleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LodPackIndex singleton ─────────────────────────────────────────────────
 
 static LodPackIndex* s_lodIndex = nullptr;
 
@@ -163,11 +168,16 @@ static LodPackIndex& GetLodIndex() {
         auto lodpacksTxt = FindResource("lodpacks.txt");
         auto gameRoot    = ReadGameRootFromConfig();
 
-        if (!gameRoot.empty() && !lodpacksTxt.empty()) {
-            LOG_INFO("[GOWRLoaders] Found lodpacks.txt at: %s", lodpacksTxt.string().c_str());
+        if (gameRoot.empty()) {
+            ONYX_LOGF_WARN("[GOWRLoaders] config.ini not found - LOD lookup disabled");
+        } else if (!lodpacksTxt.empty()) {
+            ONYX_LOGF_INFO("[GOWRLoaders] Found lodpacks.txt at: %s", lodpacksTxt.string().c_str());
             s_lodIndex->LoadFromList(lodpacksTxt, gameRoot);
         } else {
-            LOG_WARN("[GOWRLoaders] config.ini or lodpacks.txt not found â€” LOD lookup disabled");
+            // A shipped install carries no lodpacks.txt (it is an artefact of the
+            // C# extractor), so index every .lodpack in pc_le directly. Without
+            // this the parser falls back to the low-res copy embedded in the WAD.
+            s_lodIndex->LoadFromGameRoot(gameRoot);
         }
     }
     return *s_lodIndex;
@@ -182,7 +192,7 @@ static void StartTexIndexLoad() {
     if (!gameRoot.empty()) {
         s_texIndex->LoadFromGameRoot(gameRoot);
     } else {
-        LOG_WARN("[GOWRLoaders] config.ini not found â€” Texture lookup from texpack disabled");
+        ONYX_LOGF_WARN("[GOWRLoaders] config.ini not found — Texture lookup from texpack disabled");
         s_texIndex->SetLoaded();
     }
 }
@@ -194,7 +204,7 @@ TexPackIndex& GetTexIndex() {
     }
     if (!s_texIndexStarted) {
         s_texIndexStarted = true;
-        // Launch indexing on a background thread â€” does NOT block UI
+        // Launch indexing on a background thread — does NOT block UI
         std::thread(StartTexIndexLoad).detach();
     }
     return *s_texIndex;
@@ -207,7 +217,7 @@ void InvalidateLodIndex() {
     s_texIndex = nullptr;
 }
 
-// â”€â”€ GOWR Mesh Handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GOWR Mesh Handling ─────────────────────────────────────────────────────
 
 // MG_*_gpu names carry a trailing part/LOD index ("_0", "_12") that the go*
 // instance names do not: goathena10 pairs with MG_athena10_0_gpu. Strip one
@@ -220,14 +230,274 @@ static std::string StripPartIndex(const std::string& s) {
     return s.substr(0, u);
 }
 
+// -- GOWR detail-level document ----------------------------------------------
+// A GOWR model is a set of parts, each with its own chain of detail levels.
+// The renderer draws every batch it is handed, so without a filter all levels
+// of every part stack on top of one another.
+//
+// This wraps the viewport and drives per-batch visibility from one level
+// choice, defaulting to LOD 0. The level of each batch comes from the MG part
+// table rather than being inferred, so parts with shorter chains clamp to
+// their own last level instead of disappearing.
+struct PartLevel {
+    int part  = -1;
+    int level = -1;
+};
+
+class GowrLodDocument : public Viewers::IDocumentContent {
+public:
+    GowrLodDocument(std::shared_ptr<Viewers::Viewport3D> vp,
+                    std::vector<PartLevel> meta, int maxLevels)
+        : m_vp(std::move(vp)), m_meta(std::move(meta)), m_maxLevels(maxLevels) {}
+
+    std::string GetName() const override { return m_vp->GetName(); }
+    void Draw() override { Apply(); m_vp->Draw(); }
+    Viewers::Viewport3D* GetEmbeddedViewport() override { return m_vp.get(); }
+
+    void DrawInspector() override {
+        ImGui::Text("Level of Detail");
+
+        std::vector<std::string> labels;
+        labels.reserve(m_maxLevels + 1);
+        labels.push_back("All levels");
+        for (int i = 0; i < m_maxLevels; ++i)
+            labels.push_back("LOD " + std::to_string(i));
+
+        std::vector<const char*> items;
+        items.reserve(labels.size());
+        for (const auto& s : labels) items.push_back(s.c_str());
+
+        if (ImGui::Combo("##gowr_lod", &m_lod, items.data(), (int)items.size())) {
+            m_dirty = true;
+            m_vp->RequestRedraw();
+        }
+        ImGui::TextDisabled("%d levels; parts with shorter chains clamp to their last.",
+                            m_maxLevels);
+        ImGui::Separator();
+        m_vp->DrawInspector();
+    }
+
+private:
+    void Apply() {
+        if (!m_dirty) return;
+        auto* sr = m_vp->GetSceneRenderer();
+        if (!sr || sr->IsEmpty()) return;   // retry once the scene exists
+        auto& batches = sr->GetBatches();
+        if (batches.size() != m_meta.size()) return;
+        m_dirty = false;
+
+        // Highest level index actually present for each part, so a request
+        // beyond a part's chain shows its coarsest level rather than nothing.
+        std::vector<int> lastOf;
+        for (const auto& pl : m_meta) {
+            if (pl.part < 0) continue;
+            if ((int)lastOf.size() <= pl.part) lastOf.resize(pl.part + 1, -1);
+            lastOf[pl.part] = std::max(lastOf[pl.part], pl.level);
+        }
+
+        for (size_t i = 0; i < batches.size(); ++i) {
+            const auto& pl = m_meta[i];
+            if (m_lod == 0 || pl.part < 0) { batches[i].isVisible = true; continue; }
+            const int want = std::min(m_lod - 1, lastOf[pl.part]);
+            batches[i].isVisible = (pl.level == want);
+        }
+    }
+
+    std::shared_ptr<Viewers::Viewport3D> m_vp;
+    std::vector<PartLevel>               m_meta;
+    int  m_maxLevels = 1;
+    int  m_lod       = 1;   // default to LOD 0 rather than every level at once
+    bool m_dirty     = true;
+};
+
+// -- Material resolution ------------------------------------------------------
+// A material's texture list lives in a separate, unnamed companion entry. It is
+// laid down right after the MAT in descriptor order, but the tree the browser
+// builds does not preserve that order, so the pairing is made by content: the
+// companion lists the material's shader permutations, and those are named after
+// the material's own hash. Matching on that proves the pairing rather than
+// assuming it.
+static void FlattenEntries(const std::vector<AssetEntry>& in,
+                           std::vector<const AssetEntry*>& out) {
+    for (const auto& e : in) {
+        out.push_back(&e);
+        if (!e.children.empty()) FlattenEntries(e.children, out);
+    }
+}
+
+static std::string MaterialHashKey(const std::string& matName) {
+    // MAT_DE674F96622453EB -> "de674f96622453eb", which is how its shaders
+    // spell it.
+    const size_t us = matName.find_last_of('_');
+    if (us == std::string::npos) return {};
+    std::string h = matName.substr(us + 1);
+    for (auto& c : h) c = (char)std::tolower((unsigned char)c);
+    return h;
+}
+
+// A texture that never streams lives entirely in this WAD, as a descriptor
+// entry and a payload entry sharing its name. 26 of r_heroa00's 2798 textures
+// are like this, up to 512 pixels, and the texpack knows nothing about them.
+// -- Mesh material table ------------------------------------------------------
+// A mesh names its materials by index, and the table it indexes is per mesh:
+// r_heroa00's MESH_heroa00_0 uses indices 0..97 while the WAD holds 884
+// materials, so treating the index as WAD-wide lands almost every part on the
+// wrong material.
+//
+// The table is a reference list holding only MAT_ names, and it sits in the
+// descriptor immediately after its mesh - measured on r_heroa00, all 18 lists
+// pair that way. Count alone does not identify it: six meshes there declare two
+// materials and six lists hold two. Payload order does not either; it agrees
+// with descriptor order for only 13 of the 18.
+//
+// The browser's tree groups entries into folders and loses descriptor order, so
+// it is read back from the WAD's own descriptor array. Layout per Wad.md.
+struct WadDescriptor {
+    std::string name;
+    uint16_t    type = 0;
+    uint32_t    size = 0;
+};
+
+static std::vector<WadDescriptor> ReadWadDescriptors(AssetContainer& wad) {
+    std::vector<WadDescriptor> out;
+    if (!wad.fileSource) return out;
+
+    constexpr size_t kHeader = 64, kStride = 0x90, kNameOff = 0x18, kNameMax = 56;
+
+    uint32_t magic = 0, version = 0, count = 0;
+    wad.fileSource->Seek(0, SEEK_SET);
+    wad.fileSource->Read(&magic, 4);
+    wad.fileSource->Read(&version, 4);
+    wad.fileSource->Read(&count, 4);
+    if (magic != 0x434F5457 || count == 0 || count > 1000000) return out;
+    if (wad.fileSource->Size() < kHeader + (size_t)count * kStride) return out;
+
+    out.reserve(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        const size_t rec = kHeader + (size_t)i * kStride;
+        WadDescriptor de;
+        uint16_t group = 0;
+        wad.fileSource->Seek(rec, SEEK_SET);
+        wad.fileSource->Read(&group, 2);
+        wad.fileSource->Read(&de.type, 2);
+        wad.fileSource->Read(&de.size, 4);
+
+        char name[kNameMax + 1] = {};
+        wad.fileSource->Seek(rec + kNameOff, SEEK_SET);
+        wad.fileSource->Read(name, kNameMax);
+        de.name = name;
+        out.push_back(std::move(de));
+    }
+    return out;
+}
+
+// A texture that never streams lives entirely in this WAD. It occupies three
+// entries sharing one name - payload, descriptor, and a third small record -
+// so they must be told apart by WAD type rather than by size: the third one
+// ranges from 0x4C to 0x124 bytes and straddles the descriptor's own 0xC8.
+constexpr uint16_t kWadTypeTexturePayload    = 0x80A2;
+constexpr uint16_t kWadTypeTextureDescriptor = 0x0022;
+
+static bool DecodeTextureFromWad(AssetContainer& wad,
+                                 const std::vector<WadDescriptor>& descs,
+                                 const std::vector<const AssetEntry*>& flat,
+                                 const std::string& name,
+                                 Parsers::TextureData& out, std::string& error) {
+    uint32_t descSize = 0, paySize = 0;
+    for (const auto& de : descs) {
+        if (de.name != name) continue;
+        if (de.type == kWadTypeTextureDescriptor) descSize = de.size;
+        else if (de.type == kWadTypeTexturePayload) paySize = de.size;
+    }
+    if (descSize == 0 || paySize == 0) {
+        error = "not present in this WAD";
+        return false;
+    }
+
+    const AssetEntry* desc = nullptr;
+    const AssetEntry* pay  = nullptr;
+    for (const AssetEntry* e : flat) {
+        if (e->name != name) continue;
+        if (e->source.size == descSize) desc = e;
+        if (e->source.size == paySize)  pay  = e;
+    }
+    if (!desc || !pay) { error = "entries not reachable from the tree"; return false; }
+
+    auto dFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, desc->source.offset, desc->source.size);
+    auto pFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, pay->source.offset, pay->source.size);
+    return GOWRDecodeResidentTexture(dFile, pFile, name, out, error);
+}
+
+// Material names for one mesh, in the order its submeshes index them. Empty
+// when the table cannot be identified, which the caller must treat as "no
+// materials" rather than falling back to a guess.
+static std::vector<std::string> ResolveMeshMaterials(
+        AssetContainer& wad, const std::vector<WadDescriptor>& descs,
+        const std::vector<const AssetEntry*>& flat,
+        const AssetEntry& meshEntry, uint32_t matCount) {
+    std::vector<std::string> out;
+    if (matCount == 0) return out;
+
+    for (size_t i = 0; i + 1 < descs.size(); ++i) {
+        if (descs[i].name != meshEntry.name || descs[i].size != meshEntry.source.size) continue;
+
+        const WadDescriptor& next = descs[i + 1];
+        for (const AssetEntry* e : flat) {
+            if (e->name != next.name || e->source.size != next.size) continue;
+
+            auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, e->source.offset, e->source.size);
+            std::vector<MatReference> refs;
+            if (!GOWRMaterialParseRefs(file, refs)) continue;
+            if (refs.size() != matCount) continue;
+
+            std::vector<std::string> names;
+            for (const auto& r : refs) {
+                if (r.name.rfind("MAT_", 0) != 0) { names.clear(); break; }
+                names.push_back(r.name);
+            }
+            if (names.size() == matCount) return names;
+        }
+    }
+    return out;
+}
+
+// Maps every reference list in a WAD to the material it belongs to, in one
+// pass. Probing per material instead is quadratic and bites hard on real
+// content: r_heroa00 holds 25,207 entries and 884 materials, which is 15.8
+// million parses and freezes the app, where r_athena00's 4 materials over 114
+// entries never showed the cost.
+using MaterialRefIndex = std::unordered_map<std::string, std::shared_ptr<Vfs::IFile>>;
+
+static MaterialRefIndex BuildMaterialRefIndex(
+        AssetContainer& wad, const std::vector<const AssetEntry*>& flat) {
+    MaterialRefIndex index;
+
+    for (const AssetEntry* e : flat) {
+        if (e->source.size < 8 + 76 || e->source.size > (1u << 20)) continue;
+
+        auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, e->source.offset, e->source.size);
+        std::vector<MatReference> refs;
+        if (!GOWRMaterialParseRefs(file, refs)) continue;
+
+        // A list belongs to whichever material its shader permutations name.
+        for (const auto& r : refs) {
+            if (!r.isShader) continue;
+            const size_t sep = r.name.find("_ps_");
+            if (sep == std::string::npos || sep == 0) continue;
+            index.emplace(r.name.substr(0, sep), file);
+            break;
+        }
+    }
+    return index;
+}
 static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry, AssetContainer& wad, bool attachSkeleton) {
     if (!wad.fileSource) return nullptr;
 
-    // â”€â”€ Slice the MESH file â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Slice the MESH file ────────────────────────────────────────────
     auto meshFile = std::make_shared<Vfs::SliceFile>(
-        wad.fileSource, entry.offset, entry.size);
+        wad.fileSource, entry.source.offset, entry.source.size);
 
-    // â”€â”€ Find the paired MG_GPU sibling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Find the paired MG_GPU sibling ────────────────────────────────
     // Strip prefix (MESH_ or MG_) and trailing ---NNNNN hash to get the base name.
     // GO instances are named go<base>; mesh/gpu files are MESH_<base> / MG_<base>.
     const bool isInstance = (entry.typeId == GameTypes::GameObjectInst);
@@ -272,40 +542,41 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     const AssetEntry* gpuEntry = findGpu(wad.entries);
     if (gpuEntry) {
         gpuFile = std::make_shared<Vfs::SliceFile>(
-            wad.fileSource, gpuEntry->offset, gpuEntry->size);
-        LOG_INFO("[GOWRLoaders] GPU: %s (size=%u)",
-                 gpuEntry->name.c_str(), gpuEntry->size);
+            wad.fileSource, gpuEntry->source.offset, gpuEntry->source.size);
+        ONYX_LOGF_INFO("[GOWRLoaders] GPU: %s (size=%u)",
+                 gpuEntry->name.c_str(), gpuEntry->source.size);
     } else if (isInstance) {
         // Most GO instances are not meshes at all (lights, emitters, triggers),
         // so a missing sibling is the normal case rather than a problem.
-        LOG_DEBUG("[GOWRLoaders] Instance '%s' has no mesh pair - not renderable",
+        ONYX_LOGF_DEBUG("[GOWRLoaders] Instance '%s' has no mesh pair - not renderable",
                   entry.name.c_str());
     } else {
-        LOG_WARN("[GOWRLoaders] No MeshGpu sibling for '%s' - hash=0 submeshes only",
+        ONYX_LOGF_WARN("[GOWRLoaders] No MeshGpu sibling for '%s' - hash=0 submeshes only",
                  entry.name.c_str());
     }
 
-    // â”€â”€ Parse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Parse ──────────────────────────────────────────────────────────
     Parsers::MeshData data;
+    std::vector<uint32_t> materialOfPart;   // parallel to data.parts
     bool ok = false;
 
     const LodPackIndex& lodIdx = GetLodIndex();
     if (gpuFile && lodIdx.TotalEntries() > 0) {
-        ok = GOWRMeshParser::ParseWithLodPack(meshFile, gpuFile, lodIdx, data);
+        ok = GOWRMeshParser::ParseWithLodPack(meshFile, gpuFile, lodIdx, data, &materialOfPart);
     } else if (gpuFile) {
-        ok = GOWRMeshParser::Parse(meshFile, gpuFile, data);
+        ok = GOWRMeshParser::Parse(meshFile, gpuFile, data, &materialOfPart);
     }
 
     if (!ok || data.parts.empty()) {
         if (!gpuFile && isInstance) {
-            LOG_DEBUG("[GOWRLoaders] Nothing to render for instance '%s'", entry.name.c_str());
+            ONYX_LOGF_DEBUG("[GOWRLoaders] Nothing to render for instance '%s'", entry.name.c_str());
         } else {
-            LOG_WARN("[GOWRLoaders] Parse failed or no parts for '%s'", entry.name.c_str());
+            ONYX_LOGF_WARN("[GOWRLoaders] Parse failed or no parts for '%s'", entry.name.c_str());
         }
         return std::make_shared<Viewers::Viewport3D>(entry.name);
     }
 
-    // â”€â”€ Find paired MG_<base> file (bone-binding, no _gpu suffix) â”€â”€â”€â”€â”€
+    // ── Find paired MG_<base> file (bone-binding, no _gpu suffix) ─────
     std::shared_ptr<Vfs::IFile> mgFile;
     std::function<const AssetEntry*(const std::vector<AssetEntry>&)> findMg;
     findMg = [&](const std::vector<AssetEntry>& entries) -> const AssetEntry* {
@@ -330,17 +601,17 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
     const AssetEntry* mgEntry = findMg(wad.entries);
     if (mgEntry) {
         mgFile = std::make_shared<Vfs::SliceFile>(
-            wad.fileSource, mgEntry->offset, mgEntry->size);
-        LOG_INFO("[GOWRLoaders] MG bone-binding: %s (size=%u)",
-                 mgEntry->name.c_str(), mgEntry->size);
+            wad.fileSource, mgEntry->source.offset, mgEntry->source.size);
+        ONYX_LOGF_INFO("[GOWRLoaders] MG bone-binding: %s (size=%u)",
+                 mgEntry->name.c_str(), mgEntry->source.size);
     }
 
-    // â”€â”€ DIAGNOSTIC: locate paired MDL_<base> and dump first 512 bytes plus
+    // ── DIAGNOSTIC: locate paired MDL_<base> and dump first 512 bytes plus
     // a tail sample. Hunting for MAT hash field placement. Remove once link
     // identified.
     {
         std::string mdlBase = base;
-        // Strip trailing "_<digits>" suffix (e.g. "athena10_0" â†’ "athena10")
+        // Strip trailing "_<digits>" suffix (e.g. "athena10_0" → "athena10")
         auto usPos = mdlBase.find_last_of('_');
         if (usPos != std::string::npos && usPos + 1 < mdlBase.size()) {
             bool allDigits = true;
@@ -368,9 +639,9 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         };
 
         if (const AssetEntry* mdlEntry = findMdl(wad.entries)) {
-            const uint32_t dumpSz = std::min<uint32_t>(mdlEntry->size, 512u);
+            const uint32_t dumpSz = std::min<uint32_t>(mdlEntry->source.size, 512u);
             std::vector<uint8_t> buf(dumpSz);
-            wad.fileSource->Seek(mdlEntry->offset, 0);
+            wad.fileSource->Seek(mdlEntry->source.offset, 0);
             wad.fileSource->Read(buf.data(), dumpSz);
             std::string hex; hex.reserve(dumpSz * 3 + 8);
             char tmp[4];
@@ -378,38 +649,38 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                 std::snprintf(tmp, sizeof(tmp), "%02X ", buf[b]);
                 hex += tmp;
             }
-            LOG_INFO("[GOWRLoaders] MDL '%s' size=%u first %u bytes: %s",
-                     mdlEntry->name.c_str(), mdlEntry->size, dumpSz, hex.c_str());
+            ONYX_LOGF_DEBUG("[GOWRLoaders] MDL '%s' size=%u first %u bytes: %s",
+                     mdlEntry->name.c_str(), mdlEntry->source.size, dumpSz, hex.c_str());
 
             // Also dump last 256 bytes if file is larger than dumpSz
-            if (mdlEntry->size > 512) {
-                const uint32_t tailSz = std::min<uint32_t>(mdlEntry->size - 512, 256u);
+            if (mdlEntry->source.size > 512) {
+                const uint32_t tailSz = std::min<uint32_t>(mdlEntry->source.size - 512, 256u);
                 std::vector<uint8_t> tail(tailSz);
-                wad.fileSource->Seek(mdlEntry->offset + mdlEntry->size - tailSz, 0);
+                wad.fileSource->Seek(mdlEntry->source.offset + mdlEntry->source.size - tailSz, 0);
                 wad.fileSource->Read(tail.data(), tailSz);
                 std::string thex; thex.reserve(tailSz * 3 + 8);
                 for (uint32_t b = 0; b < tailSz; ++b) {
                     std::snprintf(tmp, sizeof(tmp), "%02X ", tail[b]);
                     thex += tmp;
                 }
-                LOG_INFO("[GOWRLoaders] MDL tail %u bytes: %s", tailSz, thex.c_str());
+                ONYX_LOGF_DEBUG("[GOWRLoaders] MDL tail %u bytes: %s", tailSz, thex.c_str());
             }
         } else {
-            LOG_INFO("[GOWRLoaders] No MDL_ sibling for '%s' (base='%s')",
+            ONYX_LOGF_DEBUG("[GOWRLoaders] No MDL_ sibling for '%s' (base='%s')",
                      entry.name.c_str(), mdlBase.c_str());
         }
     }
 
-    // â”€â”€ Find paired goProto* file (skeleton) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Find paired goProto* file (skeleton) ───────────────────────────
     // Skip entirely when the caller asked for a mesh-only view (MESH_ entry).
     // Rigged viewers (goProto*, go*) pass attachSkeleton=true and resolve the
     // rig via name pairing below.
     std::shared_ptr<Parsers::ObjectData> skeleton;
     if (attachSkeleton) {
-        // Naming: MESH_athena10_0 â†’ look for goProtoathena10 (strip MESH_/MG_,
+        // Naming: MESH_athena10_0 → look for goProtoathena10 (strip MESH_/MG_,
         // trailing _N, and trailing ---HASH).
         std::string protoBase = base;
-        // Strip trailing "_<digits>" suffix if present (e.g. "athena10_0" â†’ "athena10")
+        // Strip trailing "_<digits>" suffix if present (e.g. "athena10_0" → "athena10")
         auto usPos = protoBase.find_last_of('_');
         if (usPos != std::string::npos && usPos + 1 < protoBase.size()) {
             bool allDigits = true;
@@ -440,51 +711,251 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         const AssetEntry* protoEntry = findProto(wad.entries);
         if (protoEntry) {
             auto protoFile = std::make_shared<Vfs::SliceFile>(
-                wad.fileSource, protoEntry->offset, protoEntry->size);
+                wad.fileSource, protoEntry->source.offset, protoEntry->source.size);
             skeleton = GOWRProtoParser::Parse(protoFile);
             if (skeleton) {
-                LOG_INFO("[GOWRLoaders] Proto rig '%s': %zu bones",
+                ONYX_LOGF_INFO("[GOWRLoaders] Proto rig '%s': %zu bones",
                          protoEntry->name.c_str(), skeleton->joints.size());
             }
         } else {
-            LOG_INFO("[GOWRLoaders] No goProto sibling for '%s' (base='%s')",
+            ONYX_LOGF_INFO("[GOWRLoaders] No goProto sibling for '%s' (base='%s')",
                      entry.name.c_str(), protoBase.c_str());
         }
     }
 
-    // â”€â”€ Build Parsers::SceneData and load into viewport â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Build Parsers::SceneData and load into viewport ─────────────────────────
     auto vp = std::make_shared<Viewers::Viewport3D>(entry.name);
 
-    if (skeleton) {
-        // â”€â”€ Skinning resolution (CURRENT: rigid-only fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // GOWR skinned vertex bone-indices are per-submesh LOCAL palette
-        // indices (not global). The palette source â€” MG file vs MESH submesh
-        // header vs separate VPK â€” is still unknown. Treating them as global
-        // (identity jointMap) causes catastrophic vertex explosions because
-        // small palette indices map to arbitrary global bones.
-        //
-        // Until the palette is located, force every part to rigid: bind all
-        // verts to the MG parentBone with weight 1. This loses skinning but
-        // keeps the mesh shape stable.
-        // TODO: locate per-submesh bone palette (MG skinList? MESH header?
-        //       VPK chunk?) and wire jointMap[localIdx] = globalIdx.
-        if (mgFile) {
-            uint32_t meshSubCount = 0;
-            for (const auto& p : data.parts)
-                if (p.materialId + 1 > meshSubCount) meshSubCount = p.materialId + 1;
+    // -- Resolve parts, detail levels and the bone palette from the MG ------
+    // The MG is authoritative for all three: it names which submeshes form
+    // each level of each part, and carries the palette that turns a vertex's
+    // local bone index into a global skeleton index.
+    GOWRMgParser::Data mg;
+    std::vector<PartLevel> partMeta(data.parts.size());
+    bool haveMg = false;
 
-            std::vector<uint16_t> parentBone;
-            if (GOWRMgParser::Parse(mgFile, meshSubCount, parentBone)) {
-                for (auto& p : data.parts) {
-                    uint16_t pb = (p.materialId < parentBone.size())
-                                    ? parentBone[p.materialId] : 0xFFFF;
-                    if (pb == 0xFFFF) pb = 0;
-                    p.jointMap = { pb };
-                    for (auto& v : p.vertices) {
+    if (mgFile) {
+        uint32_t meshSubCount = 0;
+        for (const auto& p : data.parts)
+            if (p.materialId + 1 > meshSubCount) meshSubCount = p.materialId + 1;
+        haveMg = GOWRMgParser::Parse(mgFile, meshSubCount, mg);
+    }
+
+    if (haveMg) {
+        for (size_t i = 0; i < data.parts.size(); ++i) {
+            auto&      part = data.parts[i];
+            const auto sm   = part.materialId;
+            if (sm >= mg.partOfSubmesh.size()) continue;
+
+            const int pi = mg.partOfSubmesh[sm];
+            const int lv = mg.levelOfSubmesh[sm];
+            partMeta[i] = { pi, lv };
+            if (pi < 0) {
+                part.name = "sm" + std::to_string(sm) + " (unreferenced)";
+                continue;
+            }
+
+            char label[64];
+            std::snprintf(label, sizeof(label), "Part %02d  LOD %d", pi, lv);
+            part.name = label;
+        }
+    }
+
+    // -- Materials --------------------------------------------------------
+    // Each submesh names a material by index; the WAD's material entries are
+    // taken in tree order to match. Only the diffuse map is bound for now -
+    // normal and occlusion are parsed but the viewport shader has nowhere to
+    // put them yet.
+    std::vector<const AssetEntry*> flat;
+    FlattenEntries(wad.entries, flat);
+    const MaterialRefIndex refIndex = BuildMaterialRefIndex(wad, flat);
+
+    // The mesh's own material table decides which MAT each index means.
+    uint32_t matCount = 0;
+    meshFile->Seek(0x20, SEEK_SET);
+    meshFile->Read(&matCount, 4);
+
+    const std::vector<WadDescriptor> wadDescs = ReadWadDescriptors(wad);
+    const std::vector<std::string> matNames =
+        ResolveMeshMaterials(wad, wadDescs, flat, entry, matCount);
+
+    if (matCount > 0 && matNames.empty()) {
+        ONYX_LOGF_WARN("[GOWRLoaders] mesh declares %u materials but its table was "
+                 "not found - rendering untextured", matCount);
+    }
+
+    std::unordered_map<std::string, const AssetEntry*> matByName;
+    for (const AssetEntry* e : flat)
+        if (GetRole(*e) == Gowr::WadEntryRole::Material && e->source.size > 0)
+            matByName.emplace(e->name, e);
+
+    std::vector<const AssetEntry*> matEntries;
+    matEntries.reserve(matNames.size());
+    for (const auto& n : matNames) {
+        auto it = matByName.find(n);
+        matEntries.push_back(it != matByName.end() ? it->second : nullptr);
+    }
+
+    // Layer order is a convention of this loader, not of the format: the
+    // renderer indexes textures as [material][layer], and a shader that grows
+    // normal or occlusion support needs to know where to find them. Absent
+    // roles stay null, which the renderer already treats as untextured.
+    static constexpr TextureRole kLayerRoles[] = {
+        TextureRole::Diffuse,           // layer 0 - the only one bound today
+        TextureRole::Normal,            // layer 1
+        TextureRole::AmbientOcclusion,  // layer 2
+        TextureRole::Gloss,             // layer 3
+        TextureRole::Height,            // layer 4
+        TextureRole::Scatter,           // layer 5
+        TextureRole::Detail,            // layer 6
+    };
+    constexpr size_t kLayerCount = sizeof(kLayerRoles) / sizeof(kLayerRoles[0]);
+
+    std::vector<std::vector<std::unique_ptr<Parsers::TextureData>>>
+        matLayers(matEntries.size());
+
+    for (size_t mi = 0; mi < matEntries.size(); ++mi) {
+        matLayers[mi].resize(kLayerCount);
+
+        const AssetEntry* me = matEntries[mi];
+        if (!me) {
+            ONYX_LOGF_WARN("[GOWRLoaders] material[%zu] %s: named by the mesh but "
+                     "absent from this WAD", mi, matNames[mi].c_str());
+            continue;
+        }
+        auto matFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, me->source.offset, me->source.size);
+        auto it      = refIndex.find(MaterialHashKey(me->name));
+        auto refFile = (it != refIndex.end()) ? it->second : nullptr;
+
+        GOWRMaterial mat;
+        if (!GOWRMaterialParse(matFile, refFile, mat)) continue;
+        if (!refFile) {
+            ONYX_LOGF_WARN("[GOWRLoaders] material %s: no reference list found", me->name.c_str());
+            continue;
+        }
+
+        std::string bound;
+        for (size_t L = 0; L < kLayerCount; ++L) {
+            const MatReference* ref = mat.Texture(kLayerRoles[L]);
+            if (!ref) continue;
+
+            auto tex = std::make_unique<Parsers::TextureData>();
+            std::string err;
+            bool got = GOWRDecodeTexture(GetTexIndex(), ref->textureHash,
+                                         ref->name, *tex, err);
+            if (!got) {
+                // Not in a texpack means it may never stream at all.
+                std::string wadErr;
+                got = DecodeTextureFromWad(wad, wadDescs, flat, ref->name, *tex, wadErr);
+                if (!got) err += "; " + wadErr;
+            }
+            if (got) {
+                if (!bound.empty()) bound += ", ";
+                bound += TextureRoleName(kLayerRoles[L]);
+                matLayers[mi][L] = std::move(tex);
+            } else {
+                ONYX_LOGF_WARN("[GOWRLoaders] %s (%s): %s", ref->name.c_str(),
+                         TextureRoleName(kLayerRoles[L]), err.c_str());
+            }
+        }
+
+        std::string skipped;
+        for (const auto* t : mat.Textures()) {
+            bool wanted = false;
+            for (size_t L = 0; L < kLayerCount; ++L)
+                if (kLayerRoles[L] == t->role) { wanted = true; break; }
+            if (wanted) continue;
+            if (!skipped.empty()) skipped += ", ";
+            skipped += t->name;
+        }
+
+        ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",
+                 mi, me->name.c_str(), mat.Textures().size(),
+                 bound.empty() ? "none" : bound.c_str());
+        if (!skipped.empty()) {
+            ONYX_LOGF_DEBUG("[GOWRLoaders]   not a mapped role: %s", skipped.c_str());
+        }
+        if (!matLayers[mi][0]) {
+            // Layer 0 is what the viewport samples, so say plainly why the
+            // model will render untextured rather than leaving it a mystery.
+            const MatReference* diff = mat.Texture(TextureRole::Diffuse);
+            ONYX_LOGF_WARN("[GOWRLoaders]   no usable diffuse (%s) - this material renders untextured",
+                     diff ? diff->name.c_str() : "material declares none");
+        }
+    }
+
+    // From here on materialId means the material, not the submesh: everything
+    // that needed the submesh index has already run.
+    for (size_t i = 0; i < data.parts.size(); ++i) {
+        const uint32_t mi = (i < materialOfPart.size()) ? materialOfPart[i] : 0u;
+        if (mi >= matEntries.size()) {
+            ONYX_LOGF_WARN("[GOWRLoaders] part %zu names material %u of %zu",
+                     i, mi, matEntries.size());
+        }
+        data.parts[i].materialId  = mi;
+        data.parts[i].textureLayer = 0;
+    }
+
+    if (skeleton) {
+        // -- Skinning --------------------------------------------------------
+        // Vertex bone indices are local to the part's palette, so the jointMap
+        // is the palette itself. Parts with no bone semantics stay rigid and
+        // bind to their root bone.
+        if (haveMg) {
+            // Vertex bone indices are global skeleton indices, while the
+            // renderer uploads at most 150 matrices per batch. The MG palette
+            // is exactly the set of bones a part uses, so it becomes the
+            // jointMap and the vertex indices are rebased onto it.
+            int skinned = 0, rigid = 0, unmapped = 0;
+            size_t offPalette = 0;
+
+            for (size_t i = 0; i < data.parts.size(); ++i) {
+                auto&     part = data.parts[i];
+                const int pi   = partMeta[i].part;
+                if (pi < 0 || pi >= (int)mg.parts.size()) { ++unmapped; continue; }
+                const auto& src = mg.parts[pi];
+
+                if (part.isRigid || src.palette.empty()) {
+                    part.jointMap = { src.palette.empty() ? src.boneRef
+                                                          : src.palette.front() };
+                    for (auto& v : part.vertices) {
                         v.boneIndices = glm::uvec4(0, 0, 0, 0);
                         v.boneWeights = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
                     }
+                    ++rigid;
+                    continue;
                 }
+
+                part.jointMap = src.palette;
+
+                // Global bone index -> slot within this part's palette.
+                std::unordered_map<uint32_t, uint32_t> slotOf;
+                slotOf.reserve(src.palette.size() * 2);
+                for (uint32_t s = 0; s < src.palette.size(); ++s)
+                    slotOf.emplace(src.palette[s], s);
+
+                for (auto& v : part.vertices) {
+                    for (int k = 0; k < 4; ++k) {
+                        auto it = slotOf.find(v.boneIndices[k]);
+                        if (it != slotOf.end()) {
+                            v.boneIndices[k] = it->second;
+                        } else {
+                            // Not in the palette: drop the influence rather
+                            // than bind the vertex to an arbitrary bone.
+                            v.boneIndices[k] = 0;
+                            v.boneWeights[k] = 0.0f;
+                            ++offPalette;
+                        }
+                    }
+                }
+                ++skinned;
+            }
+
+            ONYX_LOGF_INFO("[GOWRLoaders] Skinning: %d skinned, %d rigid, %d unmapped parts",
+                     skinned, rigid, unmapped);
+            if (offPalette > 0) {
+                ONYX_LOGF_WARN("[GOWRLoaders] %zu vertex influences referenced a bone "
+                         "outside their part's palette", offPalette);
             }
         }
 
@@ -492,11 +963,23 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         scene->skeleton  = skeleton;
         scene->flipZ     = true;    // mesh and bones both face -Z; flip once for screen
         scene->meshParts = std::move(data.parts);
+        scene->textures  = std::move(matLayers);
+        // kLayerRoles above is the order the renderer's PBR samplers expect.
+        scene->pbrLayers = true;
         vp->LoadScene(std::move(scene));
     } else {
-        std::vector<std::unique_ptr<Parsers::TextureData>> noTextures;
-        vp->LoadFromMeshData(data, noTextures);
+        // The flat path carries one texture per material, so it only gets the
+        // diffuse; the layered path above keeps the rest.
+        std::vector<std::unique_ptr<Parsers::TextureData>> diffuseOnly;
+        diffuseOnly.reserve(matLayers.size());
+        for (auto& layers : matLayers)
+            diffuseOnly.push_back(layers.empty() ? nullptr : std::move(layers[0]));
+        vp->LoadFromMeshData(data, diffuseOnly);
     }
+
+    if (haveMg && mg.MaxLevelCount() > 1)
+        return std::make_shared<GowrLodDocument>(std::move(vp), std::move(partMeta),
+                                                 mg.MaxLevelCount());
     return vp;
 }
 
@@ -508,15 +991,15 @@ std::shared_ptr<Schema::AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<Vf
 }
 
 std::shared_ptr<Viewers::IDocumentContent> GOWRMeshDefnHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    // MESH_* â€” render the 3D model without binding to a skeleton.
+    // MESH_* — render the 3D model without binding to a skeleton.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/false);
 }
 std::shared_ptr<Viewers::IDocumentContent> GOWRSkinnedMeshHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    // GOWR_SKINNED_MESH â€” attach the rig so bones drive the mesh.
+    // GOWR_SKINNED_MESH — attach the rig so bones drive the mesh.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
 std::shared_ptr<Viewers::IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    // go* instance â€” load with rig.
+    // go* instance — load with rig.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
 
@@ -546,11 +1029,11 @@ public:
                 m_initialized = true;
                 FirstLoad(texIdx);
             } else if (!texIdx.IsLoading()) {
-                // Indexing finished and the hash is still missing â€” real fail.
+                // Indexing finished and the hash is still missing — real fail.
                 m_initialized = true;
                 m_failReason = "hash not in texpack index";
             } else {
-                // Still indexing â€” show progress and bail until next frame.
+                // Still indexing — show progress and bail until next frame.
                 ImGui::SetCursorPos(ImVec2(ImGui::GetWindowSize().x * 0.5f - 150,
                                            ImGui::GetWindowSize().y * 0.5f - 20));
                 ImGui::Text("Indexing texpacks in background (parallel)...");
@@ -560,12 +1043,11 @@ public:
             }
         }
 
-        if (m_failReason) {
-            ImGui::TextColored(ImVec4(1,0.6f,0.6f,1), "Texture load failed: %s", m_failReason);
+        if (!m_failReason.empty()) {
+            ImGui::TextColored(ImVec4(1,0.6f,0.6f,1), "Texture load failed: %s", m_failReason.c_str());
             ImGui::Text("Name: %s", m_name.c_str());
             ImGui::Text("Hash: 0x%016llx", (unsigned long long)m_hash);
             if (m_texW || m_texH)   ImGui::Text("Size: %ux%u", m_texW, m_texH);
-            if (m_swMode != 0xFFFF) ImGui::Text("sw_mode: %u  pipeBankXor: 0x%x", m_swMode, m_pipeBankXor);
             return;
         }
 
@@ -577,104 +1059,18 @@ private:
     std::string m_name;
     uint64_t    m_hash = 0;
     bool        m_initialized = false;
-    const char* m_failReason  = nullptr;
+    std::string m_failReason;
 
     std::shared_ptr<Viewers::ImageViewer> m_realViewer;
 
     uint32_t  m_texW = 0, m_texH = 0;
-    uint32_t  m_swMode = 0xFFFF;
-    uint32_t  m_pipeBankXor = 0;
-    BcFormat  m_bcFmt = BcFormat::BC1;
 
     void FirstLoad(TexPackIndex& texIdx) {
-        if (!m_hash) { m_failReason = "no hash in name"; return; }
-
-        TexpackEntry texEntry;
-        if (!texIdx.FindTexture(m_hash, texEntry)) { m_failReason = "hash not in texpack index"; return; }
-
-        auto file = texIdx.GetFile(texEntry.packIdx);
-        if (!file || !file->IsValid()) { m_failReason = "texpack file unavailable"; return; }
-
-        m_texW = texEntry.width;
-        m_texH = texEntry.height;
-
-        // Block layout: 16B header + 256B GNF descriptor + tiled data at +0x124.
-        file->Seek(static_cast<int64_t>(texEntry.blockDataOffset), 0);
-        uint32_t bMagic = 0, bDataOff = 0, bLen = 0, bUnk = 0;
-        file->Read(&bMagic, 4); file->Read(&bDataOff, 4); file->Read(&bLen, 4); file->Read(&bUnk, 4);
-
-        uint8_t gnfBuf[0x100] = {};
-        file->Read(gnfBuf, 0x100);
-
-        // PS5 AGC T# at +0x10 (after 16-byte GNF header). 8 dwords.
-        // dw3 bits[24:20] = sw_mode, bits[21:8] = pipeBankXor (14-bit).
-        // dw1 bits[25:20] = data_format (AGC enum â€” empirically BC1=0x2A here).
-        const uint32_t dw1 = *reinterpret_cast<uint32_t*>(gnfBuf + 0x14);
-        const uint32_t dw3 = *reinterpret_cast<uint32_t*>(gnfBuf + 0x1C);
-
-        m_swMode      = (dw3 >> 20) & 0x1F;
-        m_pipeBankXor = (dw3 >> 8)  & 0x3FFF;
-        const uint32_t dataFmt = (dw1 >> 20) & 0x3F;
-
-        // Map AGC data_format â†’ BC format. Values verified against DDS FourCC
-        // (DXT1/ATI1/ATI2/DX10) for GOWR PC.
-        bool isBc = true;
-        switch (dataFmt) {
-            case 0x29: m_bcFmt = BcFormat::BC1; break;  // BC1 SRGB
-            case 0x2A: m_bcFmt = BcFormat::BC1; break;  // BC1 UNORM
-            case 0x2F: m_bcFmt = BcFormat::BC4; break;  // BC4 (ATI1)
-            case 0x31: m_bcFmt = BcFormat::BC5; break;  // BC5 (ATI2)
-            case 0x35: m_bcFmt = BcFormat::BC7; break;  // BC7 SRGB
-            case 0x36: m_bcFmt = BcFormat::BC7; break;  // BC7 UNORM
-            default:
-                isBc = false;
-                break;
-        }
-        if (!isBc) { m_failReason = "unsupported AGC data_format"; return; }
-
-        const uint32_t blockBytes = BcBlockSize(m_bcFmt);
-        const uint32_t blocksX = (m_texW + 3) / 4;
-        const uint32_t blocksY = (m_texH + 3) / 4;
-        const size_t   linearBcSz = size_t(blocksX) * blocksY * blockBytes;
-
-        // Multi-mip blocks store mips smallestâ†’largest; mip0 occupies the last
-        // `linearBcSz` bytes of the block's raw data area.
-        const int64_t mip0Off = static_cast<int64_t>(texEntry.blockDataOffset)
-                              + static_cast<int64_t>(bDataOff)
-                              + static_cast<int64_t>(texEntry.rawSize)
-                              - static_cast<int64_t>(linearBcSz);
-        std::vector<uint8_t> tiled(linearBcSz);
-        file->Seek(mip0Off, 0);
-        file->Read(tiled.data(), tiled.size());
-
-        std::vector<uint8_t> linearBc(linearBcSz, 0);
-        bool detiled = false;
-        if (m_swMode == 0) {
-            std::memcpy(linearBc.data(), tiled.data(), linearBcSz);
-            detiled = true;
-        } else {
-            detiled = Rdna2::Detile(tiled.data(), tiled.size(),
-                                    linearBc.data(),
-                                    blocksX, blocksY, blockBytes,
-                                    m_swMode, m_pipeBankXor);
-        }
-        if (!detiled) { m_failReason = "no detile equation for this sw_mode"; return; }
-
-        std::vector<uint8_t> rgba;
-        if (!DecompressBc(linearBc.data(), linearBcSz, m_texW, m_texH, m_bcFmt, rgba)) {
-            m_failReason = "BC decompress failed";
-            return;
-        }
-
         auto texData = std::make_unique<Parsers::TextureData>();
-        texData->name = m_name;
-        texData->width = m_texW;
-        texData->height = m_texH;
-        texData->isCompressed = false;
-        texData->glInternalFormat = 0x1908;  // GL_RGBA
-        texData->dataSize = rgba.size();
-        texData->pixels = std::move(rgba);
+        if (!GOWRDecodeTexture(texIdx, m_hash, m_name, *texData, m_failReason)) return;
 
+        m_texW = texData->width;
+        m_texH = texData->height;
         m_realViewer = std::make_shared<Viewers::ImageViewer>(m_name, std::move(texData));
     }
 };
@@ -686,7 +1082,7 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRTextureHandler::CreateViewer(cons
 std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
     if (!wad.fileSource) return nullptr;
 
-    // Derive the base name: "goProtofox00" â†’ "fox00"
+    // Derive the base name: "goProtofox00" → "fox00"
     std::string protoBase = entry.name;
     if (protoBase.rfind("goProto", 0) == 0) protoBase = protoBase.substr(7);
     auto dashPos = protoBase.rfind("---");
@@ -722,7 +1118,7 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const As
 
     const AssetEntry* meshEntry = findMesh(wad.entries);
     if (meshEntry) {
-        LOG_INFO("[GOWRRigHandler] Found MESH '%s' for proto '%s'",
+        ONYX_LOGF_INFO("[GOWRRigHandler] Found MESH '%s' for proto '%s'",
                  meshEntry->name.c_str(), entry.name.c_str());
         return SharedGowrMeshLoad(*meshEntry, wad, /*attachSkeleton=*/true);
     }
@@ -760,12 +1156,12 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const As
 
     const AssetEntry* mgEntry = findMg(wad.entries);
     if (mgEntry) {
-        LOG_INFO("[GOWRRigHandler] Found MG '%s' for proto '%s' (fallback)",
+        ONYX_LOGF_INFO("[GOWRRigHandler] Found MG '%s' for proto '%s' (fallback)",
                  mgEntry->name.c_str(), entry.name.c_str());
         return SharedGowrMeshLoad(*mgEntry, wad, /*attachSkeleton=*/true);
     }
 
-    LOG_WARN("[GOWRRigHandler] No MESH/MG found for proto '%s' (base='%s')",
+    ONYX_LOGF_WARN("[GOWRRigHandler] No MESH/MG found for proto '%s' (base='%s')",
              entry.name.c_str(), protoBase.c_str());
     return nullptr;
 }
@@ -776,7 +1172,7 @@ REGISTER_FILE_TYPE(GOWRModelInstanceHandler);
 REGISTER_FILE_TYPE(GOWRTextureHandler);
 REGISTER_FILE_TYPE(GOWRRigHandler);
 
-// â”€â”€ GOWR Shader Viewer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GOWR Shader Viewer ────────────────────────────────────────────────────
 
 class GOWRShaderViewer : public Viewers::IDocumentContent {
 public:
@@ -791,7 +1187,15 @@ public:
             return;
         }
 
-        // â”€â”€ Onyx Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        if (!ImGui::BeginTabBar("##shader_tabs")) return;
+
+        if (ImGui::BeginTabItem("Container")) {
+            // The container pass bails early on a few conditions; keeping
+            // it in a lambda lets those returns stand without skipping the
+            // matching ImGui End* calls.
+            [&] {
+
+        // ── Onyx Header ─────────────────────────────────────────────────
         ImGui::SeparatorText("Onyx Shader Header");
         if (ImGui::BeginTable("##gowhdr", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Field",  ImGuiTableColumnFlags_WidthFixed, 140);
@@ -811,7 +1215,7 @@ public:
             return;
         }
 
-        // â”€â”€ Debug path (ILDN) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Debug path (ILDN) ──────────────────────────────────────────
         if (!m_data->debugPath.empty()) {
             ImGui::Spacing();
             ImGui::SeparatorText("Build Path (ILDN)");
@@ -822,7 +1226,7 @@ public:
                 ImGui::SetClipboardText(m_data->debugPath.c_str());
         }
 
-        // â”€â”€ DXIL Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── DXIL Info ──────────────────────────────────────────────────
         if (m_data->dxil.valid) {
             ImGui::Spacing();
             ImGui::SeparatorText("DXIL Payload");
@@ -835,7 +1239,7 @@ public:
             }
         }
 
-        // â”€â”€ Chunks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Chunks ─────────────────────────────────────────────────────
         ImGui::Spacing();
         ImGui::SeparatorText("DXBC Chunks");
         if (ImGui::BeginTable("##chunks", 3,
@@ -859,18 +1263,18 @@ public:
             ImGui::EndTable();
         }
 
-        // â”€â”€ Input Signature â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Input Signature ────────────────────────────────────────────
         DrawSignature("Input Signature (ISG1)", m_data->inputs);
 
-        // â”€â”€ Output Signature â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Output Signature ───────────────────────────────────────────
         DrawSignature("Output Signature (OSG1)", m_data->outputs);
 
-        // â”€â”€ Patch Signature â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Patch Signature ────────────────────────────────────────────
         if (!m_data->patch.empty()) {
             DrawSignature("Patch Signature (PSG1)", m_data->patch);
         }
 
-        // â”€â”€ Statistics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Statistics ─────────────────────────────────────────────────
         if (m_data->stats.valid) {
             ImGui::Spacing();
             ImGui::SeparatorText("Statistics (STAT)");
@@ -887,7 +1291,7 @@ public:
             }
         }
 
-        // â”€â”€ Shader Hash â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Shader Hash ────────────────────────────────────────────────
         if (m_data->hasHash) {
             ImGui::Spacing();
             ImGui::SeparatorText("Shader Hash");
@@ -898,9 +1302,61 @@ public:
             if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1))
                 ImGui::SetClipboardText(hashStr);
         }
+            }();
+            ImGui::EndTabItem();
+        }
+
+        DrawDisassemblyTab();
+        ImGui::EndTabBar();
     }
 
 private:
+    // -- Disassembly ------------------------------------------------------
+    // DXIL is LLVM bitcode, so the text comes from dxcompiler.dll rather
+    // than from anything we parse. It is produced on demand and cached:
+    // a shader is usually opened to read one thing, not to be re-decoded
+    // every frame.
+    void DrawDisassemblyTab() {
+        if (!ImGui::BeginTabItem("Disassembly")) return;
+
+        if (!m_data->hasDxbc) {
+            ImGui::TextDisabled("No DXBC container to disassemble.");
+            ImGui::EndTabItem();
+            return;
+        }
+
+        if (!m_disasmTried) {
+            m_disasmTried = true;
+            std::string text;
+            if (DxilDisassembler::Disassemble(m_data->dxbc.data(),
+                                              m_data->dxbc.size(),
+                                              text, m_disasmError)) {
+                m_code.SetText(std::move(text));
+            }
+        }
+
+        if (m_code.Empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.4f, 1.0f),
+                               "Disassembly unavailable");
+            ImGui::Spacing();
+            ImGui::TextWrapped("%s", m_disasmError.c_str());
+            ImGui::Spacing();
+            ImGui::TextDisabled("The Container tab still shows signatures, "
+                                "chunks and resource info, which are parsed "
+                                "natively and need no external tool.");
+            if (ImGui::Button("Retry")) m_disasmTried = false;
+            ImGui::EndTabItem();
+            return;
+        }
+
+        m_code.Draw("disasm");
+        ImGui::EndTabItem();
+    }
+
+    Onyx::Ui::CodeView m_code;
+    std::string        m_disasmError;
+    bool               m_disasmTried = false;
+
     std::string m_name;
     std::unique_ptr<GOWRShaderData> m_data;
 
@@ -953,9 +1409,9 @@ private:
 };
 
 std::shared_ptr<Viewers::IDocumentContent> GOWRShaderHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    if (!wad.fileSource || entry.size == 0) return nullptr;
+    if (!wad.fileSource || entry.source.size == 0) return nullptr;
 
-    auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.offset, entry.size);
+    auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.source.offset, entry.source.size);
     auto data = GOWRShaderParse(file);
     if (!data) return nullptr;
 
@@ -996,6 +1452,128 @@ static bool _reg_shader_cs = [] {
 static bool _reg_shader_ls = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
         std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderLibrary));
+    return true;
+}();
+
+// -- Material viewer ---------------------------------------------------------
+// Shows what a material actually is: the parameters it feeds its shader's
+// constant buffer, the textures it pulls in with the role each one plays, and
+// the shader permutations compiled for it.
+class GOWRMaterialViewer : public Viewers::IDocumentContent {
+public:
+    GOWRMaterialViewer(std::string name, GOWRMaterial mat)
+        : m_name(std::move(name)), m_mat(std::move(mat)) {}
+
+    std::string GetName() const override { return "Material: " + m_name; }
+
+    void Draw() override {
+        ImGui::SeparatorText("Material");
+        ImGui::Text("Hash");
+        ImGui::SameLine(140);
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.5f, 1.0f), "%016llX",
+                           (unsigned long long)m_mat.hash);
+        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1)) {
+            char buf[32];
+            std::snprintf(buf, sizeof(buf), "%016llX", (unsigned long long)m_mat.hash);
+            ImGui::SetClipboardText(buf);
+        }
+
+        const auto textures = m_mat.Textures();
+        const auto shaders  = m_mat.Shaders();
+
+        if (!ImGui::BeginTabBar("##mat_tabs")) return;
+
+        if (ImGui::BeginTabItem("Textures")) {
+            if (textures.empty()) {
+                ImGui::TextDisabled("No reference list resolved for this material.");
+            } else if (ImGui::BeginTable("##tex", 3,
+                    ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_BordersInnerH)) {
+                ImGui::TableSetupColumn("Role", ImGuiTableColumnFlags_WidthFixed, 140);
+                ImGui::TableSetupColumn("Hash", ImGuiTableColumnFlags_WidthFixed, 150);
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableHeadersRow();
+                for (const auto* t : textures) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    const bool known = t->role != TextureRole::Unknown;
+                    ImGui::TextColored(known ? ImVec4(0.5f, 1.0f, 0.6f, 1.0f)
+                                             : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                                       "%s", TextureRoleName(t->role));
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%016llX", (unsigned long long)t->textureHash);
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::TextUnformatted(t->name.c_str());
+                }
+                ImGui::EndTable();
+            }
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Parameters")) {
+            ImGui::TextDisabled("Names are stored hashed; the strings are not in "
+                                "the file. The offset is where the value lands in "
+                                "the shader constant buffer.");
+            if (ImGui::BeginTable("##par", 4,
+                    ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_BordersInnerH)) {
+                ImGui::TableSetupColumn("Name hash", ImGuiTableColumnFlags_WidthFixed, 150);
+                ImGui::TableSetupColumn("Type",      ImGuiTableColumnFlags_WidthFixed, 60);
+                ImGui::TableSetupColumn("CB offset", ImGuiTableColumnFlags_WidthFixed, 80);
+                ImGui::TableSetupColumn("Value",     ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableHeadersRow();
+                for (const auto& p : m_mat.params) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%016llX", (unsigned long long)p.nameHash);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%04X", p.typeCode);
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("0x%02X", p.cbufferOffset);
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("%g", p.value);
+                }
+                ImGui::EndTable();
+            }
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Shaders")) {
+            ImGui::TextDisabled("%zu permutations, all named after this "
+                                "material's hash.", shaders.size());
+            for (const auto* s : shaders)
+                ImGui::BulletText("%s", s->name.c_str());
+            ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
+    }
+
+private:
+    std::string  m_name;
+    GOWRMaterial m_mat;
+};
+
+std::shared_ptr<Viewers::IDocumentContent> GOWRMaterialHandler::CreateViewer(
+        const AssetEntry& entry, AssetContainer& wad) {
+    if (!wad.fileSource || entry.source.size == 0) return nullptr;
+
+    std::vector<const AssetEntry*> flat;
+    FlattenEntries(wad.entries, flat);
+
+    auto matFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, entry.source.offset, entry.source.size);
+    const MaterialRefIndex refIndex = BuildMaterialRefIndex(wad, flat);
+    auto it      = refIndex.find(MaterialHashKey(entry.name));
+    auto refFile = (it != refIndex.end()) ? it->second : nullptr;
+
+    GOWRMaterial mat;
+    if (!GOWRMaterialParse(matFile, refFile, mat)) return nullptr;
+    return std::make_shared<GOWRMaterialViewer>(entry.name, std::move(mat));
+}
+
+static bool _reg_material = [] {
+    ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
+        std::make_unique<Onyx::GOWRMaterialHandler>());
     return true;
 }();
 

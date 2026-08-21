@@ -1,4 +1,4 @@
-﻿// Material handler Ã¢â‚¬â€ GOW1/2 material definition
+// Material handler — GOW1/2 material definition
 // Magic: 0x00000008 (MAT_MAGIC in god_of_war_browser)
 
 #include <Onyx/Types/TypeRegistry.h>
@@ -16,7 +16,7 @@ namespace {
 
 static const AssetEntry* FindEntryWithPayload(const std::vector<AssetEntry>& entries, const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& entry : entries) {
-        if (entry.typeId == type && entry.name == name && entry.size > 0)
+        if (entry.typeId == type && entry.name == name && entry.source.size > 0)
             return &entry;
         if (!entry.children.empty()) {
             if (auto found = FindEntryWithPayload(entry.children, name, type))
@@ -50,7 +50,7 @@ public:
         if (!wad.fileSource) return nullptr;
         
         const AssetEntry* matEntryToParse = &entry;
-        if (matEntryToParse->size == 0) {
+        if (matEntryToParse->source.size == 0) {
             if (auto realMat = FindEntryWithPayload(wad.entries, matEntryToParse->name, Onyx::GameTypes::Material))
                 matEntryToParse = realMat;
         }
@@ -74,7 +74,7 @@ public:
                 entry.name, 
                 std::move(matData), 
                 [](const std::string& texName) -> unsigned int {
-                    return 0; // Fallback Ã¢â‚¬â€ textures are now passed directly
+                    return 0; // Fallback — textures are now passed directly
                 },
                 std::move(textures)
             );

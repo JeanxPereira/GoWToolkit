@@ -1,4 +1,4 @@
-﻿#include "AppRegistration.h"
+#include "AppRegistration.h"
 
 #include <Onyx/App/App.h>
 #include "imgui_internal.h"
@@ -21,12 +21,27 @@
 // Game viewers
 #include "ui/viewers/SoundPlayer.h"
 
+// Game modules (Onyx v1.1 IGameModule contract). Replaces the pre-v1.1
+// Onyx::Services::ProfileManager::Get().RegisterProfile(...) calls that used
+// to live in main.cpp's registerProfiles() -- see task-4-report.md.
+#include "core/modules/Gow2Module.h"
+#include "core/modules/GowrModule.h"
+
 #include <memory>
 
 namespace Onyx {
 
 void InstallGoWPanels(Onyx::App::App& app) {
   app.SetRegistrar([](Onyx::App::App& a) {
+    // Register the game modules with the Workspace. App::AddModule is valid
+    // only pre-init ("a call after init() has completed is refused" --
+    // App.h), and this registrar runs from inside App::init() (via
+    // registerPanels(), before init() returns), which satisfies that
+    // window -- the same place the old ProfileManager registration used to
+    // run from indirectly (main.cpp, before window.run()).
+    a.AddModule(std::make_unique<Onyx::Gowr::GowrModule>());
+    a.AddModule(std::make_unique<Onyx::Gow2::Gow2Module>());
+
     // Generic panels GoWToolkit opts into (previously auto-registered by the
     // engine; now app-composed after Onyx panel-composition change).
     // Default-hidden: ISO Browser, Anim Curves, WAD Stats, Dopesheet.
@@ -67,15 +82,15 @@ void InstallGoWPanels(Onyx::App::App& app) {
     // Audio-volume <-> config sync. SoundPlayer (a game viewer) hosts the live
     // volume; App used to bridge it to AppConfig directly. Keep that bridge on
     // the app side via lifecycle events so the engine stays game-agnostic:
-    //   â€¢ restore config -> SoundPlayer once at startup,
-    //   â€¢ mirror SoundPlayer -> config every frame so it persists on exit.
+    //   • restore config -> SoundPlayer once at startup,
+    //   • mirror SoundPlayer -> config every frame so it persists on exit.
     // The registrar runs during App::init() after the config pointer is set,
     // so getConfig() is valid here.
     //
     // The mirror runs on EventFrameEnd (posted AFTER panels/documents draw),
     // not EventFrameTick (posted before the draw). The SoundPlayer volume
     // slider mutates s_volume during the draw, so reading it post-draw captures
-    // a same-frame change the same frame â€" matching the original frameEnd()
+    // a same-frame change the same frame — matching the original frameEnd()
     // write-back timing.
     Onyx::Services::AppConfig* config = a.getConfig();
     EventStartupFinished::subscribe([config] {

@@ -1,4 +1,4 @@
-﻿#include "SoundPlayer.h"
+#include "SoundPlayer.h"
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Services/ThemeManager.h>
 #include <Onyx/App/Widgets.h>
@@ -21,7 +21,7 @@ struct SoundPlayer::AudioDevice {
   bool initialized = false;
 };
 
-// â”€â”€ Audio callback (runs on audio thread) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Audio callback (runs on audio thread) ─────────────────────────────────
 
 static void ma_data_callback(ma_device *pDevice, void *pOutput,
                              const void * /*pInput*/, ma_uint32 frameCount) {
@@ -62,7 +62,7 @@ void SoundPlayer::FillAudioBuffer(int16_t *output, uint32_t frameCount) {
   }
 }
 
-// â”€â”€ Constructor / Destructor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Constructor / Destructor ──────────────────────────────────────────────
 
 SoundPlayer::SoundPlayer(
     const std::string &name,
@@ -97,7 +97,7 @@ SoundPlayer::~SoundPlayer() { ShutdownAudioDevice(); }
 
 std::string SoundPlayer::GetName() const { return m_name; }
 
-// â”€â”€ Audio device management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Audio device management ───────────────────────────────────────────────
 
 void SoundPlayer::InitAudioDevice() {
   ma_device_config config = ma_device_config_init(ma_device_type_playback);
@@ -108,7 +108,7 @@ void SoundPlayer::InitAudioDevice() {
   config.pUserData = this;
 
   if (ma_device_init(NULL, &config, &m_audio->device) != MA_SUCCESS) {
-    LOG_ERR("[SoundPlayer] Failed to initialize audio device");
+    ONYX_LOGF_ERR("[SoundPlayer] Failed to initialize audio device");
     return;
   }
   m_audio->initialized = true;
@@ -122,7 +122,7 @@ void SoundPlayer::ShutdownAudioDevice() {
   }
 }
 
-// â”€â”€ Playback controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Playback controls ─────────────────────────────────────────────────────
 
 void SoundPlayer::SelectSound(int index) {
   if (index < 0 || index >= (int)m_bankData->sounds.size())
@@ -134,14 +134,14 @@ void SoundPlayer::SelectSound(int index) {
   const auto &snd = m_bankData->sounds[index];
   if (!snd.hasData || snd.adpcmSize == 0) {
     m_decodedPcm.clear();
-    LOG_INFO("[SoundPlayer] Sound '%s' has no ADPCM data", snd.name.c_str());
+    ONYX_LOGF_INFO("[SoundPlayer] Sound '%s' has no ADPCM data", snd.name.c_str());
     return;
   }
 
   // Bounds check
   if (snd.adpcmOffset + snd.adpcmSize > m_bankData->bankStreamData.size()) {
     m_decodedPcm.clear();
-    LOG_ERR("[SoundPlayer] ADPCM data out of bounds for '%s': offset=0x%X "
+    ONYX_LOGF_ERR("[SoundPlayer] ADPCM data out of bounds for '%s': offset=0x%X "
             "size=0x%X streamSize=0x%zX",
             snd.name.c_str(), snd.adpcmOffset, snd.adpcmSize,
             m_bankData->bankStreamData.size());
@@ -151,7 +151,7 @@ void SoundPlayer::SelectSound(int index) {
   m_decodedPcm = Onyx::Audio::AdpcmDecoder::Decode(
       m_bankData->bankStreamData.data() + snd.adpcmOffset, snd.adpcmSize);
 
-  LOG_INFO("[SoundPlayer] Decoded '%s': %zu PCM samples", snd.name.c_str(),
+  ONYX_LOGF_INFO("[SoundPlayer] Decoded '%s': %zu PCM samples", snd.name.c_str(),
            m_decodedPcm.size());
 }
 
@@ -184,7 +184,7 @@ void SoundPlayer::Stop() {
     ma_device_stop(&m_audio->device);
 }
 
-// â”€â”€ Drawing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Drawing ───────────────────────────────────────────────────────────────
 
 void SoundPlayer::Draw() {
   if (!m_bankData && !m_singleSoundMode) {

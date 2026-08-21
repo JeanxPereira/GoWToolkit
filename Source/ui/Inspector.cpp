@@ -1,8 +1,8 @@
-﻿#include "ui/Inspector.h"
+#include "ui/Inspector.h"
 #include <Onyx/App/UIHelpers.h>
-#include "ui/RoleVisuals.h"   // GOWR role Ã¢â€ â€™ color/icon (ColorForRole, IconForRole)
+#include "ui/RoleVisuals.h"   // GOWR role → color/icon (ColorForRole, IconForRole)
 #include <Onyx/Api/ToolkitApi.h>
-#include "core/profiles/gowr/GowrProfileTag.h"
+#include "core/profiles/gowr/GowrTaxonomy.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
 
@@ -23,14 +23,15 @@ void Inspector::Draw() {
         return;
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â‚¬â€ always visible Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Header — always visible ─────────────────────────────────────────
     ImGui::PushID("InspectorHeader");
 
     const char* icon = IconForType(entry->typeId);
-    if (auto* t = entry->profileTag.As<Onyx::Gowr::GowrProfileTag>()) {
-        if (t->role != Onyx::Gowr::WadEntryRole::Unknown) {
-            icon = IconForRole(t->role);
-        }
+    // Onyx v1.1 removed AssetEntry::profileTag; role is reclassified on
+    // demand from the entry's own name + size via Gowr::Classify().
+    Onyx::Gowr::WadEntryRole role = Onyx::Gowr::Classify(*entry).role;
+    if (role != Onyx::Gowr::WadEntryRole::Unknown) {
+        icon = IconForRole(role);
     }
 
     ImGui::TextColored(ColorForType(entry->typeId),
@@ -39,9 +40,9 @@ void Inspector::Draw() {
 
     // Second line: WAD + size
     ImGui::TextDisabled("%s  |  %s", entry->wadName.c_str(),
-                        FormatBytes(entry->size).c_str());
+                        FormatBytes(entry->source.size).c_str());
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Context menu on header Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Context menu on header ──────────────────────────────────────────
     if (ImGui::BeginPopupContextItem("InspectorHeaderCtx")) {
         if (ImGui::MenuItem(ICON_SF_DOCUMENT_ON_DOCUMENT "  Copy Name")) {
             ImGui::SetClipboardText(entry->name.c_str());
@@ -53,7 +54,7 @@ void Inspector::Draw() {
         }
         {
             char offsetStr[32];
-            snprintf(offsetStr, sizeof(offsetStr), "0x%08X", entry->offset);
+            snprintf(offsetStr, sizeof(offsetStr), "0x%08X", entry->source.offset);
             if (ImGui::MenuItem(ICON_SF_ARROW_RIGHT "  Copy Offset")) {
                 ImGui::SetClipboardText(offsetStr);
             }
@@ -64,7 +65,7 @@ void Inspector::Draw() {
     ImGui::PopID();
     ImGui::Separator();
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Viewer Inspector section Ã¢â‚¬â€ if a document viewer is active Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Viewer Inspector section — if a document viewer is active ────────
     if (Onyx::Api::Documents().HasActiveDocument()) {
         auto doc = Onyx::Api::Documents().GetActiveDocument();
         if (doc) {
@@ -73,7 +74,7 @@ void Inspector::Draw() {
         }
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Properties section Ã¢â‚¬â€ always shown (collapsible) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Properties section — always shown (collapsible) ─────────────────
     if (ImGui::CollapsingHeader("Properties", ImGuiTreeNodeFlags_DefaultOpen)) {
         m_info_tab.Draw(Onyx::Api::Database(), entry);
     }

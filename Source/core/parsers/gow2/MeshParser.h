@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Parsers/MeshData.h>
 #include <Onyx/Vfs/IFile.h>
 #include <memory>

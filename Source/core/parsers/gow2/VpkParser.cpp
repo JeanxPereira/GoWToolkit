@@ -1,4 +1,4 @@
-﻿#include "VpkParser.h"
+#include "VpkParser.h"
 #include <Onyx/Audio/AdpcmDecoder.h>
 #include <Onyx/Services/Logger.h>
 #include <cstring>
@@ -16,7 +16,7 @@ std::unique_ptr<GOW2VpkParser::VpkData> GOW2VpkParser::Parse(const std::shared_p
     uint8_t header[0x20];
     file->Seek(0, SEEK_SET);
     if (file->Read(header, 0x20) != 0x20) {
-        LOG_ERR("[VPK] Failed to read header");
+        ONYX_LOGF_ERR("[VPK] Failed to read header");
         return nullptr;
     }
 
@@ -26,14 +26,14 @@ std::unique_ptr<GOW2VpkParser::VpkData> GOW2VpkParser::Parse(const std::shared_p
 
     if (channels == 0) channels = 1;
     if (channels > 4) {
-        LOG_ERR("[VPK] Too many channels: %u", channels);
+        ONYX_LOGF_ERR("[VPK] Too many channels: %u", channels);
         return nullptr;
     }
 
-    LOG_INFO("[VPK] sampleRate=%u, channels=%u, dataSize=%u (per channel)", sampleRate, channels, dataSize);
+    ONYX_LOGF_INFO("[VPK] sampleRate=%u, channels=%u, dataSize=%u (per channel)", sampleRate, channels, dataSize);
 
     if (dataSize == 0 || dataSize > 100 * 1024 * 1024) {
-        LOG_ERR("[VPK] Suspicious data size: %u", dataSize);
+        ONYX_LOGF_ERR("[VPK] Suspicious data size: %u", dataSize);
         return nullptr;
     }
 
@@ -85,7 +85,7 @@ done:
         }
     }
 
-    LOG_INFO("[VPK] Decoded %zu total PCM samples (%u channels)", result->pcmData.size(), channels);
+    ONYX_LOGF_INFO("[VPK] Decoded %zu total PCM samples (%u channels)", result->pcmData.size(), channels);
     return result;
 }
 

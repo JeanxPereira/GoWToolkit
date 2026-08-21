@@ -1,4 +1,4 @@
-﻿#include "TextureParser.h"
+#include "TextureParser.h"
 #include <Onyx/Vfs/SliceFile.h>
 #include <Onyx/Services/Logger.h>
 #include <cstring>
@@ -6,11 +6,11 @@
 
 namespace Onyx {
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // PS2 GS Texture Unswizzle
 // Converts PS2 VRAM block-interleaved coords to linear offset.
 // Direct port from god_of_war_browser/pack/wad/gfx/gfx.go:IndexUnswizzleTexture
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 uint32_t GOW2TextureParser::IndexUnswizzleTexture(uint32_t x, uint32_t y, uint32_t width) {
     uint32_t block_location = (y & ~0xFu) * width + (x & ~0xFu) * 2;
     uint32_t swap_selector  = (((y + 2) >> 2) & 0x1) * 4;
@@ -20,10 +20,10 @@ uint32_t GOW2TextureParser::IndexUnswizzleTexture(uint32_t x, uint32_t y, uint32
     return block_location + column_location + byte_num;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // PS2 CSM1 Palette Swizzle
 // port from gfx.go:IndexSwizzlePalette
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 int GOW2TextureParser::IndexSwizzlePalette(int i) {
     static const int remap[] = { 0, 2, 1, 3 };
     int blockid  = i / 8;
@@ -31,10 +31,10 @@ int GOW2TextureParser::IndexSwizzlePalette(int i) {
     return blockpos + (remap[blockid % 4] + (blockid / 4) * 4) * 8;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // Decode palette from a GFX block containing CLUT data
 // Returns an array of RGBA uint32 values
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 std::vector<uint32_t> GOW2TextureParser::DecodePalette(const GFXData& palGfx, int palIdx) {
     if (palIdx >= (int)palGfx.data.size() || palGfx.data[palIdx].empty()) {
         return {};
@@ -66,9 +66,9 @@ std::vector<uint32_t> GOW2TextureParser::DecodePalette(const GFXData& palGfx, in
     return palette;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // Decode pixel indices from a GFX block (PSMT8 with unswizzle, or PSMT4)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 std::vector<uint8_t> GOW2TextureParser::DecodePixelIndices(const GFXData& gfx, int dataIdx) {
     if (dataIdx >= (int)gfx.data.size() || gfx.data[dataIdx].empty()) {
         return {};
@@ -114,17 +114,17 @@ std::vector<uint8_t> GOW2TextureParser::DecodePixelIndices(const GFXData& gfx, i
             }
         }
     } else {
-        LOG_ERR("[GOW2Texture] Unsupported bpi: %u", gfx.bpi);
+        ONYX_LOGF_ERR("[GOW2Texture] Unsupported bpi: %u", gfx.bpi);
     }
     
     return indices;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // Parse a GFX block from raw bytes
 // GFX header: magic(4) width(4) height(4) encoding(4) bpi(4) dataCount(4) = 24 bytes
 // followed by (width * realHeight * bpi / 8) * dataCount bytes of pixel data
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 std::unique_ptr<GOW2TextureParser::GFXData> GOW2TextureParser::ParseGFX(const uint8_t* buf, uint32_t bufSize) {
     if (bufSize < 24) return nullptr;
     
@@ -137,12 +137,12 @@ std::unique_ptr<GOW2TextureParser::GFXData> GOW2TextureParser::ParseGFX(const ui
     gfx->dataCount = *(uint32_t*)(buf + 20);
     
     if (gfx->magic != 0x0C) {
-        LOG_ERR("[GOW2Texture] GFX bad magic: 0x%X (expected 0x0C)", gfx->magic);
+        ONYX_LOGF_ERR("[GOW2Texture] GFX bad magic: 0x%X (expected 0x0C)", gfx->magic);
         return nullptr;
     }
     
     if (gfx->dataCount == 0) {
-        LOG_ERR("[GOW2Texture] GFX dataCount is 0");
+        ONYX_LOGF_ERR("[GOW2Texture] GFX dataCount is 0");
         return nullptr;
     }
     
@@ -153,20 +153,20 @@ std::unique_ptr<GOW2TextureParser::GFXData> GOW2TextureParser::ParseGFX(const ui
     uint32_t pos = 24;
     for (uint32_t i = 0; i < gfx->dataCount; i++) {
         if (pos + gfx->dataSize > bufSize) {
-            LOG_ERR("[GOW2Texture] GFX data overflows buffer at layer %u", i);
+            ONYX_LOGF_ERR("[GOW2Texture] GFX data overflows buffer at layer %u", i);
             return nullptr;
         }
         gfx->data[i].assign(buf + pos, buf + pos + gfx->dataSize);
         pos += gfx->dataSize;
     }
     
-    LOG_INFO("[GOW2Texture] GFX parsed: %ux%u, bpi=%u, encoding=%u, layers=%u",
+    ONYX_LOGF_INFO("[GOW2Texture] GFX parsed: %ux%u, bpi=%u, encoding=%u, layers=%u",
         gfx->width, gfx->realHeight, gfx->bpi, gfx->encoding, gfx->dataCount);
     
     return gfx;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 // TXR Tag format (from txr.go):
 //   [0x00] Magic    uint32 (must be 0x07)
 //   [0x04] GfxName  char[24]
@@ -176,7 +176,7 @@ std::unique_ptr<GOW2TextureParser::GFXData> GOW2TextureParser::ParseGFX(const ui
 //   [0x50] LODMult  float32
 //   [0x54] Flags    uint32
 //   Total = 0x58 bytes
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────
 
 static std::string ReadFixedString(const uint8_t* buf, size_t maxLen) {
     size_t len = strnlen((const char*)buf, maxLen);
@@ -200,30 +200,30 @@ std::unique_ptr<Parsers::TextureData> GOW2TextureParser::Parse(
     const std::vector<AssetEntry>& siblingEntries,
     const std::shared_ptr<Vfs::IFile>& fileSource)
 {
-    if (!fileSource || txrEntry.size < 0x58) {
-        LOG_ERR("[GOW2Texture] TXR entry too small: %u bytes", txrEntry.size);
+    if (!fileSource || txrEntry.source.size < 0x58) {
+        ONYX_LOGF_ERR("[GOW2Texture] TXR entry too small: %u bytes", txrEntry.source.size);
         return nullptr;
     }
-    
+
     // Read TXR tag data
-    std::vector<uint8_t> txrBuf(txrEntry.size);
-    Vfs::SliceFile txrSlice(fileSource, txrEntry.offset, txrEntry.size);
+    std::vector<uint8_t> txrBuf(txrEntry.source.size);
+    Vfs::SliceFile txrSlice(fileSource, txrEntry.source.offset, txrEntry.source.size);
     txrSlice.Seek(0, SEEK_SET);
-    txrSlice.Read(txrBuf.data(), txrEntry.size);
+    txrSlice.Read(txrBuf.data(), txrEntry.source.size);
     
     uint32_t magic = *(uint32_t*)(txrBuf.data() + 0);
     if (magic != 0x07) {
-        LOG_ERR("[GOW2Texture] TXR bad magic: 0x%X (expected 0x07)", magic);
+        ONYX_LOGF_ERR("[GOW2Texture] TXR bad magic: 0x%X (expected 0x07)", magic);
         return nullptr;
     }
     
     std::string gfxName = ReadFixedString(txrBuf.data() + 0x04, 24);
     std::string palName = ReadFixedString(txrBuf.data() + 0x1C, 24);
     
-    LOG_INFO("[GOW2Texture] TXR '%s': gfx='%s', pal='%s'", txrEntry.name.c_str(), gfxName.c_str(), palName.c_str());
+    ONYX_LOGF_INFO("[GOW2Texture] TXR '%s': gfx='%s', pal='%s'", txrEntry.name.c_str(), gfxName.c_str(), palName.c_str());
     
     if (gfxName.empty() || palName.empty()) {
-        LOG_ERR("[GOW2Texture] TXR has empty gfx/pal names");
+        ONYX_LOGF_ERR("[GOW2Texture] TXR has empty gfx/pal names");
         return nullptr;
     }
     
@@ -232,49 +232,49 @@ std::unique_ptr<Parsers::TextureData> GOW2TextureParser::Parse(
     const AssetEntry* palEntry = FindSibling(siblingEntries, palName);
     
     if (!gfxEntry) {
-        LOG_ERR("[GOW2Texture] Cannot find GFX sibling '%s'", gfxName.c_str());
+        ONYX_LOGF_ERR("[GOW2Texture] Cannot find GFX sibling '%s'", gfxName.c_str());
         return nullptr;
     }
     if (!palEntry) {
-        LOG_ERR("[GOW2Texture] Cannot find PAL sibling '%s'", palName.c_str());
+        ONYX_LOGF_ERR("[GOW2Texture] Cannot find PAL sibling '%s'", palName.c_str());
         return nullptr;
     }
     
     // Read and parse GFX (pixel data)
-    std::vector<uint8_t> gfxBuf(gfxEntry->size);
-    Vfs::SliceFile gfxSlice(fileSource, gfxEntry->offset, gfxEntry->size);
+    std::vector<uint8_t> gfxBuf(gfxEntry->source.size);
+    Vfs::SliceFile gfxSlice(fileSource, gfxEntry->source.offset, gfxEntry->source.size);
     gfxSlice.Seek(0, SEEK_SET);
-    gfxSlice.Read(gfxBuf.data(), gfxEntry->size);
-    
-    auto gfxData = ParseGFX(gfxBuf.data(), gfxEntry->size);
+    gfxSlice.Read(gfxBuf.data(), gfxEntry->source.size);
+
+    auto gfxData = ParseGFX(gfxBuf.data(), gfxEntry->source.size);
     if (!gfxData) {
-        LOG_ERR("[GOW2Texture] Failed to parse GFX '%s'", gfxName.c_str());
+        ONYX_LOGF_ERR("[GOW2Texture] Failed to parse GFX '%s'", gfxName.c_str());
         return nullptr;
     }
-    
+
     // Read and parse PAL (palette data)
-    std::vector<uint8_t> palBuf(palEntry->size);
-    Vfs::SliceFile palSlice(fileSource, palEntry->offset, palEntry->size);
+    std::vector<uint8_t> palBuf(palEntry->source.size);
+    Vfs::SliceFile palSlice(fileSource, palEntry->source.offset, palEntry->source.size);
     palSlice.Seek(0, SEEK_SET);
-    palSlice.Read(palBuf.data(), palEntry->size);
-    
-    auto palData = ParseGFX(palBuf.data(), palEntry->size);
+    palSlice.Read(palBuf.data(), palEntry->source.size);
+
+    auto palData = ParseGFX(palBuf.data(), palEntry->source.size);
     if (!palData) {
-        LOG_ERR("[GOW2Texture] Failed to parse PAL '%s'", palName.c_str());
+        ONYX_LOGF_ERR("[GOW2Texture] Failed to parse PAL '%s'", palName.c_str());
         return nullptr;
     }
     
     // Decode palette (first layer)
     auto palette = DecodePalette(*palData, 0);
     if (palette.empty()) {
-        LOG_ERR("[GOW2Texture] Palette decode failed");
+        ONYX_LOGF_ERR("[GOW2Texture] Palette decode failed");
         return nullptr;
     }
     
     // Decode pixel indices (first layer)
     auto indices = DecodePixelIndices(*gfxData, 0);
     if (indices.empty()) {
-        LOG_ERR("[GOW2Texture] Pixel index decode failed");
+        ONYX_LOGF_ERR("[GOW2Texture] Pixel index decode failed");
         return nullptr;
     }
     
@@ -307,7 +307,7 @@ std::unique_ptr<Parsers::TextureData> GOW2TextureParser::Parse(
         result->pixels[i * 4 + 3] = a;
     }
     
-    LOG_INFO("[GOW2Texture] Decoded '%s': %ux%u RGBA", result->name.c_str(), w, h);
+    ONYX_LOGF_INFO("[GOW2Texture] Decoded '%s': %ux%u RGBA", result->name.c_str(), w, h);
     return result;
 }
 

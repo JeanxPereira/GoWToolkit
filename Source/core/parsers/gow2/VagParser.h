@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Vfs/IFile.h>
 #include <vector>
 #include <cstdint>

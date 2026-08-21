@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Types/ITypeHandler.h>
 #include "core/types/GameTypes.h"
 #include <filesystem>
@@ -50,6 +50,13 @@ public:
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
 private:
     Types::TypeId m_id;
+};
+
+class GOWRMaterialHandler : public Types::ITypeHandler {
+public:
+    Types::TypeId  GetId()   const override { return GameTypes::GowrMaterial; }
+    const char*  GetName() const override { return "GOWR Material"; }
+    std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const AssetEntry& entry, AssetContainer& wad) override;
 };
 
 class TexPackIndex;

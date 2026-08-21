@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Types/TypeId.h>        // still the enum at this point
 #include <Onyx/Domain/MediaKind.h>
 #include <Onyx/Fonts/SFSymbols.h>

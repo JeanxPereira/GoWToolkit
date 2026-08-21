@@ -1,4 +1,4 @@
-﻿#include "VagParser.h"
+#include "VagParser.h"
 #include <Onyx/Audio/AdpcmDecoder.h>
 #include <Onyx/Services/Logger.h>
 #include <cstring>
@@ -16,13 +16,13 @@ std::unique_ptr<GOW2VagParser::VagData> GOW2VagParser::Parse(const std::shared_p
     uint8_t header[0x30];
     file->Seek(0, SEEK_SET);
     if (file->Read(header, 0x30) != 0x30) {
-        LOG_ERR("[VAG] Failed to read header");
+        ONYX_LOGF_ERR("[VAG] Failed to read header");
         return nullptr;
     }
 
     // Check magic: "VAGp" (0x56 0x41 0x47 0x70)
     if (header[0] != 0x56 || header[1] != 0x41 || header[2] != 0x47 || header[3] != 0x70) {
-        LOG_ERR("[VAG] Invalid magic: 0x%02X%02X%02X%02X", header[0], header[1], header[2], header[3]);
+        ONYX_LOGF_ERR("[VAG] Invalid magic: 0x%02X%02X%02X%02X", header[0], header[1], header[2], header[3]);
         return nullptr;
     }
 
@@ -32,10 +32,10 @@ std::unique_ptr<GOW2VagParser::VagData> GOW2VagParser::Parse(const std::shared_p
 
     if (channels == 0) channels = 1;
 
-    LOG_INFO("[VAG] sampleRate=%u, channels=%u, dataSize=%u", sampleRate, channels, dataSize);
+    ONYX_LOGF_INFO("[VAG] sampleRate=%u, channels=%u, dataSize=%u", sampleRate, channels, dataSize);
 
     if (dataSize == 0 || dataSize > 100 * 1024 * 1024) {
-        LOG_ERR("[VAG] Suspicious data size: %u", dataSize);
+        ONYX_LOGF_ERR("[VAG] Suspicious data size: %u", dataSize);
         return nullptr;
     }
 
@@ -44,7 +44,7 @@ std::unique_ptr<GOW2VagParser::VagData> GOW2VagParser::Parse(const std::shared_p
     file->Seek(0x30, SEEK_SET);
     size_t bytesRead = file->Read(adpcmData.data(), dataSize);
     if (bytesRead < dataSize) {
-        LOG_WARN("[VAG] Read only %zu of %u bytes", bytesRead, dataSize);
+        ONYX_LOGF_WARN("[VAG] Read only %zu of %u bytes", bytesRead, dataSize);
         adpcmData.resize(bytesRead);
     }
 
@@ -53,7 +53,7 @@ std::unique_ptr<GOW2VagParser::VagData> GOW2VagParser::Parse(const std::shared_p
     result->channels = channels;
     result->pcmData = Onyx::Audio::AdpcmDecoder::Decode(adpcmData.data(), adpcmData.size());
 
-    LOG_INFO("[VAG] Decoded %zu PCM samples", result->pcmData.size());
+    ONYX_LOGF_INFO("[VAG] Decoded %zu PCM samples", result->pcmData.size());
     return result;
 }
 

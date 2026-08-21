@@ -1,9 +1,10 @@
 #pragma once
 
-// Golden-test plumbing: produce a stable JSON snapshot of an `AssetContainer`,
-// load a previously-recorded snapshot from disk, and diff the two with a
-// human-readable error message. Tests in this directory use these helpers
-// to verify that parser refactors don't silently change observable output.
+// Golden-test plumbing: produce a stable JSON snapshot of a parsed
+// `Onyx::Modules::Document`, load a previously-recorded snapshot from disk,
+// and diff the two with a human-readable error message. Tests in this
+// directory use these helpers to verify that parser refactors don't
+// silently change observable output.
 
 #include <filesystem>
 #include <string>
@@ -13,10 +14,12 @@
 
 #include "core/WadTypes.h"
 
+namespace Onyx::Modules { struct Document; }
+
 namespace gowtoolkit::testing {
 
 // Returns a JSON document describing the relevant fields of every entry in
-// `wad`. The shape is deliberately small and stable:
+// `doc.roots`. The shape is deliberately small and stable:
 //
 //   {
 //     "wad": "<filename>",
@@ -31,9 +34,14 @@ namespace gowtoolkit::testing {
 //
 // Entries are flattened (no nesting) and ordered by `offset` ascending so
 // the document is stable across runs even if the parser walks the tree in
-// a different order. `payloadHash` is xxhash64 of the on-disk payload
-// bytes (skipped when the entry has `size == 0`).
-nlohmann::ordered_json SnapshotEntries(const AssetContainer& wad);
+// a different order. `payloadHash` is xxhash64 of the payload bytes read
+// through `doc.fileTable[entry.source.fileIndex]` (skipped when the entry
+// has `size == 0` or its fileIndex names no live file) -- Onyx v1.1's
+// modules can address any file table slot, not only the container itself
+// (Phase 2 Task 3's ISO PAK-slice support, Task 2's LZ4-decompressed
+// buffer), so hashing must follow fileIndex rather than assume a single
+// source the way the pre-Workspace AssetContainer::fileSource did.
+nlohmann::ordered_json SnapshotEntries(const Onyx::Modules::Document& doc);
 
 // Reads a golden snapshot from disk. Returns `nullptr` JSON if the file
 // does not exist (so callers can decide to create one on update mode).

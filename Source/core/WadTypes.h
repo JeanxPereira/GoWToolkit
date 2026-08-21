@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-// â”€â”€ Legacy umbrella header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Legacy umbrella header ────────────────────────────────────────────────
 //
 // `WadTypes.h` historically held `WadAssetName`, `WadEntryRole`,
 // `WadBlock`, `AssetEntry`, `AssetContainer`, and type-string helpers. M1.T1
@@ -15,3 +15,11 @@
 #include <Onyx/Domain/Wad.h>
 #include "core/domain/WadEntryRoleLegacy.h"
 #include <Onyx/Types/TypeId.h>
+
+// Onyx v1.0.0 removed the global-scope aliases for these two (its audit gap G5).
+// The app reaches them through this umbrella header in 245 places across 25
+// files, so they are re-introduced here rather than qualified at every site --
+// a mechanical sweep of that size would bury the port's real changes.
+// Deleting WadTypes.h entirely is a separate, already-planned piece of work.
+using AssetEntry     = Onyx::Domain::AssetEntry;
+using AssetContainer = Onyx::Domain::AssetContainer;

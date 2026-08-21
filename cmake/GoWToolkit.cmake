@@ -116,6 +116,8 @@ endif()
 target_include_directories(GoWToolkit PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source
     ${CMAKE_SOURCE_DIR}/third_party/bcdec
+    # stb_image_write: PNG output for the headless `render` command.
+    ${CMAKE_SOURCE_DIR}/third_party/stb
 )
 
 target_link_libraries(GoWToolkit PRIVATE Onyx::Onyx)
@@ -156,4 +158,30 @@ if(WIN32 AND ONYX_FFMPEG_DLLS)
             "$<TARGET_FILE_DIR:GoWToolkit>"
         COMMENT "Copying FFmpeg DLLs to output directory"
     )
+endif()
+
+# -- Copy dxcompiler.dll for DXIL disassembly (Windows, optional) ----------
+# The shader viewer decodes the DXBC container natively but delegates DXIL
+# disassembly to dxcompiler.dll, which it loads by name at runtime. Copying
+# it next to the executable makes that work out of the box; when it is not
+# found the viewer degrades to the structured view and says so, so this is a
+# convenience rather than a requirement.
+if(WIN32)
+    file(GLOB _dxc_candidates
+        "$ENV{WindowsSdkDir}bin/*/x64/dxcompiler.dll"
+        "C:/Program Files (x86)/Windows Kits/10/bin/*/x64/dxcompiler.dll")
+    if(_dxc_candidates)
+        list(SORT _dxc_candidates)
+        list(GET _dxc_candidates -1 DXCOMPILER_DLL)
+        message(STATUS "DXIL disassembly: using ${DXCOMPILER_DLL}")
+        add_custom_command(TARGET GoWToolkit POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${DXCOMPILER_DLL}"
+                "$<TARGET_FILE_DIR:GoWToolkit>"
+            COMMENT "Copying dxcompiler.dll to output directory"
+        )
+    else()
+        message(STATUS "DXIL disassembly: dxcompiler.dll not found; the shader "
+                       "viewer will show the container view only")
+    endif()
 endif()

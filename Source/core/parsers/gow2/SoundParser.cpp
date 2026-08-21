@@ -1,4 +1,4 @@
-﻿#include "SoundParser.h"
+#include "SoundParser.h"
 #include <Onyx/Vfs/SliceFile.h>
 #include <Onyx/Services/Logger.h>
 #include <cstring>
@@ -24,21 +24,21 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     const std::shared_ptr<Vfs::IFile>& fileSource)
 {
     if (!fileSource) {
-        LOG_ERR("[GOW2Sound] fileSource is null for SFX %s", entry.name.c_str());
+        ONYX_LOGF_ERR("[GOW2Sound] fileSource is null for SFX %s", entry.name.c_str());
         return nullptr;
     }
-    if (entry.size < 8) {
-        LOG_ERR("[GOW2Sound] SFX %s is too small: %u bytes", entry.name.c_str(), entry.size);
+    if (entry.source.size < 8) {
+        ONYX_LOGF_ERR("[GOW2Sound] SFX %s is too small: %u bytes", entry.name.c_str(), entry.source.size);
         return nullptr;
     }
 
     // Read entire entry data
-    std::vector<uint8_t> buf(entry.size);
-    Vfs::SliceFile slice(fileSource, entry.offset, entry.size);
+    std::vector<uint8_t> buf(entry.source.size);
+    Vfs::SliceFile slice(fileSource, entry.source.offset, entry.source.size);
     slice.Seek(0, SEEK_SET);
-    size_t bytesRead = slice.Read(buf.data(), entry.size);
+    size_t bytesRead = slice.Read(buf.data(), entry.source.size);
     if (bytesRead < 8) {
-        LOG_ERR("[GOW2Sound] Failed to read SFX data for %s", entry.name.c_str());
+        ONYX_LOGF_ERR("[GOW2Sound] Failed to read SFX data for %s", entry.name.c_str());
         return nullptr;
     }
 
@@ -46,11 +46,11 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     uint32_t serverId = ReadU32LE(buf.data());
     uint32_t soundsCount = ReadU32LE(buf.data() + 4);
 
-    LOG_INFO("[GOW2Sound] Parsing SFX '%s': serverId=0x%X, soundsCount=%u, totalSize=%u",
-             entry.name.c_str(), serverId, soundsCount, entry.size);
+    ONYX_LOGF_INFO("[GOW2Sound] Parsing SFX '%s': serverId=0x%X, soundsCount=%u, totalSize=%u",
+             entry.name.c_str(), serverId, soundsCount, entry.source.size);
 
     if (soundsCount == 0 || soundsCount > 10000) {
-        LOG_ERR("[GOW2Sound] Suspicious sound count: %u for %s", soundsCount, entry.name.c_str());
+        ONYX_LOGF_ERR("[GOW2Sound] Suspicious sound count: %u for %s", soundsCount, entry.name.c_str());
         return nullptr;
     }
 
@@ -60,7 +60,7 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     size_t soundInfoStart = 8;
     size_t soundInfoSize = soundsCount * 28;
     if (soundInfoStart + soundInfoSize > buf.size()) {
-        LOG_ERR("[GOW2Sound] Sound info overflows buffer for %s", entry.name.c_str());
+        ONYX_LOGF_ERR("[GOW2Sound] Sound info overflows buffer for %s", entry.name.c_str());
         return nullptr;
     }
 
@@ -74,7 +74,7 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     // Bank data starts after the sound info array
     size_t bankStart = soundInfoStart + soundInfoSize;
     if (bankStart + 24 > buf.size()) {
-        LOG_ERR("[GOW2Sound] No bank data in %s", entry.name.c_str());
+        ONYX_LOGF_ERR("[GOW2Sound] No bank data in %s", entry.name.c_str());
         // Return what we have - sounds without ADPCM data
         return result;
     }
@@ -90,7 +90,7 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     uint32_t streamBlockStart = ReadU32LE(buf.data() + bankStart + 0x10);
     uint32_t streamBlockSize  = ReadU32LE(buf.data() + bankStart + 0x14);
 
-    LOG_INFO("[GOW2Sound] Bank: headerStart=0x%X, headerSize=0x%X, streamStart=0x%X, streamSize=0x%X",
+    ONYX_LOGF_INFO("[GOW2Sound] Bank: headerStart=0x%X, headerSize=0x%X, streamStart=0x%X, streamSize=0x%X",
              headerBlockStart, headerBlockSize, streamBlockStart, streamBlockSize);
 
     // Absolute offsets within buf
@@ -106,7 +106,7 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
 
     // Parse bank header to extract sound descriptors
     if (headerBlockSize < 0x40 || absHeaderStart + headerBlockSize > buf.size()) {
-        LOG_ERR("[GOW2Sound] Bank header too small or overflows for %s", entry.name.c_str());
+        ONYX_LOGF_ERR("[GOW2Sound] Bank header too small or overflows for %s", entry.name.c_str());
         return result;
     }
 
@@ -122,11 +122,11 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
     uint32_t commandsStart   = ReadU32LE(hdr + 0x20);
     uint32_t smpdStart       = ReadU32LE(hdr + 0x34);
 
-    LOG_INFO("[GOW2Sound] Bank header: bankSoundsCount=%u, commandsStart=0x%X, smpdStart=0x%X",
+    ONYX_LOGF_INFO("[GOW2Sound] Bank header: bankSoundsCount=%u, commandsStart=0x%X, smpdStart=0x%X",
              bankSoundsCount, commandsStart, smpdStart);
 
     if (bankSoundsCount == 0 || bankSoundsCount > 10000) {
-        LOG_ERR("[GOW2Sound] Suspicious bank sounds count: %u", bankSoundsCount);
+        ONYX_LOGF_ERR("[GOW2Sound] Suspicious bank sounds count: %u", bankSoundsCount);
         return result;
     }
 
@@ -191,7 +191,7 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
                         snd.adpcmOffset = adpcmOffset;
                         snd.adpcmSize = adpcmSize;
                         snd.hasData = true;
-                        LOG_INFO("[GOW2Sound] Sound '%s': ADPCM offset=0x%X, size=0x%X, hex=%s",
+                        ONYX_LOGF_INFO("[GOW2Sound] Sound '%s': ADPCM offset=0x%X, size=0x%X, hex=%s",
                                  snd.name.c_str(), adpcmOffset, adpcmSize, dump.c_str());
                         break;
                     }
@@ -216,7 +216,7 @@ std::unique_ptr<GOW2SoundParser::SoundBankData> GOW2SoundParser::Parse(
         }
     }
 
-    LOG_INFO("[GOW2Sound] Parsed %zu sounds, stream data size: %zu bytes",
+    ONYX_LOGF_INFO("[GOW2Sound] Parsed %zu sounds, stream data size: %zu bytes",
              result->sounds.size(), result->bankStreamData.size());
 
     return result;

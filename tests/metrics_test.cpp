@@ -1,4 +1,4 @@
-﻿#include <doctest/doctest.h>
+#include <doctest/doctest.h>
 
 #include <chrono>
 #include <thread>
@@ -45,7 +45,7 @@ TEST_CASE("[Metrics] Enable + record + snapshot accumulates") {
     CHECK(snap.parseTimes[7]      == 750us);
     CHECK(snap.parseTimes[9]      == 1000us);
 
-    // Disable must not wipe accumulated state â€” only Reset() does.
+    // Disable must not wipe accumulated state — only Reset() does.
     M::Enable(false);
     CHECK_FALSE(M::IsEnabled());
     snap = M::CurrentSnapshot();
@@ -87,7 +87,7 @@ TEST_CASE("[Metrics] Thread-safe under concurrent recording") {
 }
 
 TEST_CASE("[Metrics] RecordParseTime is cheap when disabled") {
-    // Smoke-only benchmark â€” guards against accidentally adding a lock or
+    // Smoke-only benchmark — guards against accidentally adding a lock or
     // map lookup to the disabled path. The roadmap targets < 5 ns per
     // call; even a debug build comfortably beats a few-hundred-ns budget.
     M::Reset();
@@ -103,7 +103,7 @@ TEST_CASE("[Metrics] RecordParseTime is cheap when disabled") {
 
     MESSAGE("[Metrics] disabled RecordParseTime cost ~"
             << perCall.count() << " ns/call");
-    // Generous ceiling â€” function call + relaxed atomic load + branch.
+    // Generous ceiling — function call + relaxed atomic load + branch.
     CHECK(perCall < std::chrono::nanoseconds(500));
 
     // Recordings during the loop should have been ignored.

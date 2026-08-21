@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Onyx/Viewers/IDocumentContent.h>
 #include "core/parsers/gow2/SoundParser.h"
 #include <string>

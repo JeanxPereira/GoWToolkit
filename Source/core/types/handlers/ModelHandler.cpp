@@ -1,4 +1,4 @@
-﻿// Model handler â€” GOW1/2 mesh container (mdl_*)
+// Model handler — GOW1/2 mesh container (mdl_*)
 // Magic: 0x0002000F (MODEL_MAGIC in god_of_war_browser)
 //
 // Resolution follows the Go project (god_of_war_browser):
@@ -46,7 +46,7 @@ static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
 static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
                                           const std::string& name, Onyx::Types::TypeId type) {
     for (const auto& n : tree) {
-        if (n.typeId == type && n.name == name && n.size > 0)
+        if (n.typeId == type && n.name == name && n.source.size > 0)
             return &n;
         if (auto found = ResolvePayload(n.children, name, type))
             return found;
@@ -96,7 +96,7 @@ public:
     std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
 
-        // Resolve the Model entry itself â€” if it's a reference, find the definition
+        // Resolve the Model entry itself — if it's a reference, find the definition
         const AssetEntry* model = &entry;
         if (model->children.empty()) {
             if (auto resolved = ResolveRef(wad.entries, entry.name, Onyx::GameTypes::Model))
@@ -111,11 +111,11 @@ public:
         std::vector<const AssetEntry*> matEntries;
 
         for (const auto& child : model->children) {
-            if (child.typeId == Onyx::GameTypes::Mesh && child.size > 0) {
+            if (child.typeId == Onyx::GameTypes::Mesh && child.source.size > 0) {
                 meshSources.push_back(&child);
             } else if (child.typeId == Onyx::GameTypes::Material) {
                 const AssetEntry* mat = &child;
-                if (mat->size == 0) {
+                if (mat->source.size == 0) {
                     if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::GameTypes::Material))
                         mat = real;
                 }
@@ -125,7 +125,7 @@ public:
 
         uint32_t materialOffset = scene->materials.size();
 
-        // Parse materials â†’ MaterialInfo (store all layers for main layer selection)
+        // Parse materials → MaterialInfo (store all layers for main layer selection)
         for (const auto* mat : matEntries) {
             Onyx::Parsers::MaterialInfo matInfo;
             if (auto matData = Onyx::GOW2MaterialParser::Parse(*mat, wad.fileSource)) {
@@ -156,8 +156,8 @@ public:
 
         // Parse mesh geometry
         for (const auto* src : meshSources) {
-            Onyx::Vfs::SliceFile slice(wad.fileSource, src->offset, src->size);
-            if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->size)) {
+            Onyx::Vfs::SliceFile slice(wad.fileSource, src->source.offset, src->source.size);
+            if (auto data = Onyx::GOW2MeshParser::Parse(slice, 0, src->source.size)) {
                 for (auto& p : data->parts) {
                     p.materialId += materialOffset;
                     scene->meshParts.push_back(std::move(p));
@@ -167,18 +167,18 @@ public:
 
         if (scene->IsEmpty()) return nullptr;
 
-        // Detect Sky script â€” flag both scene and individual parts so
+        // Detect Sky script — flag both scene and individual parts so
         // SceneRenderer (which reads part.isSky into RenderBatch::isSky) can
         // route them through the sky pass.
         for (const auto& child : model->children) {
-            if (child.typeId == Onyx::GameTypes::Script && child.size > 0) {
+            if (child.typeId == Onyx::GameTypes::Script && child.source.size > 0) {
                 std::string target = Onyx::Parsers::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
                 if (target == "SCR_Sky") {
                     scene->isSky = true;
                     for (auto& p : scene->meshParts) {
                         p.isSky = true;
                     }
-                    LOG_INFO("[ModelHandler] Detected SCR_Sky in model '%s' (%zu parts flagged)",
+                    ONYX_LOGF_INFO("[ModelHandler] Detected SCR_Sky in model '%s' (%zu parts flagged)",
                              model->name.c_str(), scene->meshParts.size());
                     break;
                 }
@@ -200,7 +200,7 @@ public:
             scene->textures.push_back(std::move(matTextures));
         }
 
-        LOG_INFO("[ModelHandler] Built SceneData: %zu parts, %zu materials, %zu textures",
+        ONYX_LOGF_INFO("[ModelHandler] Built SceneData: %zu parts, %zu materials, %zu textures",
                  scene->meshParts.size(), scene->materials.size(), scene->textures.size());
 
         return scene;
