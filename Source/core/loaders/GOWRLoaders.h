@@ -1,35 +1,65 @@
 #pragma once
 #include <Onyx/Types/ITypeHandler.h>
+#include <Onyx/Types/TypeCatalog.h>
 #include "core/types/GameTypes.h"
 #include <filesystem>
 
 namespace Onyx {
 
+// Every handler below resolves its TypeId through GowrModule's OWN catalog
+// key, not through an Onyx::GameTypes::* extern.
+//
+// A GOWR tree is stamped entirely by GowrModule's RoleToTypeIdFn, so every
+// node carries a module-minted id ("gowr.meshDefn", "gowr.texturePair", ...).
+// The legacy externs are different ids under different keys, so handlers that
+// returned them matched NOTHING a GOWR document contains -- the ViewerRegistry
+// answered "No viewer found for TypeId=63" and not one GOWR asset would open,
+// while the tree itself rendered perfectly. (GOW2 escaped this because
+// ParseWadTagStream stamps a handler's legacy id whenever ResolveByTag finds
+// one; GOWR has no such path.)
+//
+// Looked up per call rather than cached: GowrModule::RegisterTypes() runs when
+// the module is added to a Workspace, which is later than these handlers'
+// static construction, and a "not found" cached from too early would stick
+// forever. TypeCatalog::Find is a hash lookup, and GetId() is called when the
+// registry builds its index, not per frame.
+inline Types::TypeId GowrType(const char* key) {
+    return Types::TypeCatalog::Get().Find(key);
+}
+
+// Both MESH_* and MG_* are role MeshDefn (GowrTaxonomy.h), so the type cannot
+// tell a rigged mesh from a plain one -- the NAME can, and always could. This
+// used to be two handler classes returning the same TypeId, which the registry
+// resolves by keeping the first and discarding the second: "GOWR Skinned Mesh"
+// was unreachable, so nothing ever attached a rig. There is no SkinnedMesh
+// role in the taxonomy for it to have claimed instead.
 class GOWRMeshDefnHandler : public Types::ITypeHandler {
 public:
-    Types::TypeId  GetId()    const override { return GameTypes::MeshDefn; }
-    const char*  GetName()  const override { return "GOWR Mesh Defn"; }
+    Types::TypeId  GetId()    const override { return GowrType("gowr.meshDefn"); }
+    const char*  GetName()  const override { return "GOWR Mesh"; }
     std::shared_ptr<Schema::AssetNode> Parse(std::shared_ptr<Vfs::IFile> file) override;
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
 
-class GOWRSkinnedMeshHandler : public Types::ITypeHandler {
+// MG_*_gpu -- the mesh group's GPU buffer. Rigged by construction: a mesh
+// group exists to carry the bone palette its parts index into.
+class GOWRMeshGpuHandler : public Types::ITypeHandler {
 public:
-    Types::TypeId  GetId()    const override { return GameTypes::MeshDefn; } // reuse
-    const char*  GetName()  const override { return "GOWR Skinned Mesh"; }
+    Types::TypeId  GetId()    const override { return GowrType("gowr.meshGpu"); }
+    const char*  GetName()  const override { return "GOWR Mesh GPU"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
 
 class GOWRModelInstanceHandler : public Types::ITypeHandler {
 public:
-    Types::TypeId  GetId()    const override { return GameTypes::GameObjectInst; }
+    Types::TypeId  GetId()    const override { return GowrType("gowr.gameObjectInst"); }
     const char*  GetName()  const override { return "GOWR Model Instance"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
 
 class GOWRTextureHandler : public Types::ITypeHandler {
 public:
-    Types::TypeId  GetId()    const override { return GameTypes::TexturePair; }
+    Types::TypeId  GetId()    const override { return GowrType("gowr.texturePair"); }
     const char*  GetName()  const override { return "GOWR Texture Pair"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
@@ -37,35 +67,31 @@ public:
 
 class GOWRRigHandler : public Types::ITypeHandler {
 public:
-    Types::TypeId  GetId()    const override { return GameTypes::GameObjectProto; }
+    Types::TypeId  GetId()    const override { return GowrType("gowr.gameObjectProto"); }
     const char*  GetName()  const override { return "GOWR Proto Rig"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
 
-// One instance per shader stage.
+// One instance per shader stage, each holding its module catalog key.
 //
-// The stage is stored as a POINTER to the GameTypes extern, not as a copy of
-// its value. These handlers are constructed during static initialisation, and
-// GameTypes::Shader* are only filled in by RegisterGameTypes() from main() --
-// so a constructor that copied the value captured an invalid handle forever,
-// and the registry reported "Handler 'GOWR Shader' has no TypeId (catalog not
-// seeded?)" seven times at every startup, leaving all seven shader types
-// without a viewer. Reading through the pointer in GetId() resolves it at call
-// time, after the catalog is seeded, which is what every other handler in this
-// tree does implicitly by naming the extern inside GetId().
+// A string literal rather than a TypeId: these are constructed during static
+// initialisation, long before any TypeId exists to copy. An earlier version
+// took the id by value in the constructor and captured an empty handle
+// forever, which the registry announced seven times at every launch
+// ("Handler 'GOWR Shader' has no TypeId (catalog not seeded?)").
 class GOWRShaderHandler : public Types::ITypeHandler {
 public:
-    explicit GOWRShaderHandler(const Types::TypeId* stage) : m_stage(stage) {}
-    Types::TypeId  GetId()    const override { return m_stage ? *m_stage : Types::TypeId{}; }
+    explicit GOWRShaderHandler(const char* stageKey) : m_stageKey(stageKey) {}
+    Types::TypeId  GetId()    const override { return GowrType(m_stageKey); }
     const char*  GetName()  const override { return "GOWR Shader"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 private:
-    const Types::TypeId* m_stage;
+    const char* m_stageKey;
 };
 
 class GOWRMaterialHandler : public Types::ITypeHandler {
 public:
-    Types::TypeId  GetId()   const override { return GameTypes::GowrMaterial; }
+    Types::TypeId  GetId()   const override { return GowrType("gowr.material"); }
     const char*  GetName() const override { return "GOWR Material"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };

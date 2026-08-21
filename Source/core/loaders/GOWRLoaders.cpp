@@ -1002,11 +1002,18 @@ std::shared_ptr<Schema::AssetNode> GOWRMeshDefnHandler::Parse(std::shared_ptr<Vf
 }
 
 std::shared_ptr<Viewers::IDocumentContent> GOWRMeshDefnHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    // MESH_* — render the 3D model without binding to a skeleton.
-    return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/false);
+    // MESH_* is a plain mesh; MG_* is a mesh group, which exists precisely to
+    // carry a bone palette. Both are role MeshDefn, so the name is the only
+    // thing that distinguishes them -- the same distinction the two former
+    // handler classes encoded in their (colliding, therefore unreachable)
+    // registrations. attachSkeleton only *attempts* a name-paired goProto*
+    // lookup and leaves the skeleton null when there is none, so this is a
+    // best-effort request, not an assertion that a rig exists.
+    const bool meshGroup = entry.name.rfind("MG_", 0) == 0;
+    return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/meshGroup);
 }
-std::shared_ptr<Viewers::IDocumentContent> GOWRSkinnedMeshHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
-    // GOWR_SKINNED_MESH — attach the rig so bones drive the mesh.
+std::shared_ptr<Viewers::IDocumentContent> GOWRMeshGpuHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
+    // MG_*_gpu -- always the rigged half of a mesh group.
     return SharedGowrMeshLoad(entry, wad, /*attachSkeleton=*/true);
 }
 std::shared_ptr<Viewers::IDocumentContent> GOWRModelInstanceHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
@@ -1178,7 +1185,7 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const As
 }
 
 ONYX_REGISTER_FILE_TYPE(GOWRMeshDefnHandler);
-ONYX_REGISTER_FILE_TYPE(GOWRSkinnedMeshHandler);
+ONYX_REGISTER_FILE_TYPE(GOWRMeshGpuHandler);
 ONYX_REGISTER_FILE_TYPE(GOWRModelInstanceHandler);
 ONYX_REGISTER_FILE_TYPE(GOWRTextureHandler);
 ONYX_REGISTER_FILE_TYPE(GOWRRigHandler);
@@ -1431,42 +1438,42 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRShaderHandler::CreateViewer(const
 
 // Register shader handlers for all shader TypeIds.
 //
-// Each takes the ADDRESS of its GameTypes extern, not its value: these lambdas
-// run during static initialisation, before main() calls RegisterGameTypes(),
-// so the externs are still empty here. See GOWRShaderHandler's own comment.
+// Each takes its module CATALOG KEY, not a TypeId: these lambdas run during
+// static initialisation, before any module has registered its types, and a
+// GOWR tree carries module-minted ids anyway. See GOWRShaderHandler.
 static bool _reg_shader_vs = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderVertex));
+        std::make_unique<Onyx::GOWRShaderHandler>("gowr.shaderVertex"));
     return true;
 }();
 static bool _reg_shader_ps = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderPixel));
+        std::make_unique<Onyx::GOWRShaderHandler>("gowr.shaderPixel"));
     return true;
 }();
 static bool _reg_shader_ct = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderContainer));
+        std::make_unique<Onyx::GOWRShaderHandler>("gowr.shaderContainer"));
     return true;
 }();
 static bool _reg_shader_hs = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderHull));
+        std::make_unique<Onyx::GOWRShaderHandler>("gowr.shaderHull"));
     return true;
 }();
 static bool _reg_shader_ds = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderDomain));
+        std::make_unique<Onyx::GOWRShaderHandler>("gowr.shaderDomain"));
     return true;
 }();
 static bool _reg_shader_cs = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderCompute));
+        std::make_unique<Onyx::GOWRShaderHandler>("gowr.shaderCompute"));
     return true;
 }();
 static bool _reg_shader_ls = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderLibrary));
+        std::make_unique<Onyx::GOWRShaderHandler>("gowr.shaderLibrary"));
     return true;
 }();
 
