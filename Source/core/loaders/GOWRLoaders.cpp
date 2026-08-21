@@ -1429,40 +1429,44 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRShaderHandler::CreateViewer(const
     return std::make_shared<GOWRShaderViewer>(entry.name, std::move(data));
 }
 
-// Register shader handlers for all shader TypeIds
+// Register shader handlers for all shader TypeIds.
+//
+// Each takes the ADDRESS of its GameTypes extern, not its value: these lambdas
+// run during static initialisation, before main() calls RegisterGameTypes(),
+// so the externs are still empty here. See GOWRShaderHandler's own comment.
 static bool _reg_shader_vs = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderVertex));
+        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderVertex));
     return true;
 }();
 static bool _reg_shader_ps = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderPixel));
+        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderPixel));
     return true;
 }();
 static bool _reg_shader_ct = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderContainer));
+        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderContainer));
     return true;
 }();
 static bool _reg_shader_hs = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderHull));
+        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderHull));
     return true;
 }();
 static bool _reg_shader_ds = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderDomain));
+        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderDomain));
     return true;
 }();
 static bool _reg_shader_cs = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderCompute));
+        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderCompute));
     return true;
 }();
 static bool _reg_shader_ls = [] {
     ::Onyx::Types::TypeRegistry::Get().RegisterByTypeId(
-        std::make_unique<Onyx::GOWRShaderHandler>(Onyx::GameTypes::ShaderLibrary));
+        std::make_unique<Onyx::GOWRShaderHandler>(&Onyx::GameTypes::ShaderLibrary));
     return true;
 }();
 
