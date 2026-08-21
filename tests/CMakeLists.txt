@@ -17,29 +17,15 @@ file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 # SystemTheme implementation, so the stub would be a duplicate symbol — drop it.
 list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/theme_stubs.cpp")
 
-# ── EXCLUDED: three pre-existing, out-of-phase compile failures ───────────
-# Not this task's scope (Onyx Port Phase 2, task-4-brief.md) and NOT fixed
-# here -- excluded so the rest of the target can link and the goldens can
-# run, per the brief's explicit "acceptable if you say so explicitly and
-# loudly" allowance. Each is recorded in Phase 2 Tasks 2/3's reports and the
-# parent port spec as later-phase work:
-#   - selection_lifetime_test.cpp: includes <Onyx/Services/AssetDatabase.h>,
-#     which Onyx v1.1 deleted outright. Phase 4 (Onyx::Api::Database()/
-#     GetSelected() rework) owns this.
-#   - visibility_persistence_test.cpp: exercises the pre-M3 AssetVisibility
-#     API shape (SetUserOverride/GetCurrent/Export|ImportOverrides), which
-#     v1.1 redesigned. Phase 4.
-#   - logger_test.cpp: exercises a GOW_LOG_*/LOG_INFO family that never
-#     existed in this repo -- an orphan predating the port (per the parent
-#     spec's Known-gaps note). Phase 6.
-# Excluding a test is disabling it, not fixing it: none of these three run
-# as part of `ctest --test-dir build-msvc` until whichever phase above
-# re-includes them. See task-4-report.md.
-list(REMOVE_ITEM TEST_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/selection_lifetime_test.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/visibility_persistence_test.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/logger_test.cpp"
-)
+# All three tests the port excluded are back in the target (Phase 6):
+#   - selection_lifetime_test.cpp: rewritten against Workspace/NodePath, the
+#     model that replaced the AssetDatabase pointers whose dangling it used
+#     to guard.
+#   - visibility_persistence_test.cpp: rewritten against SaveOverrides/
+#     LoadOverrides, which persist by catalog key instead of numeric TypeId.
+#   - logger_test.cpp: the GOW_LOG_*/LOG_INFO macros it uses are the
+#     ONYX_LOG_*/ONYX_LOGF_* families under their current names; it was a
+#     rename, not an orphan.
 
 # ── App-core sources the golden / table tests link against ────────────────
 # These live under Source/ (game-specific, not part of Onyx).

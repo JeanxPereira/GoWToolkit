@@ -96,4 +96,11 @@ if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
     # Phase 3: the GOW2 main-layer rule and the GOWR->Onyx role bridge.
     add_test(NAME Gow2Material
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*SelectMainLayer*,*ToSceneRole*,*SceneRoleName*")
+    # Phase 6: the three tests the port had excluded, all back in the target.
+    add_test(NAME Logger
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*[Logger]*")
+    add_test(NAME Selection
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*[Selection]*")
+    add_test(NAME Visibility
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Visibility*")
 endif()
