@@ -16,13 +16,23 @@
 //      indexing a FLAT SceneData::textures pool, and a role absent from the
 //      map means "no map for that role" -- never index 0.
 //
-//   2. Type identity. Phase 2 Task 4 converged Gow2Module's tree production
-//      onto its own TypeRegistrar-minted handles, which are catalog keys
-//      prefixed by the module id ("gow2.texture"). The legacy
-//      Onyx::GameTypes::Texture extern is a DIFFERENT id registered under the
-//      bare key "texture", so `entry.typeId == GameTypes::Texture` silently
-//      never matches a tree Gow2Module actually produced. Every type test in
-//      this file goes through SceneTypes instead.
+//   2. Type identity, which is genuinely ambiguous and must be treated as
+//      such. A GOW2 tree carries BOTH id families at once:
+//
+//        - Gow2Module::ParseWadTagStream asks WadTypeRegistry::ResolveByTag
+//          for a handler, and when one exists it stamps that handler's
+//          GetId() -- a LEGACY Onyx::GameTypes::* id, registered under keys
+//          like "GOW2_MODEL" (see core/types/GameTypeTable.h).
+//        - When no handler resolves, it stamps the module's own
+//          TypeRegistrar-minted id instead, registered as "gow2.model".
+//
+//      So `list` on a real WAD shows both spellings in one tree, and testing
+//      against either family alone misses half of it. Which half depends on
+//      the target: the handler .cpp files are not in APP_TEST_SOURCES, so
+//      ResolveByTag always returns null under gowtoolkit_tests and the tree
+//      is pure module ids there, while the app links them and gets the mix.
+//      Converging the two is Gow2Module.h's own recorded residual gap; until
+//      that happens, every test here accepts both.
 
 #include "core/parsers/gow2/MaterialParser.h"
 
@@ -46,14 +56,28 @@ namespace Onyx::Gow2 {
 /// Any id the catalog does not know stays invalid, which never equals a real
 /// entry's typeId -- so an unregistered module yields an empty scene rather
 /// than a wrong one.
+/// One asset role, matchable against either id family (see above). An
+/// invalid handle never matches, so a role the catalog only knows one
+/// spelling of still works.
+struct TypeAlt {
+    Onyx::Types::TypeId fromModule;
+    Onyx::Types::TypeId legacy;
+
+    bool Matches(Onyx::Types::TypeId id) const {
+        return (fromModule.valid() && id == fromModule) ||
+               (legacy.valid()     && id == legacy);
+    }
+    bool Known() const { return fromModule.valid() || legacy.valid(); }
+};
+
 struct SceneTypes {
     SceneTypes();
 
-    Onyx::Types::TypeId object, model, mesh, material, texture, script, animation, unknown;
+    TypeAlt object, model, mesh, material, texture, script, animation, unknown;
 
-    /// True when the module's types are present in the catalog. False means
-    /// nothing will match and the caller should say so rather than silently
-    /// building an empty scene.
+    /// True when at least one spelling of each role this file tests is
+    /// known. False means nothing will match and the caller should say so
+    /// rather than silently building an empty scene.
     bool Valid() const;
 };
 
@@ -62,12 +86,12 @@ struct SceneTypes {
 /// GetNodeByName.
 const Onyx::Domain::AssetEntry* ResolveRef(const std::vector<Onyx::Domain::AssetEntry>& tree,
                                            const std::string& name,
-                                           Onyx::Types::TypeId type);
+                                           const TypeAlt& type);
 
 /// Same, but for a node carrying a payload (size > 0) rather than children.
 const Onyx::Domain::AssetEntry* ResolvePayload(const std::vector<Onyx::Domain::AssetEntry>& tree,
                                                const std::string& name,
-                                               Onyx::Types::TypeId type);
+                                               const TypeAlt& type);
 
 /// Finds a Texture node by exact name anywhere in the tree.
 const Onyx::Domain::AssetEntry* FindTexture(const std::vector<Onyx::Domain::AssetEntry>& nodes,

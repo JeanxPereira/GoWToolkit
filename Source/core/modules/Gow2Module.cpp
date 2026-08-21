@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "core/types/WadDispatch.h"
+#include "core/types/GameTypes.h"
 #include "core/parsers/gow2/TextureParser.h"
 
 // ── Gow2Module.cpp ─────────────────────────────────────────────────────────
@@ -258,20 +259,46 @@ void Gow2Module::RegisterTypes(Onyx::Types::TypeRegistrar& r) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 void Gow2Module::RegisterDecoders(DecoderRegistry& reg) {
+    // Every decoder is registered TWICE, under both ids the same asset can
+    // carry.
+    //
+    // ParseWadTagStream stamps a handler's legacy Onyx::GameTypes::* id
+    // whenever WadTypeRegistry::ResolveByTag finds one, and this module's own
+    // minted id when it does not (see the comment at that call site). The
+    // DecoderRegistry keys on the id an entry actually carries, so
+    // registering only the minted one left every handler-resolved entry
+    // without a decoder -- `decode <wad> TXR_boar:file7` answered "no decoder
+    // for entry" on a texture whose decoder was right here, because the entry
+    // was typed GOW2_TEXTURE and this line said gow2.texture.
+    //
+    // Converging the two id families is the real fix and is recorded on
+    // Gow2Module.h's member list; registering both keys is what makes decode
+    // work in the meantime, and costs one map insert per type. Legacy ids are
+    // only registered when valid: GameTypes::RegisterGameTypes() may not have
+    // run (gowtoolkit_tests does not always call it), and an invalid handle
+    // must not become a registry key.
+    auto both = [&](Onyx::Types::TypeId minted, Onyx::Types::TypeId legacy, auto slot) {
+        slot(minted);
+        if (legacy.valid() && legacy != minted) slot(legacy);
+    };
+
     // TextPlain is self-contained (see DecodeTextPlain) -- implemented.
-    reg.Text(m_textPlain, &Gow2Module::DecodeTextPlain);
+    both(m_textPlain, Onyx::GameTypes::TextPlain,
+         [&](Onyx::Types::TypeId id) { reg.Text(id, &Gow2Module::DecodeTextPlain); });
 
     // Model/Mesh/Object need per-part material resolution (Phase 3 scope,
     // see Gow2Module.h) -- stubbed rather than left unregistered, so a
     // caller gets an explicit diag instead of DecoderRegistry silently
     // reporting "no decoder".
-    reg.Scene(m_model,  &Gow2Module::DecodeSceneStub);
-    reg.Scene(m_mesh,   &Gow2Module::DecodeSceneStub);
-    reg.Scene(m_object, &Gow2Module::DecodeSceneStub);
+    auto scene = [&](Onyx::Types::TypeId id) { reg.Scene(id, &Gow2Module::DecodeSceneStub); };
+    both(m_model,  Onyx::GameTypes::Model,  scene);
+    both(m_mesh,   Onyx::GameTypes::Mesh,   scene);
+    both(m_object, Onyx::GameTypes::Object, scene);
 
     // Texture is implemented: GOW2TextureParser::Parse's sibling-resolution
     // need is satisfied by ctx.doc.roots (see DecodeImage below).
-    reg.Image(m_texture, &Gow2Module::DecodeImage);
+    both(m_texture, Onyx::GameTypes::Texture,
+         [&](Onyx::Types::TypeId id) { reg.Image(id, &Gow2Module::DecodeImage); });
 
     // No decoder slot fits Material/Instance (Map)/GfxData/PalData/
     // Animation/Script/Light/Sound/Collision/Flipbook/Chunk/WadFile/

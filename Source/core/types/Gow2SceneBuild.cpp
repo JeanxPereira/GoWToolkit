@@ -5,6 +5,7 @@
 
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Types/TypeCatalog.h>
+#include "core/types/GameTypes.h"
 
 #include <cstring>
 
@@ -55,29 +56,35 @@ Onyx::Parsers::BlendMode BlendModeOf(int renderingMethod) {
 
 // ── SceneTypes ──────────────────────────────────────────────────────────────
 
+// Looked up fresh per construction rather than cached in a static: neither
+// Gow2Module::RegisterTypes() nor GameTypes::RegisterGameTypes() is
+// guaranteed to have run the first time a handler is reached (registration
+// order is a composition-root concern), and a stale "not found" cached from
+// too early a call would stick forever. Both lookups are hash-map hits, and
+// this is built per scene build, not per frame.
 SceneTypes::SceneTypes() {
     auto& cat = Onyx::Types::TypeCatalog::Get();
-    object    = cat.Find("gow2.object");
-    model     = cat.Find("gow2.model");
-    mesh      = cat.Find("gow2.mesh");
-    material  = cat.Find("gow2.material");
-    texture   = cat.Find("gow2.texture");
-    script    = cat.Find("gow2.script");
-    animation = cat.Find("gow2.animation");
-    unknown   = cat.Find("gow2.unknown");
+    object    = {cat.Find("gow2.object"),    Onyx::GameTypes::Object};
+    model     = {cat.Find("gow2.model"),     Onyx::GameTypes::Model};
+    mesh      = {cat.Find("gow2.mesh"),      Onyx::GameTypes::Mesh};
+    material  = {cat.Find("gow2.material"),  Onyx::GameTypes::Material};
+    texture   = {cat.Find("gow2.texture"),   Onyx::GameTypes::Texture};
+    script    = {cat.Find("gow2.script"),    Onyx::GameTypes::Script};
+    animation = {cat.Find("gow2.animation"), Onyx::GameTypes::Animation};
+    unknown   = {cat.Find("gow2.unknown"),   Onyx::GameTypes::Unknown};
 }
 
 bool SceneTypes::Valid() const {
-    return model.valid() && mesh.valid() && material.valid() && texture.valid();
+    return model.Known() && mesh.Known() && material.Known() && texture.Known();
 }
 
 // ── Tree resolution ─────────────────────────────────────────────────────────
 
 const Onyx::Domain::AssetEntry* ResolveRef(const std::vector<Onyx::Domain::AssetEntry>& tree,
                                            const std::string& name,
-                                           Onyx::Types::TypeId type) {
+                                           const TypeAlt& type) {
     for (const auto& n : tree) {
-        if (n.typeId == type && n.name == name && !n.children.empty())
+        if (type.Matches(n.typeId) && n.name == name && !n.children.empty())
             return &n;
         if (auto found = ResolveRef(n.children, name, type))
             return found;
@@ -87,9 +94,9 @@ const Onyx::Domain::AssetEntry* ResolveRef(const std::vector<Onyx::Domain::Asset
 
 const Onyx::Domain::AssetEntry* ResolvePayload(const std::vector<Onyx::Domain::AssetEntry>& tree,
                                                const std::string& name,
-                                               Onyx::Types::TypeId type) {
+                                               const TypeAlt& type) {
     for (const auto& n : tree) {
-        if (n.typeId == type && n.name == name && n.source.size > 0)
+        if (type.Matches(n.typeId) && n.name == name && n.source.size > 0)
             return &n;
         if (auto found = ResolvePayload(n.children, name, type))
             return found;
@@ -101,7 +108,7 @@ const Onyx::Domain::AssetEntry* FindTexture(const std::vector<Onyx::Domain::Asse
                                             const std::string& name,
                                             const SceneTypes& types) {
     for (const auto& c : nodes) {
-        if (c.typeId == types.texture && c.name == name) return &c;
+        if (types.texture.Matches(c.typeId) && c.name == name) return &c;
         if (auto f = FindTexture(c.children, name, types)) return f;
     }
     return nullptr;

@@ -40,10 +40,10 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
 
     // Iterate children by type (like Go's mdl.Marshal iterating SubGroupNodes)
     for (const auto& child : model.children) {
-        if (child.typeId == types.mesh && child.source.size > 0) {
+        if (types.mesh.Matches(child.typeId) && child.source.size > 0) {
             meshSources.push_back(&child);
-        } else if (child.typeId == types.material ||
-                   (child.source.size == 0 && child.typeId == types.unknown)) {
+        } else if (types.material.Matches(child.typeId) ||
+                   (child.source.size == 0 && types.unknown.Matches(child.typeId))) {
             const AssetEntry* mat = &child;
             // Material reference? Resolve by exact name
             if (mat->source.size == 0) {
@@ -53,10 +53,10 @@ static void ProcessModel(const AssetEntry& model, AssetContainer& wad,
                 } else {
                     ONYX_LOGF_WARN("[ProcessModel] Could not resolve zero-sized material reference: '%s'", mat->name.c_str());
                 }
-            } else if (child.typeId == types.material) {
+            } else if (types.material.Matches(child.typeId)) {
                 matEntries.push_back(mat);
             }
-        } else if (child.typeId == types.script && child.source.size > 0) {
+        } else if (types.script.Matches(child.typeId) && child.source.size > 0) {
             std::string target = Onyx::Parsers::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
             if (target == "SCR_Sky") {
                 isModelSky = true;
@@ -96,9 +96,9 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
     if (!wad.fileSource) return nullptr;
     auto scene = std::make_unique<Onyx::Parsers::SceneData>();
 
-    // A real GOW2 tree carries Gow2Module's own minted ids, not the legacy
-    // GameTypes externs -- see Gow2SceneBuild.h. Without them every type test
-    // below is false and the walk silently produces nothing, so say so once
+    // A GOW2 tree carries both id families at once (see Gow2SceneBuild.h);
+    // SceneTypes matches either. If neither is registered, every type test
+    // below is false and the walk silently produces nothing -- say so once
     // rather than returning a mysteriously empty scene.
     const Onyx::Gow2::SceneTypes types;
     if (!types.Valid()) {
@@ -121,7 +121,7 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
     // 2. Iterate children by type (like Go's obj.Marshal iterating SubGroupNodes)
     //    If a Model child is a reference (no children), resolve by exact name in WAD.
     for (const auto& child : entry.children) {
-        if (child.typeId == types.model) {
+        if (types.model.Matches(child.typeId)) {
             const AssetEntry* model = &child;
             if (model->children.empty()) {
                 // Reference node — resolve definition by exact name
@@ -133,7 +133,7 @@ static std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneFromObjectEntry(
             }
         }
         // 2b. Parse Animation child (like Go's obj.Marshal case *anm.Animations)
-        else if (child.typeId == types.animation && child.source.size > 0) {
+        else if (types.animation.Matches(child.typeId) && child.source.size > 0) {
             Onyx::Vfs::SliceFile slice(wad.fileSource, child.source.offset, child.source.size);
             std::vector<uint8_t> anmBuf(child.source.size);
             slice.Seek(0, SEEK_SET);

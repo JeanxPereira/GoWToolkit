@@ -7,8 +7,7 @@
 #include <Onyx/Services/Events.h>
 
 // Generic opt-in panels (previously auto-registered by the engine)
-#include <Onyx/App/Panels/IsoBrowser.h>
-#include <Onyx/App/Panels/PakBrowser.h>
+#include <Onyx/App/Panels/DocumentBrowser.h>
 #include <Onyx/App/Panels/CameraPanel.h>
 #include <Onyx/App/Panels/AnimCurveView.h>
 #include <Onyx/App/Panels/Dopesheet.h>
@@ -44,10 +43,16 @@ void InstallGoWPanels(Onyx::App::App& app) {
 
     // Generic panels GoWToolkit opts into (previously auto-registered by the
     // engine; now app-composed after Onyx panel-composition change).
-    // Default-hidden: ISO Browser, Anim Curves, WAD Stats, Dopesheet.
-    // Default-visible: PAK Browser, Camera.
-    { auto p = std::make_unique<Onyx::App::IsoBrowser>(); p->visible = false; a.addPanel(std::move(p)); }
-    a.addPanel(std::make_unique<Onyx::App::PakBrowser>());
+    //
+    // IsoBrowser and PakBrowser are gone in v1.1, replaced by the single
+    // generic DocumentBrowser over the Workspace -- one tree per open
+    // document, whatever the container. It is default-hidden because
+    // WadBrowser below covers the same ground with the GoW-specific
+    // filters, roles and actions; DocumentBrowser stays available as the
+    // plain, unfiltered view of exactly what the module produced.
+    // Default-hidden: Documents, Anim Curves, WAD Stats, Dopesheet.
+    { auto p = std::make_unique<Onyx::App::DocumentBrowser>(a.GetWorkspace());
+      p->visible = false; a.addPanel(std::move(p)); }
     a.addPanel(std::make_unique<Onyx::App::CameraPanel>());
     { auto p = std::make_unique<Onyx::Viewers::AnimCurveView>(); p->visible = false; a.addPanel(std::move(p)); }
     { auto p = std::make_unique<Onyx::Viewers::WadStatsView>(); p->visible = false; a.addPanel(std::move(p)); }
@@ -66,7 +71,7 @@ void InstallGoWPanels(Onyx::App::App& app) {
       ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Left,  0.22f, &dock_left,   &dock_main);
       ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Down,  0.20f, &dock_bottom, &dock_main);
       ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Right, 0.25f, &dock_right,  &dock_main);
-      ImGui::DockBuilderDockWindow("PAK Browser", dock_left);
+      ImGui::DockBuilderDockWindow("Documents",   dock_left);
       ImGui::DockBuilderDockWindow("WAD Browser", dock_left);
       ImGui::DockBuilderDockWindow("Viewer",      dock_main);
       ImGui::DockBuilderDockWindow("Inspector",   dock_right);
@@ -76,8 +81,11 @@ void InstallGoWPanels(Onyx::App::App& app) {
     });
 
     // Game (app) panels
-    a.addPanel(std::make_unique<WadBrowser>());
-    a.addPanel(std::make_unique<Inspector>());
+    // Both take the Workspace: v1.1 routes selection as a SelectionChanged
+    // event on its bus rather than through the deleted Onyx::Api::
+    // GetSelected()/Database() globals.
+    a.addPanel(std::make_unique<WadBrowser>(a.GetWorkspace()));
+    a.addPanel(std::make_unique<Inspector>(a.GetWorkspace()));
 
     // Audio-volume <-> config sync. SoundPlayer (a game viewer) hosts the live
     // volume; App used to bridge it to AppConfig directly. Keep that bridge on

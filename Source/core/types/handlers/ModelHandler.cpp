@@ -46,8 +46,8 @@ public:
     std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
 
-        // A real GOW2 tree carries Gow2Module's own minted ids, not the legacy
-        // GameTypes externs -- see Gow2SceneBuild.h. Without them nothing below
+        // A GOW2 tree carries both id families at once (see Gow2SceneBuild.h);
+        // SceneTypes matches either. With neither registered, nothing below
         // matches and the walk yields an empty scene for no visible reason.
         const Onyx::Gow2::SceneTypes types;
         if (!types.Valid()) {
@@ -71,9 +71,9 @@ public:
         std::vector<const AssetEntry*> matEntries;
 
         for (const auto& child : model->children) {
-            if (child.typeId == types.mesh && child.source.size > 0) {
+            if (types.mesh.Matches(child.typeId) && child.source.size > 0) {
                 meshSources.push_back(&child);
-            } else if (child.typeId == types.material) {
+            } else if (types.material.Matches(child.typeId)) {
                 const AssetEntry* mat = &child;
                 if (mat->source.size == 0) {
                     if (auto real = Onyx::Gow2::ResolvePayload(wad.entries, mat->name, types.material))
@@ -106,7 +106,7 @@ public:
         // SceneRenderer (which reads part.isSky into RenderBatch::isSky) can
         // route them through the sky pass.
         for (const auto& child : model->children) {
-            if (child.typeId == types.script && child.source.size > 0) {
+            if (types.script.Matches(child.typeId) && child.source.size > 0) {
                 std::string target = Onyx::Parsers::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
                 if (target == "SCR_Sky") {
                     scene->isSky = true;
