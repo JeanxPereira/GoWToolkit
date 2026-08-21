@@ -7,6 +7,7 @@
 #include <Onyx/Types/TypeRegistry.h>
 #include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
+#include "core/WadTypes.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include "ui/viewers/SoundPlayer.h"
 
@@ -394,8 +395,8 @@ REGISTER_GOW_TYPE(GOW2, ChunkHandler);
 
 // File-level handlers (identified by extension in TOC/PAK, not by magic).
 // Registered by TypeId only — avoids the magic=0x00 collision.
-REGISTER_FILE_TYPE(VagHandler);
-REGISTER_FILE_TYPE(VpkHandler);
-REGISTER_FILE_TYPE(PssHandler);
-REGISTER_FILE_TYPE(PswHandler);
+ONYX_REGISTER_FILE_TYPE(VagHandler);
+ONYX_REGISTER_FILE_TYPE(VpkHandler);
+ONYX_REGISTER_FILE_TYPE(PssHandler);
+ONYX_REGISTER_FILE_TYPE(PswHandler);
 

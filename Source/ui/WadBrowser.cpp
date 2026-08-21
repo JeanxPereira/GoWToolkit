@@ -2,13 +2,12 @@
 #include <Onyx/App/UIHelpers.h>
 #include "ui/RoleVisuals.h"   // GOWR role → color/icon (ColorForRole, IconForRole)
 #include <Onyx/App/Widgets.h>
-#include <Onyx/Services/AssetDatabase.h>
+#include <Onyx/Modules/Workspace.h>
 #include <Onyx/Services/AssetVisibility.h>
-#include <Onyx/Services/Events.h>
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Api/ToolkitApi.h>
 #include "core/WadTypes.h"
-#include "core/types/GameTypes.h"
+#include "core/types/Gow2SceneBuild.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
 #include <Onyx/App/ViewerRegistry.h>
@@ -25,12 +24,38 @@ static Onyx::Gowr::WadEntryRole GetRole(const AssetEntry& e) {
     return Onyx::Gowr::Classify(e).role;
 }
 
-WadBrowser::WadBrowser() {
-    EventWadOpened::subscribe(this, [this](AssetContainer*) { visible = true; });
-}
+WadBrowser::WadBrowser(Onyx::Modules::Workspace& workspace)
+    : m_workspace(workspace),
+      m_openedSub(workspace.Events().On<Onyx::Modules::DocumentOpened>(
+          [this](const Onyx::Modules::DocumentOpened&) { visible = true; })),
+      m_closedSub(workspace.Events().On<Onyx::Modules::DocumentClosed>(
+          [this](const Onyx::Modules::DocumentClosed& ev) {
+              // Drop the bridge with the document so a reopened id cannot
+              // inherit the previous document's entries.
+              m_bridges.erase(ev.id);
+              if (m_selDoc == ev.id) { m_selDoc = 0; m_selPath = {}; }
+          })) {}
 
-WadBrowser::~WadBrowser() {
-    EventWadOpened::unsubscribe(this);
+WadBrowser::~WadBrowser() = default;
+
+Onyx::Domain::AssetContainer& WadBrowser::BridgeFor(Onyx::Modules::Document& doc) {
+    auto it = m_bridges.find(doc.id);
+    if (it != m_bridges.end()) return it->second;
+
+    // Same projection AssetHarness::LoadContainer makes: resolve the backing
+    // file through roots[0]'s own fileIndex rather than a hardcoded slot 0,
+    // because a compressed GOWR wad addresses its decompressed buffer in a
+    // later slot. Still not exact for a mounted GOW2 ISO, where different
+    // entries can name different PART*.PAK files while AssetContainer has
+    // only one fileSource -- that is AssetContainer's structural limit, noted
+    // in the harness too.
+    Onyx::Domain::AssetContainer bridge;
+    const uint32_t primary = doc.roots.empty() ? 0u : doc.roots[0].source.fileIndex;
+    bridge.filename   = doc.path.filename().string();
+    bridge.fullPath   = doc.path.string();
+    bridge.fileSource = primary < doc.fileTable.size() ? doc.fileTable[primary] : doc.file;
+    bridge.entries    = doc.roots;
+    return m_bridges.emplace(doc.id, std::move(bridge)).first->second;
 }
 
 // ── Asset visibility ──────────────────────────────────────────────────────
@@ -42,18 +67,22 @@ static bool IsEntryVisible(const AssetEntry& entry) {
     return Onyx::Services::AssetVisibility::Get().IsVisible(entry.typeId);
 }
 
-
 void WadBrowser::Draw() {
     if (!visible) return;
     ImGui::Begin("WAD Browser", &visible);
 
-    auto& db = Onyx::Api::Database();
-
-    if (db.wads.empty()) {
+    const auto& documents = m_workspace.Documents();
+    if (documents.empty()) {
         ImGui::TextDisabled("No WAD loaded");
         ImGui::End();
         return;
     }
+
+    // Resolved once per frame. A GOW2 tree carries both id families at once
+    // -- legacy GameTypes::* where a handler resolved the tag, module-minted
+    // ids where none did -- so the Model/Texture tests below have to accept
+    // either. See Gow2SceneBuild.h.
+    const Onyx::Gow2::SceneTypes types;
 
     static const char* kindNames[]           = {"All",   "Image",    "Mesh",     "Audio",
                                                 "Video", "Material", "Animation"};
@@ -88,9 +117,20 @@ void WadBrowser::Draw() {
 
     ImGui::Separator();
 
-    for (size_t wadIdx = 0; wadIdx < db.wads.size(); ++wadIdx) {
-        auto& wad = db.wads[wadIdx];
-        ImGui::PushID((int)wadIdx);
+    for (const auto& docPtr : documents) {
+        if (!docPtr) continue;
+        Onyx::Modules::Document& doc = *docPtr;
+
+        // Workspace.h's thread rule: nothing but `ready` is safe to read on a
+        // document whose parse may still be running on a worker.
+        if (!doc.ready.load()) {
+            ImGui::TextDisabled("%s  (parsing...)", doc.path.filename().string().c_str());
+            continue;
+        }
+
+        Onyx::Domain::AssetContainer& wad = BridgeFor(doc);
+
+        ImGui::PushID((int)doc.id);
         // Two square IconButtons stack to the right of the WAD header.
         const float btnSize    = ImGui::GetFrameHeight();
         const float spacing    = ImGui::GetStyle().ItemSpacing.x;
@@ -118,18 +158,22 @@ void WadBrowser::Draw() {
             if (Onyx::App::Widgets::IconButton("wad_close", ICON_SF_XMARK, opts)) {
                 if (wadOpen) ImGui::TreePop();
                 ImGui::PopID();
-                // CloseWad posts EventWadClosed itself, before it erases.
-                db.CloseWad(wadIdx);
+                // Close posts DocumentClosed, which drops the bridge above.
+                m_workspace.Close(doc.id);
                 break;
             }
         }
 
         if (wadOpen) {
+            // `path` is extended with each child index visited, so a click
+            // always carries the exact NodePath that reached the clicked
+            // node -- positional addressing survives duplicate sibling names
+            // where a name-based key would not.
+            Onyx::Modules::NodePath path;
             int entryIdx = 0;
 
-            // Recursive lambda for rendering tree
-            std::function<void(AssetEntry&, int&)> renderEntryTree;
-            renderEntryTree = [&](AssetEntry& entry, int& idx) {
+            std::function<void(AssetEntry&, uint32_t, int&)> renderEntryTree;
+            renderEntryTree = [&](AssetEntry& entry, uint32_t index, int& idx) {
                 // Filter: check name match
                 if (hasFilter) {
                     std::string nameLower = entry.name;
@@ -152,11 +196,18 @@ void WadBrowser::Draw() {
                 }
 
                 // ── Asset visibility filter (GOW2 + GOWR) ───────────
-                // Delegates to AssetVisibility registry. Users can toggle
-                // types on/off via the Asset Filters panel.
                 if (!IsEntryVisible(entry)) {
                     return;
                 }
+
+                path.indices.push_back(index);
+                struct PathPop {
+                    Onyx::Modules::NodePath& p;
+                    ~PathPop() { p.indices.pop_back(); }
+                } pathPop{path};
+
+                const bool isSelected =
+                    (m_selDoc == doc.id && m_selPath.indices == path.indices);
 
                 ImGui::PushID(idx);
                 bool has_children = !entry.children.empty();
@@ -169,7 +220,7 @@ void WadBrowser::Draw() {
                     flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
                 }
                 if (hasFilter) flags |= ImGuiTreeNodeFlags_DefaultOpen;
-                if (Onyx::Api::GetSelected() == &entry) flags |= ImGuiTreeNodeFlags_Selected;
+                if (isSelected) flags |= ImGuiTreeNodeFlags_Selected;
 
                 // ── Icon + color (prefer role-based for GOWR entries) ────
                 const char* icon;
@@ -188,13 +239,14 @@ void WadBrowser::Draw() {
                     entry.displayName.empty() ? entry.name : entry.displayName;
 
                 // ── TreeNode with formatted label ────────────────────
-                bool isSelected = (Onyx::Api::GetSelected() == &entry);
                 bool node_open = Onyx::App::Widgets::ColoredTreeNode("", label_name.c_str(), icon, color, flags, isSelected);
 
-                // ── Selection (single click) — via Api::SetSelected ──
+                // ── Selection (single click) — announced on the bus ──
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-                    db.EnsureNodeData(&entry, wad);
-                    Onyx::Api::SetSelected(&entry, &wad);
+                    m_selDoc  = doc.id;
+                    m_selPath = path;
+                    m_workspace.Events().Post(
+                        Onyx::Modules::SelectionChanged{doc.id, path});
                 }
 
                 // ── Double-click action ────────────────────────────────
@@ -209,7 +261,8 @@ void WadBrowser::Draw() {
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
                     ImGui::BeginTooltip();
                     ImGui::Text("Type: %s", TypeName(entry.typeId));
-                    ImGui::Text("Offset: 0x%08X", entry.source.offset);
+                    ImGui::Text("Offset: 0x%08llX",
+                                (unsigned long long)entry.source.offset);
                     ImGui::Text("Size: %s", FormatBytes(entry.source.size).c_str());
                     ImGui::EndTooltip();
                 }
@@ -231,10 +284,11 @@ void WadBrowser::Draw() {
                     }
 
                     // Type-specific extras: "View All Textures" for MDL with TXR children
-                    if (entry.typeId == Onyx::GameTypes::Model && has_children && wad.fileSource) {
+                    if (types.model.Known() && types.model.Matches(entry.typeId) &&
+                        has_children && wad.fileSource) {
                         int txrCount = 0;
                         for (const auto& c : entry.children) {
-                            if (c.typeId == Onyx::GameTypes::Texture) txrCount++;
+                            if (types.texture.Matches(c.typeId)) txrCount++;
                         }
                         if (txrCount > 0) {
                             char menuLabel[64];
@@ -242,7 +296,7 @@ void WadBrowser::Draw() {
                                      ICON_SF_PHOTO " View All Textures (%d)", txrCount);
                             if (ImGui::MenuItem(menuLabel)) {
                                 for (const auto& c : entry.children) {
-                                    if (c.typeId == Onyx::GameTypes::Texture) {
+                                    if (types.texture.Matches(c.typeId)) {
                                         auto viewer = Onyx::Api::Viewers().Open(c, wad);
                                         if (viewer) Onyx::Api::Documents().AddTab(viewer);
                                     }
@@ -286,15 +340,15 @@ void WadBrowser::Draw() {
 
                 // Render children
                 if (node_open && has_children) {
-                    for (auto& child : entry.children) {
-                        renderEntryTree(child, idx);
+                    for (uint32_t ci = 0; ci < entry.children.size(); ++ci) {
+                        renderEntryTree(entry.children[ci], ci, idx);
                     }
                     ImGui::TreePop();
                 }
             };
 
-            for (auto& entry : wad.entries) {
-                renderEntryTree(entry, entryIdx);
+            for (uint32_t ri = 0; ri < wad.entries.size(); ++ri) {
+                renderEntryTree(wad.entries[ri], ri, entryIdx);
             }
 
             ImGui::TreePop();

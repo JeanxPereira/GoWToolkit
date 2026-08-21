@@ -36,9 +36,19 @@ int main(int argc, char** argv) {
 
     if (argc > 1) {
 #ifdef _WIN32
+        // A Release build is a GUI-subsystem binary, so it starts with no
+        // console and CLI output would go nowhere. Attaching the parent's
+        // console fixes that -- but ONLY for a stream that is not already
+        // going somewhere: reopening CONOUT$ unconditionally overwrites a
+        // caller's redirection, so `GoWToolkit list x.wad > out.txt` and every
+        // pipe silently produced an empty file. A stream the shell redirected
+        // arrives with a valid std handle already; one that did not arrives
+        // null, and only that one gets pointed at the console.
         if (AttachConsole(ATTACH_PARENT_PROCESS)) {
-            (void)freopen("CONOUT$", "w", stdout);
-            (void)freopen("CONOUT$", "w", stderr);
+            if (GetStdHandle(STD_OUTPUT_HANDLE) == nullptr)
+                (void)freopen("CONOUT$", "w", stdout);
+            if (GetStdHandle(STD_ERROR_HANDLE) == nullptr)
+                (void)freopen("CONOUT$", "w", stderr);
         }
 #endif
         // Propagate the CLI's status: scripts and the headless render harness

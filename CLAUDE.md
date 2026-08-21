@@ -25,7 +25,7 @@ ninja
 ```
 
 Dependencies are auto-fetched via CMake FetchContent, primarily as transitive
-deps of OnyxSDK (ImGui docking, GLFW, GLM, lz4, glad, miniaudio, implot). This
+deps of OnyxSDK (ImGui docking, GLFW, GLM, lz4, volk, VMA, miniaudio, implot). This
 repo additionally fetches doctest and nlohmann_json for the test suite (see
 below). FFmpeg is fetched from prebuilt BtbN binaries on Windows, or via
 pkg-config on Linux/macOS.
@@ -36,10 +36,19 @@ On macOS, a Release build produces a `GoWToolkit.app` bundle. Debug builds produ
 
 There **is** a test suite — `tests/` holds ~20 sources built on doctest +
 nlohmann_json (both fetched via `FetchContent`, gated on
-`GOWTOOLKIT_BUILD_TESTS`, default `ON`). It is wired into CTest as seven
-named tests: `unit`, `Golden_GOW2`, `Golden_GOWR`, `Metrics`, `Logger`,
-`Threading`, `ThemeContrast`. Run it with `ctest --test-dir build-msvc`
-(or whichever build directory was configured).
+`GOWTOOLKIT_BUILD_TESTS`, default `ON`). Run it with
+`ctest --test-dir build-msvc` (or whichever build directory was configured).
+
+CTest lists **19** entries, and only the first 11 are this repo's: `unit`,
+`Golden_GOW2`, `Golden_GOWR`, `Metrics`, `Threading`, `ThemeContrast`,
+`GowrClassify`, `Gow2Material`, `Logger`, `Selection`, `Visibility`. The
+remaining 8 (`VkBootSmoke`, `VkSceneSmoke`, `RenderToImageSmoke`,
+`VkAnimation`, `OracleReproducible`, `VkOracleParity`, `ColdStart`,
+`VkValidationSelfTest`) belong to OnyxSDK, which registers them even though
+this build sets `ONYX_BUILD_TESTS=OFF` -- a known SDK bug, harmless here
+because they happen to build and pass. `VkValidationSelfTest` reports
+Skipped without the Vulkan validation layer installed; that is an
+environment fact, not a failure.
 
 `Golden_GOW2` and `Golden_GOWR` parse real truncated game WADs
 (`tests/fixtures/gow2/wad_minimal.wad` from `R_BOAR00.WAD`, PS2 USA;
@@ -48,13 +57,25 @@ pinned JSON snapshot goldens — they are the regression gate for parser
 changes. Fixture provenance is documented in `tests/fixtures/README.md`;
 `tools/make_test_fixtures.py` regenerates them.
 
-**Current baseline is 5/7, not 7/7.** `Golden_GOW2`, `Golden_GOWR`, `Metrics`,
-`Logger`, and `Threading` pass. `unit` and `ThemeContrast` fail on the same
-underlying assertion (`tests/theme_contrast_test.cpp:94`, dark-theme surface
-luminance ≤ 0.35) because the Onyx theme engine now returns 0.38–0.55 for
-those surfaces. This is pre-existing debt from the previous SDK bump, not a
-regression from work done in this repo — but it is real, and a report of
-"tests pass" without qualifying it is wrong.
+**Baseline is green: 19/19, 67 doctest cases, 584 assertions.**
+
+Earlier revisions of this file recorded a 5/7 baseline and blamed a theme
+regression -- "the Onyx theme engine now returns 0.38-0.55" for dark
+surfaces. That diagnosis was wrong, and the correction is worth keeping
+because the same trap is easy to fall into again. `ThemeContrast` called
+`Theme::ApplyTheme()` and then read `ImGui::GetStyle()`, but under v1.1
+`ApplyTheme` only mutates the Appearance module's desired state; the style
+is written later by `Appearance::Commit()`, which `Window` drives. With no
+Window there is no Commit, so the test was measuring ImGui's own
+`StyleColorsDark` defaults and calling them the theme -- which is why every
+accent produced identical numbers and Dark was indistinguishable from
+Light. The failing value was always exactly ImGui's default blue.
+
+`Appearance::Resolve(state, env)` is the derivation itself, documented as
+"Pure -- safe to call from tests with no context". The test uses it now, and
+asserts the WCAG 2.1 contrast ratio between the theme's own text colour and
+each surface rather than the old luminance proxy. Measured headroom: 5.48:1
+worst case in Dark, 9.23:1 in Light, against a 4.5:1 (WCAG AA) floor.
 
 ## Architecture Overview
 
@@ -67,14 +88,20 @@ and the surviving game-specific UI panels/viewers. Entry point is
 `Source/main.cpp`, which selects GUI (default, via `Onyx::App::Window`) or
 CLI mode (`Source/cli/CliApp`) at startup.
 
-At the OnyxSDK version currently pinned (`v0.6.0`, `CMakeLists.txt:17`),
-rendering is **OpenGL**, not Vulkan — `glad` (an OpenGL loader) is among the
-transitive Onyx deps (`CMakeLists.txt`), and this repo's own
-`Source/cli/HeadlessGL.cpp` includes `<glad/glad.h>` and drives a GL
-framebuffer directly for the headless render harness. Onyx becomes
-Vulkan-based starting at v1.0.0; that rewrite reaches this repo only once a
-later task in this port plan moves the pin off v0.6.0. Until then, treat
-Platform Notes below (OpenGL 3.2/3.3) as accurate.
+**Rendering is Vulkan.** The pin is OnyxSDK `v1.1.0` (`CMakeLists.txt:17`),
+which is Vulkan 1.3 via volk + VMA. There is no OpenGL anywhere: `glad` is
+gone from the dependency set, `HeadlessGL`/`RenderCommand` were deleted
+rather than ported (v1.1 has `Rendering::RenderToImage` and
+`Cli::CmdRender`), and `MaterialViewer`'s private GL texture cache moved to
+`App::TexturePool`. A viewer that wants an `ImTextureID` goes through
+`TexturePool`; nothing in this repo touches a GL call.
+
+`Onyx::Onyx` aggregates Core + Render + Shell only. The CLI additionally
+links `Onyx::CliRender` (for `CmdRender`) and `Onyx::Exchange` (glTF export)
+-- see `cmake/GoWToolkit.cmake`. Note that `Onyx::Cli::MakeGltfExportFn` is
+declared in a public header but defined only inside Onyx's own example
+executable, so it cannot be linked; `Source/cli/CliApp.cpp` builds the same
+hook locally over `Exchange::ExportSceneData`.
 
 ### What Onyx owns (do not look for these in this repo)
 
@@ -82,14 +109,22 @@ Platform Notes below (OpenGL 3.2/3.3) as accurate.
   repo's `Source/AppRegistration.{h,cpp}` is a thin registrar shim that
   installs the GoW-specific panels/viewers onto the engine-generic `App`
   before it initializes; it is not the app coordinator itself.
-- **Asset database, profile dispatch** — `AssetDatabase`, `ProfileManager`,
-  `IAssetProfile` are all Onyx types (`<Onyx/Services/ProfileManager.h>` etc).
+- **Workspace / documents / modules** -- `<Onyx/Modules/Workspace.h>`. v1.1
+  retired the profile layer entirely: `AssetDatabase`, `ProfileManager` and
+  `IAssetProfile` no longer exist. A consumer implements `IGameModule` and
+  registers it on a `Workspace`, which owns `Document`s. Selection is a
+  `SelectionChanged{DocumentId, NodePath}` event on the Workspace's bus --
+  `Onyx::Api::GetSelected()`/`Database()` are gone, and a holder re-resolves
+  its path each frame instead of caching an `AssetEntry*`.
 - **Schema tree** — `<Onyx/Schema/AssetFormat.h>` and friends replace the old
   local `StructDef`/`NodeInstance` system.
 - **VFS** — `<Onyx/Vfs/...>` (`IFile`, `SliceFile`, ISO/PAK abstractions).
-- **Rendering** — scene rendering is entirely Onyx-owned; there is no local
-  `rendering/` directory. At the currently pinned Onyx `v0.6.0` this means
-  OpenGL (see the note above); the port to Onyx v1.1 brings Vulkan.
+- **Rendering** -- scene rendering is entirely Onyx-owned; there is no local
+  `rendering/` directory. `SceneRendererVk` is private to `Viewport3D`, which
+  exposes no batch list and no visibility API -- which is why the GOWR LOD
+  picker (`GowrLodDocument::Apply`) is currently inert and says so in a log
+  line rather than silently ignoring the click. Restoring it needs a
+  visibility entry point on `Viewport3D`, i.e. an OnyxSDK change.
 - `IAssetLoader` as a distinct interface does not exist anywhere in the
   current codebase.
 
@@ -98,9 +133,30 @@ Platform Notes below (OpenGL 3.2/3.3) as accurate.
 - `Source/core/parsers/gow2/` and `Source/core/parsers/gowr/` — the format
   parsers (mesh, texture, material, animation, etc.), touching only leaf Onyx
   API (`Vfs::IFile`, `Logger`, `Parsers::*Data`).
-- `Source/core/profiles/gow2/` and `Source/core/profiles/gowr/` — per-game
-  container/profile logic (`ProfileGOW2`, `ProfileGOWR`) that Onyx's
-  `ProfileManager` dispatches into.
+- `Source/core/modules/` — `Gow2Module` and `GowrModule`, the two
+  `IGameModule` implementations a `Workspace` dispatches into. They replaced
+  `ProfileGOW2`/`ProfileGOWR`. Probing scores evidence 0–100 and the winner
+  must clear 40 *and* beat the runner-up, so both modules score positive
+  evidence rather than deferring by exclusion (GOWR 95 on a real `WTOC`/LZ4
+  header, GOW2 90 on `.iso` / 80 on a readable tag stream / 45 on a bare
+  `.wad`).
+- `Source/core/profiles/gow2/` and `Source/core/profiles/gowr/` — what
+  survived the profile layer: the `WadNodeBuilder` tree construction and the
+  GOWR naming taxonomy (`GowrTaxonomy`). `AssetEntry::profileTag` does not
+  exist in v1.1, so `Gowr::Classify(entry)` reconstructs the role on demand
+  from the entry's own name, size and typeId.
+
+**A GOW2 tree carries two TypeId families at once**, and code that tests one
+alone silently matches half a tree. `Gow2Module::ParseWadTagStream` stamps a
+handler's legacy `Onyx::GameTypes::*` id (catalog keys like `GOW2_MODEL`)
+whenever `WadTypeRegistry::ResolveByTag` finds one, and the module's own
+`TypeRegistrar`-minted id (`gow2.model`) when it does not — so `list` on a
+real WAD prints both spellings. `Gow2::SceneTypes` in
+`core/types/Gow2SceneBuild.h` holds a pair per role and matches either; use
+it rather than comparing against `GameTypes::*` directly. Note this differs
+by target: the handler `.cpp` files are absent from `APP_TEST_SOURCES`, so
+the test tree is pure module ids while the app gets the mix — which is why
+the goldens cannot catch a mistake here.
 - `Source/core/formats/` — byte-layout schemas subclassing
   `Onyx::Schema::AssetFormat` (e.g. `GOW2InstanceFormat.h`,
   `GOWRMeshDefnFormat.h`) — the reverse-engineered struct layouts themselves.
@@ -113,17 +169,19 @@ Platform Notes below (OpenGL 3.2/3.3) as accurate.
 - `Source/ui/` — the surviving local UI: `WadBrowser`, `Inspector`,
   `RoleVisuals`, `CodeView`, plus document viewers under `Source/ui/viewers/`
   such as `MapViewer`, `MaterialViewer`, `SoundPlayer`.
-- `Source/cli/` — `CliApp`, plus `HeadlessGL`/`RenderCommand` for the headless
-  render harness.
+- `Source/cli/` -- `CliApp`, which owns exactly one verb (`inspect`, which
+  reports the scene an entry builds) and hands everything else to
+  `Onyx::Cli::Run`: `probe`, `list`, `extract`, `decode`, `render`. All of
+  them accept an ISO, because `Gow2Module` declares a `MountSpec` for it.
 - `Source/AppRegistration.{h,cpp}` — see above.
 
 ## Platform Notes
 
-**macOS**: OpenGL 3.2 Core (`#version 150` GLSL). Uses `GLFW_DECORATED=TRUE` with NSWindow transparent titlebar + `NSVisualEffectView` glass effect (not GLFW borderless). Native menu bar built via `NSMenu` in Obj-C++. Smart drag via `macosSetWindowMovable`. Use `PathUtils::resolvePath()` for all resource paths (resolves relative to executable, critical inside `.app` bundle).
+**macOS**: Vulkan via MoltenVK. Uses `GLFW_DECORATED=TRUE` with NSWindow transparent titlebar + `NSVisualEffectView` glass effect (not GLFW borderless). Native menu bar built via `NSMenu` in Obj-C++. Smart drag via `macosSetWindowMovable`. Use `PathUtils::resolvePath()` for all resource paths (resolves relative to executable, critical inside `.app` bundle).
 
-**Windows**: Borderless custom titlebar via Win32 HWND styling. OpenGL 3.3+ (`#version 330`). FFmpeg DLLs copied post-build.
+**Windows**: Borderless custom titlebar via Win32 HWND styling. FFmpeg DLLs copied post-build. A Release build is a GUI-subsystem binary, so the CLI attaches the parent console -- but only for a stream the caller did not already redirect, so `GoWToolkit list x.wad > out.txt` and pipes work.
 
-**Linux**: Standard GLFW window. OpenGL 3.3+. FFmpeg via pkg-config.
+**Linux**: Standard GLFW window. FFmpeg via pkg-config.
 
 ## Reference Implementation (Go)
 

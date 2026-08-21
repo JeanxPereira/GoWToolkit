@@ -72,10 +72,7 @@ public:
 
             return std::make_shared<Onyx::MaterialViewer>(
                 entry.name, 
-                std::move(matData), 
-                [](const std::string& texName) -> unsigned int {
-                    return 0; // Fallback — textures are now passed directly
-                },
+                std::move(matData),
                 std::move(textures)
             );
         }

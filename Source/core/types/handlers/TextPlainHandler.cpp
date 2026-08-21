@@ -8,6 +8,7 @@
 #include <Onyx/Types/ITypeHandler.h>
 #include <Onyx/Types/TypeRegistry.h>
 #include "core/types/GameTypes.h"
+#include "core/WadTypes.h"
 #include <Onyx/Vfs/IFile.h>
 #include <Onyx/Fonts/SFSymbols.h>
 #include <Onyx/Viewers/TextEditorViewer.h>
@@ -32,4 +33,4 @@ public:
 
 } // anonymous namespace
 
-REGISTER_FILE_TYPE(TextPlainHandler);
+ONYX_REGISTER_FILE_TYPE(TextPlainHandler);

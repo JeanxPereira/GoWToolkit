@@ -1,7 +1,9 @@
 #include "MaterialViewer.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include <Onyx/App/Widgets.h>
-#include <glad/glad.h>
+#include <Onyx/App/TexturePool.h>
+#include <Onyx/Rendering/VkContext.h>
+#include <Onyx/Services/Logger.h>
 #include <imgui.h>
 
 namespace Onyx {
@@ -9,41 +11,45 @@ namespace Onyx {
 MaterialViewer::MaterialViewer(
     const std::string &name,
     std::unique_ptr<GOW2MaterialParser::MaterialData> matData,
-    TextureLookupFn texLookup,
     std::vector<std::unique_ptr<Parsers::TextureData>> textures)
-    : m_name(name), m_matData(std::move(matData)), m_texLookup(texLookup),
+    : m_name(name), m_matData(std::move(matData)),
       m_textures(std::move(textures)) {
   UploadTextures();
 }
 
-MaterialViewer::~MaterialViewer() {
-  if (!m_glTextures.empty()) {
-    glDeleteTextures((GLsizei)m_glTextures.size(), m_glTextures.data());
-  }
-}
+// Destroying the pool releases every texture it created -- no explicit
+// per-texture free, unlike the glDeleteTextures this replaces.
+MaterialViewer::~MaterialViewer() = default;
 
 std::string MaterialViewer::GetName() const {
   return ICON_SF_PAINTPALETTE_FILL "  " + m_name;
 }
 
 void MaterialViewer::UploadTextures() {
-  m_glTextures.resize(m_textures.size(), 0);
+  m_texIds.assign(m_textures.size(), ImTextureID_Invalid);
+
+  Onyx::Rendering::VkContext *ctx = Onyx::Rendering::GetGlobalContext();
+  if (!ctx) {
+    ONYX_LOGF_ERR("[MaterialViewer] '%s': no live VkContext -- textures not uploaded",
+                  m_name.c_str());
+    return;
+  }
+  m_texPool = std::make_unique<Onyx::App::TexturePool>(*ctx);
+
   for (size_t i = 0; i < m_textures.size(); ++i) {
     const auto &tex = m_textures[i];
-    if (tex && tex->IsValid()) {
-      GLuint glTex;
-      glGenTextures(1, &glTex);
-      glBindTexture(GL_TEXTURE_2D, glTex);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex->width, tex->height, 0,
-                   GL_RGBA, GL_UNSIGNED_BYTE, tex->pixels.data());
-      m_glTextures[i] = glTex;
+    if (!tex || !tex->IsValid()) continue;
+
+    std::string err;
+    ImTextureID id = m_texPool->Create(tex->width, tex->height,
+                                       tex->pixels.data(), err);
+    if (id == ImTextureID_Invalid) {
+      ONYX_LOGF_ERR("[MaterialViewer] '%s': layer %zu upload failed: %s",
+                    m_name.c_str(), i, err.c_str());
+      continue;
     }
+    m_texIds[i] = id;
   }
-  glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void MaterialViewer::Draw() {
@@ -67,17 +73,16 @@ void MaterialViewer::Draw() {
     ImGui::Separator();
 
     // Find texture for selected layer
-    GLuint previewTexId = 0;
+    ImTextureID previewTexId = ImTextureID_Invalid;
     std::string previewInfo = "No texture";
 
     if (m_selectedLayer >= 0 &&
         m_selectedLayer < (int)m_matData->layers.size()) {
       const auto &layer = m_matData->layers[m_selectedLayer];
 
-      // Try direct GL texture from m_glTextures first
-      if (m_selectedLayer < (int)m_glTextures.size() &&
-          m_glTextures[m_selectedLayer] != 0) {
-        previewTexId = m_glTextures[m_selectedLayer];
+      if (m_selectedLayer < (int)m_texIds.size() &&
+          m_texIds[m_selectedLayer] != ImTextureID_Invalid) {
+        previewTexId = m_texIds[m_selectedLayer];
         if (m_selectedLayer < (int)m_textures.size() &&
             m_textures[m_selectedLayer]) {
           previewInfo =
@@ -85,17 +90,12 @@ void MaterialViewer::Draw() {
               std::to_string(m_textures[m_selectedLayer]->width) + "x" +
               std::to_string(m_textures[m_selectedLayer]->height) + ")";
         }
-      }
-      // Fall back to texLookup
-      else if (layer.hasTexture && m_texLookup) {
-        previewTexId = m_texLookup(layer.textureName);
-        if (previewTexId != 0) {
-          previewInfo = layer.textureName;
-        }
+      } else if (layer.hasTexture) {
+        previewInfo = layer.textureName + " (not decoded)";
       }
     }
 
-    if (previewTexId != 0) {
+    if (previewTexId != ImTextureID_Invalid) {
       float avail = ImGui::GetContentRegionAvail().x;
       float imgSize = avail - 8.0f;
       if (imgSize < 64.0f)
@@ -107,7 +107,7 @@ void MaterialViewer::Draw() {
       dl->AddRectFilled(pos, ImVec2(pos.x + imgSize, pos.y + imgSize),
                         IM_COL32(40, 40, 40, 255));
 
-      ImGui::Image((void *)(intptr_t)previewTexId, ImVec2(imgSize, imgSize));
+      ImGui::Image(previewTexId, ImVec2(imgSize, imgSize));
       ImGui::TextWrapped("%s", previewInfo.c_str());
     } else {
       ImGui::TextDisabled("Select a layer with a\ntexture to preview");
@@ -171,14 +171,10 @@ void MaterialViewer::Draw() {
 
         // Thumbnail
         ImGui::TableNextColumn();
-        GLuint thumbTexId = 0;
-        if (i < m_glTextures.size() && m_glTextures[i] != 0) {
-          thumbTexId = m_glTextures[i];
-        } else if (layer.hasTexture && m_texLookup) {
-          thumbTexId = m_texLookup(layer.textureName);
-        }
-        if (thumbTexId != 0) {
-          ImGui::Image((void *)(intptr_t)thumbTexId, ImVec2(60, 60));
+        ImTextureID thumbTexId =
+            (i < m_texIds.size()) ? m_texIds[i] : ImTextureID_Invalid;
+        if (thumbTexId != ImTextureID_Invalid) {
+          ImGui::Image(thumbTexId, ImVec2(60, 60));
         } else if (layer.hasTexture) {
           ImGui::TextDisabled("N/A");
         }

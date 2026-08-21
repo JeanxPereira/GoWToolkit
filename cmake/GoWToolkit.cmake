@@ -120,7 +120,11 @@ target_include_directories(GoWToolkit PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party/stb
 )
 
-target_link_libraries(GoWToolkit PRIVATE Onyx::Onyx)
+# Onyx::Onyx aggregates Core + Render + Shell only. The CLI additionally
+# needs CmdRender (Onyx::CliRender) and the glTF exporter (Onyx::Exchange),
+# which the aggregate deliberately leaves out so a GUI-only consumer does
+# not pay for them.
+target_link_libraries(GoWToolkit PRIVATE Onyx::Onyx Onyx::CliRender Onyx::Exchange)
 
 if(WIN32)
     set_target_properties(GoWToolkit PROPERTIES
