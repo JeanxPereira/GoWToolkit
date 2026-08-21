@@ -90,3 +90,8 @@ test_patch.patch
 # Each subfolder tracks a single feature/refactor across sessions so
 # work survives context resets without polluting the public history.
 works/
+
+# Packaged runtime builds (dist/compiling and dist/macos ARE tracked -- these
+# are the assembled output folders, 169 MB of binaries and FFmpeg DLLs).
+/dist/GoWToolkit-win64/
+/dist/*.zip
