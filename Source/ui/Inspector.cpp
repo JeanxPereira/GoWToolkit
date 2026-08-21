@@ -3,6 +3,7 @@
 #include "ui/RoleVisuals.h"   // GOWR role → color/icon (ColorForRole, IconForRole)
 #include <Onyx/Api/ToolkitApi.h>
 #include "core/profiles/gowr/GowrTaxonomy.h"
+#include "core/WadTypes.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
 

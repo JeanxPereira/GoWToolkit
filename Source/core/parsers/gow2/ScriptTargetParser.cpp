@@ -5,7 +5,7 @@
 
 namespace Onyx::Parsers {
 
-std::string ScriptTargetParser::ExtractTargetName(const AssetEntry& entry, std::shared_ptr<Vfs::IFile> file) {
+std::string ScriptTargetParser::ExtractTargetName(const Domain::AssetEntry& entry, std::shared_ptr<Vfs::IFile> file) {
     if (!file || !file->IsValid() || entry.source.size < 0x14) return "";
 
     // The script header is 0x24 bytes long.

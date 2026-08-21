@@ -6,10 +6,10 @@
 //   If a child is a reference (no children), resolve by exact name in WAD.
 
 #include <Onyx/Types/TypeRegistry.h>
-#include <Onyx/Domain/IAssetProfile.h>
 #include <Onyx/Types/ITypeHandler.h>
 #include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
+#include "core/WadTypes.h"
 #include "core/parsers/gow2/ObjectParser.h"
 #include "core/parsers/gow2/MeshParser.h"
 #include "core/parsers/gow2/MaterialParser.h"

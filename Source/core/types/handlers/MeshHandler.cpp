@@ -6,6 +6,7 @@
 #include <Onyx/Types/ITypeHandler.h>
 #include "core/types/WadDispatch.h"
 #include "core/types/GameTypes.h"
+#include "core/WadTypes.h"
 #include <Onyx/Fonts/SFSymbols.h>
 
 namespace {

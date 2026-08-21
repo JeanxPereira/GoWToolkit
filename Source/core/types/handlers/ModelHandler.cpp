@@ -15,7 +15,6 @@
 #include "core/formats/GOW2ModelFormat.h"
 
 #include <Onyx/Viewers/Viewport3D.h>
-#include <Onyx/Domain/IAssetProfile.h>
 #include "core/parsers/gow2/MeshParser.h"
 #include "core/parsers/gow2/TextureParser.h"
 #include "core/parsers/gow2/MaterialParser.h"

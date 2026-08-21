@@ -19,7 +19,7 @@
 #include <Onyx/Vfs/SliceFile.h>
 #include <Onyx/Vfs/MemoryFile.h>
 #include <Onyx/Viewers/Viewport3D.h>
-#include <Onyx/Rendering/SceneRenderer.h>
+#include <Onyx/Rendering/SceneRendererVk.h>
 #include <imgui.h>
 #include <algorithm>
 #include <string>
@@ -1166,11 +1166,11 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const As
     return nullptr;
 }
 
-REGISTER_FILE_TYPE(GOWRMeshDefnHandler);
-REGISTER_FILE_TYPE(GOWRSkinnedMeshHandler);
-REGISTER_FILE_TYPE(GOWRModelInstanceHandler);
-REGISTER_FILE_TYPE(GOWRTextureHandler);
-REGISTER_FILE_TYPE(GOWRRigHandler);
+ONYX_REGISTER_FILE_TYPE(GOWRMeshDefnHandler);
+ONYX_REGISTER_FILE_TYPE(GOWRSkinnedMeshHandler);
+ONYX_REGISTER_FILE_TYPE(GOWRModelInstanceHandler);
+ONYX_REGISTER_FILE_TYPE(GOWRTextureHandler);
+ONYX_REGISTER_FILE_TYPE(GOWRRigHandler);
 
 // ── GOWR Shader Viewer ────────────────────────────────────────────────────
 
