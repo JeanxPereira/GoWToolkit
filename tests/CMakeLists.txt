@@ -84,6 +84,14 @@ set(APP_TEST_SOURCES
     # Gow2Module (Onyx v1.1 IGameModule port of ProfileGOW2, Phase 2 Task 3).
     # Same, exercised directly since Task 4.
     "${CMAKE_SOURCE_DIR}/Source/core/modules/Gow2Module.cpp"
+    # Phase 3 material model. Gow2SceneBuild carries the one rule the port
+    # changed rather than merely re-spelled (SelectMainLayer -- see its
+    # definition), and TextureRoles carries the partial GOWR->Onyx role
+    # mapping. gow2_material_test.cpp pins both; without these two the app
+    # target is the only thing that compiles them and nothing asserts them.
+    "${CMAKE_SOURCE_DIR}/Source/core/types/Gow2SceneBuild.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/types/TextureRoles.cpp"
+    "${CMAKE_SOURCE_DIR}/Source/core/parsers/gow2/MaterialParser.cpp"
 )
 
 add_executable(gowtoolkit_tests ${TEST_SOURCES} ${APP_TEST_SOURCES})

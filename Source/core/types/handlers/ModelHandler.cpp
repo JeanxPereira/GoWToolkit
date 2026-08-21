@@ -15,9 +15,8 @@
 #include "core/formats/GOW2ModelFormat.h"
 
 #include <Onyx/Viewers/Viewport3D.h>
+#include "core/types/Gow2SceneBuild.h"
 #include "core/parsers/gow2/MeshParser.h"
-#include "core/parsers/gow2/TextureParser.h"
-#include "core/parsers/gow2/MaterialParser.h"
 #include <Onyx/Parsers/SceneNode.h>
 #include "core/parsers/gow2/ScriptTargetParser.h"
 #include <Onyx/Vfs/SliceFile.h>
@@ -28,54 +27,6 @@
 #include <Onyx/Fonts/SFSymbols.h>
 
 namespace {
-
-// Resolve a reference node: find definition with exact name + type + has children
-static const AssetEntry* ResolveRef(const std::vector<AssetEntry>& tree,
-                                      const std::string& name, Onyx::Types::TypeId type) {
-    for (const auto& n : tree) {
-        if (n.typeId == type && n.name == name && !n.children.empty())
-            return &n;
-        if (auto found = ResolveRef(n.children, name, type))
-            return found;
-    }
-    return nullptr;
-}
-
-// Resolve a reference node by payload (size > 0)
-static const AssetEntry* ResolvePayload(const std::vector<AssetEntry>& tree,
-                                          const std::string& name, Onyx::Types::TypeId type) {
-    for (const auto& n : tree) {
-        if (n.typeId == type && n.name == name && n.source.size > 0)
-            return &n;
-        if (auto found = ResolvePayload(n.children, name, type))
-            return found;
-    }
-    return nullptr;
-}
-
-// Find texture by exact name (same as Go's GetNodeByName for textures)
-static const AssetEntry* FindTexture(const std::vector<AssetEntry>& nodes, const std::string& name) {
-    for (const auto& c : nodes) {
-        if (c.typeId == Onyx::GameTypes::Texture && c.name == name) return &c;
-        if (auto f = FindTexture(c.children, name)) return f;
-    }
-    return nullptr;
-}
-
-// Select main texture layer (same priority as Go: StrangeBlended > Usual > first)
-static const Onyx::Parsers::MaterialInfo::Layer* SelectMainLayer(const Onyx::Parsers::MaterialInfo& mat) {
-    const Onyx::Parsers::MaterialInfo::Layer* main = nullptr;
-    for (const auto& layer : mat.layers) {
-        if (layer.blendMode == Onyx::Parsers::BlendMode::EnvMap) {
-            return &layer; // StrangeBlended = highest priority
-        } else if (layer.blendMode == Onyx::Parsers::BlendMode::Normal && layer.hasTexture) {
-            main = &layer; // Usual = second priority
-        } else if (!main) {
-            main = &layer; // First layer = fallback
-        }
-    }
-    return main;
-}
 
 class ModelHandler : public Onyx::Gow::IWadTypeHandler {
 public:
@@ -95,10 +46,20 @@ public:
     std::unique_ptr<Onyx::Parsers::SceneData> BuildSceneData(const AssetEntry& entry, AssetContainer& wad) override {
         if (!wad.fileSource) return nullptr;
 
+        // A real GOW2 tree carries Gow2Module's own minted ids, not the legacy
+        // GameTypes externs -- see Gow2SceneBuild.h. Without them nothing below
+        // matches and the walk yields an empty scene for no visible reason.
+        const Onyx::Gow2::SceneTypes types;
+        if (!types.Valid()) {
+            ONYX_LOGF_WARN("[ModelHandler] Gow2Module types are not registered; "
+                           "cannot walk '%s'", entry.name.c_str());
+            return nullptr;
+        }
+
         // Resolve the Model entry itself — if it's a reference, find the definition
         const AssetEntry* model = &entry;
         if (model->children.empty()) {
-            if (auto resolved = ResolveRef(wad.entries, entry.name, Onyx::GameTypes::Model))
+            if (auto resolved = Onyx::Gow2::ResolveRef(wad.entries, entry.name, types.model))
                 model = resolved;
         }
         if (model->children.empty()) return nullptr;
@@ -110,12 +71,12 @@ public:
         std::vector<const AssetEntry*> matEntries;
 
         for (const auto& child : model->children) {
-            if (child.typeId == Onyx::GameTypes::Mesh && child.source.size > 0) {
+            if (child.typeId == types.mesh && child.source.size > 0) {
                 meshSources.push_back(&child);
-            } else if (child.typeId == Onyx::GameTypes::Material) {
+            } else if (child.typeId == types.material) {
                 const AssetEntry* mat = &child;
                 if (mat->source.size == 0) {
-                    if (auto real = ResolvePayload(wad.entries, mat->name, Onyx::GameTypes::Material))
+                    if (auto real = Onyx::Gow2::ResolvePayload(wad.entries, mat->name, types.material))
                         mat = real;
                 }
                 matEntries.push_back(mat);
@@ -124,34 +85,9 @@ public:
 
         uint32_t materialOffset = scene->materials.size();
 
-        // Parse materials → MaterialInfo (store all layers for main layer selection)
-        for (const auto* mat : matEntries) {
-            Onyx::Parsers::MaterialInfo matInfo;
-            if (auto matData = Onyx::GOW2MaterialParser::Parse(*mat, wad.fileSource)) {
-                std::memcpy(matInfo.baseColor, matData->baseColor, sizeof(float) * 4);
-                for (const auto& layer : matData->layers) {
-                    Onyx::Parsers::MaterialInfo::Layer li;
-                    li.textureName = layer.textureName;
-                    li.hasTexture = layer.hasTexture;
-                    std::memcpy(li.blendColor, layer.blendColor, sizeof(float) * 4);
-                    switch (layer.renderingMethod) {
-                        case 1:  li.blendMode = Onyx::Parsers::BlendMode::Additive; break;
-                        case 2:  li.blendMode = Onyx::Parsers::BlendMode::Subtractive; break;
-                        case 3:  li.blendMode = Onyx::Parsers::BlendMode::EnvMap; break;
-                        default: li.blendMode = Onyx::Parsers::BlendMode::Normal; break;
-                    }
-                    matInfo.layers.push_back(li);
-                }
-                // Reorder so main layer is at index 0 (renderer reads layers[textureLayer=0])
-                if (matInfo.layers.size() > 1) {
-                    if (auto* mainPtr = SelectMainLayer(matInfo)) {
-                        size_t mainIdx = mainPtr - matInfo.layers.data();
-                        if (mainIdx != 0) std::swap(matInfo.layers[0], matInfo.layers[mainIdx]);
-                    }
-                }
-            }
-            scene->materials.push_back(std::move(matInfo));
-        }
+        std::vector<std::string> pendingTextures;
+        for (const auto* mat : matEntries)
+            pendingTextures.push_back(Onyx::Gow2::StageMaterial(*mat, wad.fileSource, *scene));
 
         // Parse mesh geometry
         for (const auto* src : meshSources) {
@@ -170,7 +106,7 @@ public:
         // SceneRenderer (which reads part.isSky into RenderBatch::isSky) can
         // route them through the sky pass.
         for (const auto& child : model->children) {
-            if (child.typeId == Onyx::GameTypes::Script && child.source.size > 0) {
+            if (child.typeId == types.script && child.source.size > 0) {
                 std::string target = Onyx::Parsers::ScriptTargetParser::ExtractTargetName(child, wad.fileSource);
                 if (target == "SCR_Sky") {
                     scene->isSky = true;
@@ -184,20 +120,11 @@ public:
             }
         }
 
-        // Resolve textures: select main layer per material (like Go: 1 texture per material)
-        for (const auto& mat : scene->materials) {
-            std::vector<std::unique_ptr<Onyx::Parsers::TextureData>> matTextures;
-            std::unique_ptr<Onyx::Parsers::TextureData> texData = nullptr;
-            if (auto* mainLayer = SelectMainLayer(mat)) {
-                if (mainLayer->hasTexture && !mainLayer->textureName.empty()) {
-                    if (auto* texEntry = FindTexture(wad.entries, mainLayer->textureName)) {
-                        texData = Onyx::GOW2TextureParser::Parse(*texEntry, wad.entries, wad.fileSource);
-                    }
-                }
-            }
-            matTextures.push_back(std::move(texData));
-            scene->textures.push_back(std::move(matTextures));
-        }
+        // Resolve textures: one per material, bound as Diffuse into the flat
+        // pool. An unresolved texture leaves the role absent rather than
+        // pushing a null, which is what v1.1 reads as untextured.
+        for (size_t mi = 0; mi < pendingTextures.size(); ++mi)
+            Onyx::Gow2::BindDiffuse(pendingTextures[mi], mi, wad, types, *scene);
 
         ONYX_LOGF_INFO("[ModelHandler] Built SceneData: %zu parts, %zu materials, %zu textures",
                  scene->meshParts.size(), scene->materials.size(), scene->textures.size());

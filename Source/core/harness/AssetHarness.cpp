@@ -1,3 +1,4 @@
+#include "core/types/TextureRoles.h"
 #include "core/harness/AssetHarness.h"
 
 #include <Onyx/Modules/Workspace.h>
@@ -226,7 +227,6 @@ void PrintSceneStats(const Parsers::SceneData& scene, std::ostream& os)
     os << "  Textures    : " << scene.textures.size() << "\n";
     os << "  Has skeleton: " << (scene.HasSkeleton() ? "yes" : "no") << "\n";
     os << "  Is sky      : " << (scene.isSky ? "yes" : "no") << "\n";
-    os << "  PBR layers  : " << (scene.pbrLayers ? "yes" : "no") << "\n";
 
     if (scene.skeleton)
         os << "  Joints      : " << scene.skeleton->joints.size() << "\n";
@@ -247,25 +247,24 @@ void PrintSceneStats(const Parsers::SceneData& scene, std::ostream& os)
     }
     os << "  TOTAL: " << totalVerts << " verts, " << totalIdx / 3 << " tris\n";
 
+    // v1.1: a MaterialDesc binds textures by role into a flat pool, so the
+    // report names the role and the pool slot rather than walking a per-
+    // material layer list that no longer exists.
     for (size_t i = 0; i < scene.materials.size(); ++i) {
         const auto& mat = scene.materials[i];
-        os << "  Mat[" << i << "] layers=" << mat.layers.size() << "\n";
-        for (size_t j = 0; j < mat.layers.size(); ++j) {
-            const auto& l = mat.layers[j];
-            os << "    Layer[" << j << "] tex='" << l.textureName
-               << "' hasTexture=" << (l.hasTexture ? 1 : 0) << "\n";
-        }
+        os << "  Mat[" << i << "] roles=" << mat.textures.size();
+        for (const auto& [role, idx] : mat.textures)
+            os << " " << SceneRoleName(role) << "=" << idx;
+        os << "\n";
     }
 
     for (size_t i = 0; i < scene.textures.size(); ++i) {
-        for (size_t j = 0; j < scene.textures[i].size(); ++j) {
-            const auto& td = scene.textures[i][j];
-            if (td)
-                os << "  Tex[" << i << "][" << j << "] " << td->width << "x" << td->height
-                   << (td->IsValid() ? " OK" : " INVALID") << "\n";
-            else
-                os << "  Tex[" << i << "][" << j << "] null\n";
-        }
+        const auto& td = scene.textures[i];
+        if (td)
+            os << "  Tex[" << i << "] " << td->width << "x" << td->height
+               << (td->IsValid() ? " OK" : " INVALID") << "\n";
+        else
+            os << "  Tex[" << i << "] null\n";
     }
 }
 

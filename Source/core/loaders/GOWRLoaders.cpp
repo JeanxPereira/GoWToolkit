@@ -1,6 +1,7 @@
 #include "core/loaders/GOWRLoaders.h"
 #include <Onyx/Types/TypeRegistry.h>
 #include "core/WadTypes.h"
+#include "core/types/TextureRoles.h"
 #include <Onyx/Schema/AssetReader.h>
 #include "core/formats/GOWRMeshDefnFormat.h"
 #include "core/parsers/gowr/MeshParser.h"
@@ -278,29 +279,29 @@ public:
     }
 
 private:
+    // The LOD picker is inert under Onyx v1.1 and this is deliberate rather
+    // than overlooked.
+    //
+    // It used to reach Viewport3D::GetSceneRenderer() and flip
+    // RenderBatch::isVisible on the live batch list. v1.1 made the renderer
+    // private -- Viewport3D exposes no batch list and no visibility API --
+    // and the only public way back in, LoadScene(), takes ownership of a
+    // SceneData whose textures are unique_ptr, so the scene cannot be held
+    // and re-submitted per LOD change without re-decoding every texture.
+    //
+    // Rebuilding it needs a visibility entry point on Viewport3D, which is an
+    // OnyxSDK change, not something this side can fix. Until then the combo
+    // still renders (so the level count stays visible and the control does
+    // not vanish from the UI) but selecting a level does nothing, and says
+    // so once instead of silently ignoring the click.
     void Apply() {
         if (!m_dirty) return;
-        auto* sr = m_vp->GetSceneRenderer();
-        if (!sr || sr->IsEmpty()) return;   // retry once the scene exists
-        auto& batches = sr->GetBatches();
-        if (batches.size() != m_meta.size()) return;
         m_dirty = false;
-
-        // Highest level index actually present for each part, so a request
-        // beyond a part's chain shows its coarsest level rather than nothing.
-        std::vector<int> lastOf;
-        for (const auto& pl : m_meta) {
-            if (pl.part < 0) continue;
-            if ((int)lastOf.size() <= pl.part) lastOf.resize(pl.part + 1, -1);
-            lastOf[pl.part] = std::max(lastOf[pl.part], pl.level);
-        }
-
-        for (size_t i = 0; i < batches.size(); ++i) {
-            const auto& pl = m_meta[i];
-            if (m_lod == 0 || pl.part < 0) { batches[i].isVisible = true; continue; }
-            const int want = std::min(m_lod - 1, lastOf[pl.part]);
-            batches[i].isVisible = (pl.level == want);
-        }
+        if (m_warned) return;
+        m_warned = true;
+        ONYX_LOGF_WARN("[GOWRLoaders] LOD selection is inactive: Onyx v1.1 "
+                       "Viewport3D exposes no batch visibility API "
+                       "(all %d levels stay visible)", m_maxLevels);
     }
 
     std::shared_ptr<Viewers::Viewport3D> m_vp;
@@ -308,6 +309,7 @@ private:
     int  m_maxLevels = 1;
     int  m_lod       = 1;   // default to LOD 0 rather than every level at once
     bool m_dirty     = true;
+    bool m_warned    = false;
 };
 
 // -- Material resolution ------------------------------------------------------
@@ -796,27 +798,27 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         matEntries.push_back(it != matByName.end() ? it->second : nullptr);
     }
 
-    // Layer order is a convention of this loader, not of the format: the
-    // renderer indexes textures as [material][layer], and a shader that grows
-    // normal or occlusion support needs to know where to find them. Absent
-    // roles stay null, which the renderer already treats as untextured.
-    static constexpr TextureRole kLayerRoles[] = {
-        TextureRole::Diffuse,           // layer 0 - the only one bound today
-        TextureRole::Normal,            // layer 1
-        TextureRole::AmbientOcclusion,  // layer 2
-        TextureRole::Gloss,             // layer 3
-        TextureRole::Height,            // layer 4
-        TextureRole::Scatter,           // layer 5
-        TextureRole::Detail,            // layer 6
+    // The roles worth decoding, in the order they are reported. Under v1.1 a
+    // material binds textures by ROLE into a flat pool -- there is no layer
+    // index any more -- so this list is now just "which roles the renderer has
+    // a sampler for", not a positional contract. Roles GOWR declares but Onyx
+    // cannot sample (Specular, Roughness, Metallic) are filtered by
+    // ToSceneRole and reported as skipped.
+    static constexpr TextureRole kWantedRoles[] = {
+        TextureRole::Diffuse,
+        TextureRole::Normal,
+        TextureRole::AmbientOcclusion,
+        TextureRole::Gloss,
+        TextureRole::Height,
+        TextureRole::Scatter,
+        TextureRole::Detail,
     };
-    constexpr size_t kLayerCount = sizeof(kLayerRoles) / sizeof(kLayerRoles[0]);
+    constexpr size_t kWantedCount = sizeof(kWantedRoles) / sizeof(kWantedRoles[0]);
 
-    std::vector<std::vector<std::unique_ptr<Parsers::TextureData>>>
-        matLayers(matEntries.size());
+    std::vector<Parsers::MaterialDesc> materials(matEntries.size());
+    std::vector<std::unique_ptr<Parsers::TextureData>> texturePool;
 
     for (size_t mi = 0; mi < matEntries.size(); ++mi) {
-        matLayers[mi].resize(kLayerCount);
-
         const AssetEntry* me = matEntries[mi];
         if (!me) {
             ONYX_LOGF_WARN("[GOWRLoaders] material[%zu] %s: named by the mesh but "
@@ -835,9 +837,12 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         }
 
         std::string bound;
-        for (size_t L = 0; L < kLayerCount; ++L) {
-            const MatReference* ref = mat.Texture(kLayerRoles[L]);
+        for (size_t L = 0; L < kWantedCount; ++L) {
+            const MatReference* ref = mat.Texture(kWantedRoles[L]);
             if (!ref) continue;
+
+            const auto sceneRole = ToSceneRole(kWantedRoles[L]);
+            if (!sceneRole) continue;   // no sampler -- decoding would be wasted
 
             auto tex = std::make_unique<Parsers::TextureData>();
             std::string err;
@@ -851,22 +856,23 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
             }
             if (got) {
                 if (!bound.empty()) bound += ", ";
-                bound += TextureRoleName(kLayerRoles[L]);
-                matLayers[mi][L] = std::move(tex);
+                bound += TextureRoleName(kWantedRoles[L]);
+                texturePool.push_back(std::move(tex));
+                materials[mi].textures[*sceneRole] = static_cast<int>(texturePool.size() - 1);
             } else {
                 ONYX_LOGF_WARN("[GOWRLoaders] %s (%s): %s", ref->name.c_str(),
-                         TextureRoleName(kLayerRoles[L]), err.c_str());
+                         TextureRoleName(kWantedRoles[L]), err.c_str());
             }
         }
 
         std::string skipped;
-        for (const auto* t : mat.Textures()) {
+        for (const auto* tx : mat.Textures()) {
             bool wanted = false;
-            for (size_t L = 0; L < kLayerCount; ++L)
-                if (kLayerRoles[L] == t->role) { wanted = true; break; }
+            for (size_t L = 0; L < kWantedCount; ++L)
+                if (kWantedRoles[L] == tx->role) { wanted = true; break; }
             if (wanted) continue;
             if (!skipped.empty()) skipped += ", ";
-            skipped += t->name;
+            skipped += tx->name;
         }
 
         ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",
@@ -875,8 +881,8 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         if (!skipped.empty()) {
             ONYX_LOGF_DEBUG("[GOWRLoaders]   not a mapped role: %s", skipped.c_str());
         }
-        if (!matLayers[mi][0]) {
-            // Layer 0 is what the viewport samples, so say plainly why the
+        if (!materials[mi].textures.count(Parsers::TextureRole::Diffuse)) {
+            // Diffuse is what the viewport samples, so say plainly why the
             // model will render untextured rather than leaving it a mystery.
             const MatReference* diff = mat.Texture(TextureRole::Diffuse);
             ONYX_LOGF_WARN("[GOWRLoaders]   no usable diffuse (%s) - this material renders untextured",
@@ -963,17 +969,22 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         scene->skeleton  = skeleton;
         scene->flipZ     = true;    // mesh and bones both face -Z; flip once for screen
         scene->meshParts = std::move(data.parts);
-        scene->textures  = std::move(matLayers);
-        // kLayerRoles above is the order the renderer's PBR samplers expect.
-        scene->pbrLayers = true;
+        scene->materials = std::move(materials);
+        scene->textures  = std::move(texturePool);
         vp->LoadScene(std::move(scene));
     } else {
-        // The flat path carries one texture per material, so it only gets the
-        // diffuse; the layered path above keeps the rest.
+        // LoadFromMeshData still takes one texture per material, positionally,
+        // so the flat pool is projected back down to its diffuse slice. A
+        // material with no diffuse contributes a null, which is what that
+        // older entry point reads as untextured.
         std::vector<std::unique_ptr<Parsers::TextureData>> diffuseOnly;
-        diffuseOnly.reserve(matLayers.size());
-        for (auto& layers : matLayers)
-            diffuseOnly.push_back(layers.empty() ? nullptr : std::move(layers[0]));
+        diffuseOnly.reserve(materials.size());
+        for (const auto& desc : materials) {
+            auto it = desc.textures.find(Parsers::TextureRole::Diffuse);
+            diffuseOnly.push_back(it != desc.textures.end()
+                                      ? std::move(texturePool[it->second])
+                                      : nullptr);
+        }
         vp->LoadFromMeshData(data, diffuseOnly);
     }
 

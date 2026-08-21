@@ -93,4 +93,7 @@ if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*ThemeContrast*")
     add_test(NAME GowrClassify
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*GowrClassify*")
+    # Phase 3: the GOW2 main-layer rule and the GOWR->Onyx role bridge.
+    add_test(NAME Gow2Material
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*SelectMainLayer*,*ToSceneRole*,*SceneRoleName*")
 endif()
