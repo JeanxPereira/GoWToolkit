@@ -1,152 +1,118 @@
 #include "CliApp.h"
-#include "cli/RenderCommand.h"
 #include "core/harness/AssetHarness.h"
-#include <Onyx/Services/ProfileManager.h>
-#include "core/WadTypes.h"
-#include <Onyx/Vfs/OsFile.h>
-#include <Onyx/Types/TypeRegistry.h>
-#include <Onyx/Types/ITypeHandler.h>
-#include <Onyx/Types/TypeCatalog.h>
+#include "core/modules/Gow2Module.h"
+#include "core/modules/GowrModule.h"
 #include "core/types/GameTypes.h"
+
+#include <Onyx/Cli/Commands.h>
+#include <Onyx/Cli/Render.h>
+#include <Onyx/Exchange/GltfExport.h>
+#include <Onyx/Modules/Workspace.h>
 #include <Onyx/Parsers/SceneNode.h>
+#include <Onyx/Types/TypeCatalog.h>
+
 #include <filesystem>
-#include <fstream>
 #include <iostream>
-#include <iomanip>
-#include <map>
-#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Onyx {
 
+namespace {
+
+// glTF export hook for `decode --to gltf`.
+//
+// Onyx ships `Onyx::Cli::MakeGltfExportFn` for exactly this, and the port
+// design assumed it could be called -- but it cannot: the header declaring it
+// (Onyx/Cli/Gltf.h) is public while its only definition lives in
+// Examples/OnyxCli/Gltf.cpp, which compiles straight into the onyxbox-cli
+// executable and into no library at all. A consumer that includes the header
+// gets a link error. Onyx_Exchange itself IS linkable, so the five lines the
+// example would have supplied are written here instead. Reported upstream as
+// an SDK gap; this is not a workaround for a bug in our own build.
+Onyx::Cli::SceneExportFn MakeGltfExport() {
+    Onyx::Exchange::GltfOptions opts;
+    opts.embedBuffers = true;
+    opts.includeSkin  = true;
+    return [opts](const Parsers::SceneData& scene, const std::filesystem::path& out,
+                  std::string& err) {
+        return Onyx::Exchange::ExportSceneData(scene, out, opts, err);
+    };
+}
+
+// One Workspace with both game modules, matching what the GUI composes.
+Onyx::Modules::Workspace& GetWorkspace() {
+    static Onyx::Modules::Workspace workspace(Onyx::Types::TypeCatalog::Get());
+    static bool registered = [] {
+        workspace.AddModule(std::make_unique<Onyx::Gowr::GowrModule>());
+        workspace.AddModule(std::make_unique<Onyx::Gow2::Gow2Module>());
+        return true;
+    }();
+    (void)registered;
+    return workspace;
+}
+
+} // namespace
+
 int CliApp::Run(int argc, char** argv) {
-    // Populate the type catalog before any parse — handles are invalid otherwise.
+    // The older per-type ITypeHandler system (which `inspect` reaches through
+    // AssetHarness::Load) resolves its handles from this catalog. The modules
+    // registered below mint their own, separately -- see main.cpp.
     Onyx::GameTypes::RegisterGameTypes();
 
     std::vector<std::string> args;
-    for (int i = 1; i < argc; ++i) {
-        args.push_back(argv[i]);
-    }
+    for (int i = 1; i < argc; ++i) args.push_back(argv[i]);
 
     if (args.empty() || args[0] == "help" || args[0] == "-h" || args[0] == "--help") {
         PrintHelp();
         return 0;
     }
 
-    std::string command = args[0];
+    // `inspect` is this toolkit's own verb and has no Onyx equivalent: it
+    // reports the scene a GoW entry builds -- parts, materials, texture roles,
+    // joints -- which is the only way to see what the material stage actually
+    // produced. Everything else is generic container work Onyx::Cli::Run
+    // already does better than the hand-rolled versions this file used to
+    // carry, including ISO input, which the old `extract` could only reach by
+    // bypassing the harness entirely.
+    if (args[0] == "inspect") return HandleInspect(args);
 
-    if (command == "parse-wad") {
-        return HandleParseWad(args);
-    } else if (command == "inspect") {
-        return HandleInspect(args);
-    } else if (command == "extract") {
-        return HandleExtract(args);
-    } else if (command == "render") {
-        return Onyx::Cli::RunRenderCommand(args);
-    } else {
-        std::cerr << "Unknown command: " << command << "\n";
-        PrintHelp();
-        return 1;
-    }
+    return Onyx::Cli::Run(GetWorkspace(), argc, argv, std::cout, std::cerr,
+                          MakeGltfExport(), Onyx::Cli::CmdRender);
 }
 
 void CliApp::PrintHelp() {
     std::cout
-        << "GoWTool CLI\n"
-        << "Usage: GoWTool <command> [options]\n\n"
-        << "Commands:\n"
-        << "  parse-wad <file> [--game gow2|gowr]       Parse WAD and print node tree.\n"
-        << "  inspect   <file> <name> [--game ...]      Parse and dump mesh/scene stats for a named entry.\n"
-        << "  render    <file> <name> [options]         Draw the entry offscreen to a PNG (--help for options).\n"
-        << "  extract   <archive> <out_dir>             Extract all WADs from ISO.\n"
-        << "  help                                      Print this help message.\n\n"
+        << "GoWToolkit CLI\n"
+        << "Usage: GoWToolkit <command> [options]\n\n"
+        << "Toolkit commands:\n"
+        << "  inspect <file> <name> [--game gow2|gowr]\n"
+        << "        Build the entry's scene and report parts, materials,\n"
+        << "        texture roles and joints.\n\n"
+        << "Container commands (Onyx; run any of them with no arguments for\n"
+        << "its own usage line):\n"
+        << "  probe   <file>                     Score each module against the file.\n"
+        << "  list    <file> [--json]            Print the parsed entry tree.\n"
+        << "  extract <file> <out_dir>           Write every entry to disk.\n"
+        << "  decode  <file> <name> [--to gltf --out <path>]\n"
+        << "  render  <file> <name> --out <p.png> [--width N] [--height N]\n"
+        << "                                     [--views iso,front,top,...]\n\n"
+        << "  --game gow2|gowr   Skip probing and open with that module.\n"
+        << "  --strict           Exit non-zero when the document has Error diags.\n\n"
         << "Run without arguments to launch the GUI.\n\n"
         << "Examples:\n"
-        << "  GoWTool parse-wad PAND01A.WAD\n"
-        << "  GoWTool inspect PAND01A.WAD gohero00\n"
-        << "  GoWTool render GOW.wad goProtoHeroA00 --angles --report hero.json\n";
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-static void PrintEntryTree(const AssetEntry& entry, int depth) {
-    std::string indent(depth * 2, ' ');
-    std::string sizeStr;
-    if (entry.source.size >= 1024 * 1024)
-        sizeStr = std::to_string(entry.source.size / (1024 * 1024)) + " MB";
-    else if (entry.source.size >= 1024)
-        sizeStr = std::to_string(entry.source.size / 1024) + " KB";
-    else
-        sizeStr = std::to_string(entry.source.size) + " B";
-
-    std::cout << indent << entry.name
-              << "  [" << Onyx::Types::TypeCatalog::Get().Label(entry.typeId) << "]"
-              << "  size=" << sizeStr
-              << "  off=0x" << std::hex << std::setfill('0') << std::setw(8) << entry.source.offset << std::dec
-              << "\n";
-
-    for (const auto& child : entry.children)
-        PrintEntryTree(child, depth + 1);
-}
-
-// OpenWadFromFile is gone: Harness::LoadContainer does the same walk and
-// additionally calls IAssetProfile::PrepareForParse, which the GUI always
-// calls and this file never did.
-
-// FindEntryByName and PrintSceneStats moved to core/harness/AssetHarness
-// so `inspect`, `render` and any future headless consumer report the same
-// facts from the same walk.
-
-// ── Commands ─────────────────────────────────────────────────────────────────
-
-int CliApp::HandleParseWad(const std::vector<std::string>& args) {
-    if (args.size() < 2) {
-        std::cerr << "Usage: GoWTool parse-wad <file> [--game gow2|gowr]\n";
-        return 1;
-    }
-
-    std::string gameHint;
-    for (size_t i = 2; i < args.size(); ++i) {
-        if (args[i] == "--game" && i + 1 < args.size()) {
-            gameHint = args[++i];
-        }
-    }
-
-    Onyx::Harness::LoadRequest req{std::filesystem::path(args[1]), "", gameHint};
-    Onyx::Harness::LoadResult  load;
-    if (!Onyx::Harness::LoadContainer(req, load)) {
-        std::cerr << "[CLI] " << load.error << "\n";
-        return 1;
-    }
-    const AssetContainer& wad = load.container;
-
-    std::cout << "[CLI] Profile: "
-              << (wad.profile ? wad.profile->GetName() : "(none)") << "\n";
-    std::cout << "\n=== WAD: " << wad.filename << " ===\n";
-    std::cout << "Total top-level entries: " << wad.entries.size() << "\n\n";
-
-    for (const auto& e : wad.entries)
-        PrintEntryTree(e, 0);
-
-    // Type summary
-    std::map<std::string, int> typeCounts;
-    std::function<void(const AssetEntry&)> countTypes = [&](const AssetEntry& e) {
-        typeCounts[Onyx::Types::TypeCatalog::Get().Label(e.typeId)]++;
-        for (const auto& c : e.children) countTypes(c);
-    };
-    for (const auto& e : wad.entries) countTypes(e);
-
-    std::cout << "\n=== Type Summary ===\n";
-    for (const auto& [type, count] : typeCounts)
-        std::cout << "  " << std::setw(30) << std::left << type << " x" << count << "\n";
-
-    return 0;
+        << "  GoWToolkit probe   PAND01A.WAD\n"
+        << "  GoWToolkit list    PAND01A.WAD\n"
+        << "  GoWToolkit inspect PAND01A.WAD gohero00\n"
+        << "  GoWToolkit render  PAND01A.WAD gohero00 --out hero.png --views iso,front\n";
 }
 
 int CliApp::HandleInspect(const std::vector<std::string>& args) {
     if (args.size() < 3) {
-        std::cerr << "Usage: GoWTool inspect <wad-file> <entry-name> [--game gow2|gowr]\n";
-        std::cerr << "Example: GoWTool inspect PAND01A.WAD gohero00\n";
-        return 1;
+        std::cerr << "Usage: GoWToolkit inspect <wad-file> <entry-name> [--game gow2|gowr]\n";
+        std::cerr << "Example: GoWToolkit inspect PAND01A.WAD gohero00\n";
+        return Onyx::Cli::kUsage;
     }
 
     std::string gameHint;
@@ -166,11 +132,9 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
                 std::cerr << "  " << e.name << " ["
                           << Onyx::Types::TypeCatalog::Get().Label(e.typeId) << "]\n";
         }
-        return 1;
+        return Onyx::Cli::kUsage;
     }
 
-    std::cout << "[CLI] Profile: "
-              << (load.container.profile ? load.container.profile->GetName() : "(none)") << "\n";
     std::cout << "[CLI] Parsed " << load.container.entries.size() << " top-level entries.\n";
     std::cout << "[CLI] Found: '" << load.entry->name << "' ["
               << Onyx::Types::TypeCatalog::Get().Label(load.entry->typeId) << "]"
@@ -181,66 +145,7 @@ int CliApp::HandleInspect(const std::vector<std::string>& args) {
         std::cout << "[CLI] Scene built but has no mesh parts (logical/trigger node).\n";
 
     Onyx::Harness::PrintSceneStats(*load.scene, std::cout);
-    return 0;
-}
-
-int CliApp::HandleExtract(const std::vector<std::string>& args) {
-    if (args.size() < 3) {
-        std::cerr << "Usage: GoWTool extract <iso-file> <out_dir>\n";
-        return 1;
-    }
-
-    std::filesystem::path isoPath(args[1]);
-    std::filesystem::path outDir(args[2]);
-
-    if (!std::filesystem::is_regular_file(isoPath)) {
-        std::cerr << "[CLI] File not found: " << args[1] << "\n";
-        return 1;
-    }
-
-    auto profile = Onyx::Services::ProfileManager::Get().DetectProfileForFile(isoPath);
-    if (!profile) {
-        std::cerr << "[CLI] Could not detect game profile.\n";
-        return 1;
-    }
-
-    std::cout << "[CLI] Profile: " << profile->GetName() << "\n";
-
-    auto vfs = profile->MountArchive(isoPath);
-    if (!vfs) {
-        std::cerr << "[CLI] Failed to mount archive.\n";
-        return 1;
-    }
-
-    std::filesystem::create_directories(outDir);
-
-    AssetContainer topWad;
-    if (!profile->LoadFromArchive(vfs, topWad)) {
-        std::cerr << "[CLI] Failed to enumerate ISO contents.\n";
-        return 1;
-    }
-
-    std::cout << "[CLI] ISO contains " << topWad.entries.size() << " WAD entries.\n";
-    int extracted = 0;
-
-    for (const auto& e : topWad.entries) {
-        auto childFile = vfs->OpenFile(e.name);
-        if (!childFile || !childFile->IsValid()) continue;
-
-        std::filesystem::path outPath = outDir / e.name;
-        std::ofstream out(outPath, std::ios::binary);
-        if (!out) { std::cerr << "[CLI] Cannot write: " << outPath << "\n"; continue; }
-
-        std::vector<uint8_t> buf(e.source.size);
-        childFile->Seek(0, SEEK_SET);
-        childFile->Read(buf.data(), e.source.size);
-        out.write(reinterpret_cast<const char*>(buf.data()), buf.size());
-        std::cout << "  Extracted: " << e.name << " (" << e.source.size << " bytes)\n";
-        ++extracted;
-    }
-
-    std::cout << "[CLI] Extracted " << extracted << " files to " << outDir << "\n";
-    return 0;
+    return Onyx::Cli::kOk;
 }
 
 } // namespace Onyx
