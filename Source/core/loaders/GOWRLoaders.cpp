@@ -240,16 +240,15 @@ static std::string StripPartIndex(const std::string& s) {
 // choice, defaulting to LOD 0. The level of each batch comes from the MG part
 // table rather than being inferred, so parts with shorter chains clamp to
 // their own last level instead of disappearing.
-struct PartLevel {
-    int part  = -1;
-    int level = -1;
-};
-
 class GowrLodDocument : public Viewers::IDocumentContent {
 public:
+    // Holds its own copy of the container so a LOD change can rebuild the
+    // scene after the WAD that produced it has closed.
     GowrLodDocument(std::shared_ptr<Viewers::Viewport3D> vp,
-                    std::vector<PartLevel> meta, int maxLevels)
-        : m_vp(std::move(vp)), m_meta(std::move(meta)), m_maxLevels(maxLevels) {}
+                    std::shared_ptr<Domain::AssetContainer> wad,
+                    Domain::AssetEntry entry, bool attachSkeleton, int maxLevels)
+        : m_vp(std::move(vp)), m_wad(std::move(wad)), m_entry(std::move(entry)),
+          m_attachSkeleton(attachSkeleton), m_maxLevels(maxLevels) {}
 
     std::string GetName() const override { return m_vp->GetName(); }
     void Draw() override { Apply(); m_vp->Draw(); }
@@ -279,37 +278,35 @@ public:
     }
 
 private:
-    // The LOD picker is inert under Onyx v1.1 and this is deliberate rather
-    // than overlooked.
+    // Rebuilds the scene at the chosen level and re-submits it.
     //
-    // It used to reach Viewport3D::GetSceneRenderer() and flip
-    // RenderBatch::isVisible on the live batch list. v1.1 made the renderer
-    // private -- Viewport3D exposes no batch list and no visibility API --
-    // and the only public way back in, LoadScene(), takes ownership of a
-    // SceneData whose textures are unique_ptr, so the scene cannot be held
-    // and re-submitted per LOD change without re-decoding every texture.
-    //
-    // Rebuilding it needs a visibility entry point on Viewport3D, which is an
-    // OnyxSDK change, not something this side can fix. Until then the combo
-    // still renders (so the level count stays visible and the control does
-    // not vanish from the UI) but selecting a level does nothing, and says
-    // so once instead of silently ignoring the click.
+    // The previous version reached Viewport3D::GetSceneRenderer() and flipped
+    // RenderBatch::isVisible, which v1.1 removed -- the renderer is private
+    // and there is no visibility API -- leaving the picker inert. Rebuilding
+    // costs a re-decode of the entry (including its textures), which is why
+    // it happens on a user's combo change and never per frame.
     void Apply() {
         if (!m_dirty) return;
         m_dirty = false;
-        if (m_warned) return;
-        m_warned = true;
-        ONYX_LOGF_WARN("[GOWRLoaders] LOD selection is inactive: Onyx v1.1 "
-                       "Viewport3D exposes no batch visibility API "
-                       "(all %d levels stay visible)", m_maxLevels);
+
+        GowrSceneMeta meta;
+        const int level = (m_lod == 0) ? kAllLevels : (m_lod - 1);
+        auto scene = BuildGowrScene(m_entry, *m_wad, m_attachSkeleton, meta, level);
+        if (!scene) {
+            ONYX_LOGF_WARN("[GOWRLoaders] LOD %d: rebuild produced no scene", m_lod - 1);
+            return;
+        }
+        m_vp->LoadScene(std::move(scene));
+        m_vp->RequestRedraw();
     }
 
-    std::shared_ptr<Viewers::Viewport3D> m_vp;
-    std::vector<PartLevel>               m_meta;
+    std::shared_ptr<Viewers::Viewport3D>    m_vp;
+    std::shared_ptr<Domain::AssetContainer> m_wad;
+    Domain::AssetEntry                      m_entry;
+    bool m_attachSkeleton = false;
     int  m_maxLevels = 1;
-    int  m_lod       = 1;   // default to LOD 0 rather than every level at once
-    bool m_dirty     = true;
-    bool m_warned    = false;
+    int  m_lod       = 1;   // "LOD 0" -- the finest level, matching the default build
+    bool m_dirty     = false;
 };
 
 // -- Material resolution ------------------------------------------------------
@@ -492,7 +489,22 @@ static MaterialRefIndex BuildMaterialRefIndex(
     }
     return index;
 }
-static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry, AssetContainer& wad, bool attachSkeleton) {
+// Builds the render-ready scene for a GOWR mesh/rig entry.
+//
+// Split out of what used to be SharedGowrMeshLoad (which built the scene AND
+// wrapped it in a Viewport3D) because the two callers need different halves:
+// the ITypeHandler path wants a viewer, and GowrModule's Scene decoder -- the
+// path the Shell actually takes when you click a node -- wants the SceneData
+// itself. While that decoder was a stub, every mesh click in the GUI answered
+// "decode failed", with 500 lines of working loader sitting unreachable behind
+// the other entry point.
+//
+// Returns null when there is nothing to show. An empty (but non-null) scene
+// means "parsed fine, no geometry", which the viewer path renders as an empty
+// viewport rather than an error.
+std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, AssetContainer& wad,
+                                                   bool attachSkeleton, GowrSceneMeta& outMeta,
+                                                   int lodLevel) {
     if (!wad.fileSource) return nullptr;
 
     // ── Slice the MESH file ────────────────────────────────────────────
@@ -575,7 +587,7 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
         } else {
             ONYX_LOGF_WARN("[GOWRLoaders] Parse failed or no parts for '%s'", entry.name.c_str());
         }
-        return std::make_shared<Viewers::Viewport3D>(entry.name);
+        return std::make_unique<Parsers::SceneData>();   // parsed, no geometry
     }
 
     // ── Find paired MG_<base> file (bone-binding, no _gpu suffix) ─────
@@ -724,9 +736,6 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
                      entry.name.c_str(), protoBase.c_str());
         }
     }
-
-    // ── Build Parsers::SceneData and load into viewport ─────────────────────────
-    auto vp = std::make_shared<Viewers::Viewport3D>(entry.name);
 
     // -- Resolve parts, detail levels and the bone palette from the MG ------
     // The MG is authoritative for all three: it names which submeshes form
@@ -965,32 +974,85 @@ static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const Asset
             }
         }
 
-        auto scene = std::make_unique<Parsers::SceneData>();
-        scene->skeleton  = skeleton;
-        scene->flipZ     = true;    // mesh and bones both face -Z; flip once for screen
-        scene->meshParts = std::move(data.parts);
-        scene->materials = std::move(materials);
-        scene->textures  = std::move(texturePool);
-        vp->LoadScene(std::move(scene));
-    } else {
-        // LoadFromMeshData still takes one texture per material, positionally,
-        // so the flat pool is projected back down to its diffuse slice. A
-        // material with no diffuse contributes a null, which is what that
-        // older entry point reads as untextured.
-        std::vector<std::unique_ptr<Parsers::TextureData>> diffuseOnly;
-        diffuseOnly.reserve(materials.size());
-        for (const auto& desc : materials) {
-            auto it = desc.textures.find(Parsers::TextureRole::Diffuse);
-            diffuseOnly.push_back(it != desc.textures.end()
-                                      ? std::move(texturePool[it->second])
-                                      : nullptr);
-        }
-        vp->LoadFromMeshData(data, diffuseOnly);
     }
 
-    if (haveMg && mg.MaxLevelCount() > 1)
-        return std::make_shared<GowrLodDocument>(std::move(vp), std::move(partMeta),
-                                                 mg.MaxLevelCount());
+    // One scene for both paths, skeleton or not.
+    //
+    // The un-skinned branch used to call Viewport3D::LoadFromMeshData, which
+    // v1.1 turned into a logged no-op that also clears the scene -- its own
+    // comment says "dead code path, no callers", true of the SDK's tree but
+    // not of this one. So every GOWR mesh without a rig rendered nothing, and
+    // said so only at ONYX_LOGF_WARN. SceneData is the model v1.1 actually
+    // renders; a rig-less entry simply has a null skeleton.
+    auto scene = std::make_unique<Parsers::SceneData>();
+    scene->skeleton  = skeleton;
+    scene->flipZ     = true;    // mesh and bones both face -Z; flip once for screen
+    scene->meshParts = std::move(data.parts);
+    scene->materials = std::move(materials);
+    scene->textures  = std::move(texturePool);
+
+    const int levelCount = (haveMg && mg.MaxLevelCount() > 1) ? mg.MaxLevelCount() : 1;
+
+    // ── LOD filter ──────────────────────────────────────────────────────
+    // A mesh group's levels are alternative representations of one surface,
+    // so keeping them all draws every shell at once -- which is what this
+    // loader did, and what "all 5 levels stay visible" in the log meant.
+    if (haveMg && levelCount > 1 && lodLevel != kAllLevels) {
+        // Highest level each part actually has, so a request past the end of
+        // a part's chain shows its coarsest level instead of dropping it.
+        std::vector<int> lastOf;
+        for (const auto& pl : partMeta) {
+            if (pl.part < 0) continue;
+            if (static_cast<int>(lastOf.size()) <= pl.part) lastOf.resize(pl.part + 1, -1);
+            lastOf[pl.part] = std::max(lastOf[pl.part], pl.level);
+        }
+
+        std::vector<Parsers::MeshPart> kept;
+        std::vector<PartLevel>         keptMeta;
+        kept.reserve(scene->meshParts.size());
+        keptMeta.reserve(partMeta.size());
+
+        for (size_t i = 0; i < scene->meshParts.size() && i < partMeta.size(); ++i) {
+            const PartLevel& pl = partMeta[i];
+            // A part the MG never referenced has no level to filter on; keep
+            // it rather than silently dropping geometry we cannot classify.
+            const bool keep = (pl.part < 0)
+                            || (pl.level == std::min(lodLevel, lastOf[pl.part]));
+            if (!keep) continue;
+            kept.push_back(std::move(scene->meshParts[i]));
+            keptMeta.push_back(pl);
+        }
+
+        ONYX_LOGF_INFO("[GOWRLoaders] LOD %d of %d: %zu of %zu parts kept",
+                       lodLevel, levelCount, kept.size(), scene->meshParts.size());
+        scene->meshParts = std::move(kept);
+        partMeta         = std::move(keptMeta);
+    }
+
+    outMeta.partLevels = std::move(partMeta);
+    outMeta.maxLevels  = levelCount;
+    return scene;
+}
+
+// Viewer half: build the scene, then wrap it in a viewport (plus the LOD
+// document when the mesh group declares more than one level).
+static std::shared_ptr<Viewers::IDocumentContent> SharedGowrMeshLoad(const AssetEntry& entry,
+                                                                     AssetContainer& wad,
+                                                                     bool attachSkeleton) {
+    GowrSceneMeta meta;
+    auto scene = BuildGowrScene(entry, wad, attachSkeleton, meta);
+    if (!scene) return nullptr;
+
+    auto vp = std::make_shared<Viewers::Viewport3D>(entry.name);
+    vp->LoadScene(std::move(scene));
+
+    if (meta.maxLevels > 1) {
+        // The document keeps its own container copy: a LOD change rebuilds the
+        // scene, and `wad` is a reference whose owner may be gone by then.
+        auto owned = std::make_shared<Domain::AssetContainer>(wad);
+        return std::make_shared<GowrLodDocument>(std::move(vp), std::move(owned),
+                                                 entry, attachSkeleton, meta.maxLevels);
+    }
     return vp;
 }
 

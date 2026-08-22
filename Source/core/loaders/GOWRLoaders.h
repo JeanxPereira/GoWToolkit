@@ -2,7 +2,10 @@
 #include <Onyx/Types/ITypeHandler.h>
 #include <Onyx/Types/TypeCatalog.h>
 #include "core/types/GameTypes.h"
+#include <Onyx/Parsers/SceneNode.h>
 #include <filesystem>
+#include <memory>
+#include <vector>
 
 namespace Onyx {
 
@@ -95,6 +98,47 @@ public:
     const char*  GetName() const override { return "GOWR Material"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
+
+// Which part and detail level a MeshPart belongs to. Comes from the mesh
+// group's own part table rather than being inferred, so a part with a shorter
+// LOD chain clamps to its last level instead of disappearing.
+struct PartLevel {
+    int part  = -1;
+    int level = -1;
+};
+
+// LOD metadata BuildGowrScene reports alongside the scene. Only the viewer
+// path consumes it.
+struct GowrSceneMeta {
+    std::vector<PartLevel> partLevels;
+    int                    maxLevels = 1;
+};
+
+// LOD selection for BuildGowrScene.
+//
+//   kAllLevels -- every level at once. This is what the loader always did, and
+//       it is wrong to look at: a mesh group's levels are alternative
+//       representations of the same surface, so drawing five of them stacks
+//       five shells of geometry on top of each other.
+//   0, 1, 2... -- that detail level only. A part whose LOD chain is shorter
+//       than the requested level clamps to its own last level rather than
+//       disappearing, which is why this cannot be a simple equality test.
+//
+// kFinest (0) is the default: the most detailed level is what someone opening
+// a model wants to see.
+inline constexpr int kAllLevels = -1;
+inline constexpr int kFinest    = 0;
+
+// Builds the render-ready scene for a GOWR mesh/rig entry. Null means nothing
+// to show; an empty non-null scene means "parsed fine, no geometry".
+//
+// `outMeta.partLevels` is reported for the parts that SURVIVE the filter, so
+// it stays index-aligned with scene->meshParts.
+std::unique_ptr<Parsers::SceneData> BuildGowrScene(const Domain::AssetEntry& entry,
+                                                   Domain::AssetContainer& wad,
+                                                   bool attachSkeleton,
+                                                   GowrSceneMeta& outMeta,
+                                                   int lodLevel = kFinest);
 
 class TexPackIndex;
 TexPackIndex& GetTexIndex();

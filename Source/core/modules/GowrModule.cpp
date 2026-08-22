@@ -18,6 +18,7 @@
 #include "core/WadTypes.h"
 #include "core/profiles/gowr/GOWRTypes.h"
 #include "core/profiles/gowr/WadNodeBuilder.h"
+#include "core/domain/ContainerBridge.h"
 #include "core/loaders/GOWRLoaders.h"
 #include "core/parsers/gowr/TextureDecode.h"
 
@@ -174,14 +175,14 @@ void GowrModule::RegisterTypes(Onyx::Types::TypeRegistrar& r) {
 void GowrModule::RegisterDecoders(DecoderRegistry& reg) {
     reg.Image(m_texturePair, &GowrModule::DecodeTexturePair);
 
-    // Materials are Phase 3 -- see GowrModule.h and DecodeMeshStub. Wired
-    // (rather than left unregistered) so a caller gets an explicit diag
-    // instead of DecoderRegistry silently reporting "no decoder".
-    reg.Scene(m_meshDefn,           &GowrModule::DecodeMeshStub);
-    reg.Scene(m_meshGpu,            &GowrModule::DecodeMeshStub);
-    reg.Scene(m_gameObjectProto,    &GowrModule::DecodeMeshStub);
-    reg.Scene(m_gameObjectInst,     &GowrModule::DecodeMeshStub);
-    reg.Scene(m_gameObjectOverride, &GowrModule::DecodeMeshStub);
+    // Mesh/rig scenes. This is the path the Shell takes on a click
+    // (OpenSelection -> RouteForType -> Decoders()), so a stub here means no
+    // mesh opens in the GUI no matter what the ITypeHandler registry holds.
+    reg.Scene(m_meshDefn,           &GowrModule::DecodeMesh);
+    reg.Scene(m_meshGpu,            &GowrModule::DecodeMesh);
+    reg.Scene(m_gameObjectProto,    &GowrModule::DecodeMesh);
+    reg.Scene(m_gameObjectInst,     &GowrModule::DecodeMesh);
+    reg.Scene(m_gameObjectOverride, &GowrModule::DecodeMesh);
 
     // No TextDecoder: no GOWR type WadNodeBuilder produces maps to a
     // text/script MediaKind today (shaders are binary, not source, in this
@@ -248,14 +249,47 @@ std::unique_ptr<Onyx::Parsers::TextureData> GowrModule::DecodeTexturePair(Decode
     return tex;
 }
 
-std::unique_ptr<Onyx::Parsers::SceneData> GowrModule::DecodeMeshStub(DecodeContext& ctx) {
-    ctx.diags.Report(Diag{
-        Severity::Info, "gowr.mesh.materials-deferred",
-        "GOWR mesh/rig decoding needs per-part material resolution "
-        "(TextureRole/MaterialDesc), which is Phase 3 scope -- '" +
-            ctx.entry.name + "' was not decoded",
-        std::nullopt});
-    return nullptr;
+// Decodes a GOWR mesh/rig entry into a render-ready scene.
+//
+// This was a stub through Phase 3 ("materials deferred"), and the cost of that
+// was not visible from any test: the Shell's OpenSelection routes a click
+// through RouteForType(ws.Decoders(), ...) -- the DecoderRegistry, NOT the
+// ITypeHandler registry -- so every mesh click in the GUI hit this stub and
+// answered "decode failed", while the 500-line loader that does the real work
+// sat behind GOWRMeshDefnHandler::CreateViewer, reachable only from the other
+// path. Both now call the same builder.
+std::unique_ptr<Onyx::Parsers::SceneData> GowrModule::DecodeMesh(DecodeContext& ctx) {
+    // BuildGowrScene still speaks AssetContainer, which v1.1 keeps for exactly
+    // this kind of bridge. See ContainerBridge.h for what the projection does
+    // and does not guarantee.
+    Onyx::Domain::AssetContainer wad = Onyx::Gow::MakeContainerBridge(ctx.doc);
+
+    if (!wad.fileSource) {
+        ctx.diags.Report(Diag{Severity::Error, "gowr.mesh.no-file",
+                               "no backing file for '" + ctx.entry.name + "'", std::nullopt});
+        return nullptr;
+    }
+
+    // MESH_* is a plain mesh, MG_* a mesh group carrying a bone palette -- the
+    // same name-based split GOWRMeshDefnHandler makes, and the only one
+    // available, since both are role MeshDefn. Anything else reaching this
+    // decoder (goProto*, go*, MG_*_gpu) is rigged by construction.
+    const bool plainMesh = ctx.entry.name.rfind("MESH_", 0) == 0;
+
+    GowrSceneMeta meta;
+    auto scene = BuildGowrScene(ctx.entry, wad, /*attachSkeleton=*/!plainMesh, meta);
+    if (!scene) {
+        ctx.diags.Report(Diag{Severity::Warning, "gowr.mesh.build-failed",
+                               "could not build a scene for '" + ctx.entry.name + "'",
+                               std::nullopt});
+        return nullptr;
+    }
+    if (scene->IsEmpty()) {
+        ctx.diags.Report(Diag{Severity::Info, "gowr.mesh.no-geometry",
+                               "'" + ctx.entry.name + "' parsed but carries no geometry",
+                               std::nullopt});
+    }
+    return scene;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
