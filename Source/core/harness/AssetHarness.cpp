@@ -1,3 +1,4 @@
+#include "core/domain/ContainerBridge.h"
 #include "core/types/TextureRoles.h"
 #include "core/harness/AssetHarness.h"
 
@@ -167,13 +168,7 @@ bool LoadContainer(const LoadRequest& req, LoadResult& out)
     // itself (Phase 4/5 territory, same place WadBrowser's own
     // Onyx::Api::Database()/GetSelected() gap already lives) -- named here
     // rather than silently mis-decoding. See task-4-report.md.
-    uint32_t primaryFileIndex = doc->roots.empty() ? 0 : doc->roots[0].source.fileIndex;
-    out.container.filename   = req.archive.filename().string();
-    out.container.fullPath   = req.archive.string();
-    out.container.fileSource = primaryFileIndex < doc->fileTable.size()
-                                    ? doc->fileTable[primaryFileIndex]
-                                    : doc->file;
-    out.container.entries    = doc->roots;
+    out.container = Onyx::Gow::MakeContainerBridge(*doc);
 
     if (!parsedOk) {
         out.error = "ParseContainer failed (module: " + doc->module->Info().id + ")";

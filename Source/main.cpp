@@ -4,6 +4,7 @@
 #include "core/profiles/AssetVisibilityDefaults.h"
 #include <Onyx/Services/Threading.h>
 #include "cli/CliApp.h"
+#include <string>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -34,7 +35,20 @@ int main(int argc, char** argv) {
     // holds no game knowledge; this app-level call owns the GoW defaults.
     Onyx::RegisterGameVisibilityDefaults();
 
-    if (argc > 1) {
+    // `--gui <file> [entry]` launches the window on a container instead of
+    // dispatching to the CLI. Without it there is no way to reach the viewer
+    // from a command line -- every argc > 1 went to CliApp -- which blocks
+    // "Open with", shortcuts, repro scripts, and any automated check of the
+    // GUI itself.
+    Onyx::GuiStartup startup;
+    int firstArg = 1;
+    if (argc > 1 && std::string(argv[1]) == "--gui") {
+        if (argc > 2) startup.path  = argv[2];
+        if (argc > 3) startup.entry = argv[3];
+        firstArg = argc;   // nothing left for the CLI
+    }
+
+    if (argc > 1 && firstArg < argc) {
 #ifdef _WIN32
         // A Release build is a GUI-subsystem binary, so it starts with no
         // console and CLI output would go nowhere. Attaching the parent's
@@ -60,7 +74,7 @@ int main(int argc, char** argv) {
     Onyx::App::Window window;
     // Inject the game panel/viewer registrar BEFORE the App initializes — run()
     // calls App::init(), which invokes the registrar from registerPanels().
-    Onyx::InstallGoWPanels(window.app());
+    Onyx::InstallGoWPanels(window.app(), startup);
     window.run();
     return 0;
 }

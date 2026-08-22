@@ -7,6 +7,7 @@
 #include <Onyx/Services/Logger.h>
 #include <Onyx/Api/ToolkitApi.h>
 #include "core/WadTypes.h"
+#include "core/domain/ContainerBridge.h"
 #include "core/types/Gow2SceneBuild.h"
 #include <Onyx/Fonts/SFSymbols.h>
 #include "imgui.h"
@@ -49,13 +50,7 @@ Onyx::Domain::AssetContainer& WadBrowser::BridgeFor(Onyx::Modules::Document& doc
     // entries can name different PART*.PAK files while AssetContainer has
     // only one fileSource -- that is AssetContainer's structural limit, noted
     // in the harness too.
-    Onyx::Domain::AssetContainer bridge;
-    const uint32_t primary = doc.roots.empty() ? 0u : doc.roots[0].source.fileIndex;
-    bridge.filename   = doc.path.filename().string();
-    bridge.fullPath   = doc.path.string();
-    bridge.fileSource = primary < doc.fileTable.size() ? doc.fileTable[primary] : doc.file;
-    bridge.entries    = doc.roots;
-    return m_bridges.emplace(doc.id, std::move(bridge)).first->second;
+    return m_bridges.emplace(doc.id, Onyx::Gow::MakeContainerBridge(doc)).first->second;
 }
 
 // ── Asset visibility ──────────────────────────────────────────────────────

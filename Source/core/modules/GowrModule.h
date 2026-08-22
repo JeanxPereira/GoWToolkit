@@ -73,7 +73,7 @@ private:
     // the task brief: reports a diag and returns null rather than a partial
     // port. See task-2-report.md.
     static std::unique_ptr<Onyx::Parsers::SceneData>
-        DecodeMeshStub(Onyx::Modules::DecodeContext&);
+        DecodeMesh(Onyx::Modules::DecodeContext&);
 
     // ── Types minted in RegisterTypes(), consumed by RegisterDecoders() ───
     // Phase 2 Task 4 closed the disconnect task-2-report.md flagged:
