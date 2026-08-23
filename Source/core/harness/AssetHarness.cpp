@@ -10,8 +10,11 @@
 
 #include "core/modules/Gow2Module.h"
 #include "core/modules/GowrModule.h"
+#include "core/loaders/GOWRLoaders.h"
+#include "core/parsers/gowr/TexPackIndex.h"
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 #include <ostream>
 
@@ -136,6 +139,7 @@ bool LoadContainer(const LoadRequest& req, LoadResult& out)
 
     out.vfs  = doc->mountedVfs;
     out.file = doc->file;
+    if (doc->module) out.moduleId = doc->module->Info().id;
 
     // Bridge onto the legacy AssetContainer BuildSceneData (below) and every
     // downstream ITypeHandler still expect -- Task 4's scope is moving
@@ -201,6 +205,25 @@ bool Load(const LoadRequest& req, LoadResult& out)
                     std::string(Onyx::Types::TypeCatalog::Get().Label(out.entry->typeId)) +
                     "' on entry '" + out.entry->name + "'";
         return false;
+    }
+
+    // The GOWR texture index is built by background tasks that
+    // LoadFromGameRoot fires and never joins. A GUI session polls it across
+    // frames, but this is a one-shot call: without waiting, every texture
+    // lookup below misses and the scene comes back with materials that report
+    // no roles at all -- which reads as "this model has no textures" rather
+    // than "the index was not ready".
+    //
+    // Harmless for GOW2: nothing dispatched means WaitUntilLoaded returns at
+    // once.
+    // Guarded on the module rather than on "has anything been dispatched":
+    // GetTexIndex() kicks the load off on a DETACHED thread, so the pack count
+    // is still zero for a moment after the call and a count-based test gives
+    // up before indexing has even begun. Asking only for GOWR keeps a GOW2 run
+    // from waiting on an index it never uses.
+    if (out.moduleId == "gowr") {
+        Onyx::GetTexIndex();                                     // start it
+        Onyx::GetTexIndex().WaitUntilLoaded(std::chrono::seconds(60));
     }
 
     out.scene = handler->BuildSceneData(*out.entry, out.container);

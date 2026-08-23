@@ -128,6 +128,36 @@ void TexPackIndex::LoadFileHashes(const std::filesystem::path& csvLz4Path) {
 
 // ── LoadFromGameRoot ───────────────────────────────────────────────────────
 
+void TexPackIndex::SetLoaded() {
+    {
+        std::lock_guard<std::mutex> lock(m_doneMutex);
+        m_loaded = true;
+    }
+    m_doneCv.notify_all();
+}
+
+bool TexPackIndex::WaitUntilLoaded(std::chrono::milliseconds timeout) {
+    if (m_loaded.load()) return true;
+
+    // Deliberately NOT short-circuiting on "no packs enumerated yet".
+    // GetTexIndex() starts LoadFromGameRoot on a detached thread, so the pack
+    // count stays zero for a moment after the caller asks -- a count-based
+    // early-out returns false before indexing has begun, which is the same
+    // silent miss this function exists to prevent. The caller decides whether
+    // waiting makes sense (see AssetHarness::Load, which asks only for GOWR).
+    std::unique_lock<std::mutex> lock(m_doneMutex);
+    const bool done = m_doneCv.wait_for(lock, timeout, [this] { return m_loaded.load(); });
+    if (!done) {
+        // A pack that fails to index never increments m_packsLoaded, so
+        // SetLoaded may never fire. Say so and let the caller continue with a
+        // partial index rather than hanging.
+        ONYX_LOGF_WARN("[TexPackIndex] still indexing after %lld ms (%d of %d packs); "
+                       "continuing with a partial index",
+                       (long long)timeout.count(), m_packsLoaded.load(), m_packCount.load());
+    }
+    return done;
+}
+
 void TexPackIndex::LoadFromGameRoot(const std::filesystem::path& gameRoot) {
     if (gameRoot.empty()) { SetLoaded(); return; }
 

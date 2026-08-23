@@ -53,6 +53,9 @@ struct LoadResult {
     std::shared_ptr<Vfs::IFile>              file;  // keeps the backing storage alive
     AssetContainer                           container;
     const AssetEntry*                        entry = nullptr;
+    /// Which IGameModule claimed the file ("gowr", "gow2"). Reported so a
+    /// caller can take a game-specific step without re-probing.
+    std::string                              moduleId;
     std::unique_ptr<Parsers::SceneData>      scene;
 
     LoadResult() = default;

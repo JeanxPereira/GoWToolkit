@@ -1159,7 +1159,15 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRTextureHandler::CreateViewer(cons
     return std::make_shared<GOWRTextureViewer>(entry);
 }
 
-std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
+// A goProto* entry carries the rig, not the geometry: the mesh lives in a
+// separate MESH_<base>* (or MG_<base>*) entry paired by name.
+//
+// Split out of GOWRRigHandler::CreateViewer so BuildSceneData can reach the
+// same resolution. It used to live inside the viewer path only, which is why
+// `inspect` could never report a proto: the handlers implemented CreateViewer
+// and nothing else, so ITypeHandler::BuildSceneData's default nullptr was the
+// answer for every GOWR entry, and the CLI reported it as a failure to build.
+static const AssetEntry* ResolveProtoMesh(const AssetEntry& entry, AssetContainer& wad) {
     if (!wad.fileSource) return nullptr;
 
     // Derive the base name: "goProtofox00" → "fox00"
@@ -1200,7 +1208,7 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const As
     if (meshEntry) {
         ONYX_LOGF_INFO("[GOWRRigHandler] Found MESH '%s' for proto '%s'",
                  meshEntry->name.c_str(), entry.name.c_str());
-        return SharedGowrMeshLoad(*meshEntry, wad, /*attachSkeleton=*/true);
+        return meshEntry;
     }
 
     // Fallback: try MG_<base>* (non-gpu) entries
@@ -1238,12 +1246,55 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRRigHandler::CreateViewer(const As
     if (mgEntry) {
         ONYX_LOGF_INFO("[GOWRRigHandler] Found MG '%s' for proto '%s' (fallback)",
                  mgEntry->name.c_str(), entry.name.c_str());
-        return SharedGowrMeshLoad(*mgEntry, wad, /*attachSkeleton=*/true);
+        return mgEntry;
     }
 
     ONYX_LOGF_WARN("[GOWRRigHandler] No MESH/MG found for proto '%s' (base='%s')",
              entry.name.c_str(), protoBase.c_str());
     return nullptr;
+}
+
+// ── Scene half ────────────────────────────────────────────────────────────
+//
+// The same four handlers that build a viewer also answer BuildSceneData, so
+// the CLI's `inspect` and the GUI's viewport report the same scene from the
+// same code. They differ only in what they wrap it in.
+//
+// LOD is kFinest here, matching BuildGowrScene's own default and what the
+// viewer opens with. `inspect` has no picker to change it.
+
+std::unique_ptr<Parsers::SceneData>
+GOWRMeshDefnHandler::BuildSceneData(const AssetEntry& entry, AssetContainer& wad) {
+    GowrSceneMeta meta;
+    const bool meshGroup = entry.name.rfind("MG_", 0) == 0;
+    return BuildGowrScene(entry, wad, /*attachSkeleton=*/meshGroup, meta);
+}
+
+std::unique_ptr<Parsers::SceneData>
+GOWRMeshGpuHandler::BuildSceneData(const AssetEntry& entry, AssetContainer& wad) {
+    GowrSceneMeta meta;
+    return BuildGowrScene(entry, wad, /*attachSkeleton=*/true, meta);
+}
+
+std::unique_ptr<Parsers::SceneData>
+GOWRModelInstanceHandler::BuildSceneData(const AssetEntry& entry, AssetContainer& wad) {
+    GowrSceneMeta meta;
+    return BuildGowrScene(entry, wad, /*attachSkeleton=*/true, meta);
+}
+
+std::unique_ptr<Parsers::SceneData>
+GOWRRigHandler::BuildSceneData(const AssetEntry& entry, AssetContainer& wad) {
+    const AssetEntry* mesh = ResolveProtoMesh(entry, wad);
+    if (!mesh) return nullptr;
+    GowrSceneMeta meta;
+    return BuildGowrScene(*mesh, wad, /*attachSkeleton=*/true, meta);
+}
+
+std::shared_ptr<Viewers::IDocumentContent>
+GOWRRigHandler::CreateViewer(const AssetEntry& entry, AssetContainer& wad) {
+    const AssetEntry* mesh = ResolveProtoMesh(entry, wad);
+    if (!mesh) return nullptr;
+    return SharedGowrMeshLoad(*mesh, wad, /*attachSkeleton=*/true);
 }
 
 ONYX_REGISTER_FILE_TYPE(GOWRMeshDefnHandler);
