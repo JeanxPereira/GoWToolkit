@@ -103,4 +103,9 @@ if(GOWTOOLKIT_BUILD_TESTS AND BUILD_TESTING)
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*[Selection]*")
     add_test(NAME Visibility
              COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-case=*Visibility*")
+    # The smschema reflection tables extracted from GoWR.exe: their
+    # invariants, the structs verified by hand against the binary, and the
+    # fact that a struct id alone does not identify a struct.
+    add_test(NAME SmSchema
+             COMMAND $<TARGET_FILE:gowtoolkit_tests> "--test-suite=[SmSchema]")
 endif()

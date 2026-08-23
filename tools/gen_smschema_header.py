@@ -156,24 +156,37 @@ with open(DST, "w", encoding="utf-8", newline="\r\n") as f:
     w("// Source: GoWR.exe (PE x86-64, image base 0x140000000)\n\n")
     w("#include <cstdint>\n\n")
     w("namespace Onyx::Gowr::SmSchema {\n\n")
-    w('''// Type codes as they appear in the table. The meanings are inferred from
-// field names and sizes across all records rather than from the game's own
-// code, so the ones marked (?) fit every observation but are unconfirmed.
+    w('''// Type codes as they appear in the table. The meanings are inferred from the
+// field names and sizes carried by every record using each code, not from the
+// game's own code, so the ones marked (?) fit every observation but are
+// unconfirmed. The comment on each records the evidence.
+//
+// Two further codes appear exactly once each, both with size 0 (0x00F0 on
+// "TargetFPS", 0x86A0 on "attrVersion"). One observation is not a type, and a
+// size of 0 is what a misread record looks like, so they are deliberately
+// absent here; TypeName() reports them as unknown rather than inventing a
+// meaning.
 enum class SmType : uint16_t {
-    Int32      = 0x0000,   // also enums stored 4 wide
-    Float      = 0x0008,   // by far the most common
-    Ref        = 0x0010,   // handle/reference to another object (?)
-    Bool       = 0x0014,
-    IsNullFlag = 0x0016,   // the "<Field>_IsNull" companion of an optional
-    StringHash = 0x0018,   // string stored as an 8-byte hash, NOT as text
-    Array      = 0x001C,   // (?)
-    Struct     = 0x0024,   // (?) embedded struct
-    Embedded   = 0x0028,   // (?)
-    Vector     = 0x002C,   // colour/vector; size is reported as 0
-    Expression = 0x0030,   // (?)
-    Enum8      = 0x0104,
-    Enum8b     = 0x0105,
-    Enum16     = 0x0204,
+    Int32      = 0x0000,   // 1578x, sizes 1/2/4 -- also enums stored 4 wide
+    Bool32     = 0x0001,   // (?)   61x, size 4, all DrawSimRoot/DrawAABB flags
+    Small      = 0x0004,   // (?)   25x, sizes 1/2/4, Priority/ColorTemperature
+    RigidRef   = 0x0005,   // (?)    4x, size 2, all RigidBodyId
+    Float      = 0x0008,   // 6250x, size 4 (or 2) -- by far the most common
+    Ref        = 0x0010,   // (?) 1512x, size 8 -- handle to another object
+    Bool       = 0x0014,   // 1476x, size 1
+    BoolFlag   = 0x0015,   // (?)    5x, size 1, all Is<Something> predicates
+    IsNullFlag = 0x0016,   //  968x, size 1 -- the "<X>_IsNull" of an optional
+    StringHash = 0x0018,   //  625x, size 8 -- a string stored as a hash, not text
+    TemplateSym= 0x001A,   //   65x, size 8, every one of them TemplateSymbol
+    Array      = 0x001C,   // (?)  459x, size 8
+    NodeRef    = 0x0020,   // (?)   18x, size 8, all node_/sample0_node_
+    Struct     = 0x0024,   // (?)  680x, size 12 -- embedded struct
+    Embedded   = 0x0028,   // (?)   58x, size 0
+    Vector     = 0x002C,   //  944x, size reported as 0 -- colour/vector
+    Expression = 0x0030,   // (?)   94x, size 8, When/PreventInteractionExpression
+    Enum8      = 0x0104,   // 1843x, size 1
+    Enum8b     = 0x0105,   //  671x, size 1
+    Enum16     = 0x0204,   // 1072x, size 1
 };
 
 struct Field {

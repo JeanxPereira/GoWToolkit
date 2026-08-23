@@ -1,4 +1,5 @@
 #include "CliApp.h"
+#include "core/formats/gowr/SmSchema.h"
 #include "core/harness/AssetHarness.h"
 #include "core/modules/Gow2Module.h"
 #include "core/modules/GowrModule.h"
@@ -78,6 +79,11 @@ int CliApp::Run(int argc, char** argv) {
     // bypassing the harness entirely.
     if (args[0] == "inspect") return HandleInspect(args);
 
+    // `schema` is likewise toolkit-only: it queries the smschema reflection
+    // tables extracted from GoWR.exe, which describe the game's own data
+    // layouts and have no container to open.
+    if (args[0] == "schema") return HandleSchema(args);
+
     return Onyx::Cli::Run(GetWorkspace(), argc, argv, std::cout, std::cerr,
                           MakeGltfExport(), Onyx::Cli::CmdRender);
 }
@@ -89,7 +95,11 @@ void CliApp::PrintHelp() {
         << "Toolkit commands:\n"
         << "  inspect <file> <name> [--game gow2|gowr]\n"
         << "        Build the entry's scene and report parts, materials,\n"
-        << "        texture roles and joints.\n\n"
+        << "        texture roles and joints.\n"
+        << "  schema [<lib>:<id> | <namespace.TypeName>]\n"
+        << "        Query the smschema reflection tables from GoWR.exe.\n"
+        << "        --field <name>   Which structs carry a field of this name.\n"
+        << "        --check          Verify the generated tables' invariants.\n\n"
         << "Container commands (Onyx; run any of them with no arguments for\n"
         << "its own usage line):\n"
         << "  probe   <file>                     Score each module against the file.\n"
@@ -105,7 +115,124 @@ void CliApp::PrintHelp() {
         << "  GoWToolkit probe   PAND01A.WAD\n"
         << "  GoWToolkit list    PAND01A.WAD\n"
         << "  GoWToolkit inspect PAND01A.WAD gohero00\n"
-        << "  GoWToolkit render  PAND01A.WAD gohero00 --out hero.png --views iso,front\n";
+        << "  GoWToolkit render  PAND01A.WAD gohero00 --out hero.png --views iso,front\n"
+        << "  GoWToolkit schema  dctools.Fog\n"
+        << "  GoWToolkit schema  --field WetnessAmount\n";
+}
+
+namespace {
+
+void PrintStruct(const Onyx::Gowr::SmSchema::Struct& s, std::ostream& out) {
+    out << "(" << s.library << ", 0x" << std::hex << s.id << std::dec << ")  "
+        << (s.name ? s.name : "<unnamed>");
+    if (s.runtimeSize) out << "   runtime size " << s.runtimeSize << " bytes";
+    out << "   " << s.fieldCount << " field" << (s.fieldCount == 1 ? "" : "s") << "\n";
+    for (uint16_t i = 0; i < s.fieldCount; ++i) {
+        const auto& f = s.fields[i];
+        out << "    +" << f.offset << "\t" << f.size << "B\t"
+            << Onyx::Gowr::SmSchema::TypeName(f.type) << "\t" << f.name << "\n";
+    }
+}
+
+} // namespace
+
+int CliApp::HandleSchema(const std::vector<std::string>& args) {
+    namespace Sm = Onyx::Gowr::SmSchema;
+
+    // No selector: report what the tables hold. This doubles as the usage
+    // line, since the numbers say more about what can be asked than a list of
+    // flags would.
+    if (args.size() < 2) {
+        const Sm::Stats st = Sm::GetStats();
+        std::cout << "smschema tables (extracted from GoWR.exe)\n"
+                  << "  libraries          " << st.libraries << "\n"
+                  << "  structs            " << st.structs << "\n"
+                  << "  named structs      " << st.namedStructs << "\n"
+                  << "  fields             " << st.fields << "\n"
+                  << "  distinct field names " << st.distinctFieldNames << "\n\n"
+                  << "A struct is addressed by (library, id): the id is library-local,\n"
+                  << "so the same number names a different struct in each library.\n\n"
+                  << "  GoWToolkit schema <lib>:<id>            one struct\n"
+                  << "  GoWToolkit schema <namespace.TypeName>  every struct with that name\n"
+                  << "  GoWToolkit schema --field <name>        structs carrying that field\n"
+                  << "  GoWToolkit schema --check               verify the tables\n";
+        return Onyx::Cli::kOk;
+    }
+
+    if (args[1] == "--check") {
+        std::vector<std::string> problems;
+        if (Sm::Validate(problems)) {
+            const Sm::Stats st = Sm::GetStats();
+            std::cout << "smschema tables OK: " << st.structs << " structs, "
+                      << st.fields << " fields, " << st.libraries << " libraries.\n";
+            return Onyx::Cli::kOk;
+        }
+        std::cerr << "smschema tables have " << problems.size() << " problem(s):\n";
+        for (const auto& p : problems) std::cerr << "  " << p << "\n";
+        // Onyx's exit codes are kOk / kUsage / kNoModule / kStrictErrors. The
+        // selector was fine here -- the DATA is wrong -- so kStrictErrors is
+        // the one that means "what you asked for carried errors".
+        return Onyx::Cli::kStrictErrors;
+    }
+
+    if (args[1] == "--field") {
+        if (args.size() < 3) {
+            std::cerr << "Usage: GoWToolkit schema --field <field-name>\n";
+            return Onyx::Cli::kUsage;
+        }
+        const auto hits = Sm::FindStructsWithField(args[2].c_str());
+        if (hits.empty()) {
+            std::cout << "No struct carries a field named '" << args[2] << "'.\n";
+            return Onyx::Cli::kOk;
+        }
+        std::cout << hits.size() << " struct(s) carry '" << args[2] << "':\n";
+        for (const auto* s : hits) {
+            const Sm::Field* f = nullptr;
+            for (uint16_t i = 0; i < s->fieldCount; ++i)
+                if (args[2] == s->fields[i].name) { f = &s->fields[i]; break; }
+            std::cout << "  (" << s->library << ", 0x" << std::hex << s->id << std::dec
+                      << ")  " << (s->name ? s->name : "<unnamed>");
+            if (f) std::cout << "   +" << f->offset << " " << Sm::TypeName(f->type);
+            std::cout << "\n";
+        }
+        return Onyx::Cli::kOk;
+    }
+
+    // "<library>:<id>" -- id in decimal or 0x-prefixed hex.
+    const std::string& sel = args[1];
+    const size_t colon = sel.find(':');
+    if (colon != std::string::npos) {
+        try {
+            const int lib = std::stoi(sel.substr(0, colon), nullptr, 0);
+            const int id  = std::stoi(sel.substr(colon + 1), nullptr, 0);
+            const Sm::Struct* s = Sm::FindStruct(static_cast<uint16_t>(lib),
+                                                 static_cast<uint16_t>(id));
+            if (!s) {
+                std::cerr << "No struct (" << lib << ", " << id << ") in the tables.\n";
+                return Onyx::Cli::kUsage;
+            }
+            PrintStruct(*s, std::cout);
+            return Onyx::Cli::kOk;
+        } catch (const std::exception&) {
+            std::cerr << "Could not read '" << sel << "' as <library>:<id>.\n";
+            return Onyx::Cli::kUsage;
+        }
+    }
+
+    const auto named = Sm::FindStructsNamed(sel.c_str());
+    if (named.empty()) {
+        std::cerr << "No struct named '" << sel << "'. Only " << Sm::GetStats().namedStructs
+                  << " of " << Sm::GetStats().structs << " structs have a recovered name;\n"
+                  << "the rest are addressed by <library>:<id>.\n";
+        return Onyx::Cli::kUsage;
+    }
+    // The same type is registered by several libraries (every animation node
+    // library re-declares dctools.AnimNode), so all of them are printed.
+    for (size_t i = 0; i < named.size(); ++i) {
+        if (i) std::cout << "\n";
+        PrintStruct(*named[i], std::cout);
+    }
+    return Onyx::Cli::kOk;
 }
 
 int CliApp::HandleInspect(const std::vector<std::string>& args) {
