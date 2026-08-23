@@ -13,6 +13,7 @@ const char* SceneRoleName(Onyx::Parsers::TextureRole role) {
         case Onyx::Parsers::TextureRole::Detail:    return "Detail";
         case Onyx::Parsers::TextureRole::Emissive:  return "Emissive";
         case Onyx::Parsers::TextureRole::EnvMap:    return "EnvMap";
+        case Onyx::Parsers::TextureRole::Opacity:   return "Opacity";
     }
     return "?";
 }
@@ -27,6 +28,7 @@ std::optional<Onyx::Parsers::TextureRole> ToSceneRole(Onyx::TextureRole role) {
         case Onyx::TextureRole::Gloss:            return Onyx::Parsers::TextureRole::Gloss;
         case Onyx::TextureRole::Scatter:          return Onyx::Parsers::TextureRole::Scatter;
         case Onyx::TextureRole::Detail:           return Onyx::Parsers::TextureRole::Detail;
+        case Onyx::TextureRole::Opacity:          return Onyx::Parsers::TextureRole::Opacity;
 
         // Declared by GOWR materials, but the renderer has no sampler bound to
         // them. Decoding one would cost a texture upload nothing reads.

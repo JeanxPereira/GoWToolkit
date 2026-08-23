@@ -33,6 +33,7 @@ enum class TextureRole : uint8_t {
     Gloss,             // _0g_   roughness/gloss; the second most common role
     Scatter,           // _0sc_  subsurface scatter
     Detail,            // _0sd_  detail overlay
+    Opacity,           // _opc_/_alpha_  per-texel coverage, in its own map
 };
 
 const char* TextureRoleName(TextureRole role);

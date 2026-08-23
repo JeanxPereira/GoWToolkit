@@ -87,6 +87,11 @@ TextureRole RoleFromName(const std::string& name) {
     if (tag == "g")  return TextureRole::Gloss;
     if (tag == "sc") return TextureRole::Scatter;
     if (tag == "sd") return TextureRole::Detail;
+    // Coverage lives in its own map here rather than in the diffuse alpha,
+    // which is why hair and a cornea rendered as solid geometry: the diffuse
+    // they ship is fully opaque, so the shader's cutout had nothing to act on.
+    if (tag == "opc" || tag == "op" || tag == "alpha" || tag == "opacity")
+        return TextureRole::Opacity;
     return TextureRole::Unknown;
 }
 
@@ -130,6 +135,7 @@ const char* TextureRoleName(TextureRole role) {
         case TextureRole::Gloss:            return "Gloss";
         case TextureRole::Scatter:          return "Scatter";
         case TextureRole::Detail:           return "Detail";
+        case TextureRole::Opacity:          return "Opacity";
         default:                            return "Unknown";
     }
 }

@@ -821,6 +821,10 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
         TextureRole::Height,
         TextureRole::Scatter,
         TextureRole::Detail,
+        // Coverage. Onyx v1.2 samples it: a material that ships a mask
+        // separately from its diffuse alpha is cut out by it, which is what
+        // hair cards and a transparent cornea need to stop rendering solid.
+        TextureRole::Opacity,
     };
     constexpr size_t kWantedCount = sizeof(kWantedRoles) / sizeof(kWantedRoles[0]);
 
