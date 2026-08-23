@@ -865,7 +865,13 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
             }
             if (got) {
                 if (!bound.empty()) bound += ", ";
+                // The NAME, not just the role. A material can declare dozens of
+                // textures for one role -- Baldur's head material declares 39,
+                // most of them dynamicmaterial region maps -- and knowing that
+                // "Diffuse" was bound says nothing about WHICH one won.
                 bound += TextureRoleName(kWantedRoles[L]);
+                bound += "=";
+                bound += ref->name;
                 texturePool.push_back(std::move(tex));
                 materials[mi].textures[*sceneRole] = static_cast<int>(texturePool.size() - 1);
             } else {

@@ -116,9 +116,27 @@ const char* TextureRoleName(TextureRole role) {
 }
 
 const MatReference* GOWRMaterial::Texture(TextureRole role) const {
-    for (const auto& r : refs)
-        if (r.isTexture && r.role == role) return &r;
-    return nullptr;
+    // Two naming conventions carry a channel, and they are not equivalent:
+    //
+    //   TX_<subject>_gen_0<tag>_<hash>   the subject's own map for that channel
+    //   TX_<something>_<tag>_<hash>      often a SHARED map, not this subject's
+    //
+    // Returning the first match regardless bound TX_wave_flow_n to the normal
+    // slot of Baldur's head, arms, chest, legs and lower body -- one shared FX
+    // map standing in for five different subjects -- because it happened to sit
+    // earlier in a reference list of 39. The canonical form wins when the
+    // material declares one.
+    //
+    // A preference, not a filter: TX_baldur00_beard_d is the beard's real
+    // diffuse and uses the bare form, so excluding it would lose the texture
+    // rather than improve it.
+    const MatReference* fallback = nullptr;
+    for (const auto& r : refs) {
+        if (!r.isTexture || r.role != role) continue;
+        if (r.name.find("_gen_0") != std::string::npos) return &r;
+        if (!fallback) fallback = &r;
+    }
+    return fallback;
 }
 
 std::vector<const MatReference*> GOWRMaterial::Textures() const {
