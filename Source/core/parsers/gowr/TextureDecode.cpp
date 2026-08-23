@@ -3,6 +3,7 @@
 // This translation unit owns the bcdec implementation.
 #define ONYX_BCDEC_IMPLEMENTATION
 #include "BcDecoder.h"
+#include <chrono>
 #include <cstring>
 #include <vector>
 
@@ -140,6 +141,18 @@ bool GOWRDecodeTexture(TexPackIndex& index,
 {
     error.clear();
     if (!hash) { error = "no texture hash"; return false; }
+
+    // The index is built by background tasks that LoadFromGameRoot fires and
+    // never joins, so a lookup made before they finish misses every time and
+    // the caller reports a texture that is right there as missing.
+    //
+    // This is the choke point -- every GOWR texture resolves through here --
+    // which is why the wait lives here and not at the entry points. Earlier
+    // rounds put it in AssetHarness::Load and in the GUI's startup open, and
+    // both were incomplete: `decode` and `render` reach Onyx::Cli::Run
+    // directly and passed through neither. Returns at once once the index is
+    // in, so the per-texture cost after the first is nothing.
+    index.WaitUntilLoaded(std::chrono::seconds(60));
 
     TexpackEntry entry;
     if (!index.FindTexture(hash, entry)) { error = "hash not in texpack index"; return false; }

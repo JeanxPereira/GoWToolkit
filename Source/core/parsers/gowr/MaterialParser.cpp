@@ -155,13 +155,32 @@ const MatReference* GOWRMaterial::Texture(TextureRole role) const {
     // A preference, not a filter: TX_baldur00_beard_d is the beard's real
     // diffuse and uses the bare form, so excluding it would lose the texture
     // rather than improve it.
-    const MatReference* fallback = nullptr;
+    // Ranked, best first:
+    //   1. the canonical _gen_0<tag>_ form -- the subject's own map
+    //   2. any other named map
+    //   3. a TX_dynamicmaterial_* map
+    //
+    // The region system's own textures come last because they are not a
+    // subject's channel map at all: they feed the regionidmap/m1/m2/m3 path,
+    // and every material that participates carries the same handful. Left
+    // unranked, TX_dynamicmaterial_nm won the normal slot on eight of
+    // Baldur's materials -- including all three beard materials, where
+    // TX_sindri00_beard_n was sitting right there in the same list.
+    //
+    // Still a preference, not a filter: a material whose only candidate for a
+    // role is a dynamicmaterial map keeps it rather than losing the channel.
+    const MatReference* other = nullptr;
+    const MatReference* shared = nullptr;
     for (const auto& r : refs) {
         if (!r.isTexture || r.role != role) continue;
+        if (r.name.rfind("TX_dynamicmaterial", 0) == 0) {
+            if (!shared) shared = &r;
+            continue;
+        }
         if (r.name.find("_gen_0") != std::string::npos) return &r;
-        if (!fallback) fallback = &r;
+        if (!other) other = &r;
     }
-    return fallback;
+    return other ? other : shared;
 }
 
 std::vector<const MatReference*> GOWRMaterial::Textures() const {

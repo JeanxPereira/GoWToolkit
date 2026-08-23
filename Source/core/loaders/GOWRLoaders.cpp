@@ -884,14 +884,32 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
             }
         }
 
-        std::string skipped;
+        // Two lists, because "declared but not bound" has two causes and they
+        // need different fixes. A texture whose role is not wanted was never a
+        // candidate; a texture that LOST its role to another candidate means
+        // the selection rule picked wrong, and that one used to be invisible
+        // in both lists -- the reason a material could report 10 textures with
+        // 3 bound and only 5 accounted for.
+        std::string skipped, lost;
         for (const auto* tx : mat.Textures()) {
             bool wanted = false;
             for (size_t L = 0; L < kWantedCount; ++L)
                 if (kWantedRoles[L] == tx->role) { wanted = true; break; }
-            if (wanted) continue;
-            if (!skipped.empty()) skipped += ", ";
-            skipped += tx->name;
+            if (!wanted) {
+                if (!skipped.empty()) skipped += ", ";
+                skipped += tx->name;
+                continue;
+            }
+            if (mat.Texture(tx->role) == tx) continue;   // this one won
+            if (!lost.empty()) lost += ", ";
+            lost += tx->name;
+            lost += " (";
+            lost += TextureRoleName(tx->role);
+            lost += ")";
+        }
+        if (!lost.empty()) {
+            ONYX_LOGF_DEBUG("[GOWRLoaders]   lost the role to another candidate: %s",
+                            lost.c_str());
         }
 
         ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",

@@ -110,6 +110,11 @@ int CliApp::Run(int argc, char** argv) {
     // layouts and have no container to open.
     if (args[0] == "schema") return HandleSchema(args);
 
+    // `texture` reports what a decoded texture actually contains -- notably
+    // whether its alpha is in use, which is what decides whether a cutout
+    // material can mask at all. Onyx's `decode` reports dimensions only.
+    if (args[0] == "texture") return HandleTexture(args);
+
     return Onyx::Cli::Run(GetWorkspace(), argc, argv, std::cout, std::cerr,
                           MakeGltfExport(), Onyx::Cli::CmdRender);
 }
@@ -122,6 +127,8 @@ void CliApp::PrintHelp() {
         << "  inspect <file> <name> [--game gow2|gowr]\n"
         << "        Build the entry's scene and report parts, materials,\n"
         << "        texture roles and joints.\n"
+        << "  texture <file> <name> [--out <path.png>]\n"
+        << "        Decode one texture; report its size and alpha use.\n"
         << "  schema [<lib>:<id> | <namespace.TypeName>]\n"
         << "        Query the smschema reflection tables from GoWR.exe.\n"
         << "        --field <name>   Which structs carry a field of this name.\n"

@@ -26,11 +26,6 @@
 #include "core/modules/Gow2Module.h"
 #include "core/modules/GowrModule.h"
 
-// The GOWR texture index, so `--gui <file> <entry>` can wait for it
-// before opening a viewer at startup.
-#include "core/loaders/GOWRLoaders.h"
-#include "core/parsers/gowr/TexPackIndex.h"
-
 #include <Onyx/Api/ToolkitApi.h>
 #include <Onyx/App/ViewerRegistry.h>
 #include <Onyx/Viewers/DocumentWindow.h>
@@ -39,7 +34,6 @@
 #include <Onyx/Modules/Workspace.h>
 #include <Onyx/Services/Logger.h>
 
-#include <chrono>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -165,18 +159,6 @@ void InstallGoWPanels(Onyx::App::App& app, const GuiStartup& startup) {
                 const Onyx::Domain::AssetEntry* target =
                     Onyx::Modules::Resolve(*doc, path);
                 if (target) {
-                  // The GOWR texture index is built by background tasks that
-                  // take a couple of seconds. A person clicking through the
-                  // browser never notices; opening a viewer AT STARTUP is
-                  // exactly the case that beats it, and a scene built against
-                  // an empty index gets no textures at all -- silently, since
-                  // the model still renders, just untextured. Blocking here is
-                  // acceptable in a way it would not be mid-session: nothing
-                  // is on screen yet, and the alternative is showing a wrong
-                  // result that looks like a decode failure.
-                  Onyx::GetTexIndex().WaitUntilLoaded(std::chrono::seconds(30));
-
-
                   static std::vector<std::shared_ptr<Onyx::Domain::AssetContainer>> s_bridges;
                   auto bridge = std::make_shared<Onyx::Domain::AssetContainer>(
                       Onyx::Gow::MakeContainerBridge(*doc));
