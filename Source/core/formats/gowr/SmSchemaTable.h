@@ -1,14 +1,15 @@
 #pragma once
 
-// smschema field table, extracted from GoWR.exe.
+// smschema reflection tables, extracted from GoWR.exe.
 //
 // God of War Ragnarok describes its serialisable data with an in-house
 // reflection system its own error strings name "smschema" (Sony Santa Monica
 // schema -- see the path in that message: Shared/DataLayer/LibCore/
-// core_library_info.cpp). The executable carries the entire table as static
-// data: every field of every schema struct, with byte offset, size and type.
+// core_library_info.cpp). The executable carries the whole thing as static
+// data: every field of every schema struct, with byte offset, size and type,
+// and -- in a second table -- the type names.
 //
-// -- Record layout in the binary (32 bytes) -------------------------------
+// -- Field record layout in the binary (32 bytes) --------------------------
 //
 //   +0x00  u64  namePtr          field name, as a C string
 //   +0x08  u64  namePtr          repeated -- this doubling identifies a record
@@ -18,23 +19,50 @@
 //   +0x16  u16  ownerStructId    which struct the field belongs to
 //   +0x1A  u16  fieldId          global field index
 //
-// -- What is NOT here, and why --------------------------------------------
+// -- ownerStructId is LIBRARY-LOCAL ----------------------------------------
 //
-// Struct NAMES. The binary holds 3132 strings shaped "namespace.TypeName"
-// (core.Vector3, creatureeditor.DrivenBlendNodeData, ...) in a separate
-// region, but nothing found so far links ownerStructId to one of them: the id
-// is not stored in the struct record, does not index that table positionally,
-// and no pointer runs from a struct record into this field table. The link
-// most likely lives in the library registrar -- the function that emits the
-// "Too many smschema library informations are registered" error -- which is
-// where to look next. Until then a struct is identified by its id.
+// The id restarts per registered library, so the same number names a different
+// struct in each one and a struct is only identified by the PAIR
+// (library, id). Grouping on the id alone -- which an earlier revision of this
+// header did -- merges every library's struct 170 into one impossible
+// 3000-field struct whose field names repeat. Records are laid out in address
+// order and the id is non-decreasing within a library, so a drop in id marks
+// the boundary.
+//
+// -- Where the struct names come from --------------------------------------
+//
+// Not from the field record, which never carries one. A second table in .data
+// holds one type descriptor per registered type:
+//
+//   -0x3a  u16   count of the type's OWN fields
+//   -0x2c  u32   runtime size of the C++ struct
+//   +0x00  u64   -> "namespace.TypeName"
+//   +0x28  u64   -> field entries, 56 bytes each, name pointer at +0x10
+//
+// Nothing links a descriptor to an ownerStructId, so tools/smschema_names.py
+// joins the two on the field NAMES both sides carry. It is an exact-name join,
+// not a similarity score: every field name in the descriptor must appear in
+// the struct, and a struct with no descriptor stays unnamed.
+//
+// The join has to allow for the two sides describing different LAYOUTS of the
+// same type. The descriptor is the runtime C++ struct; this field table is the
+// serialised form, which adds a TemplateSymbol and an "<X>_IsNull" companion
+// per optional field, so dctools.Fog holds LightColor at +80 here but at +96
+// there. Byte offsets therefore cannot join them -- only names can.
+//
+// Coverage is partial and deliberately so. The descriptors present in the
+// image are overwhelmingly level_scripting and behavior_tree types, whose
+// fields barely appear in this table, while every dctools descriptor matches:
+// 2143 of its 2144 field names are here. What is named is named exactly; the
+// rest is addressed by (library, id).
 //
 // Extraction is reproducible: tools/dump_smschema.java walks the record shape
-// above over 0x142000000..0x143000000 and writes the TSV this header is
-// generated from. Regenerate when the game patches.
+// above and writes the field TSV, tools/smschema_names.py reads the type
+// descriptors straight out of the PE (no Ghidra, no running game), and this
+// script generates the header. Regenerate when the game patches.
 //
 // GENERATED -- do not edit by hand.
-// Fields: 10474   Structs: 1427   Distinct field names: 7557
+// Fields: 18410   Structs: 2975   Libraries: 912   Named: 196   Distinct field names: 7557
 // Source: GoWR.exe (PE x86-64, image base 0x140000000)
 
 #include <cstdint>
@@ -70,144 +98,31 @@ struct Field {
 };
 
 struct Struct {
-    uint16_t     id;
+    uint16_t     library;      // which registered library the id belongs to
+    uint16_t     id;           // ownerStructId, unique only within the library
     uint16_t     fieldCount;
+    uint32_t     runtimeSize;  // size of the runtime C++ struct; 0 if unnamed
+    const char*  name;         // "namespace.TypeName", or nullptr if unnamed
     const Field* fields;
 };
 
-inline constexpr Field kFields_0000[] = {
+inline constexpr Field kFields_L0000_S0000[] = {
     {"XboxViewButton", 0, 0, 0x0000, 16861},
     {"DrawSimRoot", 0, 0, 0x0001, 0},
     {"DrawContacts", 0, 0, 0x0001, 0},
     {"DrawAABB", 0, 0, 0x0001, 0},
     {"denorm", 0, 0, 0x0001, 0},
-    {"Gaussian", 0, 0, 0x0000, 16886},
-    {"k900P", 0, 0, 0x0000, 16889},
-    {"k30FPS", 0, 0, 0x0000, 16889},
-    {"eCMT_Invalid", 0, 0, 0x0000, 16889},
-    {"XAxis", 0, 0, 0x0000, 16890},
-    {"Linear", 0, 0, 0x0000, 16890},
-    {"drawConeOff", 0, 0, 0x0000, 16890},
-    {"drawTextOff", 0, 0, 0x0000, 16890},
-    {"Min", 0, 0, 0x0000, 16863},
-    {"Local", 0, 0, 0x0000, 16861},
-    {"Off", 0, 0, 0x0000, 16890},
-    {"Shape_Box", 0, 0, 0x0000, 16890},
-    {"selected", 0, 0, 0x0000, 16872},
-    {"DefaultFlags", 0, 0, 0x0000, 16890},
-    {"ColorUnselected", 0, 238, 0x0000, 16890},
-    {"CurveType_Hermite", 0, 0, 0x0000, 16890},
-    {"LeftStick", 0, 0, 0x0000, 16890},
-    {"eDocked", 0, 0, 0x0000, 16891},
-    {"eDPForever", 0, 0, 0x0000, 16892},
-    {"None", 0, 0, 0x0000, 16892},
-    {"HIKSolvingStepRollExtraction", 0, 1, 0x0000, 16892},
-    {"HIKSolvingStepLeftArmSnS", 0, 2, 0x0000, 16892},
-    {"HIKSolvingStepRightArmSnS", 0, 4, 0x0000, 16892},
-    {"HIKSolvingStepLeftLegSnS", 0, 8, 0x0000, 16892},
-    {"HIKSolvingStepRightLegSnS", 0, 16, 0x0000, 16892},
-    {"HIKSolvingStepModifiers", 0, 32, 0x0000, 16892},
-    {"GuassianSqrt", 1, 0, 0x0000, 16865},
-    {"k1080P", 1, 0, 0x0000, 16889},
-    {"k60FPS", 1, 0, 0x0000, 16889},
-    {"eCMT_Block", 1, 0, 0x0000, 16889},
-    {"YAxis", 1, 0, 0x0000, 16890},
-    {"SmoothStep", 1, 0, 0x0000, 16886},
-    {"drawConeOn", 1, 0, 0x0000, 16890},
-    {"drawTextOn", 1, 0, 0x0000, 16871},
-    {"Max", 1, 0, 0x0000, 16890},
-    {"World", 1, 0, 0x0000, 16890},
-    {"LPF", 1, 0, 0x0000, 16890},
-    {"Shape_Sphere", 1, 0, 0x0000, 16854},
-    {"first", 1, 0, 0x0000, 16872},
-    {"CurveType_Bezier", 1, 0, 0x0000, 16890},
-    {"RightStick", 1, 0, 0x0000, 16890},
-    {"eEnteringBoatFromDock", 1, 0, 0x0000, 16891},
-    {"eDPActionDuration", 1, 0, 0x0000, 16890},
-    {"KPAUnpin", 1, 0, 0x0000, 16892},
-    {"HIKSolvingStepBodyPull", 1, 0, 0x0000, 16892},
-    {"Active", 1, 0, 0x0000, 16854},
-    {"Linear", 2, 0, 0x0000, 16886},
-    {"k4K", 2, 0, 0x0000, 16889},
-    {"k40FPS", 2, 0, 0x0000, 16889},
-    {"eCMT_Evade", 2, 0, 0x0000, 16889},
-    {"ZAxis", 2, 0, 0x0000, 16865},
-    {"Gaussian", 2, 0, 0x0000, 16890},
-    {"Average", 2, 0, 0x0000, 16890},
-    {"HPF", 2, 0, 0x0000, 16890},
-    {"second", 2, 0, 0x0000, 16890},
-    {"eInBoat", 2, 0, 0x0000, 16891},
-    {"HIKSolvingStepContact", 2, 0, 0x0000, 16892},
-    {"All", 2, 0, 0x0000, 16880},
-    {"Quadratic", 3, 0, 0x0000, 16886},
-    {"k720P", 3, 0, 0x0000, 16889},
-    {"k120FPS", 3, 0, 0x0000, 16889},
-    {"eCMT_Parry", 3, 0, 0x0000, 16889},
-    {"_kStateCount", 3, 0, 0x0000, 16890},
-    {"AnimCurve", 3, 0, 0x0000, 16890},
-    {"Multiply", 3, 0, 0x0000, 16890},
-    {"APF", 3, 0, 0x0000, 16890},
-    {"third", 3, 0, 0x0000, 16890},
-    {"CurveType_Bezier_Interactive", 3, 0, 0x0000, 16870},
-    {"eDockingOnDock", 3, 0, 0x0000, 16891},
-    {"_kDiscoveryTypCount", 3, 0, 0x0000, 16869},
-    {"MaxSplitPositions", 4, 0, 0x0000, 16886},
-    {"k1440P", 4, 0, 0x0000, 16889},
-    {"eCMT_SonGrab_Success", 4, 0, 0x0000, 16889},
-    {"GeoAvg", 4, 0, 0x0000, 16871},
-    {"BPF", 4, 0, 0x0000, 16884},
-    {"last", 4, 0, 0x0000, 16890},
-    {"k180UpCW", 4, 0, 0x0000, 16891},
-    {"k180Min", 4, 0, 0x0000, 16891},
-    {"eEnteringBoatFromBeach", 4, 0, 0x0000, 16891},
-    {"HIKSolvingStepContactApprox", 4, 0, 0x0000, 16892},
-    {"eCMT_SonGrab_Fail", 5, 0, 0x0000, 16889},
-    {"Notch", 5, 0, 0x0000, 16890},
-    {"k180UpCCW", 5, 0, 0x0000, 16891},
-    {"eDockingOnBeach", 5, 0, 0x0000, 16891},
-    {"eCMT_SonFollowUp", 6, 0, 0x0000, 16868},
-    {"PEQ", 6, 0, 0x0000, 16890},
-    {"k180DownCW", 6, 0, 0x0000, 16891},
-    {"eBeached", 6, 0, 0x0000, 16891},
-    {"LSH", 7, 0, 0x0000, 16890},
-    {"k180DownCCW", 7, 0, 0x0000, 16891},
-    {"k180Max", 7, 0, 0x0000, 16891},
-    {"HSH", 8, 0, 0x0000, 16890},
-    {"k360CW", 8, 0, 0x0000, 16891},
-    {"k360Min", 8, 0, 0x0000, 16891},
-    {"HIKSolvingStepLeftShoulder", 8, 0, 0x0000, 16892},
-    {"Rendering", 9, 0, 0x0000, 16871},
-    {"k360CCW", 9, 0, 0x0000, 16868},
-    {"k360Max", 9, 0, 0x0000, 16891},
-    {"TargetFPS", 15, 0, 0x00F0, 0},
-    {"EmitterZoneCount", 16, 0, 0x0000, 16886},
-    {"MaxEmitterPriority", 16, 0, 0x0000, 16886},
-    {"HIKSolvingStepRightShoulder", 16, 0, 0x0000, 16892},
-    {"HIKSolvingStepLeftArm", 32, 0, 0x0000, 16892},
-    {"KRNoEvent", 36, 0, 0x0000, 16892},
-    {"KREventMismatch", 37, 0, 0x0000, 16892},
-    {"HIKSolvingStepRightArm", 64, 0, 0x0000, 16892},
-    {"k128", 128, 0, 0x0000, 16890},
-    {"HIKSolvingStepLeftLeg", 128, 0, 0x0000, 16892},
-    {"ColorHULL", 255, 255, 0x0000, 16890},
-    {"k256", 256, 0, 0x0000, 16890},
-    {"HIKSolvingStepRightLeg", 256, 0, 0x0000, 16892},
-    {"k512", 512, 0, 0x0000, 16890},
-    {"HIKSolvingStepLeftHand", 512, 0, 0x0000, 16892},
-    {"HIKSolvingStepRightHand", 1024, 0, 0x0000, 16892},
-    {"HIKSolvingStepLeftFoot", 2048, 0, 0x0000, 16892},
-    {"HIKSolvingStepRightFoot", 4096, 0, 0x0000, 16892},
-    {"HIKSolvingStepHead", 8192, 0, 0x0000, 16892},
-    {"HIKSolvingStepSpine", 16384, 0, 0x0000, 16892},
-    {"HIKSolvingStepAllParts", 32760, 0, 0x0000, 16892},
-    {"HIKSolvingStepHipsTranslation", 32768, 0, 0x0000, 16892},
 };
 
-inline constexpr Field kFields_0001[] = {
+inline constexpr Field kFields_L0000_S0001[] = {
     {"attrVersion", 0, 0, 0x86A0, 0},
 };
 
-inline constexpr Field kFields_000B[] = {
+inline constexpr Field kFields_L0001_S0000[] = {
+    {"TargetFPS", 15, 0, 0x00F0, 0},
+};
+
+inline constexpr Field kFields_L0001_S000B[] = {
     {"Away", 0, 2, 0x0008, 30},
     {"Up", 2, 2, 0x0008, 31},
     {"Right", 4, 2, 0x0008, 32},
@@ -218,7 +133,7 @@ inline constexpr Field kFields_000B[] = {
     {"ConstantImpulseRadius", 12, 2, 0x0008, 34},
 };
 
-inline constexpr Field kFields_000C[] = {
+inline constexpr Field kFields_L0001_S000C[] = {
     {"Time", 0, 4, 0x0008, 35},
     {"Distance", 4, 4, 0x0008, 36},
     {"EaseIn", 8, 4, 0x0008, 37},
@@ -227,12 +142,12 @@ inline constexpr Field kFields_000C[] = {
     {"LengthOut", 20, 4, 0x0008, 40},
 };
 
-inline constexpr Field kFields_000D[] = {
+inline constexpr Field kFields_L0001_S000D[] = {
     {"guid_", 0, 8, 0x0018, 0},
     {"joint_id_", 8, 2, 0x0000, 5},
 };
 
-inline constexpr Field kFields_000E[] = {
+inline constexpr Field kFields_L0001_S000E[] = {
     {"node_", 0, 8, 0x0020, 15},
     {"in_", 8, 4, 0x0008, 41},
     {"fromMin_", 12, 4, 0x0008, 42},
@@ -242,7 +157,7 @@ inline constexpr Field kFields_000E[] = {
     {"remapInput_", 28, 1, 0x0014, 0},
 };
 
-inline constexpr Field kFields_000F[] = {
+inline constexpr Field kFields_L0001_S000F[] = {
     {"input0_", 0, 0, 0x002C, 14},
     {"input1_", 32, 0, 0x002C, 14},
     {"input2_", 64, 0, 0x002C, 14},
@@ -256,7 +171,7 @@ inline constexpr Field kFields_000F[] = {
     {"num_inputs", 264, 4, 0x0000, 7},
 };
 
-inline constexpr Field kFields_0010[] = {
+inline constexpr Field kFields_L0001_S0010[] = {
     {"input8_", 272, 0, 0x002C, 14},
     {"input9_", 304, 0, 0x002C, 14},
     {"input10_", 336, 0, 0x002C, 14},
@@ -506,7 +421,21 @@ inline constexpr Field kFields_0010[] = {
     {"output127_out_", 4616, 4, 0x0008, 854},
 };
 
-inline constexpr Field kFields_0011[] = {
+inline constexpr Field kFields_L0002_S000F[] = {
+    {"input0_", 0, 0, 0x002C, 14},
+    {"input1_", 32, 0, 0x002C, 14},
+    {"input2_", 64, 0, 0x002C, 14},
+    {"input3_", 96, 0, 0x002C, 14},
+    {"input4_", 128, 0, 0x002C, 14},
+    {"input5_", 160, 0, 0x002C, 14},
+    {"input6_", 192, 0, 0x002C, 14},
+    {"input7_", 224, 0, 0x002C, 14},
+    {"output0_out_", 256, 4, 0x0008, 895},
+    {"num_outputs", 260, 4, 0x0000, 10},
+    {"num_inputs", 264, 4, 0x0000, 11},
+};
+
+inline constexpr Field kFields_L0002_S0011[] = {
     {"input8_", 272, 0, 0x002C, 14},
     {"input9_", 304, 0, 0x002C, 14},
     {"input10_", 336, 0, 0x002C, 14},
@@ -567,13 +496,27 @@ inline constexpr Field kFields_0011[] = {
     {"layer_offset_", 1180, 4, 0x0000, 12},
 };
 
-inline constexpr Field kFields_0012[] = {
+inline constexpr Field kFields_L0002_S0012[] = {
     {"node_", 0, 8, 0x0020, 15},
     {"rbfwidth_", 8, 4, 0x0008, 1047},
     {"rbfkernel_", 12, 1, 0x0104, 3},
 };
 
-inline constexpr Field kFields_0013[] = {
+inline constexpr Field kFields_L0003_S000F[] = {
+    {"input0_", 0, 0, 0x002C, 14},
+    {"input1_", 32, 0, 0x002C, 14},
+    {"input2_", 64, 0, 0x002C, 14},
+    {"input3_", 96, 0, 0x002C, 14},
+    {"input4_", 128, 0, 0x002C, 14},
+    {"input5_", 160, 0, 0x002C, 14},
+    {"input6_", 192, 0, 0x002C, 14},
+    {"input7_", 224, 0, 0x002C, 14},
+    {"output0_out_", 256, 4, 0x0008, 1088},
+    {"num_outputs", 260, 4, 0x0000, 13},
+    {"num_inputs", 264, 4, 0x0000, 14},
+};
+
+inline constexpr Field kFields_L0003_S0013[] = {
     {"input8_", 272, 0, 0x002C, 14},
     {"input9_", 304, 0, 0x002C, 14},
     {"input10_", 336, 0, 0x002C, 14},
@@ -744,7 +687,21 @@ inline constexpr Field kFields_0013[] = {
     {"sample15_node_", 1672, 8, 0x0020, 15},
 };
 
-inline constexpr Field kFields_0014[] = {
+inline constexpr Field kFields_L0004_S000F[] = {
+    {"input0_", 0, 0, 0x002C, 14},
+    {"input1_", 32, 0, 0x002C, 14},
+    {"input2_", 64, 0, 0x002C, 14},
+    {"input3_", 96, 0, 0x002C, 14},
+    {"input4_", 128, 0, 0x002C, 14},
+    {"input5_", 160, 0, 0x002C, 14},
+    {"input6_", 192, 0, 0x002C, 14},
+    {"input7_", 224, 0, 0x002C, 14},
+    {"output0_out_", 256, 4, 0x0008, 1376},
+    {"num_outputs", 260, 4, 0x0000, 16},
+    {"num_inputs", 264, 4, 0x0000, 17},
+};
+
+inline constexpr Field kFields_L0004_S0014[] = {
     {"kernelFunc", 272, 1, 0x0104, 4},
     {"isBase", 273, 1, 0x0014, 209},
     {"TargetValue0", 276, 4, 0x0008, 1377},
@@ -910,7 +867,21 @@ inline constexpr Field kFields_0014[] = {
     {"driver31_", 916, 4, 0x0008, 1537},
 };
 
-inline constexpr Field kFields_0015[] = {
+inline constexpr Field kFields_L0005_S000F[] = {
+    {"input0_", 0, 0, 0x002C, 14},
+    {"input1_", 32, 0, 0x002C, 14},
+    {"input2_", 64, 0, 0x002C, 14},
+    {"input3_", 96, 0, 0x002C, 14},
+    {"input4_", 128, 0, 0x002C, 14},
+    {"input5_", 160, 0, 0x002C, 14},
+    {"input6_", 192, 0, 0x002C, 14},
+    {"input7_", 224, 0, 0x002C, 14},
+    {"output0_out_", 256, 4, 0x0008, 1578},
+    {"num_outputs", 260, 4, 0x0000, 18},
+    {"num_inputs", 264, 4, 0x0000, 19},
+};
+
+inline constexpr Field kFields_L0005_S0015[] = {
     {"joint_input_", 272, 0, 0x002C, 13},
     {"readAxis", 288, 1, 0x0104, 5},
     {"interpMode", 292, 4, 0x0104, 6},
@@ -932,12 +903,40 @@ inline constexpr Field kFields_0015[] = {
     {"lineWidth", 344, 4, 0x0008, 1590},
 };
 
-inline constexpr Field kFields_0016[] = {
+inline constexpr Field kFields_L0006_S000F[] = {
+    {"input0_", 0, 0, 0x002C, 14},
+    {"input1_", 32, 0, 0x002C, 14},
+    {"input2_", 64, 0, 0x002C, 14},
+    {"input3_", 96, 0, 0x002C, 14},
+    {"input4_", 128, 0, 0x002C, 14},
+    {"input5_", 160, 0, 0x002C, 14},
+    {"input6_", 192, 0, 0x002C, 14},
+    {"input7_", 224, 0, 0x002C, 14},
+    {"output0_out_", 256, 4, 0x0008, 1631},
+    {"num_outputs", 260, 4, 0x0000, 22},
+    {"num_inputs", 264, 4, 0x0000, 23},
+};
+
+inline constexpr Field kFields_L0006_S0016[] = {
     {"envelope", 272, 4, 0x0008, 1632},
     {"triggerMode", 276, 1, 0x0104, 9},
 };
 
-inline constexpr Field kFields_0017[] = {
+inline constexpr Field kFields_L0007_S000F[] = {
+    {"input0_", 0, 0, 0x002C, 14},
+    {"input1_", 32, 0, 0x002C, 14},
+    {"input2_", 64, 0, 0x002C, 14},
+    {"input3_", 96, 0, 0x002C, 14},
+    {"input4_", 128, 0, 0x002C, 14},
+    {"input5_", 160, 0, 0x002C, 14},
+    {"input6_", 192, 0, 0x002C, 14},
+    {"input7_", 224, 0, 0x002C, 14},
+    {"output0_out_", 256, 4, 0x0008, 1673},
+    {"num_outputs", 260, 4, 0x0000, 24},
+    {"num_inputs", 264, 4, 0x0000, 25},
+};
+
+inline constexpr Field kFields_L0007_S0017[] = {
     {"pos0_", 272, 0, 0x002C, 13},
     {"pos1_", 288, 0, 0x002C, 13},
     {"output1_out_", 304, 4, 0x0008, 1674},
@@ -945,7 +944,21 @@ inline constexpr Field kFields_0017[] = {
     {"output3_out_", 312, 4, 0x0008, 1676},
 };
 
-inline constexpr Field kFields_0018[] = {
+inline constexpr Field kFields_L0008_S000F[] = {
+    {"input0_", 0, 0, 0x002C, 14},
+    {"input1_", 32, 0, 0x002C, 14},
+    {"input2_", 64, 0, 0x002C, 14},
+    {"input3_", 96, 0, 0x002C, 14},
+    {"input4_", 128, 0, 0x002C, 14},
+    {"input5_", 160, 0, 0x002C, 14},
+    {"input6_", 192, 0, 0x002C, 14},
+    {"input7_", 224, 0, 0x002C, 14},
+    {"output0_out_", 256, 4, 0x0008, 1717},
+    {"num_outputs", 260, 4, 0x0000, 28},
+    {"num_inputs", 264, 4, 0x0000, 29},
+};
+
+inline constexpr Field kFields_L0008_S0018[] = {
     {"joint_input_", 272, 0, 0x002C, 13},
     {"output1_out_", 288, 4, 0x0008, 1718},
     {"output2_out_", 292, 4, 0x0008, 1719},
@@ -961,7 +974,21 @@ inline constexpr Field kFields_0018[] = {
     {"transformSpace", 323, 1, 0x0104, 10},
 };
 
-inline constexpr Field kFields_0019[] = {
+inline constexpr Field kFields_L0009_S000F[] = {
+    {"input0_", 0, 0, 0x002C, 14},
+    {"input1_", 32, 0, 0x002C, 14},
+    {"input2_", 64, 0, 0x002C, 14},
+    {"input3_", 96, 0, 0x002C, 14},
+    {"input4_", 128, 0, 0x002C, 14},
+    {"input5_", 160, 0, 0x002C, 14},
+    {"input6_", 192, 0, 0x002C, 14},
+    {"input7_", 224, 0, 0x002C, 14},
+    {"output0_out_", 256, 4, 0x0008, 1766},
+    {"num_outputs", 260, 4, 0x0000, 31},
+    {"num_inputs", 264, 4, 0x0000, 32},
+};
+
+inline constexpr Field kFields_L0009_S0019[] = {
     {"input8_", 272, 0, 0x002C, 14},
     {"input9_", 304, 0, 0x002C, 14},
     {"input10_", 336, 0, 0x002C, 14},
@@ -988,31 +1015,31 @@ inline constexpr Field kFields_0019[] = {
     {"joint_output_", 896, 0, 0x002C, 13},
 };
 
-inline constexpr Field kFields_001A[] = {
+inline constexpr Field kFields_L0009_S001A[] = {
     {"PortalName", 0, 8, 0x0018, 0},
     {"PortalGUID", 8, 8, 0x0018, 0},
     {"PortalIsGameObject", 16, 1, 0x0014, 273},
 };
 
-inline constexpr Field kFields_001B[] = {
+inline constexpr Field kFields_L0009_S001B[] = {
     {"EmitterName", 0, 8, 0x0018, 0},
     {"EmitterGUID", 8, 8, 0x0018, 0},
     {"EmitterIsGameObject", 16, 1, 0x0014, 274},
 };
 
-inline constexpr Field kFields_001C[] = {
+inline constexpr Field kFields_L0009_S001C[] = {
     {"ObjectName", 0, 8, 0x0018, 0},
     {"GameObjectGUID", 8, 8, 0x0018, 0},
     {"IsGameObject", 16, 1, 0x0014, 275},
 };
 
-inline constexpr Field kFields_001D[] = {
+inline constexpr Field kFields_L0009_S001D[] = {
     {"LinkName", 0, 8, 0x0018, 0},
     {"LinkGUID", 8, 8, 0x0018, 0},
     {"LinkIsGameObject", 16, 1, 0x0014, 276},
 };
 
-inline constexpr Field kFields_001E[] = {
+inline constexpr Field kFields_L0009_S001E[] = {
     {"Zones", 0, 12, 0x0024, 0},
     {"ZoneCount", 12, 4, 0x0000, 38},
     {"Portals", 16, 12, 0x0024, 1},
@@ -1025,16 +1052,16 @@ inline constexpr Field kFields_001E[] = {
     {"LinkIndexStartForZone", 80, 12, 0x0024, 5},
 };
 
-inline constexpr Field kFields_001F[] = {
+inline constexpr Field kFields_L0009_S001F[] = {
     {"Placeholder", 0, 1, 0x0014, 277},
 };
 
-inline constexpr Field kFields_0020[] = {
+inline constexpr Field kFields_L0009_S0020[] = {
     {"RTPCName", 0, 8, 0x0018, 0},
     {"RTPCFunction", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0021[] = {
+inline constexpr Field kFields_L0009_S0021[] = {
     {"ContainingZoneOverrides", 0, 384, 0x0024, 6},
     {"Sound", 384, 16, 0x0024, 7},
     {"RTPCData", 400, 12, 0x0024, 8},
@@ -1095,13 +1122,13 @@ inline constexpr Field kFields_0021[] = {
     {"OffsetInCameraSpace", 542, 1, 0x0000, 48},
 };
 
-inline constexpr Field kFields_0022[] = {
+inline constexpr Field kFields_L0009_S0022[] = {
     {"Mode", 0, 1, 0x0104, 12},
     {"Gain", 4, 4, 0x0008, 1872},
     {"Freq", 8, 4, 0x0008, 1873},
 };
 
-inline constexpr Field kFields_0023[] = {
+inline constexpr Field kFields_L0009_S0023[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Environment", 8, 80, 0x0024, 9},
     {"Ambience", 88, 8, 0x0010, 0},
@@ -1112,21 +1139,21 @@ inline constexpr Field kFields_0023[] = {
     {"ContainingRoom", 112, 0, 0x002C, 28},
 };
 
-inline constexpr Field kFields_0024[] = {
+inline constexpr Field kFields_L0009_S0024[] = {
     {"PortalTweakName", 0, 8, 0x0018, 0},
     {"StartEnabled", 8, 1, 0x0014, 314},
 };
 
-inline constexpr Field kFields_0025[] = {
+inline constexpr Field kFields_L0009_S0025[] = {
     {"Portals", 0, 12, 0x0024, 10},
     {"PrimaryPortal", 12, 4, 0x0000, 49},
 };
 
-inline constexpr Field kFields_0026[] = {
+inline constexpr Field kFields_L0009_S0026[] = {
     {"ThreatScalar", 0, 4, 0x0008, 1877},
 };
 
-inline constexpr Field kFields_0027[] = {
+inline constexpr Field kFields_L0009_S0027[] = {
     {"Sound", 0, 8, 0x0018, 0},
     {"SoundEmitter", 8, 8, 0x0018, 0},
     {"TriggerRange", 16, 4, 0x0008, 1878},
@@ -1135,34 +1162,34 @@ inline constexpr Field kFields_0027[] = {
     {"StartEnabled", 22, 1, 0x0014, 316},
 };
 
-inline constexpr Field kFields_0028[] = {
+inline constexpr Field kFields_L0009_S0028[] = {
     {"EventSound", 0, 8, 0x0018, 0},
     {"EventFrame", 8, 4, 0x0000, 50},
 };
 
-inline constexpr Field kFields_0029[] = {
+inline constexpr Field kFields_L0009_S0029[] = {
     {"Events", 0, 12, 0x0024, 11},
     {"DistanceCull", 12, 4, 0x0008, 1879},
     {"SoundEmitter", 16, 8, 0x0018, 0},
     {"EventCount", 24, 4, 0x0000, 51},
 };
 
-inline constexpr Field kFields_002A[] = {
+inline constexpr Field kFields_L0009_S002A[] = {
     {"Profile", 12, 1, 0x0204, 15},
 };
 
-inline constexpr Field kFields_002B[] = {
+inline constexpr Field kFields_L0009_S002B[] = {
     {"Start", 0, 2, 0x0008, 1883},
     {"End", 2, 2, 0x0008, 1884},
 };
 
-inline constexpr Field kFields_002C[] = {
+inline constexpr Field kFields_L0009_S002C[] = {
     {"Min", 0, 2, 0x0008, 1885},
     {"Center", 2, 2, 0x0008, 1886},
     {"Max", 4, 2, 0x0008, 1887},
 };
 
-inline constexpr Field kFields_002D[] = {
+inline constexpr Field kFields_L0009_S002D[] = {
     {"Left", 0, 2, 0x0008, 1888},
     {"Right", 2, 2, 0x0008, 1889},
     {"Down", 4, 2, 0x0008, 1890},
@@ -1171,7 +1198,7 @@ inline constexpr Field kFields_002D[] = {
     {"Forward", 10, 2, 0x0008, 1893},
 };
 
-inline constexpr Field kFields_002E[] = {
+inline constexpr Field kFields_L0009_S002E[] = {
     {"ID", 0, 4, 0x0001, 52},
     {"Type", 4, 4, 0x0105, 16},
     {"TweenDriver", 8, 1, 0x0104, 17},
@@ -1184,7 +1211,7 @@ inline constexpr Field kFields_002E[] = {
     {"Script", 72, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_002F[] = {
+inline constexpr Field kFields_L0009_S002F[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"AutoFirstSplitDistance", 88, 4, 0x0008, 1922},
     {"AutoLastSplitDistance", 92, 4, 0x0008, 1923},
@@ -1220,7 +1247,20 @@ inline constexpr Field kFields_002F[] = {
     {"CascadeTailResolutionScale_IsNull", 161, 1, 0x0016, 334},
 };
 
-inline constexpr Field kFields_0030[] = {
+inline constexpr Field kFields_L000A_S002E[] = {
+    {"ID", 0, 4, 0x0001, 58},
+    {"Type", 4, 4, 0x0105, 20},
+    {"TweenDriver", 8, 1, 0x0104, 21},
+    {"Hold", 9, 1, 0x0014, 335},
+    {"Priority", 12, 4, 0x0000, 59},
+    {"Weight", 16, 4, 0x0008, 1936},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 1943},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L000A_S0030[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"SSAOStrength", 88, 4, 0x0008, 1950},
     {"SSAORadius", 92, 4, 0x0008, 1951},
@@ -1232,7 +1272,20 @@ inline constexpr Field kFields_0030[] = {
     {"CapsuleStrength_IsNull", 107, 1, 0x0016, 339},
 };
 
-inline constexpr Field kFields_0031[] = {
+inline constexpr Field kFields_L000B_S002E[] = {
+    {"ID", 0, 4, 0x0001, 60},
+    {"Type", 4, 4, 0x0105, 22},
+    {"TweenDriver", 8, 1, 0x0104, 23},
+    {"Hold", 9, 1, 0x0014, 340},
+    {"Priority", 12, 4, 0x0000, 61},
+    {"Weight", 16, 4, 0x0008, 1954},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 1961},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L000B_S0031[] = {
     {"ExposureBiasRamp", 80, 12, 0x0024, 12},
     {"ExposureBias", 92, 4, 0x0008, 1968},
     {"TemplateSymbol", 96, 8, 0x001A, 0},
@@ -1262,7 +1315,20 @@ inline constexpr Field kFields_0031[] = {
     {"AutoExposureDepthWeightExponent_IsNull", 157, 1, 0x0016, 353},
 };
 
-inline constexpr Field kFields_0032[] = {
+inline constexpr Field kFields_L000C_S002E[] = {
+    {"ID", 0, 4, 0x0001, 62},
+    {"Type", 4, 4, 0x0105, 25},
+    {"TweenDriver", 8, 1, 0x0104, 26},
+    {"Hold", 9, 1, 0x0014, 354},
+    {"Priority", 12, 4, 0x0000, 63},
+    {"Weight", 16, 4, 0x0008, 1979},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 1986},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L000C_S0032[] = {
     {"Shadows", 80, 0, 0x002C, 1427},
     {"Midtones", 92, 0, 0x002C, 1427},
     {"Highlights", 104, 0, 0x002C, 1427},
@@ -1286,7 +1352,20 @@ inline constexpr Field kFields_0032[] = {
     {"PreserveLuminosity_IsNull", 170, 1, 0x0016, 365},
 };
 
-inline constexpr Field kFields_0033[] = {
+inline constexpr Field kFields_L000D_S002E[] = {
+    {"ID", 0, 4, 0x0001, 64},
+    {"Type", 4, 4, 0x0105, 27},
+    {"TweenDriver", 8, 1, 0x0104, 28},
+    {"Hold", 9, 1, 0x0014, 366},
+    {"Priority", 12, 4, 0x0000, 65},
+    {"Weight", 16, 4, 0x0008, 2009},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2016},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L000D_S0033[] = {
     {"VignetteColor", 80, 0, 0x002C, 1},
     {"TemplateSymbol", 96, 8, 0x001A, 0},
     {"Brightness", 104, 4, 0x0008, 2027},
@@ -1298,19 +1377,58 @@ inline constexpr Field kFields_0033[] = {
     {"VignetteColor_IsNull", 119, 1, 0x0016, 370},
 };
 
-inline constexpr Field kFields_0034[] = {
+inline constexpr Field kFields_L000E_S002E[] = {
+    {"ID", 0, 4, 0x0001, 66},
+    {"Type", 4, 4, 0x0105, 29},
+    {"TweenDriver", 8, 1, 0x0104, 30},
+    {"Hold", 9, 1, 0x0014, 371},
+    {"Priority", 12, 4, 0x0000, 67},
+    {"Weight", 16, 4, 0x0008, 2030},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2037},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L000E_S0034[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"VelocityMultiplier", 88, 4, 0x0008, 2044},
     {"VelocityMultiplier_IsNull", 92, 1, 0x0016, 372},
 };
 
-inline constexpr Field kFields_0035[] = {
+inline constexpr Field kFields_L000F_S002E[] = {
+    {"ID", 0, 4, 0x0001, 68},
+    {"Type", 4, 4, 0x0105, 31},
+    {"TweenDriver", 8, 1, 0x0104, 32},
+    {"Hold", 9, 1, 0x0014, 373},
+    {"Priority", 12, 4, 0x0000, 69},
+    {"Weight", 16, 4, 0x0008, 2045},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2052},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L000F_S0035[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"Amount", 88, 4, 0x0008, 2059},
     {"Amount_IsNull", 92, 1, 0x0016, 374},
 };
 
-inline constexpr Field kFields_0036[] = {
+inline constexpr Field kFields_L0010_S002E[] = {
+    {"ID", 0, 4, 0x0001, 70},
+    {"Type", 4, 4, 0x0105, 33},
+    {"TweenDriver", 8, 1, 0x0104, 34},
+    {"Hold", 9, 1, 0x0014, 375},
+    {"Priority", 12, 4, 0x0000, 71},
+    {"Weight", 16, 4, 0x0008, 2060},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2067},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0010_S0036[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"Width", 88, 4, 0x0008, 2074},
     {"Opacity", 92, 4, 0x0008, 2075},
@@ -1322,7 +1440,20 @@ inline constexpr Field kFields_0036[] = {
     {"AdditionalWidthScale_IsNull", 107, 1, 0x0016, 379},
 };
 
-inline constexpr Field kFields_0037[] = {
+inline constexpr Field kFields_L0011_S002E[] = {
+    {"ID", 0, 4, 0x0001, 72},
+    {"Type", 4, 4, 0x0105, 35},
+    {"TweenDriver", 8, 1, 0x0104, 36},
+    {"Hold", 9, 1, 0x0014, 380},
+    {"Priority", 12, 4, 0x0000, 73},
+    {"Weight", 16, 4, 0x0008, 2078},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2085},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0011_S0037[] = {
     {"LightColor", 80, 0, 0x002C, 1},
     {"HazeColor", 96, 0, 0x002C, 1},
     {"TemplateSymbol", 112, 8, 0x001A, 0},
@@ -1356,7 +1487,20 @@ inline constexpr Field kFields_0037[] = {
     {"OverrideSkyDepth_IsNull", 180, 1, 0x0016, 397},
 };
 
-inline constexpr Field kFields_0038[] = {
+inline constexpr Field kFields_L0012_S002E[] = {
+    {"ID", 0, 4, 0x0001, 74},
+    {"Type", 4, 4, 0x0105, 37},
+    {"TweenDriver", 8, 1, 0x0104, 38},
+    {"Hold", 9, 1, 0x0014, 398},
+    {"Priority", 12, 4, 0x0000, 75},
+    {"Weight", 16, 4, 0x0008, 2111},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2118},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0012_S0038[] = {
     {"SunHazeAlbedo", 80, 0, 0x002C, 1},
     {"FogAlbedo", 96, 0, 0x002C, 1},
     {"FogEmissiveTint", 112, 0, 0x002C, 1},
@@ -1458,7 +1602,20 @@ inline constexpr Field kFields_0038[] = {
     {"DistanceLUTMaxDistance_IsNull", 375, 1, 0x0016, 452},
 };
 
-inline constexpr Field kFields_0039[] = {
+inline constexpr Field kFields_L0013_S002E[] = {
+    {"ID", 0, 4, 0x0001, 78},
+    {"Type", 4, 4, 0x0105, 40},
+    {"TweenDriver", 8, 1, 0x0104, 41},
+    {"Hold", 9, 1, 0x0014, 453},
+    {"Priority", 12, 4, 0x0000, 79},
+    {"Weight", 16, 4, 0x0008, 2180},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2187},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0013_S0039[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"EnableSSR", 88, 4, 0x0008, 2194},
     {"EnableSSR_IsNull", 92, 1, 0x0016, 454},
@@ -1466,7 +1623,7 @@ inline constexpr Field kFields_0039[] = {
     {"ObjectThickness_IsNull", 100, 1, 0x0016, 455},
 };
 
-inline constexpr Field kFields_003A[] = {
+inline constexpr Field kFields_L0013_S003A[] = {
     {"Color", 0, 0, 0x002C, 1},
     {"IntensityScale", 16, 4, 0x0008, 2200},
     {"PositionOffset", 20, 4, 0x0008, 2201},
@@ -1495,7 +1652,7 @@ inline constexpr Field kFields_003A[] = {
     {"TexturePath", 72, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_003B[] = {
+inline constexpr Field kFields_L0013_S003B[] = {
     {"Sprites", 0, 2560, 0x0024, 13},
     {"SpriteCount", 2560, 1, 0x0000, 81},
     {"GlobalIntensityScale", 2564, 4, 0x0008, 2218},
@@ -1515,7 +1672,7 @@ inline constexpr Field kFields_003B[] = {
     {"IsVanaheimSkyLensFlare", 2614, 1, 0x0014, 466},
 };
 
-inline constexpr Field kFields_003C[] = {
+inline constexpr Field kFields_L0013_S003C[] = {
     {"Color", 0, 0, 0x002C, 1},
     {"ProjectorTextureFilename", 16, 8, 0x0018, 0},
     {"PerLightShadowProxyUUID", 24, 8, 0x0018, 0},
@@ -1577,7 +1734,20 @@ inline constexpr Field kFields_003C[] = {
     {"HighQualityOnly", 170, 1, 0x0014, 484},
 };
 
-inline constexpr Field kFields_003D[] = {
+inline constexpr Field kFields_L0014_S002E[] = {
+    {"ID", 0, 4, 0x0001, 86},
+    {"Type", 4, 4, 0x0105, 51},
+    {"TweenDriver", 8, 1, 0x0104, 52},
+    {"Hold", 9, 1, 0x0014, 485},
+    {"Priority", 12, 4, 0x0000, 87},
+    {"Weight", 16, 4, 0x0008, 2261},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2268},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0014_S003D[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"Default", 88, 4, 0x0008, 2275},
     {"NaturalSunSky", 92, 4, 0x0008, 2276},
@@ -1663,7 +1833,20 @@ inline constexpr Field kFields_003D[] = {
     {"FreyaBifrost_IsNull", 292, 1, 0x0016, 526},
 };
 
-inline constexpr Field kFields_003E[] = {
+inline constexpr Field kFields_L0015_S002E[] = {
+    {"ID", 0, 4, 0x0001, 88},
+    {"Type", 4, 4, 0x0105, 53},
+    {"TweenDriver", 8, 1, 0x0104, 54},
+    {"Hold", 9, 1, 0x0014, 527},
+    {"Priority", 12, 4, 0x0000, 89},
+    {"Weight", 16, 4, 0x0008, 2316},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2323},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0015_S003E[] = {
     {"Tint", 80, 0, 0x002C, 1},
     {"EnvironmentMapCapturePosition", 96, 0, 0x002C, 7},
     {"InteriorEnvironmentMapCapturePosition", 108, 0, 0x002C, 7},
@@ -1693,7 +1876,20 @@ inline constexpr Field kFields_003E[] = {
     {"NoGiOcclusionIsHemisphere_IsNull", 185, 1, 0x0016, 541},
 };
 
-inline constexpr Field kFields_003F[] = {
+inline constexpr Field kFields_L0016_S002E[] = {
+    {"ID", 0, 4, 0x0001, 92},
+    {"Type", 4, 4, 0x0105, 55},
+    {"TweenDriver", 8, 1, 0x0104, 56},
+    {"Hold", 9, 1, 0x0014, 542},
+    {"Priority", 12, 4, 0x0000, 93},
+    {"Weight", 16, 4, 0x0008, 2345},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2352},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0016_S003F[] = {
     {"SunColor", 80, 0, 0x002C, 1},
     {"TemplateSymbol", 96, 8, 0x001A, 0},
     {"ProjectorTextureFilename", 104, 8, 0x0018, 0},
@@ -1731,7 +1927,7 @@ inline constexpr Field kFields_003F[] = {
     {"CinematicGIScale_IsNull", 177, 1, 0x0016, 559},
 };
 
-inline constexpr Field kFields_0040[] = {
+inline constexpr Field kFields_L0016_S0040[] = {
     {"CapturePosition", 0, 0, 0x002C, 7},
     {"InfluencePosition", 12, 0, 0x002C, 7},
     {"InfluenceScale", 24, 0, 0x002C, 7},
@@ -1746,7 +1942,7 @@ inline constexpr Field kFields_0040[] = {
     {"Shape", 99, 1, 0x0104, 63},
 };
 
-inline constexpr Field kFields_0041[] = {
+inline constexpr Field kFields_L0016_S0041[] = {
     {"Layer", 0, 1, 0x0104, 64},
     {"priority", 4, 4, 0x0008, 2397},
     {"sampleOffset", 8, 4, 0x0008, 2398},
@@ -1756,19 +1952,19 @@ inline constexpr Field kFields_0041[] = {
     {"TintTarget", 48, 0, 0x002C, 1},
 };
 
-inline constexpr Field kFields_0042[] = {
+inline constexpr Field kFields_L0016_S0042[] = {
     {"MinResolution", 0, 1, 0x0000, 95},
     {"MaxResolution", 1, 1, 0x0000, 96},
     {"Priority", 4, 4, 0x0008, 2409},
 };
 
-inline constexpr Field kFields_0043[] = {
+inline constexpr Field kFields_L0016_S0043[] = {
     {"Layer", 0, 1, 0x0104, 65},
     {"priority", 4, 4, 0x0008, 2410},
     {"sampleOffset", 8, 4, 0x0008, 2411},
 };
 
-inline constexpr Field kFields_0044[] = {
+inline constexpr Field kFields_L0016_S0044[] = {
     {"Layer", 0, 1, 0x0104, 66},
     {"sizeX", 4, 4, 0x0008, 2412},
     {"sizeY", 8, 4, 0x0008, 2413},
@@ -1778,7 +1974,7 @@ inline constexpr Field kFields_0044[] = {
     {"Filename", 24, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0045[] = {
+inline constexpr Field kFields_L0016_S0045[] = {
     {"Layer", 0, 1, 0x0104, 67},
     {"sizeX", 4, 4, 0x0008, 2417},
     {"sizeY", 8, 4, 0x0008, 2418},
@@ -1788,7 +1984,7 @@ inline constexpr Field kFields_0045[] = {
     {"Filename", 24, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0046[] = {
+inline constexpr Field kFields_L0016_S0046[] = {
     {"Filename", 0, 8, 0x0018, 0},
     {"FlowMapName", 8, 8, 0x0018, 0},
     {"CustomRTSwizzle", 16, 4, 0x0000, 97},
@@ -1809,37 +2005,50 @@ inline constexpr Field kFields_0046[] = {
     {"IsGlobalMap", 73, 1, 0x0014, 560},
 };
 
-inline constexpr Field kFields_0047[] = {
+inline constexpr Field kFields_L0016_S0047[] = {
     {"Height", 0, 4, 0x0008, 2435},
     {"Radius", 4, 4, 0x0008, 2436},
 };
 
-inline constexpr Field kFields_0048[] = {
+inline constexpr Field kFields_L0017_S002E[] = {
+    {"ID", 0, 4, 0x0001, 98},
+    {"Type", 4, 4, 0x0105, 69},
+    {"TweenDriver", 8, 1, 0x0104, 70},
+    {"Hold", 9, 1, 0x0014, 561},
+    {"Priority", 12, 4, 0x0000, 99},
+    {"Weight", 16, 4, 0x0008, 2437},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2444},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0017_S0048[] = {
     {"Near", 80, 4, 0x0008, 2451},
     {"Far", 84, 4, 0x0008, 2452},
 };
 
-inline constexpr Field kFields_0049[] = {
+inline constexpr Field kFields_L0017_S0049[] = {
     {"SnapTarget", 0, 4, 0x0000, 100},
 };
 
-inline constexpr Field kFields_004A[] = {
+inline constexpr Field kFields_L0017_S004A[] = {
     {"MinCutoff", 0, 4, 0x0008, 2453},
     {"MinActive", 4, 4, 0x0008, 2454},
     {"MaxActive", 8, 4, 0x0008, 2455},
     {"MaxCutoff", 12, 4, 0x0008, 2456},
 };
 
-inline constexpr Field kFields_004B[] = {
+inline constexpr Field kFields_L0017_S004B[] = {
     {"AssistDuration", 16, 4, 0x0008, 2461},
 };
 
-inline constexpr Field kFields_004C[] = {
+inline constexpr Field kFields_L0017_S004C[] = {
     {"ActivationRange", 0, 4, 0x0008, 2462},
     {"MaxRange", 4, 4, 0x0008, 2463},
 };
 
-inline constexpr Field kFields_004D[] = {
+inline constexpr Field kFields_L0017_S004D[] = {
     {"TweenIn", 0, 0, 0x002C, 12},
     {"TweenOut", 24, 0, 0x002C, 12},
     {"Preset", 48, 8, 0x0018, 0},
@@ -1888,13 +2097,13 @@ inline constexpr Field kFields_004D[] = {
     {"RespectRoll", 223, 1, 0x0014, 568},
 };
 
-inline constexpr Field kFields_004E[] = {
+inline constexpr Field kFields_L0017_S004E[] = {
     {"Ratio", 0, 4, 0x0008, 2506},
     {"Minimum", 4, 4, 0x0008, 2507},
     {"Limit", 8, 4, 0x0008, 2508},
 };
 
-inline constexpr Field kFields_004F[] = {
+inline constexpr Field kFields_L0017_S004F[] = {
     {"TimeStart", 0, 4, 0x0008, 2509},
     {"TimeDuration", 4, 4, 0x0008, 2510},
     {"MoveStart", 8, 4, 0x0008, 2511},
@@ -1932,7 +2141,20 @@ inline constexpr Field kFields_004F[] = {
     {"Direction", 149, 1, 0x0104, 74},
 };
 
-inline constexpr Field kFields_0050[] = {
+inline constexpr Field kFields_L0018_S002E[] = {
+    {"ID", 0, 4, 0x0001, 102},
+    {"Type", 4, 4, 0x0105, 75},
+    {"TweenDriver", 8, 1, 0x0104, 76},
+    {"Hold", 9, 1, 0x0014, 569},
+    {"Priority", 12, 4, 0x0000, 103},
+    {"Weight", 16, 4, 0x0008, 2546},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2553},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0018_S0050[] = {
     {"RotationSpeed", 80, 4, 0x0008, 2560},
     {"RotationMaxThreshold", 84, 4, 0x0008, 2561},
     {"RotationMaxVelocity", 88, 4, 0x0008, 2562},
@@ -1952,7 +2174,7 @@ inline constexpr Field kFields_0050[] = {
     {"ControlType", 144, 1, 0x0104, 77},
 };
 
-inline constexpr Field kFields_0051[] = {
+inline constexpr Field kFields_L0018_S0051[] = {
     {"VelocityMin", 0, 4, 0x0008, 2576},
     {"VelocityMax", 4, 4, 0x0008, 2577},
     {"AngleForwardMin", 8, 4, 0x0008, 2578},
@@ -1963,7 +2185,7 @@ inline constexpr Field kFields_0051[] = {
     {"FilterSpace", 28, 1, 0x0104, 78},
 };
 
-inline constexpr Field kFields_0052[] = {
+inline constexpr Field kFields_L0018_S0052[] = {
     {"RotationSpace", 0, 1, 0x0104, 79},
     {"RotationMax", 4, 4, 0x0008, 2583},
     {"RotationLeft", 8, 4, 0x0008, 2584},
@@ -1975,7 +2197,7 @@ inline constexpr Field kFields_0052[] = {
     {"ElevationSoft", 40, 0, 0x002C, 78},
 };
 
-inline constexpr Field kFields_0053[] = {
+inline constexpr Field kFields_L0018_S0053[] = {
     {"From", 0, 12, 0x0024, 14},
     {"To", 16, 12, 0x0024, 15},
     {"Tween", 28, 0, 0x002C, 12},
@@ -1984,14 +2206,14 @@ inline constexpr Field kFields_0053[] = {
     {"Effect", 56, 12, 0x0024, 16},
 };
 
-inline constexpr Field kFields_0055[] = {
+inline constexpr Field kFields_L0018_S0055[] = {
     {"Top", 0, 4, 0x0008, 2604},
     {"Bottom", 4, 4, 0x0008, 2605},
     {"Left", 8, 4, 0x0008, 2606},
     {"Right", 12, 4, 0x0008, 2607},
 };
 
-inline constexpr Field kFields_0056[] = {
+inline constexpr Field kFields_L0018_S0056[] = {
     {"Left", 0, 4, 0x0008, 2608},
     {"Right", 4, 4, 0x0008, 2609},
     {"Center", 8, 4, 0x0008, 2610},
@@ -2002,12 +2224,12 @@ inline constexpr Field kFields_0056[] = {
     {"MaxRotateSpeed", 28, 4, 0x0008, 2615},
 };
 
-inline constexpr Field kFields_0057[] = {
+inline constexpr Field kFields_L0018_S0057[] = {
     {"Key", 0, 12, 0x0024, 17},
     {"InputTarget", 12, 1, 0x0104, 80},
 };
 
-inline constexpr Field kFields_0058[] = {
+inline constexpr Field kFields_L0018_S0058[] = {
     {"Curve", 0, 8, 0x0018, 0},
     {"SnapToNearest", 8, 1, 0x0014, 572},
     {"FlipCurve", 9, 1, 0x0014, 573},
@@ -2016,7 +2238,56 @@ inline constexpr Field kFields_0058[] = {
     {"CurveAdvance", 20, 4, 0x0008, 2618},
 };
 
-inline constexpr Field kFields_0059[] = {
+inline constexpr Field kFields_L0019_S004D[] = {
+    {"TweenIn", 0, 0, 0x002C, 12},
+    {"TweenOut", 24, 0, 0x002C, 12},
+    {"Preset", 48, 8, 0x0018, 0},
+    {"Name", 56, 8, 0x0018, 0},
+    {"Set", 64, 8, 0x0010, 0},
+    {"Joint", 72, 8, 0x0010, 0},
+    {"ZoomSnapRange", 80, 8, 0x001C, 75},
+    {"LockOnRange", 88, 8, 0x001C, 76},
+    {"Offset", 96, 0, 0x002C, 6},
+    {"Priority", 102, 2, 0x0000, 104},
+    {"CapsuleRatio", 104, 4, 0x0008, 2634},
+    {"Type", 108, 4, 0x0204, 81},
+    {"BaseWeight", 112, 4, 0x0008, 2635},
+    {"MinDistance", 116, 4, 0x0008, 2636},
+    {"MaxDistance", 120, 4, 0x0008, 2637},
+    {"Radius", 124, 4, 0x0008, 2638},
+    {"VisibilityRadius", 128, 4, 0x0008, 2639},
+    {"Damping", 132, 4, 0x0008, 2640},
+    {"DampingRadius", 136, 4, 0x0008, 2641},
+    {"YawDamping", 140, 4, 0x0008, 2642},
+    {"YawDampingMax", 144, 4, 0x0008, 2643},
+    {"YawDampingSoftRatio", 148, 4, 0x0008, 2644},
+    {"PitchDamping", 152, 4, 0x0008, 2645},
+    {"PitchDampingMax", 156, 4, 0x0008, 2646},
+    {"PitchDampingSoftRatio", 160, 4, 0x0008, 2647},
+    {"RollDamping", 164, 4, 0x0008, 2648},
+    {"RollDampingMax", 168, 4, 0x0008, 2649},
+    {"RollDampingSoftRatio", 172, 4, 0x0008, 2650},
+    {"ZoomSnapTargetRadius", 176, 4, 0x0008, 2651},
+    {"ZoomSnapRadius", 180, 4, 0x0008, 2652},
+    {"ZoomSnapScreenAngle", 184, 4, 0x0008, 2653},
+    {"AimSphereCoreRadius", 188, 4, 0x0008, 2654},
+    {"AimSphereRadius", 192, 4, 0x0008, 2655},
+    {"AimSphereScreenAngle", 196, 4, 0x0008, 2656},
+    {"AimCylinderCoreRadius", 200, 4, 0x0008, 2657},
+    {"AimCylinderNearRadius", 204, 4, 0x0008, 2658},
+    {"AimCylinderMidRadius", 208, 4, 0x0008, 2659},
+    {"AimCylinderFarRadius", 212, 4, 0x0008, 2660},
+    {"RadiusFromCapsule", 216, 1, 0x0014, 574},
+    {"Synthetic", 217, 1, 0x0104, 82},
+    {"DefaultOn", 218, 1, 0x0014, 575},
+    {"SelfOcclude", 219, 1, 0x0014, 576},
+    {"AlwaysVisible", 220, 1, 0x0014, 577},
+    {"RespectYaw", 221, 1, 0x0014, 578},
+    {"RespectPitch", 222, 1, 0x0014, 579},
+    {"RespectRoll", 223, 1, 0x0014, 580},
+};
+
+inline constexpr Field kFields_L0019_S0059[] = {
     {"Position", 224, 4, 0x0008, 2661},
     {"StartTarget", 232, 8, 0x0018, 0},
     {"StartOffset", 240, 0, 0x002C, 7},
@@ -2026,7 +2297,20 @@ inline constexpr Field kFields_0059[] = {
     {"EndStrength", 276, 4, 0x0008, 2669},
 };
 
-inline constexpr Field kFields_005A[] = {
+inline constexpr Field kFields_L001A_S002E[] = {
+    {"ID", 0, 4, 0x0001, 105},
+    {"Type", 4, 4, 0x0105, 83},
+    {"TweenDriver", 8, 1, 0x0104, 84},
+    {"Hold", 9, 1, 0x0014, 581},
+    {"Priority", 12, 4, 0x0000, 106},
+    {"Weight", 16, 4, 0x0008, 2670},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 2677},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L001A_S005A[] = {
     {"SafeZone", 80, 0, 0x002C, 85},
     {"PlayerSafeZone", 96, 0, 0x002C, 85},
     {"PlayerFrame", 112, 0, 0x002C, 85},
@@ -2326,11 +2610,11 @@ inline constexpr Field kFields_005A[] = {
     {"RotateToRail_IsNull", 899, 1, 0x0016, 761},
 };
 
-inline constexpr Field kFields_005B[] = {
+inline constexpr Field kFields_L001A_S005B[] = {
     {"Type", 0, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_005C[] = {
+inline constexpr Field kFields_L001A_S005C[] = {
     {"BottomToAnkle", 0, 4, 0x0008, 2776},
     {"BackToAnkle", 4, 4, 0x0008, 2777},
     {"MiddleToAnkle", 8, 4, 0x0008, 2778},
@@ -2340,7 +2624,7 @@ inline constexpr Field kFields_005C[] = {
     {"BottomToToe", 24, 4, 0x0008, 2782},
 };
 
-inline constexpr Field kFields_005D[] = {
+inline constexpr Field kFields_L001A_S005D[] = {
     {"FrontToMiddle", 0, 4, 0x0008, 2783},
     {"BackToWrist", 4, 4, 0x0008, 2784},
     {"BottomToWrist", 8, 4, 0x0008, 2785},
@@ -2348,14 +2632,14 @@ inline constexpr Field kFields_005D[] = {
     {"OutToWrist", 16, 4, 0x0008, 2787},
 };
 
-inline constexpr Field kFields_005E[] = {
+inline constexpr Field kFields_L001A_S005E[] = {
     {"HikcFilePath", 0, 8, 0x0018, 0},
     {"IkConfigurationFilePath", 8, 8, 0x0018, 0},
     {"IkFeetProperties", 16, 0, 0x002C, 92},
     {"IkHandsProperties", 44, 0, 0x002C, 93},
 };
 
-inline constexpr Field kFields_005F[] = {
+inline constexpr Field kFields_L001A_S005F[] = {
     {"FirstChildIDX", 0, 4, 0x0000, 113},
     {"NextSiblingIDX", 4, 4, 0x0000, 114},
     {"MoveName", 8, 8, 0x0018, 0},
@@ -2369,40 +2653,40 @@ inline constexpr Field kFields_005F[] = {
     {"RightHandEndRotation", 68, 0, 0x002C, 9},
 };
 
-inline constexpr Field kFields_0060[] = {
+inline constexpr Field kFields_L001A_S0060[] = {
     {"TraversePathGraph", 0, 12, 0x0024, 23},
 };
 
-inline constexpr Field kFields_0061[] = {
+inline constexpr Field kFields_L001A_S0061[] = {
     {"MoveName", 0, 8, 0x0018, 0},
     {"MoveId", 8, 8, 0x0018, 0},
     {"Callback", 16, 8, 0x0018, 0},
     {"Flags", 24, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0063[] = {
+inline constexpr Field kFields_L001A_S0063[] = {
     {"PrimaryCharacter", 0, 1, 0x0104, 94},
 };
 
-inline constexpr Field kFields_0064[] = {
+inline constexpr Field kFields_L001A_S0064[] = {
     {"curvept", 0, 0, 0x002C, 9},
     {"tangentpt", 8, 0, 0x002C, 9},
 };
 
-inline constexpr Field kFields_0065[] = {
+inline constexpr Field kFields_L001A_S0065[] = {
     {"curvepts", 0, 12, 0x0024, 24},
     {"num_segs", 12, 4, 0x0000, 115},
     {"anchors", 16, 12, 0x0024, 25},
     {"splinetype", 28, 4, 0x0000, 116},
 };
 
-inline constexpr Field kFields_0066[] = {
+inline constexpr Field kFields_L001A_S0066[] = {
     {"Type", 0, 1, 0x0104, 95},
     {"ZoneFlags", 1, 1, 0x0204, 96},
     {"StaticWillNotMoveOrTouchDynamicNavmesh", 2, 1, 0x0014, 762},
 };
 
-inline constexpr Field kFields_0067[] = {
+inline constexpr Field kFields_L001A_S0067[] = {
     {"ShapeType", 0, 1, 0x0104, 97},
     {"BoxWidth", 4, 4, 0x0008, 2826},
     {"BoxHeight", 8, 4, 0x0008, 2827},
@@ -2416,7 +2700,7 @@ inline constexpr Field kFields_0067[] = {
     {"SweepAngleHeight", 40, 4, 0x0008, 2835},
 };
 
-inline constexpr Field kFields_0068[] = {
+inline constexpr Field kFields_L001A_S0068[] = {
     {"ContextActionZoneData", 0, 0, 0x002C, 103},
     {"ExitAngle", 44, 0, 0x002C, 7},
     {"MoveType", 56, 8, 0x0018, 4},
@@ -2439,13 +2723,13 @@ inline constexpr Field kFields_0068[] = {
     {"IsConnectedToExternalSystem", 142, 1, 0x0014, 765},
 };
 
-inline constexpr Field kFields_0069[] = {
+inline constexpr Field kFields_L001A_S0069[] = {
     {"Text", 0, 8, 0x0018, 0},
     {"MinDistance", 8, 4, 0x0008, 2857},
     {"MaxDistance", 12, 4, 0x0008, 2858},
 };
 
-inline constexpr Field kFields_006A[] = {
+inline constexpr Field kFields_L001A_S006A[] = {
     {"WetnessTintColor", 0, 0, 0x002C, 1},
     {"WetnessHeight", 16, 4, 0x0008, 2863},
     {"WetnessTransitionDistance", 20, 4, 0x0008, 2864},
@@ -2456,7 +2740,7 @@ inline constexpr Field kFields_006A[] = {
     {"WetnessTintEnable", 40, 1, 0x0014, 766},
 };
 
-inline constexpr Field kFields_006B[] = {
+inline constexpr Field kFields_L001A_S006B[] = {
     {"Material", 0, 8, 0x0018, 0},
     {"Angle", 8, 4, 0x0008, 2869},
     {"Angular_Transition", 12, 4, 0x0008, 2870},
@@ -2469,7 +2753,7 @@ inline constexpr Field kFields_006B[] = {
     {"ViewID", 31, 1, 0x0104, 100},
 };
 
-inline constexpr Field kFields_006C[] = {
+inline constexpr Field kFields_L001A_S006C[] = {
     {"RotationalMass", 0, 0, 0x002C, 7},
     {"InitialLinearVelocity", 12, 0, 0x002C, 7},
     {"InitialAngularVelocity", 24, 0, 0x002C, 7},
@@ -2487,32 +2771,44 @@ inline constexpr Field kFields_006C[] = {
     {"IsRagdoll", 65, 1, 0x0015, 771},
 };
 
-inline constexpr Field kFields_006D[] = {
+inline constexpr Field kFields_L001A_S006D[] = {
     {"RigidBodyId", 0, 2, 0x0005, 103},
 };
 
-inline constexpr Field kFields_006E[] = {
+inline constexpr Field kFields_L001A_S006E[] = {
     {"sizeX", 4, 4, 0x0008, 2889},
     {"sizeY", 8, 4, 0x0008, 2890},
     {"sizeZ", 12, 4, 0x0008, 2891},
 };
 
-inline constexpr Field kFields_006F[] = {
+inline constexpr Field kFields_L001B_S006D[] = {
+    {"RigidBodyId", 0, 2, 0x0005, 105},
+};
+
+inline constexpr Field kFields_L001B_S006F[] = {
     {"Flags", 2, 1, 0x0204, 106},
     {"radius", 4, 4, 0x0008, 2892},
 };
 
-inline constexpr Field kFields_0070[] = {
+inline constexpr Field kFields_L001C_S006D[] = {
+    {"RigidBodyId", 0, 2, 0x0005, 107},
+};
+
+inline constexpr Field kFields_L001C_S0070[] = {
     {"height", 4, 4, 0x0008, 2893},
     {"radius", 8, 4, 0x0008, 2894},
 };
 
-inline constexpr Field kFields_0071[] = {
+inline constexpr Field kFields_L001D_S006D[] = {
+    {"RigidBodyId", 0, 2, 0x0005, 108},
+};
+
+inline constexpr Field kFields_L001D_S0071[] = {
     {"height", 4, 4, 0x0008, 2895},
     {"radius", 8, 4, 0x0008, 2896},
 };
 
-inline constexpr Field kFields_0072[] = {
+inline constexpr Field kFields_L001D_S0072[] = {
     {"Width", 0, 4, 0x0008, 2897},
     {"Height", 4, 4, 0x0008, 2898},
     {"Depth", 8, 4, 0x0008, 2899},
@@ -2522,7 +2818,7 @@ inline constexpr Field kFields_0072[] = {
     {"DepthDivisions", 15, 1, 0x0000, 122},
 };
 
-inline constexpr Field kFields_0073[] = {
+inline constexpr Field kFields_L001D_S0073[] = {
     {"Radius", 0, 4, 0x0008, 2900},
     {"Strength", 4, 4, 0x0008, 2901},
     {"Height", 8, 4, 0x0008, 2902},
@@ -2532,7 +2828,7 @@ inline constexpr Field kFields_0073[] = {
     {"Projected", 18, 1, 0x0014, 772},
 };
 
-inline constexpr Field kFields_0074[] = {
+inline constexpr Field kFields_L001D_S0074[] = {
     {"Width", 0, 4, 0x0008, 2904},
     {"Height", 4, 4, 0x0008, 2905},
     {"Depth", 8, 4, 0x0008, 2906},
@@ -2542,14 +2838,14 @@ inline constexpr Field kFields_0074[] = {
     {"DepthDivisions", 15, 1, 0x0000, 126},
 };
 
-inline constexpr Field kFields_0075[] = {
+inline constexpr Field kFields_L001D_S0075[] = {
     {"Volumes", 0, 12, 0x0024, 26},
     {"height", 12, 4, 0x0008, 2907},
     {"radius", 16, 4, 0x0008, 2908},
     {"FlightVolumeType", 20, 1, 0x0104, 111},
 };
 
-inline constexpr Field kFields_0076[] = {
+inline constexpr Field kFields_L001D_S0076[] = {
     {"Parameter", 0, 12, 0x0024, 27},
     {"Type", 12, 2, 0x0104, 112},
     {"Policy", 14, 1, 0x0004, 113},
@@ -2558,7 +2854,7 @@ inline constexpr Field kFields_0076[] = {
     {"VolumeID", 28, 1, 0x0004, 115},
 };
 
-inline constexpr Field kFields_0077[] = {
+inline constexpr Field kFields_L001D_S0077[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"GroundType", 8, 8, 0x0204, 116},
     {"CollisionEntityType", 16, 1, 0x0104, 117},
@@ -2566,7 +2862,7 @@ inline constexpr Field kFields_0077[] = {
     {"ThrowableResponse", 24, 8, 0x0010, 6},
 };
 
-inline constexpr Field kFields_0078[] = {
+inline constexpr Field kFields_L001D_S0078[] = {
     {"PhysicsWorld", 0, 1, 0x0104, 119},
     {"CollisionSharedProperties", 8, 8, 0x0010, 7},
     {"MaterialFX", 16, 8, 0x0010, 8},
@@ -2576,14 +2872,14 @@ inline constexpr Field kFields_0078[] = {
     {"IsEntityTrigger", 30, 1, 0x0014, 773},
 };
 
-inline constexpr Field kFields_007A[] = {
+inline constexpr Field kFields_L001D_S007A[] = {
     {"LowSpeedDensity", 0, 4, 0x0008, 2909},
     {"HighSpeedDensity", 4, 4, 0x0008, 2910},
     {"HighSpeed", 8, 4, 0x0008, 2911},
     {"WeightScale", 12, 4, 0x0008, 2912},
 };
 
-inline constexpr Field kFields_007B[] = {
+inline constexpr Field kFields_L001D_S007B[] = {
     {"Geometry", 0, 8, 0x0018, 0},
     {"MayaPath", 8, 8, 0x0018, 0},
     {"BurstStart", 16, 4, 0x0008, 2913},
@@ -2645,18 +2941,18 @@ inline constexpr Field kFields_007B[] = {
     {"Mute", 208, 1, 0x0014, 778},
 };
 
-inline constexpr Field kFields_007C[] = {
+inline constexpr Field kFields_L001D_S007C[] = {
     {"Index", 0, 4, 0x0000, 132},
     {"Position", 4, 4, 0x0008, 2957},
     {"FloatValue", 8, 4, 0x0008, 2958},
     {"Interp", 12, 1, 0x0104, 126},
 };
 
-inline constexpr Field kFields_007D[] = {
+inline constexpr Field kFields_L001D_S007D[] = {
     {"Entries", 0, 12, 0x0024, 29},
 };
 
-inline constexpr Field kFields_007E[] = {
+inline constexpr Field kFields_L001D_S007E[] = {
     {"Index", 0, 4, 0x0000, 133},
     {"Position", 4, 4, 0x0008, 2959},
     {"Red", 8, 4, 0x0008, 2960},
@@ -2665,11 +2961,11 @@ inline constexpr Field kFields_007E[] = {
     {"Interp", 20, 1, 0x0104, 127},
 };
 
-inline constexpr Field kFields_007F[] = {
+inline constexpr Field kFields_L001D_S007F[] = {
     {"Entries", 0, 12, 0x0024, 30},
 };
 
-inline constexpr Field kFields_0080[] = {
+inline constexpr Field kFields_L001D_S0080[] = {
     {"FieldType", 0, 1, 0x0104, 128},
     {"magnitude", 4, 4, 0x0008, 2963},
     {"attenuation", 8, 4, 0x0008, 2964},
@@ -2692,7 +2988,7 @@ inline constexpr Field kFields_0080[] = {
     {"MayaPath", 72, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0081[] = {
+inline constexpr Field kFields_L001D_S0081[] = {
     {"DecalCollisionResponse", 0, 32, 0x0024, 31},
     {"MFXCollisionSwitches", 32, 24, 0x0024, 32},
     {"smLifeTime", 56, 0, 0x002C, 125},
@@ -2870,7 +3166,7 @@ inline constexpr Field kFields_0081[] = {
     {"HideInPhotoMode", 718, 1, 0x0014, 812},
 };
 
-inline constexpr Field kFields_0082[] = {
+inline constexpr Field kFields_L001D_S0082[] = {
     {"RayLength", 0, 4, 0x0008, 3084},
     {"LODDistance", 4, 4, 0x0008, 3085},
     {"MFXSwitch0", 8, 8, 0x0010, 0},
@@ -2880,7 +3176,7 @@ inline constexpr Field kFields_0082[] = {
     {"UseOwnerGameObject", 40, 1, 0x0014, 813},
 };
 
-inline constexpr Field kFields_0083[] = {
+inline constexpr Field kFields_L001D_S0083[] = {
     {"TargetColor0", 0, 0, 0x002C, 1},
     {"TargetColor1", 16, 0, 0x002C, 1},
     {"TargetColor2", 32, 0, 0x002C, 1},
@@ -2924,16 +3220,16 @@ inline constexpr Field kFields_0083[] = {
     {"TargetFormat7", 208, 1, 0x0104, 158},
 };
 
-inline constexpr Field kFields_0084[] = {
+inline constexpr Field kFields_L001D_S0084[] = {
     {"Enabled", 0, 1, 0x0014, 818},
     {"Radius", 4, 4, 0x0008, 3131},
 };
 
-inline constexpr Field kFields_0085[] = {
+inline constexpr Field kFields_L001D_S0085[] = {
     {"InteractZoneTweak", 0, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0086[] = {
+inline constexpr Field kFields_L001D_S0086[] = {
     {"CandidateSet", 0, 8, 0x0010, 0},
     {"MPIconJointName", 8, 8, 0x0010, 0},
     {"NormalPromptName", 16, 8, 0x0010, 9},
@@ -2990,27 +3286,27 @@ inline constexpr Field kFields_0086[] = {
     {"SystemToNotifyWhenTriggered", 286, 1, 0x0104, 160},
 };
 
-inline constexpr Field kFields_0087[] = {
+inline constexpr Field kFields_L001D_S0087[] = {
     {"ScriptPath", 0, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0088[] = {
+inline constexpr Field kFields_L001D_S0088[] = {
     {"Dummy", 0, 1, 0x0014, 819},
 };
 
-inline constexpr Field kFields_0089[] = {
+inline constexpr Field kFields_L001D_S0089[] = {
     {"Dummy", 0, 1, 0x0014, 820},
 };
 
-inline constexpr Field kFields_008A[] = {
+inline constexpr Field kFields_L001D_S008A[] = {
     {"LootType", 0, 1, 0x0104, 161},
 };
 
-inline constexpr Field kFields_008B[] = {
+inline constexpr Field kFields_L001D_S008B[] = {
     {"Dummy", 0, 1, 0x0014, 821},
 };
 
-inline constexpr Field kFields_008C[] = {
+inline constexpr Field kFields_L001D_S008C[] = {
     {"ConnectedTraverseLinkTypes", 0, 1, 0x0104, 162},
     {"ConnectedTraverseLinkTypes", 0, 12, 0x0024, 44},
     {"Type", 12, 1, 0x0104, 163},
@@ -3020,11 +3316,24 @@ inline constexpr Field kFields_008C[] = {
     {"ConnectedTraverseGraphGUID", 48, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_008D[] = {
+inline constexpr Field kFields_L001D_S008D[] = {
     {"Segments", 0, 12, 0x0024, 46},
 };
 
-inline constexpr Field kFields_008E[] = {
+inline constexpr Field kFields_L001E_S002E[] = {
+    {"ID", 0, 4, 0x0001, 141},
+    {"Type", 4, 4, 0x0105, 164},
+    {"TweenDriver", 8, 1, 0x0104, 165},
+    {"Hold", 9, 1, 0x0014, 822},
+    {"Priority", 12, 4, 0x0000, 142},
+    {"Weight", 16, 4, 0x0008, 3165},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 3172},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L001E_S008E[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"Direction", 88, 0, 0x002C, 6},
     {"Direction_IsNull", 94, 1, 0x0016, 823},
@@ -3034,7 +3343,20 @@ inline constexpr Field kFields_008E[] = {
     {"GustFactor_IsNull", 108, 1, 0x0016, 825},
 };
 
-inline constexpr Field kFields_008F[] = {
+inline constexpr Field kFields_L001F_S002E[] = {
+    {"ID", 0, 4, 0x0001, 143},
+    {"Type", 4, 4, 0x0105, 166},
+    {"TweenDriver", 8, 1, 0x0104, 167},
+    {"Hold", 9, 1, 0x0014, 826},
+    {"Priority", 12, 4, 0x0000, 144},
+    {"Weight", 16, 4, 0x0008, 3184},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 3191},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L001F_S008F[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"EmissionModulate", 88, 4, 0x0008, 3198},
     {"EmissionModulate_IsNull", 92, 1, 0x0016, 827},
@@ -3042,7 +3364,20 @@ inline constexpr Field kFields_008F[] = {
     {"AlphaModulate_IsNull", 100, 1, 0x0016, 828},
 };
 
-inline constexpr Field kFields_0090[] = {
+inline constexpr Field kFields_L0020_S002E[] = {
+    {"ID", 0, 4, 0x0001, 145},
+    {"Type", 4, 4, 0x0105, 168},
+    {"TweenDriver", 8, 1, 0x0104, 169},
+    {"Hold", 9, 1, 0x0014, 829},
+    {"Priority", 12, 4, 0x0000, 146},
+    {"Weight", 16, 4, 0x0008, 3200},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 3207},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0020_S0090[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"DepthSpawnThreshold", 88, 4, 0x0008, 3214},
     {"MinScale", 92, 4, 0x0008, 3215},
@@ -3066,14 +3401,27 @@ inline constexpr Field kFields_0090[] = {
     {"DetailModelsEnabled_IsNull", 125, 1, 0x0016, 840},
 };
 
-inline constexpr Field kFields_0091[] = {
+inline constexpr Field kFields_L0020_S0091[] = {
     {"CreatureCategory", 0, 1, 0x0104, 171},
     {"CameraDistanceScaleMultiplier", 4, 4, 0x0008, 3220},
     {"CameraDistanceOffset", 8, 4, 0x0008, 3221},
     {"LODOffset", 12, 4, 0x0000, 149},
 };
 
-inline constexpr Field kFields_0092[] = {
+inline constexpr Field kFields_L0021_S002E[] = {
+    {"ID", 0, 4, 0x0001, 150},
+    {"Type", 4, 4, 0x0105, 172},
+    {"TweenDriver", 8, 1, 0x0104, 173},
+    {"Hold", 9, 1, 0x0014, 841},
+    {"Priority", 12, 4, 0x0000, 151},
+    {"Weight", 16, 4, 0x0008, 3222},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 3229},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0021_S0092[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"EnableOnPS5", 88, 1, 0x0014, 842},
     {"EnableOnPS5_IsNull", 89, 1, 0x0016, 843},
@@ -3083,7 +3431,7 @@ inline constexpr Field kFields_0092[] = {
     {"CreatureSettings_IsNull", 348, 1, 0x0016, 846},
 };
 
-inline constexpr Field kFields_0093[] = {
+inline constexpr Field kFields_L0021_S0093[] = {
     {"Weather0ID", 0, 8, 0x0010, 0},
     {"Weather1ID", 8, 8, 0x0010, 0},
     {"Weather2ID", 16, 8, 0x0010, 0},
@@ -3091,12 +3439,12 @@ inline constexpr Field kFields_0093[] = {
     {"WadName", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0094[] = {
+inline constexpr Field kFields_L0021_S0094[] = {
     {"Execution", 0, 1, 0x0104, 174},
     {"WeatherStates", 8, 160, 0x0024, 48},
 };
 
-inline constexpr Field kFields_0095[] = {
+inline constexpr Field kFields_L0021_S0095[] = {
     {"Text", 0, 8, 0x0018, 0},
     {"Style", 8, 8, 0x0018, 0},
     {"Camera", 16, 8, 0x0010, 0},
@@ -3108,7 +3456,7 @@ inline constexpr Field kFields_0095[] = {
     {"Pause", 38, 1, 0x0014, 849},
 };
 
-inline constexpr Field kFields_0096[] = {
+inline constexpr Field kFields_L0021_S0096[] = {
     {"BoxObject", 0, 8, 0x0010, 0},
     {"TextObject", 8, 8, 0x0010, 0},
     {"NextTransform", 16, 8, 0x0010, 0},
@@ -3116,35 +3464,43 @@ inline constexpr Field kFields_0096[] = {
     {"TextHeight", 28, 4, 0x0008, 3239},
 };
 
-inline constexpr Field kFields_0098[] = {
+inline constexpr Field kFields_L0021_S0098[] = {
     {"Allowed", 0, 2, 0x0000, 153},
     {"Rejected", 2, 2, 0x0000, 154},
 };
 
-inline constexpr Field kFields_0099[] = {
+inline constexpr Field kFields_L0021_S0099[] = {
     {"Allowed", 0, 4, 0x0000, 155},
     {"Rejected", 4, 4, 0x0000, 156},
 };
 
-inline constexpr Field kFields_009A[] = {
+inline constexpr Field kFields_L0021_S009A[] = {
     {"State", 0, 1, 0x0000, 157},
     {"StateHash", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_009B[] = {
+inline constexpr Field kFields_L0021_S009B[] = {
     {"Group", 0, 8, 0x0010, 0},
     {"Flags", 8, 12, 0x0024, 49},
 };
 
-inline constexpr Field kFields_009C[] = {
+inline constexpr Field kFields_L0021_S009C[] = {
     {"Type", 0, 1, 0x0104, 176},
 };
 
-inline constexpr Field kFields_009D[] = {
+inline constexpr Field kFields_L0021_S009D[] = {
     {"AngularSpeed", 4, 4, 0x0008, 3240},
 };
 
-inline constexpr Field kFields_00A1[] = {
+inline constexpr Field kFields_L0022_S009C[] = {
+    {"Type", 0, 1, 0x0104, 178},
+};
+
+inline constexpr Field kFields_L0022_S009D[] = {
+    {"AngularSpeed", 4, 4, 0x0008, 3241},
+};
+
+inline constexpr Field kFields_L0022_S00A1[] = {
     {"TyresFront", 0, 0, 0x002C, 1433},
     {"TyresRear", 28, 0, 0x002C, 1433},
     {"SuspensionsFront", 56, 0, 0x002C, 1435},
@@ -3163,20 +3519,20 @@ inline constexpr Field kFields_00A1[] = {
     {"ArcadeHandbrakeGripLoss", 228, 4, 0x0008, 3296},
 };
 
-inline constexpr Field kFields_00A2[] = {
+inline constexpr Field kFields_L0022_S00A2[] = {
     {"SteerLimits", 0, 0, 0x002C, 1443},
     {"AutoSteer", 12, 0, 0x002C, 1444},
     {"SteerTime", 32, 4, 0x0008, 3305},
     {"SteerReleaseTime", 36, 4, 0x0008, 3306},
 };
 
-inline constexpr Field kFields_00A3[] = {
+inline constexpr Field kFields_L0022_S00A3[] = {
     {"SpeedForFullEffect", 0, 4, 0x0008, 3307},
     {"SpeedForNoEffect", 4, 4, 0x0008, 3308},
     {"BrakeAmountAtFullEffect", 8, 4, 0x0008, 3309},
 };
 
-inline constexpr Field kFields_00A4[] = {
+inline constexpr Field kFields_L0022_S00A4[] = {
     {"SteeringAngleFront", 0, 4, 0x0008, 3310},
     {"SteeringAngleRear", 4, 4, 0x0008, 3311},
     {"WheelRadiusFront", 8, 4, 0x0008, 3312},
@@ -3189,7 +3545,7 @@ inline constexpr Field kFields_00A4[] = {
     {"SuspensionToCOMRearRight", 44, 0, 0x002C, 7},
 };
 
-inline constexpr Field kFields_00A5[] = {
+inline constexpr Field kFields_L0022_S00A5[] = {
     {"MaxSpeedMultiplier", 0, 4, 0x0008, 3324},
     {"Responsiveness", 4, 4, 0x0008, 3325},
     {"ExtraDriftiness", 8, 4, 0x0008, 3326},
@@ -3198,7 +3554,7 @@ inline constexpr Field kFields_00A5[] = {
     {"DecelerationOverMaxSpeed", 20, 4, 0x0008, 3329},
 };
 
-inline constexpr Field kFields_00A6[] = {
+inline constexpr Field kFields_L0022_S00A6[] = {
     {"Physics", 0, 0, 0x002C, 161},
     {"SteeringFilters", 232, 0, 0x002C, 162},
     {"AutoBrake", 272, 0, 0x002C, 163},
@@ -3206,7 +3562,7 @@ inline constexpr Field kFields_00A6[] = {
     {"HandlingPerMaterial", 344, 0, 0x0028, 0},
 };
 
-inline constexpr Field kFields_00A7[] = {
+inline constexpr Field kFields_L0022_S00A7[] = {
     {"Chassis", 0, 8, 0x0010, 14},
     {"FrontLeftSuspensionJoint", 8, 8, 0x0010, 15},
     {"FrontRightSuspensionJoint", 16, 8, 0x0010, 16},
@@ -3230,7 +3586,7 @@ inline constexpr Field kFields_00A7[] = {
     {"RearRightWheelRotationSDKChannel", 160, 8, 0x0018, 34},
 };
 
-inline constexpr Field kFields_00A8[] = {
+inline constexpr Field kFields_L0022_S00A8[] = {
     {"MaxAngle", 0, 4, 0x0008, 3412},
     {"MaxDistance", 4, 4, 0x0008, 3413},
     {"WeightAngle", 8, 4, 0x0008, 3414},
@@ -3241,12 +3597,12 @@ inline constexpr Field kFields_00A8[] = {
     {"MinScoreForHighRank", 28, 4, 0x0008, 3419},
 };
 
-inline constexpr Field kFields_00A9[] = {
+inline constexpr Field kFields_L0022_S00A9[] = {
     {"IgnoreFlags", 0, 2, 0x0204, 180},
     {"ActiveFlags", 2, 2, 0x0204, 181},
 };
 
-inline constexpr Field kFields_00AA[] = {
+inline constexpr Field kFields_L0022_S00AA[] = {
     {"Type", 0, 1, 0x0105, 182},
     {"Flags", 1, 1, 0x0204, 183},
     {"Condition", 2, 1, 0x0104, 184},
@@ -3255,25 +3611,52 @@ inline constexpr Field kFields_00AA[] = {
     {"Off", 6, 2, 0x0008, 3421},
 };
 
-inline constexpr Field kFields_00AB[] = {
+inline constexpr Field kFields_L0022_S00AB[] = {
     {"Wallet", 8, 8, 0x0010, 0},
     {"Resource", 16, 8, 0x0010, 0},
     {"Amount", 24, 4, 0x0000, 160},
 };
 
-inline constexpr Field kFields_00AC[] = {
+inline constexpr Field kFields_L0023_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 188},
+    {"Flags", 1, 1, 0x0204, 189},
+    {"Condition", 2, 1, 0x0104, 190},
+    {"WeaponLevelMin", 3, 1, 0x0000, 161},
+    {"On", 4, 2, 0x0008, 3424},
+    {"Off", 6, 2, 0x0008, 3425},
+};
+
+inline constexpr Field kFields_L0023_S00AC[] = {
     {"LootFlags", 8, 12, 0x0024, 52},
     {"ClearFlags", 20, 1, 0x0014, 850},
     {"Activate", 21, 1, 0x0014, 851},
 };
 
-inline constexpr Field kFields_00AD[] = {
+inline constexpr Field kFields_L0024_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 191},
+    {"Flags", 1, 1, 0x0204, 192},
+    {"Condition", 2, 1, 0x0104, 193},
+    {"WeaponLevelMin", 3, 1, 0x0000, 162},
+    {"On", 4, 2, 0x0008, 3426},
+    {"Off", 6, 2, 0x0008, 3427},
+};
+
+inline constexpr Field kFields_L0024_S00AD[] = {
     {"Wallet", 8, 8, 0x0010, 0},
     {"Roll", 16, 8, 0x0010, 0},
     {"IsConditionSet", 24, 1, 0x0014, 852},
 };
 
-inline constexpr Field kFields_00AE[] = {
+inline constexpr Field kFields_L0025_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 194},
+    {"Flags", 1, 1, 0x0204, 195},
+    {"Condition", 2, 1, 0x0104, 196},
+    {"WeaponLevelMin", 3, 1, 0x0000, 163},
+    {"On", 4, 2, 0x0008, 3428},
+    {"Off", 6, 2, 0x0008, 3429},
+};
+
+inline constexpr Field kFields_L0025_S00AE[] = {
     {"ActionList", 8, 12, 0x0024, 53},
     {"IgnoreFlags", 20, 0, 0x002C, 169},
     {"SkuList", 24, 12, 0x0024, 54},
@@ -3284,18 +3667,50 @@ inline constexpr Field kFields_00AE[] = {
     {"Filter", 64, 1, 0x0204, 200},
 };
 
-inline constexpr Field kFields_00AF[] = {
+inline constexpr Field kFields_L0026_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 201},
+    {"Flags", 1, 1, 0x0204, 202},
+    {"Condition", 2, 1, 0x0104, 203},
+    {"WeaponLevelMin", 3, 1, 0x0000, 164},
+    {"On", 4, 2, 0x0008, 3431},
+    {"Off", 6, 2, 0x0008, 3432},
+};
+
+inline constexpr Field kFields_L0026_S00AF[] = {
     {"CreateMode", 8, 1, 0x0104, 204},
     {"ScriptName", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_00B0[] = {
+inline constexpr Field kFields_L0027_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 205},
+    {"Flags", 1, 1, 0x0204, 206},
+    {"Condition", 2, 1, 0x0104, 207},
+    {"WeaponLevelMin", 3, 1, 0x0000, 165},
+    {"On", 4, 2, 0x0008, 3433},
+    {"Off", 6, 2, 0x0008, 3434},
+};
+
+inline constexpr Field kFields_L0027_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 208},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L0027_S00B0[] = {
     {"JointName", 24, 8, 0x0010, 0},
     {"Offset", 32, 0, 0x002C, 6},
     {"SpawnFlags", 38, 1, 0x0204, 209},
 };
 
-inline constexpr Field kFields_00B1[] = {
+inline constexpr Field kFields_L0028_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 210},
+    {"Flags", 1, 1, 0x0204, 211},
+    {"Condition", 2, 1, 0x0104, 212},
+    {"WeaponLevelMin", 3, 1, 0x0000, 166},
+    {"On", 4, 2, 0x0008, 3438},
+    {"Off", 6, 2, 0x0008, 3439},
+};
+
+inline constexpr Field kFields_L0028_S00B1[] = {
     {"Name", 8, 8, 0x0010, 0},
     {"RemoteName", 16, 8, 0x0010, 0},
     {"EmitterName", 24, 8, 0x0018, 0},
@@ -3311,7 +3726,16 @@ inline constexpr Field kFields_00B1[] = {
     {"PlayOnChild", 71, 1, 0x0014, 853},
 };
 
-inline constexpr Field kFields_00B2[] = {
+inline constexpr Field kFields_L0029_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 216},
+    {"Flags", 1, 1, 0x0204, 217},
+    {"Condition", 2, 1, 0x0104, 218},
+    {"WeaponLevelMin", 3, 1, 0x0000, 167},
+    {"On", 4, 2, 0x0008, 3443},
+    {"Off", 6, 2, 0x0008, 3444},
+};
+
+inline constexpr Field kFields_L0029_S00B2[] = {
     {"SoundName", 8, 8, 0x0010, 0},
     {"EffectName", 16, 8, 0x0010, 0},
     {"EffectJoint", 24, 8, 0x0010, 0},
@@ -3320,28 +3744,28 @@ inline constexpr Field kFields_00B2[] = {
     {"Invulnerable", 37, 1, 0x0000, 169},
 };
 
-inline constexpr Field kFields_00B3[] = {
+inline constexpr Field kFields_L0029_S00B3[] = {
     {"TemplateSymbol", 0, 8, 0x001A, 0},
     {"AggressivePriority", 8, 1, 0x0000, 170},
     {"AggressivePriority_IsNull", 9, 1, 0x0016, 854},
 };
 
-inline constexpr Field kFields_00B4[] = {
+inline constexpr Field kFields_L0029_S00B4[] = {
     {"MaxRadius", 0, 4, 0x0008, 3446},
     {"Banter", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_00B5[] = {
+inline constexpr Field kFields_L0029_S00B5[] = {
     {"SwitchList", 0, 12, 0x0024, 55},
 };
 
-inline constexpr Field kFields_00B6[] = {
+inline constexpr Field kFields_L0029_S00B6[] = {
     {"Orientation", 0, 1, 0x0104, 219},
     {"FacingOrientation", 1, 1, 0x0104, 220},
     {"JointName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_00B7[] = {
+inline constexpr Field kFields_L0029_S00B7[] = {
     {"TemplateSymbol", 0, 8, 0x001A, 0},
     {"ActType", 8, 1, 0x0104, 221},
     {"ActType_IsNull", 9, 1, 0x0016, 855},
@@ -3351,9 +3775,23 @@ inline constexpr Field kFields_00B7[] = {
     {"LODDistance_IsNull", 16, 1, 0x0016, 857},
 };
 
-inline constexpr Field kFields_00B8[] = {
+inline constexpr Field kFields_L0029_S00B8[] = {
     {"ActType_IsNull", 9, 1, 0x0016, 858},
+};
+
+inline constexpr Field kFields_L002A_S00B7[] = {
+    {"InheritanceType", 10, 1, 0x0104, 224},
+};
+
+inline constexpr Field kFields_L002A_S00B8[] = {
     {"InheritanceType_IsNull", 11, 1, 0x0016, 859},
+};
+
+inline constexpr Field kFields_L002B_S00B7[] = {
+    {"LODDistance", 12, 4, 0x0008, 3448},
+};
+
+inline constexpr Field kFields_L002B_S00B8[] = {
     {"LODDistance_IsNull", 16, 1, 0x0016, 860},
     {"GameObjectNames", 24, 12, 0x0024, 56},
     {"ParticleScale", 36, 4, 0x0008, 3449},
@@ -3369,9 +3807,28 @@ inline constexpr Field kFields_00B8[] = {
     {"AttachmentSide_IsNull", 66, 1, 0x0016, 866},
 };
 
-inline constexpr Field kFields_00B9[] = {
+inline constexpr Field kFields_L002C_S00B7[] = {
+    {"TemplateSymbol", 0, 8, 0x001A, 0},
+    {"ActType", 8, 1, 0x0104, 226},
+};
+
+inline constexpr Field kFields_L002C_S00B9[] = {
     {"ActType_IsNull", 9, 1, 0x0016, 867},
+};
+
+inline constexpr Field kFields_L002D_S00B7[] = {
+    {"InheritanceType", 10, 1, 0x0104, 227},
+};
+
+inline constexpr Field kFields_L002D_S00B9[] = {
     {"InheritanceType_IsNull", 11, 1, 0x0016, 868},
+};
+
+inline constexpr Field kFields_L002E_S00B7[] = {
+    {"LODDistance", 12, 4, 0x0008, 3450},
+};
+
+inline constexpr Field kFields_L002E_S00B9[] = {
     {"LODDistance_IsNull", 16, 1, 0x0016, 869},
     {"GameObjectNames", 24, 12, 0x0024, 57},
     {"Duration", 36, 4, 0x0008, 3451},
@@ -3393,9 +3850,28 @@ inline constexpr Field kFields_00B9[] = {
     {"AllowAttachToCharacter_IsNull", 70, 1, 0x0016, 879},
 };
 
-inline constexpr Field kFields_00BA[] = {
+inline constexpr Field kFields_L002F_S00B7[] = {
+    {"TemplateSymbol", 0, 8, 0x001A, 0},
+    {"ActType", 8, 1, 0x0104, 228},
+};
+
+inline constexpr Field kFields_L002F_S00BA[] = {
     {"ActType_IsNull", 9, 1, 0x0016, 880},
+};
+
+inline constexpr Field kFields_L0030_S00B7[] = {
+    {"InheritanceType", 10, 1, 0x0104, 229},
+};
+
+inline constexpr Field kFields_L0030_S00BA[] = {
     {"InheritanceType_IsNull", 11, 1, 0x0016, 881},
+};
+
+inline constexpr Field kFields_L0031_S00B7[] = {
+    {"LODDistance", 12, 4, 0x0008, 3457},
+};
+
+inline constexpr Field kFields_L0031_S00BA[] = {
     {"LODDistance_IsNull", 16, 1, 0x0016, 882},
     {"Group", 24, 8, 0x0018, 35},
     {"Switch", 32, 8, 0x0018, 0},
@@ -3403,9 +3879,28 @@ inline constexpr Field kFields_00BA[] = {
     {"Switch_IsNull", 41, 1, 0x0016, 884},
 };
 
-inline constexpr Field kFields_00BB[] = {
+inline constexpr Field kFields_L0032_S00B7[] = {
+    {"TemplateSymbol", 0, 8, 0x001A, 0},
+    {"ActType", 8, 1, 0x0104, 230},
+};
+
+inline constexpr Field kFields_L0032_S00BB[] = {
     {"ActType_IsNull", 9, 1, 0x0016, 885},
+};
+
+inline constexpr Field kFields_L0033_S00B7[] = {
+    {"InheritanceType", 10, 1, 0x0104, 231},
+};
+
+inline constexpr Field kFields_L0033_S00BB[] = {
     {"InheritanceType_IsNull", 11, 1, 0x0016, 886},
+};
+
+inline constexpr Field kFields_L0034_S00B7[] = {
+    {"LODDistance", 12, 4, 0x0008, 3458},
+};
+
+inline constexpr Field kFields_L0034_S00BB[] = {
     {"LODDistance_IsNull", 16, 1, 0x0016, 887},
     {"EventName", 24, 8, 0x0010, 0},
     {"EmitterName", 32, 8, 0x0010, 0},
@@ -3415,9 +3910,28 @@ inline constexpr Field kFields_00BB[] = {
     {"EmitterSource_IsNull", 43, 1, 0x0016, 890},
 };
 
-inline constexpr Field kFields_00BC[] = {
+inline constexpr Field kFields_L0035_S00B7[] = {
+    {"TemplateSymbol", 0, 8, 0x001A, 0},
+    {"ActType", 8, 1, 0x0104, 233},
+};
+
+inline constexpr Field kFields_L0035_S00BC[] = {
     {"ActType_IsNull", 9, 1, 0x0016, 891},
+};
+
+inline constexpr Field kFields_L0036_S00B7[] = {
+    {"InheritanceType", 10, 1, 0x0104, 234},
+};
+
+inline constexpr Field kFields_L0036_S00BC[] = {
     {"InheritanceType_IsNull", 11, 1, 0x0016, 892},
+};
+
+inline constexpr Field kFields_L0037_S00B7[] = {
+    {"LODDistance", 12, 4, 0x0008, 3459},
+};
+
+inline constexpr Field kFields_L0037_S00BC[] = {
     {"LODDistance_IsNull", 16, 1, 0x0016, 893},
     {"AttachmentName", 24, 8, 0x0010, 0},
     {"RegionMask", 32, 4, 0x0204, 235},
@@ -3439,27 +3953,27 @@ inline constexpr Field kFields_00BC[] = {
     {"AttachmentSide_IsNull", 54, 1, 0x0016, 903},
 };
 
-inline constexpr Field kFields_00BD[] = {
+inline constexpr Field kFields_L0037_S00BD[] = {
     {"FXLocation", 0, 8, 0x001C, 182},
     {"Action", 8, 12, 0x0024, 58},
 };
 
-inline constexpr Field kFields_00BE[] = {
+inline constexpr Field kFields_L0037_S00BE[] = {
     {"Payload", 0, 0, 0x002C, 189},
     {"Switch", 24, 12, 0x0024, 60},
     {"Index", 36, 2, 0x0000, 174},
 };
 
-inline constexpr Field kFields_00BF[] = {
+inline constexpr Field kFields_L0037_S00BF[] = {
     {"Min", 0, 4, 0x0008, 3461},
     {"Max", 4, 4, 0x0008, 3462},
 };
 
-inline constexpr Field kFields_00C0[] = {
+inline constexpr Field kFields_L0037_S00C0[] = {
     {"Map", 0, 0, 0x0028, 1},
 };
 
-inline constexpr Field kFields_00C1[] = {
+inline constexpr Field kFields_L0037_S00C1[] = {
     {"From", 0, 1, 0x0104, 242},
     {"To", 1, 1, 0x0104, 243},
     {"InBase", 2, 1, 0x0004, 244},
@@ -3468,44 +3982,44 @@ inline constexpr Field kFields_00C1[] = {
     {"OutRange", 8, 4, 0x0008, 3464},
 };
 
-inline constexpr Field kFields_00C2[] = {
+inline constexpr Field kFields_L0037_S00C2[] = {
     {"Map", 0, 12, 0x0024, 61},
 };
 
-inline constexpr Field kFields_00C3[] = {
+inline constexpr Field kFields_L0037_S00C3[] = {
     {"From", 0, 1, 0x0104, 246},
     {"To", 1, 1, 0x0104, 247},
     {"Type", 2, 1, 0x0104, 248},
 };
 
-inline constexpr Field kFields_00C4[] = {
+inline constexpr Field kFields_L0037_S00C4[] = {
     {"Map", 0, 12, 0x0024, 62},
 };
 
-inline constexpr Field kFields_00C5[] = {
+inline constexpr Field kFields_L0037_S00C5[] = {
     {"Control", 0, 1, 0x0104, 249},
     {"Button", 1, 1, 0x0104, 250},
 };
 
-inline constexpr Field kFields_00C6[] = {
+inline constexpr Field kFields_L0037_S00C6[] = {
     {"ButtonMappings", 0, 12, 0x0024, 63},
     {"Id", 12, 1, 0x0000, 175},
     {"Name", 16, 8, 0x0018, 36},
 };
 
-inline constexpr Field kFields_00C7[] = {
+inline constexpr Field kFields_L0037_S00C7[] = {
     {"Layouts", 0, 12, 0x0024, 64},
 };
 
-inline constexpr Field kFields_00C8[] = {
+inline constexpr Field kFields_L0037_S00C8[] = {
     {"Configs", 0, 0, 0x0028, 2},
 };
 
-inline constexpr Field kFields_00C9[] = {
+inline constexpr Field kFields_L0037_S00C9[] = {
     {"Controls", 0, 12, 0x0024, 65},
 };
 
-inline constexpr Field kFields_00CA[] = {
+inline constexpr Field kFields_L0037_S00CA[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"Event", 8, 2, 0x0104, 253},
     {"EventMod", 10, 1, 0x0104, 254},
@@ -3518,47 +4032,103 @@ inline constexpr Field kFields_00CA[] = {
     {"LamsId", 32, 4, 0x0000, 176},
 };
 
-inline constexpr Field kFields_00CB[] = {
+inline constexpr Field kFields_L0037_S00CB[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"Options", 8, 12, 0x0024, 66},
 };
 
-inline constexpr Field kFields_00CC[] = {
+inline constexpr Field kFields_L0037_S00CC[] = {
     {"Settings", 0, 12, 0x0024, 67},
     {"LastInput", 16, 8, 0x001C, 201},
 };
 
-inline constexpr Field kFields_00CD[] = {
+inline constexpr Field kFields_L0037_S00CD[] = {
     {"MaxGestureTime", 0, 2, 0x0008, 3467},
     {"MinGestureTime", 2, 2, 0x0008, 3468},
     {"SwipeDistanceThreshold", 4, 2, 0x0008, 3469},
 };
 
-inline constexpr Field kFields_00CE[] = {
+inline constexpr Field kFields_L0037_S00CE[] = {
     {"Control", 0, 8, 0x001C, 192},
     {"Analog", 8, 8, 0x001C, 194},
     {"Digital", 16, 8, 0x001C, 196},
 };
 
-inline constexpr Field kFields_00CF[] = {
+inline constexpr Field kFields_L0037_S00CF[] = {
     {"Controller", 0, 0, 0x0028, 3},
 };
 
-inline constexpr Field kFields_00D1[] = {
+inline constexpr Field kFields_L0038_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 259},
+    {"Flags", 1, 1, 0x0204, 260},
+    {"Condition", 2, 1, 0x0104, 261},
+    {"WeaponLevelMin", 3, 1, 0x0000, 177},
+    {"On", 4, 2, 0x0008, 3470},
+    {"Off", 6, 2, 0x0008, 3471},
+};
+
+inline constexpr Field kFields_L0038_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 262},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L0039_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 263},
+    {"Flags", 1, 1, 0x0204, 264},
+    {"Condition", 2, 1, 0x0104, 265},
+    {"WeaponLevelMin", 3, 1, 0x0000, 178},
+    {"On", 4, 2, 0x0008, 3472},
+    {"Off", 6, 2, 0x0008, 3473},
+};
+
+inline constexpr Field kFields_L0039_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 266},
+    {"ScriptName", 16, 8, 0x0010, 37},
+};
+
+inline constexpr Field kFields_L0039_S00D1[] = {
     {"RefJoint", 24, 8, 0x0010, 0},
     {"MinAngle", 32, 4, 0x0008, 3474},
     {"MaxAngle", 36, 4, 0x0008, 3475},
     {"DriverName", 40, 8, 0x0010, 38},
 };
 
-inline constexpr Field kFields_00D2[] = {
+inline constexpr Field kFields_L003A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 267},
+    {"Flags", 1, 1, 0x0204, 268},
+    {"Condition", 2, 1, 0x0104, 269},
+    {"WeaponLevelMin", 3, 1, 0x0000, 179},
+    {"On", 4, 2, 0x0008, 3476},
+    {"Off", 6, 2, 0x0008, 3477},
+};
+
+inline constexpr Field kFields_L003A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 270},
+    {"ScriptName", 16, 8, 0x0010, 39},
+};
+
+inline constexpr Field kFields_L003A_S00D2[] = {
     {"RefJoint", 24, 8, 0x0010, 0},
     {"MinAngle", 32, 4, 0x0008, 3478},
     {"MaxAngle", 36, 4, 0x0008, 3479},
     {"DriverName", 40, 8, 0x0010, 40},
 };
 
-inline constexpr Field kFields_00D3[] = {
+inline constexpr Field kFields_L003B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 271},
+    {"Flags", 1, 1, 0x0204, 272},
+    {"Condition", 2, 1, 0x0104, 273},
+    {"WeaponLevelMin", 3, 1, 0x0000, 180},
+    {"On", 4, 2, 0x0008, 3480},
+    {"Off", 6, 2, 0x0008, 3481},
+};
+
+inline constexpr Field kFields_L003B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 274},
+    {"ScriptName", 16, 8, 0x0010, 41},
+};
+
+inline constexpr Field kFields_L003B_S00D3[] = {
     {"RefJoint", 24, 8, 0x0010, 0},
     {"HMinAngle", 32, 4, 0x0008, 3482},
     {"HMaxAngle", 36, 4, 0x0008, 3483},
@@ -3568,7 +4138,21 @@ inline constexpr Field kFields_00D3[] = {
     {"DriverNameUpDown", 56, 8, 0x0010, 43},
 };
 
-inline constexpr Field kFields_00D4[] = {
+inline constexpr Field kFields_L003C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 275},
+    {"Flags", 1, 1, 0x0204, 276},
+    {"Condition", 2, 1, 0x0104, 277},
+    {"WeaponLevelMin", 3, 1, 0x0000, 181},
+    {"On", 4, 2, 0x0008, 3486},
+    {"Off", 6, 2, 0x0008, 3487},
+};
+
+inline constexpr Field kFields_L003C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 278},
+    {"ScriptName", 16, 8, 0x0010, 44},
+};
+
+inline constexpr Field kFields_L003C_S00D4[] = {
     {"RefJoint", 24, 8, 0x0010, 0},
     {"LeftDistance", 32, 4, 0x0008, 3488},
     {"RightDistance", 36, 4, 0x0008, 3489},
@@ -3582,7 +4166,21 @@ inline constexpr Field kFields_00D4[] = {
     {"FreezeBlend", 80, 1, 0x0014, 904},
 };
 
-inline constexpr Field kFields_00D5[] = {
+inline constexpr Field kFields_L003D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 279},
+    {"Flags", 1, 1, 0x0204, 280},
+    {"Condition", 2, 1, 0x0104, 281},
+    {"WeaponLevelMin", 3, 1, 0x0000, 182},
+    {"On", 4, 2, 0x0008, 3494},
+    {"Off", 6, 2, 0x0008, 3495},
+};
+
+inline constexpr Field kFields_L003D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 282},
+    {"ScriptName", 16, 8, 0x0010, 48},
+};
+
+inline constexpr Field kFields_L003D_S00D5[] = {
     {"HMinAngle", 24, 4, 0x0008, 3496},
     {"HMaxAngle", 28, 4, 0x0008, 3497},
     {"VMinAngle", 32, 4, 0x0008, 3498},
@@ -3591,7 +4189,21 @@ inline constexpr Field kFields_00D5[] = {
     {"CameraXDriverOut", 48, 8, 0x0010, 50},
 };
 
-inline constexpr Field kFields_00D6[] = {
+inline constexpr Field kFields_L003E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 283},
+    {"Flags", 1, 1, 0x0204, 284},
+    {"Condition", 2, 1, 0x0104, 285},
+    {"WeaponLevelMin", 3, 1, 0x0000, 183},
+    {"On", 4, 2, 0x0008, 3500},
+    {"Off", 6, 2, 0x0008, 3501},
+};
+
+inline constexpr Field kFields_L003E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 286},
+    {"ScriptName", 16, 8, 0x0010, 51},
+};
+
+inline constexpr Field kFields_L003E_S00D6[] = {
     {"Stick", 24, 1, 0x0104, 287},
     {"AnimRefHMinAngle", 28, 4, 0x0008, 3502},
     {"AnimRefHMaxAngle", 32, 4, 0x0008, 3503},
@@ -3609,13 +4221,27 @@ inline constexpr Field kFields_00D6[] = {
     {"StickYDriverOut", 96, 8, 0x0010, 55},
 };
 
-inline constexpr Field kFields_00D7[] = {
+inline constexpr Field kFields_L003F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 288},
+    {"Flags", 1, 1, 0x0204, 289},
+    {"Condition", 2, 1, 0x0104, 290},
+    {"WeaponLevelMin", 3, 1, 0x0000, 184},
+    {"On", 4, 2, 0x0008, 3512},
+    {"Off", 6, 2, 0x0008, 3513},
+};
+
+inline constexpr Field kFields_L003F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 291},
+    {"ScriptName", 16, 8, 0x0010, 56},
+};
+
+inline constexpr Field kFields_L003F_S00D7[] = {
     {"Stick", 24, 1, 0x0104, 292},
     {"Damping", 28, 4, 0x0008, 3514},
     {"MinimumLinearRate", 32, 4, 0x0008, 3515},
 };
 
-inline constexpr Field kFields_00D8[] = {
+inline constexpr Field kFields_L003F_S00D8[] = {
     {"FadeInTime", 0, 4, 0x0008, 3516},
     {"FadeInRandom", 4, 4, 0x0008, 3517},
     {"FadeOutTime", 8, 4, 0x0008, 3518},
@@ -3623,7 +4249,7 @@ inline constexpr Field kFields_00D8[] = {
     {"EventType", 16, 1, 0x0104, 293},
 };
 
-inline constexpr Field kFields_00D9[] = {
+inline constexpr Field kFields_L003F_S00D9[] = {
     {"WeatherEvents", 0, 12, 0x0024, 68},
     {"InitialDelay", 12, 4, 0x0008, 3520},
     {"IntervalTimeMin", 16, 4, 0x0008, 3521},
@@ -3636,21 +4262,37 @@ inline constexpr Field kFields_00D9[] = {
     {"SpawnLocation", 38, 1, 0x0104, 294},
 };
 
-inline constexpr Field kFields_00DA[] = {
+inline constexpr Field kFields_L003F_S00DA[] = {
     {"WeatherSequences", 0, 12, 0x0024, 69},
     {"WeatherCategory", 12, 1, 0x0104, 295},
     {"WeatherName", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_00DB[] = {
+inline constexpr Field kFields_L003F_S00DB[] = {
     {"WeatherTypes", 0, 12, 0x0024, 70},
 };
 
-inline constexpr Field kFields_00DC[] = {
+inline constexpr Field kFields_L0040_S00D8[] = {
+    {"FadeInTime", 0, 4, 0x0008, 3525},
+    {"FadeInRandom", 4, 4, 0x0008, 3526},
+    {"FadeOutTime", 8, 4, 0x0008, 3527},
+    {"FadeOutRandom", 12, 4, 0x0008, 3528},
+    {"EventType", 16, 1, 0x0104, 296},
+};
+
+inline constexpr Field kFields_L0040_S00DC[] = {
     {"GameObjectName", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_00DD[] = {
+inline constexpr Field kFields_L0041_S00D8[] = {
+    {"FadeInTime", 0, 4, 0x0008, 3529},
+    {"FadeInRandom", 4, 4, 0x0008, 3530},
+    {"FadeOutTime", 8, 4, 0x0008, 3531},
+    {"FadeOutRandom", 12, 4, 0x0008, 3532},
+    {"EventType", 16, 1, 0x0104, 297},
+};
+
+inline constexpr Field kFields_L0041_S00DD[] = {
     {"Duration", 20, 4, 0x0008, 3533},
     {"GameObjectNames", 24, 12, 0x0024, 71},
     {"MinScale", 36, 4, 0x0008, 3534},
@@ -3658,38 +4300,70 @@ inline constexpr Field kFields_00DD[] = {
     {"CollisionLayer", 44, 1, 0x0000, 188},
 };
 
-inline constexpr Field kFields_00DE[] = {
+inline constexpr Field kFields_L0042_S00D8[] = {
+    {"FadeInTime", 0, 4, 0x0008, 3536},
+    {"FadeInRandom", 4, 4, 0x0008, 3537},
+    {"FadeOutTime", 8, 4, 0x0008, 3538},
+    {"FadeOutRandom", 12, 4, 0x0008, 3539},
+    {"EventType", 16, 1, 0x0104, 298},
+};
+
+inline constexpr Field kFields_L0042_S00DE[] = {
     {"WetnessAmount", 20, 4, 0x0008, 3540},
     {"WetnessHeight", 24, 4, 0x0008, 3541},
     {"WetnessHeightTransition", 28, 4, 0x0008, 3542},
 };
 
-inline constexpr Field kFields_00DF[] = {
+inline constexpr Field kFields_L0043_S00D8[] = {
+    {"FadeInTime", 0, 4, 0x0008, 3543},
+    {"FadeInRandom", 4, 4, 0x0008, 3544},
+    {"FadeOutTime", 8, 4, 0x0008, 3545},
+    {"FadeOutRandom", 12, 4, 0x0008, 3546},
+    {"EventType", 16, 1, 0x0104, 299},
+};
+
+inline constexpr Field kFields_L0043_S00DF[] = {
     {"Duration", 20, 4, 0x0008, 3547},
     {"ParmName", 24, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_00E0[] = {
+inline constexpr Field kFields_L0044_S00D8[] = {
+    {"FadeInTime", 0, 4, 0x0008, 3548},
+    {"FadeInRandom", 4, 4, 0x0008, 3549},
+    {"FadeOutTime", 8, 4, 0x0008, 3550},
+    {"FadeOutRandom", 12, 4, 0x0008, 3551},
+    {"EventType", 16, 1, 0x0104, 300},
+};
+
+inline constexpr Field kFields_L0044_S00E0[] = {
     {"SoundEvent", 24, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_00E1[] = {
+inline constexpr Field kFields_L0045_S00D8[] = {
+    {"FadeInTime", 0, 4, 0x0008, 3552},
+    {"FadeInRandom", 4, 4, 0x0008, 3553},
+    {"FadeOutTime", 8, 4, 0x0008, 3554},
+    {"FadeOutRandom", 12, 4, 0x0008, 3555},
+    {"EventType", 16, 1, 0x0104, 301},
+};
+
+inline constexpr Field kFields_L0045_S00E1[] = {
     {"Layer", 20, 1, 0x0104, 302},
     {"RegionMask", 24, 4, 0x0204, 303},
     {"Value", 28, 4, 0x0008, 3556},
 };
 
-inline constexpr Field kFields_00E2[] = {
+inline constexpr Field kFields_L0045_S00E2[] = {
     {"AttributeName", 0, 8, 0x0010, 0},
     {"Index", 8, 2, 0x0000, 189},
 };
 
-inline constexpr Field kFields_00E3[] = {
+inline constexpr Field kFields_L0045_S00E3[] = {
     {"Attribute", 0, 8, 0x0010, 0},
     {"Value", 8, 4, 0x0008, 3557},
 };
 
-inline constexpr Field kFields_00E4[] = {
+inline constexpr Field kFields_L0045_S00E4[] = {
     {"Attribute", 0, 8, 0x0010, 0},
     {"Scale", 8, 4, 0x0008, 3558},
     {"RefCreature", 12, 1, 0x0104, 304},
@@ -3697,7 +4371,7 @@ inline constexpr Field kFields_00E4[] = {
     {"RefCreatureDynamicFlagFilter", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_00E5[] = {
+inline constexpr Field kFields_L0045_S00E5[] = {
     {"Attributes", 0, 12, 0x0024, 72},
     {"Base", 12, 4, 0x0008, 3559},
     {"Min", 16, 4, 0x0008, 3560},
@@ -3710,11 +4384,11 @@ inline constexpr Field kFields_00E5[] = {
     {"ModFloatFlags", 38, 1, 0x0204, 307},
 };
 
-inline constexpr Field kFields_00E6[] = {
+inline constexpr Field kFields_L0045_S00E6[] = {
     {"DataPoint", 0, 12, 0x0024, 73},
 };
 
-inline constexpr Field kFields_00E7[] = {
+inline constexpr Field kFields_L0045_S00E7[] = {
     {"SelfDynamicFlagFilterList", 0, 12, 0x0024, 74},
     {"Type", 12, 1, 0x0204, 308},
     {"StatusMeterDamageFilter", 13, 1, 0x0104, 309},
@@ -3729,31 +4403,31 @@ inline constexpr Field kFields_00E7[] = {
     {"StatusMeterDamageWhenExpression", 72, 8, 0x0030, 65535},
 };
 
-inline constexpr Field kFields_00E8[] = {
+inline constexpr Field kFields_L0045_S00E8[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Value", 8, 4, 0x0000, 190},
     {"Display", 12, 1, 0x0014, 907},
 };
 
-inline constexpr Field kFields_00E9[] = {
+inline constexpr Field kFields_L0045_S00E9[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Value", 8, 1, 0x0000, 191},
     {"Display", 9, 1, 0x0014, 908},
 };
 
-inline constexpr Field kFields_00EA[] = {
+inline constexpr Field kFields_L0045_S00EA[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Value", 8, 4, 0x0008, 3565},
     {"Display", 12, 1, 0x0014, 909},
 };
 
-inline constexpr Field kFields_00EB[] = {
+inline constexpr Field kFields_L0045_S00EB[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Value", 8, 8, 0x0018, 0},
     {"Display", 16, 1, 0x0014, 910},
 };
 
-inline constexpr Field kFields_00ED[] = {
+inline constexpr Field kFields_L0045_S00ED[] = {
     {"TrailEdgeShape", 0, 0, 0x002C, 236},
     {"AttachName", 16, 8, 0x0010, 0},
     {"TrailType", 24, 8, 0x0010, 57},
@@ -3766,12 +4440,12 @@ inline constexpr Field kFields_00ED[] = {
     {"TrailMode", 53, 1, 0x0104, 312},
 };
 
-inline constexpr Field kFields_00EE[] = {
+inline constexpr Field kFields_L0045_S00EE[] = {
     {"IgnorePartFlags", 0, 8, 0x0204, 313},
     {"EnemyID", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_00EF[] = {
+inline constexpr Field kFields_L0045_S00EF[] = {
     {"IgnorePrecisionTargets", 0, 12, 0x0024, 75},
     {"MinDistance", 12, 4, 0x0008, 3578},
     {"EnemyDynamicFlagWeights", 16, 12, 0x0024, 76},
@@ -3802,7 +4476,7 @@ inline constexpr Field kFields_00EF[] = {
     {"FailFlags", 124, 2, 0x0204, 314},
 };
 
-inline constexpr Field kFields_00F0[] = {
+inline constexpr Field kFields_L0045_S00F0[] = {
     {"MinHeight", 0, 4, 0x0008, 3603},
     {"MaxHeight", 4, 4, 0x0008, 3604},
     {"RightAngleDeg", 8, 4, 0x0008, 3605},
@@ -3811,39 +4485,39 @@ inline constexpr Field kFields_00F0[] = {
     {"LeftClippingPlaneOffset", 20, 4, 0x0008, 3608},
 };
 
-inline constexpr Field kFields_00F1[] = {
+inline constexpr Field kFields_L0045_S00F1[] = {
     {"IsStun", 0, 1, 0x0014, 911},
     {"UseInteractPromptAsPositionIfStunned", 1, 1, 0x0014, 912},
 };
 
-inline constexpr Field kFields_00F2[] = {
+inline constexpr Field kFields_L0045_S00F2[] = {
     {"PlayerDistanceIgnoreAOOThreshold", 0, 4, 0x0008, 3609},
     {"PlayerDistanceAddBackToAOOThreshold", 4, 4, 0x0008, 3610},
 };
 
-inline constexpr Field kFields_00F3[] = {
+inline constexpr Field kFields_L0045_S00F3[] = {
     {"EncounterEndedArbitrationDelay", 0, 4, 0x0008, 3611},
     {"InterruptBleedLength", 4, 4, 0x0008, 3612},
 };
 
-inline constexpr Field kFields_00F4[] = {
+inline constexpr Field kFields_L0045_S00F4[] = {
     {"Length", 0, 4, 0x0008, 3613},
     {"Height", 4, 4, 0x0008, 3614},
     {"MaxAngleForStraightHit", 8, 4, 0x0008, 3615},
     {"Direction", 12, 1, 0x0104, 315},
 };
 
-inline constexpr Field kFields_00F5[] = {
+inline constexpr Field kFields_L0045_S00F5[] = {
     {"DistanceLessThan", 0, 2, 0x0008, 3616},
     {"HitDirection", 2, 1, 0x0104, 316},
     {"WallMaterial", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_00F6[] = {
+inline constexpr Field kFields_L0045_S00F6[] = {
     {"Joints", 0, 12, 0x0024, 77},
 };
 
-inline constexpr Field kFields_00F7[] = {
+inline constexpr Field kFields_L0045_S00F7[] = {
     {"PickupFilterList", 0, 12, 0x0024, 78},
     {"FilterRadius", 12, 4, 0x0008, 3617},
     {"EnemyIDFilterList", 16, 12, 0x0024, 79},
@@ -3857,40 +4531,65 @@ inline constexpr Field kFields_00F7[] = {
     {"HitFlags", 88, 8, 0x0204, 319},
 };
 
-inline constexpr Field kFields_00F8[] = {
+inline constexpr Field kFields_L0045_S00F8[] = {
     {"Power", 0, 4, 0x0008, 3619},
     {"Tint", 16, 0, 0x002C, 1},
 };
 
-inline constexpr Field kFields_00F9[] = {
+inline constexpr Field kFields_L0045_S00F9[] = {
     {"ConfigName", 0, 8, 0x0010, 0},
     {"Probability", 8, 4, 0x0008, 3624},
 };
 
-inline constexpr Field kFields_00FA[] = {
+inline constexpr Field kFields_L0045_S00FA[] = {
     {"Type", 0, 1, 0x0104, 320},
     {"Flags", 1, 1, 0x0204, 321},
 };
 
-inline constexpr Field kFields_00FB[] = {
+inline constexpr Field kFields_L0045_S00FB[] = {
     {"Offset", 2, 0, 0x002C, 6},
 };
 
-inline constexpr Field kFields_00FC[] = {
+inline constexpr Field kFields_L0046_S00FA[] = {
+    {"Type", 0, 1, 0x0104, 324},
+    {"Flags", 1, 1, 0x0204, 325},
+};
+
+inline constexpr Field kFields_L0046_S00FB[] = {
+    {"Offset", 2, 0, 0x002C, 6},
+};
+
+inline constexpr Field kFields_L0046_S00FC[] = {
     {"Name", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_00FD[] = {
+inline constexpr Field kFields_L0047_S00FA[] = {
+    {"Type", 0, 1, 0x0104, 326},
+    {"Flags", 1, 1, 0x0204, 327},
+};
+
+inline constexpr Field kFields_L0047_S00FD[] = {
     {"Breakpoint", 2, 0, 0x002C, 6},
     {"This", 8, 8, 0x001C, 250},
     {"That", 16, 8, 0x001C, 250},
 };
 
-inline constexpr Field kFields_00FE[] = {
+inline constexpr Field kFields_L0048_S00FA[] = {
+    {"Type", 0, 1, 0x0104, 328},
+    {"Flags", 1, 1, 0x0204, 329},
+};
+
+inline constexpr Field kFields_L0048_S00FD[] = {
+    {"Breakpoint", 2, 0, 0x002C, 6},
+    {"This", 8, 8, 0x001C, 250},
+    {"That", 16, 8, 0x001C, 250},
+};
+
+inline constexpr Field kFields_L0048_S00FE[] = {
     {"CenterRatio", 24, 4, 0x0008, 3637},
 };
 
-inline constexpr Field kFields_00FF[] = {
+inline constexpr Field kFields_L0048_S00FF[] = {
     {"Flags", 0, 1, 0x0204, 330},
     {"YRange", 4, 4, 0x0008, 3638},
     {"XZRange", 8, 4, 0x0008, 3639},
@@ -3901,14 +4600,14 @@ inline constexpr Field kFields_00FF[] = {
     {"GrabbersSlot", 32, 8, 0x001C, 1186},
 };
 
-inline constexpr Field kFields_0100[] = {
+inline constexpr Field kFields_L0048_S0100[] = {
     {"Label", 0, 8, 0x0010, 0},
     {"StringData", 8, 8, 0x0010, 0},
     {"NumberData", 16, 4, 0x0008, 3644},
     {"Comparison", 20, 1, 0x0104, 331},
 };
 
-inline constexpr Field kFields_0101[] = {
+inline constexpr Field kFields_L0048_S0101[] = {
     {"TargetJointId", 0, 1, 0x0000, 194},
     {"Concussion", 8, 8, 0x001C, 268},
     {"StickyBomb", 16, 8, 0x001C, 258},
@@ -3919,7 +4618,7 @@ inline constexpr Field kFields_0101[] = {
     {"EventName", 56, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0102[] = {
+inline constexpr Field kFields_L0048_S0102[] = {
     {"MinFuse", 0, 4, 0x0008, 3645},
     {"MaxFuse", 4, 4, 0x0008, 3646},
     {"EffectName", 8, 8, 0x0018, 58},
@@ -3927,18 +4626,18 @@ inline constexpr Field kFields_0102[] = {
     {"Heap", 24, 4, 0x0000, 195},
 };
 
-inline constexpr Field kFields_0103[] = {
+inline constexpr Field kFields_L0048_S0103[] = {
     {"PowerUpPoints", 0, 2, 0x0000, 196},
     {"MessageIdx", 2, 2, 0x0000, 197},
     {"IncStat", 4, 1, 0x0104, 332},
 };
 
-inline constexpr Field kFields_0104[] = {
+inline constexpr Field kFields_L0048_S0104[] = {
     {"ID", 0, 1, 0x0000, 198},
     {"ValidThrowableResponse", 8, 8, 0x0010, 59},
 };
 
-inline constexpr Field kFields_0105[] = {
+inline constexpr Field kFields_L0048_S0105[] = {
     {"Contexts", 0, 12, 0x0024, 83},
     {"DamageScale", 12, 4, 0x0008, 3647},
     {"CollisionSphereList", 16, 12, 0x0024, 84},
@@ -3948,7 +4647,7 @@ inline constexpr Field kFields_0105[] = {
     {"HitFlags", 32, 8, 0x0204, 333},
 };
 
-inline constexpr Field kFields_0106[] = {
+inline constexpr Field kFields_L0048_S0106[] = {
     {"OrbEmitter", 0, 8, 0x001C, 321},
     {"AirOrbEmitter", 8, 8, 0x001C, 321},
     {"Bonus", 16, 8, 0x001C, 259},
@@ -3969,7 +4668,7 @@ inline constexpr Field kFields_0106[] = {
     {"SuckToTargetRadius", 96, 2, 0x0008, 3657},
 };
 
-inline constexpr Field kFields_0107[] = {
+inline constexpr Field kFields_L0048_S0107[] = {
     {"DecalNames", 0, 32, 0x0024, 88},
     {"MFXSwitches", 32, 0, 0x002C, 181},
     {"WeaponType", 44, 4, 0x0000, 200},
@@ -3991,12 +4690,12 @@ inline constexpr Field kFields_0107[] = {
     {"CollideWithCharacters", 115, 1, 0x0014, 921},
 };
 
-inline constexpr Field kFields_0108[] = {
+inline constexpr Field kFields_L0048_S0108[] = {
     {"MFXTrigger", 0, 0, 0x002C, 263},
     {"TriggerTime", 120, 4, 0x0008, 3674},
 };
 
-inline constexpr Field kFields_0109[] = {
+inline constexpr Field kFields_L0048_S0109[] = {
     {"EffectName", 0, 8, 0x0010, 0},
     {"AttachmentName", 8, 8, 0x0010, 0},
     {"EffectTint", 16, 0, 0x002C, 0},
@@ -4009,7 +4708,7 @@ inline constexpr Field kFields_0109[] = {
     {"Flags", 45, 1, 0x0204, 340},
 };
 
-inline constexpr Field kFields_010A[] = {
+inline constexpr Field kFields_L0048_S010A[] = {
     {"Effect", 0, 8, 0x001C, 46},
     {"EffectName", 8, 8, 0x0018, 0},
     {"TweenIn", 16, 0, 0x002C, 12},
@@ -4018,7 +4717,7 @@ inline constexpr Field kFields_010A[] = {
     {"Off", 68, 4, 0x0008, 3696},
 };
 
-inline constexpr Field kFields_010B[] = {
+inline constexpr Field kFields_L0048_S010B[] = {
     {"ShrapnelConcussionLevels", 0, 12, 0x0024, 92},
     {"EmpoweredScaleWidth", 12, 4, 0x0008, 3697},
     {"EmpoweredScaleLength", 16, 4, 0x0008, 3698},
@@ -4027,7 +4726,7 @@ inline constexpr Field kFields_010B[] = {
     {"PlayFX", 32, 8, 0x001C, 272},
 };
 
-inline constexpr Field kFields_010C[] = {
+inline constexpr Field kFields_L0048_S010C[] = {
     {"DurationList", 0, 12, 0x0024, 93},
     {"WeaponType", 12, 4, 0x0000, 204},
     {"TimedMFXTriggerList", 16, 12, 0x0024, 94},
@@ -4056,22 +4755,80 @@ inline constexpr Field kFields_010C[] = {
     {"SendLuaHook", 165, 1, 0x0014, 924},
 };
 
-inline constexpr Field kFields_010D[] = {
+inline constexpr Field kFields_L0048_S010D[] = {
     {"Type", 168, 1, 0x0104, 347},
     {"PieAngle", 172, 4, 0x0008, 3713},
     {"RadiusList", 176, 12, 0x0024, 99},
     {"DonutHeight", 188, 4, 0x0008, 3715},
 };
 
-inline constexpr Field kFields_010E[] = {
+inline constexpr Field kFields_L0049_S010C[] = {
+    {"DurationList", 0, 12, 0x0024, 100},
+    {"WeaponType", 12, 4, 0x0000, 210},
+    {"TimedMFXTriggerList", 16, 12, 0x0024, 101},
+    {"Heap", 28, 4, 0x0000, 211},
+    {"EffectList", 32, 12, 0x0024, 102},
+    {"OffsetX", 44, 4, 0x0008, 3717},
+    {"AttachName", 48, 8, 0x0010, 0},
+    {"PlayFX", 56, 8, 0x001C, 272},
+    {"JointName", 64, 8, 0x0010, 0},
+    {"SoundOnHitName", 72, 8, 0x0010, 0},
+    {"Collision", 80, 8, 0x001C, 396},
+    {"Context", 88, 8, 0x0010, 0},
+    {"HitFlags", 96, 8, 0x0204, 348},
+    {"LuaHookOverride", 104, 8, 0x0018, 0},
+    {"SyncedSound", 112, 8, 0x0018, 0},
+    {"SyncedSoundEmitter", 120, 8, 0x0018, 0},
+    {"Payload", 128, 8, 0x001C, 257},
+    {"ShrapnelConcussion", 136, 8, 0x001C, 267},
+    {"OffsetY", 144, 4, 0x0008, 3718},
+    {"OffsetZ", 148, 4, 0x0008, 3719},
+    {"RigidBodyImpulseUpward", 152, 4, 0x0008, 3720},
+    {"RigidBodyImpulseForward", 156, 4, 0x0008, 3721},
+    {"Flags", 160, 2, 0x0204, 349},
+    {"LoopCnt", 162, 2, 0x0000, 212},
+    {"DataType", 164, 1, 0x0105, 350},
+    {"SendLuaHook", 165, 1, 0x0014, 926},
+};
+
+inline constexpr Field kFields_L0049_S010E[] = {
     {"PlaneList", 168, 12, 0x0024, 103},
 };
 
-inline constexpr Field kFields_010F[] = {
+inline constexpr Field kFields_L004A_S010C[] = {
+    {"DurationList", 0, 12, 0x0024, 104},
+    {"WeaponType", 12, 4, 0x0000, 213},
+    {"TimedMFXTriggerList", 16, 12, 0x0024, 105},
+    {"Heap", 28, 4, 0x0000, 214},
+    {"EffectList", 32, 12, 0x0024, 106},
+    {"OffsetX", 44, 4, 0x0008, 3723},
+    {"AttachName", 48, 8, 0x0010, 0},
+    {"PlayFX", 56, 8, 0x001C, 272},
+    {"JointName", 64, 8, 0x0010, 0},
+    {"SoundOnHitName", 72, 8, 0x0010, 0},
+    {"Collision", 80, 8, 0x001C, 396},
+    {"Context", 88, 8, 0x0010, 0},
+    {"HitFlags", 96, 8, 0x0204, 351},
+    {"LuaHookOverride", 104, 8, 0x0018, 0},
+    {"SyncedSound", 112, 8, 0x0018, 0},
+    {"SyncedSoundEmitter", 120, 8, 0x0018, 0},
+    {"Payload", 128, 8, 0x001C, 257},
+    {"ShrapnelConcussion", 136, 8, 0x001C, 267},
+    {"OffsetY", 144, 4, 0x0008, 3724},
+    {"OffsetZ", 148, 4, 0x0008, 3725},
+    {"RigidBodyImpulseUpward", 152, 4, 0x0008, 3726},
+    {"RigidBodyImpulseForward", 156, 4, 0x0008, 3727},
+    {"Flags", 160, 2, 0x0204, 352},
+    {"LoopCnt", 162, 2, 0x0000, 215},
+    {"DataType", 164, 1, 0x0105, 353},
+    {"SendLuaHook", 165, 1, 0x0014, 927},
+};
+
+inline constexpr Field kFields_L004A_S010F[] = {
     {"BlockList", 168, 12, 0x0024, 107},
 };
 
-inline constexpr Field kFields_0110[] = {
+inline constexpr Field kFields_L004A_S0110[] = {
     {"SoundAction", 0, 12, 0x0024, 108},
     {"WeaponType", 12, 4, 0x0000, 216},
     {"SoundWindowAction", 16, 12, 0x0024, 109},
@@ -4097,11 +4854,24 @@ inline constexpr Field kFields_0110[] = {
     {"AccessibilityHighlightCategory", 125, 1, 0x0104, 356},
 };
 
-inline constexpr Field kFields_0111[] = {
+inline constexpr Field kFields_L004A_S0111[] = {
     {"List", 0, 12, 0x0024, 110},
 };
 
-inline constexpr Field kFields_0112[] = {
+inline constexpr Field kFields_L004B_S002E[] = {
+    {"ID", 0, 4, 0x0001, 218},
+    {"Type", 4, 4, 0x0105, 357},
+    {"TweenDriver", 8, 1, 0x0104, 358},
+    {"Hold", 9, 1, 0x0014, 928},
+    {"Priority", 12, 4, 0x0000, 219},
+    {"Weight", 16, 4, 0x0008, 3742},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 3749},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L004B_S0112[] = {
     {"Joint", 80, 8, 0x0010, 0},
     {"Inner", 88, 4, 0x0008, 3756},
     {"Outer", 92, 4, 0x0008, 3757},
@@ -4122,11 +4892,11 @@ inline constexpr Field kFields_0112[] = {
     {"EnableOnPS5", 146, 1, 0x0014, 929},
 };
 
-inline constexpr Field kFields_0113[] = {
+inline constexpr Field kFields_L004B_S0113[] = {
     {"Project", 0, 1, 0x0104, 361},
 };
 
-inline constexpr Field kFields_0114[] = {
+inline constexpr Field kFields_L004B_S0114[] = {
     {"MaxRigidBodies", 0, 4, 0x0000, 220},
     {"MaxShapes", 4, 4, 0x0000, 221},
     {"MaxJoints", 8, 4, 0x0000, 222},
@@ -4135,7 +4905,7 @@ inline constexpr Field kFields_0114[] = {
     {"MaxCCDKilobytes", 20, 4, 0x0000, 225},
 };
 
-inline constexpr Field kFields_0115[] = {
+inline constexpr Field kFields_L004B_S0115[] = {
     {"CollisionSet", 0, 8, 0x001C, 276},
     {"SoundSet", 8, 8, 0x001C, 276},
     {"CameraSet", 16, 8, 0x001C, 276},
@@ -4145,14 +4915,14 @@ inline constexpr Field kFields_0115[] = {
     {"DisabledSet", 48, 8, 0x001C, 276},
 };
 
-inline constexpr Field kFields_0116[] = {
+inline constexpr Field kFields_L004B_S0116[] = {
     {"CreatureCategory", 0, 1, 0x0104, 362},
     {"CameraDistanceScaleMultiplier", 4, 4, 0x0008, 3770},
     {"CameraDistanceOffset", 8, 4, 0x0008, 3771},
     {"LODOffset", 12, 4, 0x0000, 226},
 };
 
-inline constexpr Field kFields_0117[] = {
+inline constexpr Field kFields_L004B_S0117[] = {
     {"VolumetricFogMaxDimensions", 0, 0, 0x002C, 8},
     {"MaxRenderFraction", 12, 4, 0x0008, 3772},
     {"CreatureLODInfo", 16, 12, 0x0024, 111},
@@ -4211,39 +4981,39 @@ inline constexpr Field kFields_0117[] = {
     {"TextureUpscalingEnabled", 166, 1, 0x0014, 944},
 };
 
-inline constexpr Field kFields_0118[] = {
+inline constexpr Field kFields_L004B_S0118[] = {
     {"PlatformPresets", 0, 0, 0x0028, 4},
 };
 
-inline constexpr Field kFields_0119[] = {
+inline constexpr Field kFields_L004B_S0119[] = {
     {"NameToCategoryMap", 0, 0, 0x0028, 5},
 };
 
-inline constexpr Field kFields_011A[] = {
+inline constexpr Field kFields_L004B_S011A[] = {
     {"Preset", 0, 1, 0x0104, 369},
 };
 
-inline constexpr Field kFields_011B[] = {
+inline constexpr Field kFields_L004B_S011B[] = {
     {"WadNameList", 0, 12, 0x0024, 112},
     {"HeapSizeList", 16, 12, 0x0024, 113},
     {"VRAMSizeList", 32, 12, 0x0024, 114},
     {"GroupList", 48, 12, 0x0024, 115},
 };
 
-inline constexpr Field kFields_011C[] = {
+inline constexpr Field kFields_L004B_S011C[] = {
     {"LoadByPlayerLoc", 0, 12, 0x0024, 116},
     {"LoadByLogicGroup", 16, 12, 0x0024, 117},
     {"LogicGroupConditions", 32, 12, 0x0024, 118},
     {"WadLoadGroupInfo", 48, 0, 0x002C, 1458},
 };
 
-inline constexpr Field kFields_011D[] = {
+inline constexpr Field kFields_L004B_S011D[] = {
     {"EffectHeapBlockSize", 0, 4, 0x0000, 242},
     {"EffectHeapTotalSize", 4, 4, 0x0000, 243},
     {"EffectHeapSafeAllocationThreshold", 8, 4, 0x0008, 3798},
 };
 
-inline constexpr Field kFields_011E[] = {
+inline constexpr Field kFields_L004B_S011E[] = {
     {"DamageMult", 0, 4, 0x0008, 3799},
     {"AIDamageMult", 4, 4, 0x0008, 3800},
     {"MaxHealthMult", 8, 4, 0x0008, 3801},
@@ -4252,14 +5022,14 @@ inline constexpr Field kFields_011E[] = {
     {"WeaponOrbMult", 20, 4, 0x0008, 3804},
 };
 
-inline constexpr Field kFields_011F[] = {
+inline constexpr Field kFields_L004B_S011F[] = {
     {"RampType", 0, 1, 0x0104, 370},
     {"Start", 4, 4, 0x0008, 3805},
     {"End", 8, 4, 0x0008, 3806},
     {"Duration", 12, 4, 0x0008, 3807},
 };
 
-inline constexpr Field kFields_0120[] = {
+inline constexpr Field kFields_L004B_S0120[] = {
     {"RegenMode", 0, 1, 0x0204, 371},
     {"PauseDelay", 8, 0, 0x002C, 229},
     {"PauseDelayFull", 48, 0, 0x002C, 229},
@@ -4276,13 +5046,13 @@ inline constexpr Field kFields_0120[] = {
     {"MaxRegen", 440, 0, 0x002C, 229},
 };
 
-inline constexpr Field kFields_0121[] = {
+inline constexpr Field kFields_L004B_S0121[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Max", 8, 0, 0x002C, 229},
     {"Min", 48, 0, 0x002C, 229},
 };
 
-inline constexpr Field kFields_0122[] = {
+inline constexpr Field kFields_L004B_S0122[] = {
     {"BarColor", 0, 0, 0x002C, 1},
     {"BackgroundColor", 16, 0, 0x002C, 1},
     {"JointName", 32, 8, 0x0010, 61},
@@ -4300,14 +5070,20 @@ inline constexpr Field kFields_0122[] = {
     {"IsScreenRelativeMode", 78, 1, 0x0014, 946},
 };
 
-inline constexpr Field kFields_0123[] = {
+inline constexpr Field kFields_L004B_S0123[] = {
     {"Flags", 0, 1, 0x0204, 414},
     {"ShadowThreshold", 8, 0, 0x002C, 229},
     {"ShadowDelay", 48, 0, 0x002C, 229},
     {"ShadowMoveAmount", 88, 0, 0x002C, 229},
 };
 
-inline constexpr Field kFields_0124[] = {
+inline constexpr Field kFields_L004C_S0121[] = {
+    {"Name", 0, 8, 0x0018, 0},
+    {"Max", 8, 0, 0x002C, 229},
+    {"Min", 48, 0, 0x002C, 229},
+};
+
+inline constexpr Field kFields_L004C_S0124[] = {
     {"Initial", 88, 4, 0x0008, 3939},
     {"SegmentSize", 96, 0, 0x002C, 229},
     {"Regen", 136, 8, 0x001C, 288},
@@ -4315,7 +5091,7 @@ inline constexpr Field kFields_0124[] = {
     {"Shadow", 152, 8, 0x001C, 291},
 };
 
-inline constexpr Field kFields_0125[] = {
+inline constexpr Field kFields_L004C_S0125[] = {
     {"TextColor", 0, 0, 0x002C, 1},
     {"BarColor", 16, 0, 0x002C, 1},
     {"BackgroundColor", 32, 0, 0x002C, 1},
@@ -4334,24 +5110,24 @@ inline constexpr Field kFields_0125[] = {
     {"DisplayName", 133, 1, 0x0014, 947},
 };
 
-inline constexpr Field kFields_0126[] = {
+inline constexpr Field kFields_L004C_S0126[] = {
     {"Scale", 0, 0, 0x002C, 6},
     {"FX", 8, 8, 0x0018, 0},
     {"Joint", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0127[] = {
+inline constexpr Field kFields_L004C_S0127[] = {
     {"Fx", 0, 8, 0x001C, 294},
     {"Handle", 8, 4, 0x0000, 244},
 };
 
-inline constexpr Field kFields_0128[] = {
+inline constexpr Field kFields_L004C_S0128[] = {
     {"HeapSize", 0, 4, 0x0000, 245},
     {"VramSize", 4, 4, 0x0000, 246},
     {"Slots", 8, 12, 0x0024, 139},
 };
 
-inline constexpr Field kFields_0129[] = {
+inline constexpr Field kFields_L004C_S0129[] = {
     {"GroundImpulse", 0, 0, 0x002C, 11},
     {"AirImpulse", 14, 0, 0x002C, 11},
     {"BlockImpulse", 28, 0, 0x002C, 11},
@@ -4373,7 +5149,7 @@ inline constexpr Field kFields_0129[] = {
     {"HitsUntilSwitchMax", 114, 1, 0x0000, 250},
 };
 
-inline constexpr Field kFields_012A[] = {
+inline constexpr Field kFields_L004C_S012A[] = {
     {"List", 0, 12, 0x0024, 140},
     {"Reach", 12, 4, 0x0008, 4002},
     {"MaxSouls", 16, 1, 0x0000, 251},
@@ -4381,18 +5157,18 @@ inline constexpr Field kFields_012A[] = {
     {"Flags", 18, 1, 0x0204, 444},
 };
 
-inline constexpr Field kFields_012B[] = {
+inline constexpr Field kFields_L004C_S012B[] = {
     {"Reach", 0, 4, 0x0008, 4003},
     {"TopRadius", 4, 4, 0x0008, 4004},
     {"BaseRadius", 8, 4, 0x0008, 4005},
 };
 
-inline constexpr Field kFields_012C[] = {
+inline constexpr Field kFields_L004C_S012C[] = {
     {"BarName", 0, 8, 0x0010, 0},
     {"BarBudget", 8, 4, 0x0008, 4006},
 };
 
-inline constexpr Field kFields_012D[] = {
+inline constexpr Field kFields_L004C_S012D[] = {
     {"TargetCreatureID", 0, 8, 0x0010, 0},
     {"TargetCreatureBlackboardVariable", 8, 8, 0x0010, 0},
     {"TargetPositionBlackboardVariable", 16, 8, 0x0010, 0},
@@ -4407,18 +5183,18 @@ inline constexpr Field kFields_012D[] = {
     {"TargetCreatureSource", 61, 1, 0x0104, 448},
 };
 
-inline constexpr Field kFields_012E[] = {
+inline constexpr Field kFields_L004C_S012E[] = {
     {"MoodFlag", 0, 4, 0x0000, 253},
     {"MoodIndex", 4, 4, 0x0000, 254},
     {"MoodName", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_012F[] = {
+inline constexpr Field kFields_L004C_S012F[] = {
     {"WeaponType", 0, 4, 0x0000, 255},
     {"WeaponName", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0130[] = {
+inline constexpr Field kFields_L004C_S0130[] = {
     {"PromptInfo", 0, 0, 0x002C, 1459},
     {"PadDirection", 28, 4, 0x0008, 4024},
     {"SnapPoints", 32, 12, 0x0024, 141},
@@ -4445,7 +5221,7 @@ inline constexpr Field kFields_0130[] = {
     {"InputMode", 156, 1, 0x0104, 451},
 };
 
-inline constexpr Field kFields_0131[] = {
+inline constexpr Field kFields_L004C_S0131[] = {
     {"PropType", 0, 8, 0x0010, 0},
     {"PropSpawnGOName", 8, 8, 0x0010, 0},
     {"HandleJointRootName", 16, 8, 0x0010, 66},
@@ -4459,12 +5235,12 @@ inline constexpr Field kFields_0131[] = {
     {"LockRotation", 57, 1, 0x0014, 956},
 };
 
-inline constexpr Field kFields_0132[] = {
+inline constexpr Field kFields_L004C_S0132[] = {
     {"Position", 0, 0, 0x002C, 6},
     {"Side", 6, 1, 0x0104, 452},
 };
 
-inline constexpr Field kFields_0133[] = {
+inline constexpr Field kFields_L004C_S0133[] = {
     {"SnapPoints", 0, 12, 0x0024, 144},
     {"HintDistanceOffset", 12, 4, 0x0008, 4043},
     {"MoveType", 16, 8, 0x0018, 0},
@@ -4532,38 +5308,38 @@ inline constexpr Field kFields_0133[] = {
     {"DistanceDisplayFlags", 167, 1, 0x0204, 458},
 };
 
-inline constexpr Field kFields_0134[] = {
+inline constexpr Field kFields_L004C_S0134[] = {
     {"Filter", 0, 8, 0x0018, 0},
     {"Type", 8, 1, 0x0104, 459},
 };
 
-inline constexpr Field kFields_0135[] = {
+inline constexpr Field kFields_L004C_S0135[] = {
     {"Density", 0, 4, 0x0008, 4092},
     {"Reflectivity", 4, 4, 0x0008, 4093},
 };
 
-inline constexpr Field kFields_0136[] = {
+inline constexpr Field kFields_L004C_S0136[] = {
     {"HitFlags", 0, 8, 0x0204, 460},
     {"Switch", 8, 2, 0x0000, 256},
 };
 
-inline constexpr Field kFields_0137[] = {
+inline constexpr Field kFields_L004C_S0137[] = {
     {"FromSwitch", 0, 2, 0x0000, 257},
     {"ToSwitch", 2, 2, 0x0000, 258},
 };
 
-inline constexpr Field kFields_0138[] = {
+inline constexpr Field kFields_L004C_S0138[] = {
     {"MaterialName", 0, 8, 0x0010, 0},
     {"AudioProperties", 8, 0, 0x002C, 309},
 };
 
-inline constexpr Field kFields_0139[] = {
+inline constexpr Field kFields_L004C_S0139[] = {
     {"MFXSwitch", 0, 2, 0x0000, 259},
     {"PerJointCooldown", 2, 2, 0x0008, 4096},
     {"ImpulseThreshold", 4, 2, 0x0008, 4097},
 };
 
-inline constexpr Field kFields_013A[] = {
+inline constexpr Field kFields_L004C_S013A[] = {
     {"MFXSwitchNamesMap", 0, 0, 0x0028, 6},
     {"MFXMaterialToIndicesMap", 16, 0, 0x0028, 7},
     {"MFXCharactersToCharacterTypes", 32, 0, 0x0028, 8},
@@ -4574,19 +5350,19 @@ inline constexpr Field kFields_013A[] = {
     {"DefaultAudioFilteringParameters", 108, 0, 0x002C, 313},
 };
 
-inline constexpr Field kFields_013B[] = {
+inline constexpr Field kFields_L004C_S013B[] = {
     {"Properties", 0, 12, 0x0024, 149},
 };
 
-inline constexpr Field kFields_013C[] = {
+inline constexpr Field kFields_L004C_S013C[] = {
     {"DebugFlagStrings", 0, 12, 0x0024, 150},
 };
 
-inline constexpr Field kFields_013D[] = {
+inline constexpr Field kFields_L004C_S013D[] = {
     {"HeightFieldModelInfo", 0, 12, 0x0024, 151},
 };
 
-inline constexpr Field kFields_013E[] = {
+inline constexpr Field kFields_L004C_S013E[] = {
     {"Attributes", 0, 4096, 0x0024, 152},
     {"MPIconsScalingSettings", 4096, 0, 0x002C, 1469},
     {"PlayerStoneFreezeSpeeds", 4128, 0, 0x002C, 1468},
@@ -4714,11 +5490,11 @@ inline constexpr Field kFields_013E[] = {
     {"NewGamePlusShipped", 4972, 1, 0x0014, 970},
 };
 
-inline constexpr Field kFields_013F[] = {
+inline constexpr Field kFields_L004C_S013F[] = {
     {"AutoSpawnCharacter", 0, 12, 0x0024, 176},
 };
 
-inline constexpr Field kFields_0140[] = {
+inline constexpr Field kFields_L004C_S0140[] = {
     {"OscillateFreq", 0, 4, 0x0008, 4188},
     {"OscillateAmpl", 4, 4, 0x0008, 4189},
     {"OscillateYOffset", 8, 4, 0x0008, 4190},
@@ -4735,7 +5511,7 @@ inline constexpr Field kFields_0140[] = {
     {"OrbType", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0141[] = {
+inline constexpr Field kFields_L004C_S0141[] = {
     {"Orb", 0, 8, 0x001C, 320},
     {"EmitterJoint", 8, 8, 0x0018, 0},
     {"TargetJoint", 16, 8, 0x0018, 0},
@@ -4751,7 +5527,7 @@ inline constexpr Field kFields_0141[] = {
     {"LowHealth", 64, 0, 0x002C, 1475},
 };
 
-inline constexpr Field kFields_0142[] = {
+inline constexpr Field kFields_L004C_S0142[] = {
     {"SlideSound", 0, 8, 0x0018, 77},
     {"GrabSound", 8, 8, 0x0018, 78},
     {"GrabEffect", 16, 8, 0x0018, 79},
@@ -4770,7 +5546,7 @@ inline constexpr Field kFields_0142[] = {
     {"RopeDirType", 77, 1, 0x0104, 465},
 };
 
-inline constexpr Field kFields_0143[] = {
+inline constexpr Field kFields_L004C_S0143[] = {
     {"AudioInfo", 0, 8, 0x001C, 1476},
     {"MasterReplaceAnim", 8, 8, 0x0010, 0},
     {"TotalTime", 16, 4, 0x0008, 4217},
@@ -4778,7 +5554,7 @@ inline constexpr Field kFields_0143[] = {
     {"Event", 22, 1, 0x0104, 467},
 };
 
-inline constexpr Field kFields_0144[] = {
+inline constexpr Field kFields_L004C_S0144[] = {
     {"SlipToleranceTime", 24, 4, 0x0008, 4219},
     {"QuickPenaltyTime", 28, 4, 0x0008, 4220},
     {"IdleStruggle", 32, 4, 0x0008, 4221},
@@ -4790,13 +5566,21 @@ inline constexpr Field kFields_0144[] = {
     {"Button", 56, 1, 0x0104, 470},
 };
 
-inline constexpr Field kFields_0145[] = {
+inline constexpr Field kFields_L004D_S0143[] = {
+    {"AudioInfo", 0, 8, 0x001C, 1476},
+    {"MasterReplaceAnim", 8, 8, 0x0010, 0},
+    {"TotalTime", 16, 4, 0x0008, 4227},
+    {"Flags", 20, 2, 0x0204, 471},
+    {"Event", 22, 1, 0x0104, 472},
+};
+
+inline constexpr Field kFields_L004D_S0145[] = {
     {"SlipTolerance", 24, 4, 0x0008, 4228},
     {"RewindSpeed", 28, 4, 0x0008, 4229},
     {"Button", 32, 1, 0x0104, 473},
 };
 
-inline constexpr Field kFields_0146[] = {
+inline constexpr Field kFields_L004D_S0146[] = {
     {"OnSound", 0, 8, 0x0010, 0},
     {"PressSound", 8, 8, 0x0010, 0},
     {"Button", 16, 1, 0x0104, 474},
@@ -4804,18 +5588,18 @@ inline constexpr Field kFields_0146[] = {
     {"Flags", 18, 1, 0x0204, 475},
 };
 
-inline constexpr Field kFields_0147[] = {
+inline constexpr Field kFields_L004D_S0147[] = {
     {"Threshold", 0, 4, 0x0008, 4230},
     {"CircleID", 4, 1, 0x0000, 281},
     {"Actions", 5, 1, 0x0204, 476},
     {"When", 8, 8, 0x0030, 65535},
 };
 
-inline constexpr Field kFields_0148[] = {
+inline constexpr Field kFields_L004D_S0148[] = {
     {"Class", 0, 1, 0x0104, 477},
 };
 
-inline constexpr Field kFields_0149[] = {
+inline constexpr Field kFields_L004D_S0149[] = {
     {"Radius", 4, 4, 0x0008, 4231},
     {"Height", 8, 4, 0x0008, 4232},
     {"MPIconOverrideHeight", 12, 4, 0x0008, 4233},
@@ -4827,13 +5611,13 @@ inline constexpr Field kFields_0149[] = {
     {"HeadTrackJoint", 40, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_014A[] = {
+inline constexpr Field kFields_L004D_S014A[] = {
     {"JointName", 0, 8, 0x0010, 0},
     {"BoneOffset", 8, 4, 0x0008, 4238},
     {"priority", 12, 4, 0x0008, 4239},
 };
 
-inline constexpr Field kFields_014B[] = {
+inline constexpr Field kFields_L004D_S014B[] = {
     {"TargetJointList", 0, 12, 0x0024, 177},
     {"MinAngle", 12, 4, 0x0008, 4240},
     {"StickJointList", 16, 12, 0x0024, 178},
@@ -4842,23 +5626,23 @@ inline constexpr Field kFields_014B[] = {
     {"Name", 48, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_014C[] = {
+inline constexpr Field kFields_L004D_S014C[] = {
     {"ReferenceJointName", 0, 8, 0x0010, 0},
     {"ExposedSideInfoList", 8, 64, 0x0024, 180},
 };
 
-inline constexpr Field kFields_014D[] = {
+inline constexpr Field kFields_L004D_S014D[] = {
     {"JiggleDistance", 0, 4, 0x0008, 4242},
     {"JiggleClamp", 4, 4, 0x0008, 4243},
 };
 
-inline constexpr Field kFields_014E[] = {
+inline constexpr Field kFields_L004D_S014E[] = {
     {"JiggleAxis", 0, 1, 0x0104, 480},
     {"PositiveDirection", 4, 0, 0x002C, 333},
     {"NegativeDirection", 12, 0, 0x002C, 333},
 };
 
-inline constexpr Field kFields_014F[] = {
+inline constexpr Field kFields_L004D_S014F[] = {
     {"ResponseAxisList", 0, 12, 0x0024, 181},
     {"ReactDuration", 12, 4, 0x0008, 4248},
     {"PartFlags", 16, 8, 0x0204, 481},
@@ -4873,18 +5657,18 @@ inline constexpr Field kFields_014F[] = {
     {"EffectorIndex", 60, 1, 0x0104, 482},
 };
 
-inline constexpr Field kFields_0150[] = {
+inline constexpr Field kFields_L004D_S0150[] = {
     {"ConstraintMaxDistance", 0, 4, 0x0008, 4255},
     {"ConstraintMinDistance", 4, 4, 0x0008, 4256},
     {"ConstraintMaxAngle", 8, 4, 0x0008, 4257},
 };
 
-inline constexpr Field kFields_0151[] = {
+inline constexpr Field kFields_L004D_S0151[] = {
     {"PickupId", 0, 2, 0x0000, 283},
     {"PickupStage", 2, 1, 0x0000, 284},
 };
 
-inline constexpr Field kFields_0152[] = {
+inline constexpr Field kFields_L004D_S0152[] = {
     {"ActivatePickup", 0, 12, 0x0024, 182},
     {"MinAmount", 12, 4, 0x0008, 4258},
     {"StatusMeterName", 16, 8, 0x0010, 0},
@@ -4893,7 +5677,11 @@ inline constexpr Field kFields_0152[] = {
     {"StatusMeterThresholdFlags", 36, 1, 0x0204, 483},
 };
 
-inline constexpr Field kFields_0153[] = {
+inline constexpr Field kFields_L004E_S0148[] = {
+    {"Class", 0, 1, 0x0104, 484},
+};
+
+inline constexpr Field kFields_L004E_S0153[] = {
     {"DefaultVictimResistCombatFaceImpulseRedirect", 1, 1, 0x0014, 971},
     {"DefaultCanBouncePendulum", 2, 1, 0x0014, 972},
     {"DefaultCanHitPendulum", 3, 1, 0x0014, 973},
@@ -4912,7 +5700,7 @@ inline constexpr Field kFields_0153[] = {
     {"DefaultExposedContext", 192, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0154[] = {
+inline constexpr Field kFields_L004E_S0154[] = {
     {"QuestStartedEventName", 0, 8, 0x0018, 82},
     {"QuestCompletedEventName", 8, 8, 0x0018, 83},
     {"CharactersUpdateEventName", 16, 8, 0x0018, 84},
@@ -4924,7 +5712,7 @@ inline constexpr Field kFields_0154[] = {
     {"UDSActivities", 64, 12, 0x0024, 189},
 };
 
-inline constexpr Field kFields_0155[] = {
+inline constexpr Field kFields_L004E_S0155[] = {
     {"Type", 0, 1, 0x0104, 486},
     {"DamageScale", 4, 4, 0x0008, 4276},
     {"AllowHit", 8, 1, 0x0014, 974},
@@ -4937,13 +5725,13 @@ inline constexpr Field kFields_0155[] = {
     {"AllowMFX", 15, 1, 0x0014, 981},
 };
 
-inline constexpr Field kFields_0156[] = {
+inline constexpr Field kFields_L004E_S0156[] = {
     {"HitModifierIfFailed", 16, 0, 0x002C, 341},
     {"FailAngles", 32, 12, 0x0024, 190},
     {"FailAngle", 44, 4, 0x0008, 4279},
 };
 
-inline constexpr Field kFields_0157[] = {
+inline constexpr Field kFields_L004E_S0157[] = {
     {"EnemyContextList", 0, 12, 0x0024, 191},
     {"ExcludeActivationFlags", 12, 1, 0x0014, 998},
     {"ExcludePartFlags", 13, 1, 0x0014, 999},
@@ -4959,7 +5747,7 @@ inline constexpr Field kFields_0157[] = {
     {"HitModifier", 72, 8, 0x001C, 341},
 };
 
-inline constexpr Field kFields_0158[] = {
+inline constexpr Field kFields_L004E_S0158[] = {
     {"InitialVelocityXMin", 0, 4, 0x0008, 4280},
     {"InitialVelocityXMax", 4, 4, 0x0008, 4281},
     {"InitialVelocityYMin", 8, 4, 0x0008, 4282},
@@ -4980,14 +5768,14 @@ inline constexpr Field kFields_0158[] = {
     {"MaxImpactSpeed", 68, 4, 0x0008, 4293},
 };
 
-inline constexpr Field kFields_0159[] = {
+inline constexpr Field kFields_L004E_S0159[] = {
     {"ProgressionFactor", 0, 1, 0x0104, 493},
     {"StartTime", 4, 4, 0x0008, 4294},
     {"Intensity", 8, 4, 0x0008, 4295},
     {"Oscillations", 12, 4, 0x0008, 4296},
 };
 
-inline constexpr Field kFields_015A[] = {
+inline constexpr Field kFields_L004E_S015A[] = {
     {"ImmediateWindStrength", 0, 4, 0x0008, 4297},
     {"ImmediateWindRadius", 4, 4, 0x0008, 4298},
     {"FalloffWindStrength", 8, 4, 0x0008, 4299},
@@ -4996,54 +5784,54 @@ inline constexpr Field kFields_015A[] = {
     {"FalloffWindSeparation", 20, 4, 0x0008, 4302},
 };
 
-inline constexpr Field kFields_015B[] = {
+inline constexpr Field kFields_L004E_S015B[] = {
     {"NavBank", 0, 8, 0x0018, 91},
     {"StrafeRange", 8, 4, 0x0008, 4303},
     {"Tags", 12, 4, 0x0204, 494},
 };
 
-inline constexpr Field kFields_015C[] = {
+inline constexpr Field kFields_L004E_S015C[] = {
     {"TrackName", 0, 8, 0x0018, 0},
     {"TouchEvents", 8, 12, 0x0024, 194},
 };
 
-inline constexpr Field kFields_015D[] = {
+inline constexpr Field kFields_L004E_S015D[] = {
     {"DeathEffects", 0, 12, 0x0024, 195},
     {"StoneFreezing", 16, 0, 0x002C, 1485},
     {"IceFreezing", 136, 0, 0x002C, 1485},
     {"LifeCycleFreezing", 256, 0, 0x002C, 1485},
 };
 
-inline constexpr Field kFields_015E[] = {
+inline constexpr Field kFields_L004E_S015E[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"Cnt", 8, 2, 0x0004, 498},
 };
 
-inline constexpr Field kFields_015F[] = {
+inline constexpr Field kFields_L004E_S015F[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"ElementCount", 8, 2, 0x0004, 499},
     {"CustomCountNameParam1", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0160[] = {
+inline constexpr Field kFields_L004E_S0160[] = {
     {"Size", 0, 4, 0x0000, 290},
     {"Identifier", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0161[] = {
+inline constexpr Field kFields_L004E_S0161[] = {
     {"ScriptName", 0, 8, 0x0010, 0},
     {"GOName", 8, 8, 0x0010, 0},
     {"Size", 16, 4, 0x0000, 291},
 };
 
-inline constexpr Field kFields_0162[] = {
+inline constexpr Field kFields_L004E_S0162[] = {
     {"ClonePoseSkeletonMapBufferSize", 0, 4, 0x0000, 292},
     {"ClonePoseMatrixBufferSize", 4, 4, 0x0000, 293},
     {"MaxClonePoseTargets", 8, 4, 0x0000, 294},
     {"MaxClonePoseObjects", 12, 4, 0x0000, 295},
 };
 
-inline constexpr Field kFields_0163[] = {
+inline constexpr Field kFields_L004E_S0163[] = {
     {"GOPool", 0, 12, 0x0024, 199},
     {"MemoryPools", 16, 12, 0x0024, 200},
     {"MemoryLua", 32, 12, 0x0024, 201},
@@ -5059,7 +5847,7 @@ inline constexpr Field kFields_0163[] = {
     {"Varstring", 160, 12, 0x0024, 208},
 };
 
-inline constexpr Field kFields_0164[] = {
+inline constexpr Field kFields_L004E_S0164[] = {
     {"Spread", 0, 4, 0x0008, 4322},
     {"SpreadFadePercent", 4, 4, 0x0008, 4323},
     {"Speed", 8, 4, 0x0008, 4324},
@@ -5077,18 +5865,18 @@ inline constexpr Field kFields_0164[] = {
     {"AvoidBranch", 64, 8, 0x001C, 1286},
 };
 
-inline constexpr Field kFields_0165[] = {
+inline constexpr Field kFields_L004E_S0165[] = {
     {"Min", 0, 4, 0x0008, 4334},
     {"Max", 4, 4, 0x0008, 4335},
 };
 
-inline constexpr Field kFields_0166[] = {
+inline constexpr Field kFields_L004E_S0166[] = {
     {"EnemyCreator", 0, 8, 0x0018, 0},
     {"RespawnWhileAlive", 8, 1, 0x0000, 303},
     {"Weight", 9, 1, 0x0000, 304},
 };
 
-inline constexpr Field kFields_0167[] = {
+inline constexpr Field kFields_L004E_S0167[] = {
     {"SpawnPoint", 0, 12, 0x0024, 209},
     {"NavGraphWeight", 12, 4, 0x0008, 4336},
     {"ConfigSpecs", 16, 12, 0x0024, 210},
@@ -5098,7 +5886,7 @@ inline constexpr Field kFields_0167[] = {
     {"SpawnMove", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0168[] = {
+inline constexpr Field kFields_L004E_S0168[] = {
     {"Generator", 0, 8, 0x001C, 359},
     {"MinDistance", 8, 4, 0x0008, 4337},
     {"MaxDistance", 12, 4, 0x0008, 4338},
@@ -5106,7 +5894,7 @@ inline constexpr Field kFields_0168[] = {
     {"Weight", 17, 1, 0x0000, 306},
 };
 
-inline constexpr Field kFields_0169[] = {
+inline constexpr Field kFields_L004E_S0169[] = {
     {"Creature", 0, 12, 0x0024, 211},
     {"MarkerID", 12, 2, 0x0000, 307},
     {"TotalCount", 14, 2, 0x0000, 308},
@@ -5121,12 +5909,12 @@ inline constexpr Field kFields_0169[] = {
     {"IncCount", 57, 1, 0x0000, 313},
 };
 
-inline constexpr Field kFields_016A[] = {
+inline constexpr Field kFields_L004E_S016A[] = {
     {"Element", 0, 12, 0x0024, 213},
     {"Order", 12, 1, 0x0104, 503},
 };
 
-inline constexpr Field kFields_016B[] = {
+inline constexpr Field kFields_L004E_S016B[] = {
     {"Tint", 0, 0, 0x002C, 1},
     {"ShadowTint", 16, 0, 0x002C, 1},
     {"ScaledSizes", 32, 12, 0x0024, 214},
@@ -5190,7 +5978,7 @@ inline constexpr Field kFields_016B[] = {
     {"Bold_IsNull", 200, 1, 0x0016, 1037},
 };
 
-inline constexpr Field kFields_016C[] = {
+inline constexpr Field kFields_L004E_S016C[] = {
     {"MudDecayRate", 0, 4, 0x0008, 4372},
     {"SnowDecayRate", 4, 4, 0x0008, 4373},
     {"BloodDecayRate", 8, 4, 0x0008, 4374},
@@ -5208,7 +5996,7 @@ inline constexpr Field kFields_016C[] = {
     {"BloodDecayInCombat", 56, 1, 0x0014, 1038},
 };
 
-inline constexpr Field kFields_016D[] = {
+inline constexpr Field kFields_L004E_S016D[] = {
     {"JointName", 0, 8, 0x0010, 0},
     {"FrontLeftRegionID", 8, 4, 0x0000, 314},
     {"FrontRightRegionID", 12, 4, 0x0000, 315},
@@ -5216,21 +6004,21 @@ inline constexpr Field kFields_016D[] = {
     {"BackRightRegionID", 20, 4, 0x0000, 317},
 };
 
-inline constexpr Field kFields_016E[] = {
+inline constexpr Field kFields_L004E_S016E[] = {
     {"JointMappings", 0, 12, 0x0024, 218},
 };
 
-inline constexpr Field kFields_016F[] = {
+inline constexpr Field kFields_L004E_S016F[] = {
     {"RegionIdA", 0, 4, 0x0000, 318},
     {"RegionIdB", 4, 4, 0x0000, 319},
     {"Weight", 8, 4, 0x0008, 4386},
 };
 
-inline constexpr Field kFields_0170[] = {
+inline constexpr Field kFields_L004E_S0170[] = {
     {"Neighbors", 0, 12, 0x0024, 219},
 };
 
-inline constexpr Field kFields_0171[] = {
+inline constexpr Field kFields_L004E_S0171[] = {
     {"SlicesX", 0, 1, 0x0004, 507},
     {"SlicesY", 1, 1, 0x0004, 508},
     {"SlicesZ", 2, 1, 0x0004, 509},
@@ -5239,7 +6027,7 @@ inline constexpr Field kFields_0171[] = {
     {"SizeZ", 12, 4, 0x0008, 4389},
 };
 
-inline constexpr Field kFields_0172[] = {
+inline constexpr Field kFields_L004E_S0172[] = {
     {"IconName", 0, 8, 0x0010, 0},
     {"RadiusIconName", 8, 8, 0x0010, 0},
     {"InWorld_tMPIcon_Name", 16, 8, 0x0010, 0},
@@ -5247,7 +6035,7 @@ inline constexpr Field kFields_0172[] = {
     {"IsMainQuest", 28, 1, 0x0014, 1039},
 };
 
-inline constexpr Field kFields_0173[] = {
+inline constexpr Field kFields_L004E_S0173[] = {
     {"MainQuestDistanceLabelNames", 0, 80, 0x0024, 220},
     {"SideQuestDistanceLabelNames", 80, 80, 0x0024, 221},
     {"MainQuestDistanceLabelUiTextVarNames", 160, 80, 0x0024, 222},
@@ -5326,46 +6114,51 @@ inline constexpr Field kFields_0173[] = {
     {"ShowMultipleDistances", 760, 1, 0x0014, 1043},
 };
 
-inline constexpr Field kFields_0174[] = {
+inline constexpr Field kFields_L004E_S0174[] = {
     {"CandidateSets", 0, 12, 0x0024, 226},
     {"OnUseWorldCandidateSet", 16, 8, 0x0010, 0},
     {"DefaultCandidateSet", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0175[] = {
+inline constexpr Field kFields_L004E_S0175[] = {
     {"Layers", 0, 0, 0x0028, 19},
 };
 
-inline constexpr Field kFields_0176[] = {
+inline constexpr Field kFields_L004E_S0176[] = {
     {"CameraPosition", 0, 0, 0x002C, 7},
     {"Lods", 16, 12, 0x0024, 227},
     {"Textures", 32, 12, 0x0024, 228},
 };
 
-inline constexpr Field kFields_0177[] = {
+inline constexpr Field kFields_L004E_S0177[] = {
     {"Destinations", 0, 12, 0x0024, 229},
 };
 
-inline constexpr Field kFields_0178[] = {
+inline constexpr Field kFields_L004E_S0178[] = {
     {"FVFSType", 0, 1, 0x0105, 511},
     {"Name", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0179[] = {
+inline constexpr Field kFields_L004E_S0179[] = {
     {"SubMenu", 16, 8, 0x001C, 379},
 };
 
-inline constexpr Field kFields_017A[] = {
+inline constexpr Field kFields_L004F_S0178[] = {
+    {"FVFSType", 0, 1, 0x0105, 513},
+    {"Name", 8, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L004F_S017A[] = {
     {"VFSCommand", 16, 1, 0x0104, 514},
     {"VFSOption", 24, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_017B[] = {
+inline constexpr Field kFields_L004F_S017B[] = {
     {"Title", 0, 8, 0x0018, 0},
     {"Items", 8, 12, 0x0024, 230},
 };
 
-inline constexpr Field kFields_017C[] = {
+inline constexpr Field kFields_L004F_S017C[] = {
     {"RopeSegments", 0, 1, 0x0000, 320},
     {"EnableSupportConstraints", 1, 1, 0x0014, 1044},
     {"EnableSlowdownDuringIdle", 2, 1, 0x0014, 1045},
@@ -5387,23 +6180,23 @@ inline constexpr Field kFields_017C[] = {
     {"CallbackMotionMin", 64, 4, 0x0008, 4490},
 };
 
-inline constexpr Field kFields_017D[] = {
+inline constexpr Field kFields_L004F_S017D[] = {
     {"WadName", 0, 8, 0x0010, 0},
     {"ExpireTimestamp", 8, 4, 0x0004, 515},
     {"InitialTimestamp", 12, 4, 0x0004, 516},
     {"AllowOverflowForSmoketest", 16, 1, 0x0014, 1046},
 };
 
-inline constexpr Field kFields_017E[] = {
+inline constexpr Field kFields_L004F_S017E[] = {
     {"Wads", 0, 12, 0x0024, 231},
 };
 
-inline constexpr Field kFields_017F[] = {
+inline constexpr Field kFields_L004F_S017F[] = {
     {"Table", 0, 12, 0x0024, 232},
     {"DefaultExpireDeltaDays", 12, 2, 0x0000, 322},
 };
 
-inline constexpr Field kFields_0180[] = {
+inline constexpr Field kFields_L004F_S0180[] = {
     {"TemplateSymbol", 0, 8, 0x001A, 0},
     {"CollisionOffsetJoint", 8, 8, 0x0010, 115},
     {"MinSpeed", 16, 4, 0x0008, 4491},
@@ -5567,7 +6360,7 @@ inline constexpr Field kFields_0180[] = {
     {"InvalidAngleForWallCollisionInCombat_IsNull", 285, 1, 0x0016, 1163},
 };
 
-inline constexpr Field kFields_0181[] = {
+inline constexpr Field kFields_L004F_S0181[] = {
     {"TemplateSymbol", 0, 8, 0x001A, 0},
     {"TargetSpeed", 8, 4, 0x0008, 4527},
     {"RotationSpeed", 12, 4, 0x0008, 4528},
@@ -5609,18 +6402,18 @@ inline constexpr Field kFields_0181[] = {
     {"IgnoreMaxSpeed_IsNull", 81, 1, 0x0016, 1189},
 };
 
-inline constexpr Field kFields_0182[] = {
+inline constexpr Field kFields_L004F_S0182[] = {
     {"Branches", 0, 12, 0x0024, 233},
 };
 
-inline constexpr Field kFields_0183[] = {
+inline constexpr Field kFields_L004F_S0183[] = {
     {"MotionMap", 0, 0, 0x0028, 20},
     {"Navigation", 16, 8, 0x001C, 386},
     {"NavigationMap", 24, 0, 0x0028, 21},
     {"Branches", 40, 0, 0x0028, 22},
 };
 
-inline constexpr Field kFields_0184[] = {
+inline constexpr Field kFields_L004F_S0184[] = {
     {"HalfWidthLeft", 0, 4, 0x0008, 4539},
     {"HalfWidthRight", 4, 4, 0x0008, 4540},
     {"HalfHeightTop", 8, 4, 0x0008, 4541},
@@ -5629,18 +6422,46 @@ inline constexpr Field kFields_0184[] = {
     {"CornerScaleX", 20, 4, 0x0008, 4544},
 };
 
-inline constexpr Field kFields_0185[] = {
+inline constexpr Field kFields_L0050_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 523},
+    {"Flags", 1, 1, 0x0204, 524},
+    {"Condition", 2, 1, 0x0104, 525},
+    {"WeaponLevelMin", 3, 1, 0x0000, 326},
+    {"On", 4, 2, 0x0008, 4545},
+    {"Off", 6, 2, 0x0008, 4546},
+};
+
+inline constexpr Field kFields_L0050_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 526},
+    {"ScriptName", 16, 8, 0x0010, 116},
+};
+
+inline constexpr Field kFields_L0050_S0185[] = {
     {"TweakName", 24, 8, 0x0010, 0},
     {"JointName", 32, 8, 0x0010, 0},
     {"Action", 40, 1, 0x0104, 527},
 };
 
-inline constexpr Field kFields_0186[] = {
+inline constexpr Field kFields_L0051_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 528},
+    {"Flags", 1, 1, 0x0204, 529},
+    {"Condition", 2, 1, 0x0104, 530},
+    {"WeaponLevelMin", 3, 1, 0x0000, 327},
+    {"On", 4, 2, 0x0008, 4547},
+    {"Off", 6, 2, 0x0008, 4548},
+};
+
+inline constexpr Field kFields_L0051_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 531},
+    {"ScriptName", 16, 8, 0x0010, 117},
+};
+
+inline constexpr Field kFields_L0051_S0186[] = {
     {"SlotsList", 24, 12, 0x0024, 234},
     {"Action", 36, 1, 0x0104, 532},
 };
 
-inline constexpr Field kFields_0187[] = {
+inline constexpr Field kFields_L0051_S0187[] = {
     {"TextScalingLevels", 0, 12, 0x0024, 235},
     {"WorldSpaceOffset", 12, 4, 0x0008, 4550},
     {"IconScalingLevels", 16, 12, 0x0024, 236},
@@ -5685,13 +6506,13 @@ inline constexpr Field kFields_0187[] = {
     {"AlwaysUpright", 201, 1, 0x0014, 1198},
 };
 
-inline constexpr Field kFields_0188[] = {
+inline constexpr Field kFields_L0051_S0188[] = {
     {"IKFlags", 0, 4, 0x0000, 330},
     {"ScaleImpact", 4, 4, 0x0008, 4569},
     {"ScaleTime", 8, 4, 0x0008, 4570},
 };
 
-inline constexpr Field kFields_0189[] = {
+inline constexpr Field kFields_L0051_S0189[] = {
     {"Type", 0, 1, 0x0104, 538},
     {"CameraFacingRedirectPercent", 4, 4, 0x0008, 4571},
     {"CameraFacingRedirectRandomRange", 8, 4, 0x0008, 4572},
@@ -5704,19 +6525,19 @@ inline constexpr Field kFields_0189[] = {
     {"InterestingTargetRedirectionMinimumDistance", 36, 4, 0x0008, 4579},
 };
 
-inline constexpr Field kFields_018A[] = {
+inline constexpr Field kFields_L0051_S018A[] = {
     {"StatusMeterName", 0, 8, 0x0010, 0},
     {"Amount", 8, 4, 0x0008, 4580},
     {"ApplyDamageFilter", 12, 1, 0x0104, 539},
     {"ApplyDamageMode", 13, 1, 0x0104, 540},
 };
 
-inline constexpr Field kFields_018B[] = {
+inline constexpr Field kFields_L0051_S018B[] = {
     {"StatusMeterDamage", 0, 8, 0x001C, 394},
     {"Decision", 8, 8, 0x001C, 1067},
 };
 
-inline constexpr Field kFields_018C[] = {
+inline constexpr Field kFields_L0051_S018C[] = {
     {"BlockImpulseAwayVector", 0, 0, 0x002C, 393},
     {"GroundImpulseAwayVector", 40, 0, 0x002C, 393},
     {"AirImpulseAwayVector", 80, 0, 0x002C, 393},
@@ -5759,19 +6580,62 @@ inline constexpr Field kFields_018C[] = {
     {"IsSkillTreeCollision", 371, 1, 0x0015, 1204},
 };
 
-inline constexpr Field kFields_018D[] = {
+inline constexpr Field kFields_L0051_S018D[] = {
     {"MeterName", 0, 8, 0x0010, 0},
     {"Amount", 8, 4, 0x0008, 4645},
     {"Type", 12, 1, 0x0104, 563},
     {"Params", 16, 8, 0x001C, 1310},
 };
 
-inline constexpr Field kFields_018E[] = {
+inline constexpr Field kFields_L0052_S018C[] = {
+    {"BlockImpulseAwayVector", 0, 0, 0x002C, 393},
+    {"GroundImpulseAwayVector", 40, 0, 0x002C, 393},
+    {"AirImpulseAwayVector", 80, 0, 0x002C, 393},
+    {"RagdollImpulseAwayVector", 120, 0, 0x002C, 393},
+    {"BlockImpulse", 160, 0, 0x002C, 11},
+    {"GroundImpulse", 174, 0, 0x002C, 11},
+    {"AirImpulse", 188, 0, 0x002C, 11},
+    {"RagdollImpulse", 202, 0, 0x002C, 11},
+    {"StatusMeterDamage", 216, 12, 0x0024, 247},
+    {"Flags", 228, 4, 0x0204, 580},
+    {"StatusMeterDamageWithPickupStatusDecision", 232, 12, 0x0024, 248},
+    {"MFXSwitches", 244, 0, 0x002C, 181},
+    {"Effects", 256, 12, 0x0024, 250},
+    {"On", 268, 2, 0x0008, 4702},
+    {"Off", 270, 2, 0x0008, 4703},
+    {"ImpulseCameraOverrideAngleList", 272, 12, 0x0024, 251},
+    {"HitPause", 284, 2, 0x0008, 4705},
+    {"BlockPause", 286, 2, 0x0008, 4706},
+    {"ImpulseCameraOverrideExtraAwayValueList", 288, 12, 0x0024, 252},
+    {"Damage", 300, 2, 0x0008, 4708},
+    {"Stun", 302, 2, 0x0008, 4709},
+    {"DamageImmunity", 304, 8, 0x001C, 1277},
+    {"WeaponDamageIK", 312, 8, 0x001C, 392},
+    {"PartFlags", 320, 8, 0x0204, 581},
+    {"HitFlags", 328, 8, 0x0204, 582},
+    {"Pickup", 336, 8, 0x001C, 1183},
+    {"Context", 344, 8, 0x0010, 0},
+    {"HitJoint", 352, 8, 0x0010, 0},
+    {"PartFlagsBehavior", 360, 1, 0x0104, 583},
+    {"Partitions", 361, 1, 0x0000, 336},
+    {"IgnorePartitions_AlwaysHit", 362, 1, 0x0014, 1205},
+    {"SynchID", 363, 1, 0x0000, 337},
+    {"PickupSlot", 364, 1, 0x0000, 338},
+    {"MFXLocationMode", 365, 1, 0x0104, 584},
+    {"ForceFaceAttacker", 366, 1, 0x0014, 1206},
+    {"ShouldTriggerHitEvent", 367, 1, 0x0014, 1207},
+    {"AllowPlayHitReact", 368, 1, 0x0014, 1208},
+    {"ForceSetLastDamageAttacker", 369, 1, 0x0014, 1209},
+    {"FaceImpulseFlags", 370, 1, 0x0204, 585},
+    {"IsSkillTreeCollision", 371, 1, 0x0015, 1210},
+};
+
+inline constexpr Field kFields_L0052_S018E[] = {
     {"ModifyMeterDamage", 376, 12, 0x0024, 253},
     {"OnHitEventName", 392, 16, 0x0024, 254},
 };
 
-inline constexpr Field kFields_018F[] = {
+inline constexpr Field kFields_L0052_S018F[] = {
     {"Type", 0, 1, 0x0105, 586},
     {"LifeSpan", 4, 4, 0x0008, 4710},
     {"Velocity", 8, 4, 0x0008, 4711},
@@ -5781,7 +6645,7 @@ inline constexpr Field kFields_018F[] = {
     {"Gravity", 24, 4, 0x0008, 4715},
 };
 
-inline constexpr Field kFields_0190[] = {
+inline constexpr Field kFields_L0052_S0190[] = {
     {"HomingAmount", 28, 4, 0x0008, 4722},
     {"HomingDelay", 32, 4, 0x0008, 4723},
     {"HomingCancelDistanceToTarget", 36, 4, 0x0008, 4724},
@@ -5795,11 +6659,31 @@ inline constexpr Field kFields_0190[] = {
     {"TargetDistanceOffset", 68, 4, 0x0008, 4731},
 };
 
-inline constexpr Field kFields_0191[] = {
+inline constexpr Field kFields_L0053_S018F[] = {
+    {"Type", 0, 1, 0x0105, 588},
+    {"LifeSpan", 4, 4, 0x0008, 4732},
+    {"Velocity", 8, 4, 0x0008, 4733},
+    {"MaxVelocity", 12, 4, 0x0008, 4734},
+    {"MinVelocity", 16, 4, 0x0008, 4735},
+    {"Acceleration", 20, 4, 0x0008, 4736},
+    {"Gravity", 24, 4, 0x0008, 4737},
+};
+
+inline constexpr Field kFields_L0053_S0191[] = {
     {"Offset", 28, 0, 0x002C, 6},
 };
 
-inline constexpr Field kFields_0192[] = {
+inline constexpr Field kFields_L0054_S018F[] = {
+    {"Type", 0, 1, 0x0105, 589},
+    {"LifeSpan", 4, 4, 0x0008, 4741},
+    {"Velocity", 8, 4, 0x0008, 4742},
+    {"MaxVelocity", 12, 4, 0x0008, 4743},
+    {"MinVelocity", 16, 4, 0x0008, 4744},
+    {"Acceleration", 20, 4, 0x0008, 4745},
+    {"Gravity", 24, 4, 0x0008, 4746},
+};
+
+inline constexpr Field kFields_L0054_S0192[] = {
     {"LeftOrRight", 28, 1, 0x0014, 1212},
     {"UpOrDown", 29, 1, 0x0014, 1213},
     {"HorizontalLoops", 30, 1, 0x0000, 339},
@@ -5809,14 +6693,41 @@ inline constexpr Field kFields_0192[] = {
     {"VerticalAmplitude", 40, 4, 0x0008, 4749},
 };
 
-inline constexpr Field kFields_0193[] = {
+inline constexpr Field kFields_L0055_S018F[] = {
+    {"Type", 0, 1, 0x0105, 590},
+    {"LifeSpan", 4, 4, 0x0008, 4750},
+    {"Velocity", 8, 4, 0x0008, 4751},
+    {"MaxVelocity", 12, 4, 0x0008, 4752},
+    {"MinVelocity", 16, 4, 0x0008, 4753},
+    {"Acceleration", 20, 4, 0x0008, 4754},
+    {"Gravity", 24, 4, 0x0008, 4755},
+};
+
+inline constexpr Field kFields_L0055_S0193[] = {
     {"Subtype", 28, 1, 0x0105, 591},
     {"CurveName", 32, 8, 0x0010, 0},
     {"StartPhase", 40, 4, 0x0008, 4756},
     {"EndPhase", 44, 4, 0x0008, 4757},
 };
 
-inline constexpr Field kFields_0194[] = {
+inline constexpr Field kFields_L0056_S018F[] = {
+    {"Type", 0, 1, 0x0105, 592},
+    {"LifeSpan", 4, 4, 0x0008, 4758},
+    {"Velocity", 8, 4, 0x0008, 4759},
+    {"MaxVelocity", 12, 4, 0x0008, 4760},
+    {"MinVelocity", 16, 4, 0x0008, 4761},
+    {"Acceleration", 20, 4, 0x0008, 4762},
+    {"Gravity", 24, 4, 0x0008, 4763},
+};
+
+inline constexpr Field kFields_L0056_S0193[] = {
+    {"Subtype", 28, 1, 0x0105, 593},
+    {"CurveName", 32, 8, 0x0010, 0},
+    {"StartPhase", 40, 4, 0x0008, 4764},
+    {"EndPhase", 44, 4, 0x0008, 4765},
+};
+
+inline constexpr Field kFields_L0056_S0194[] = {
     {"TargetAnchorPhase", 48, 4, 0x0008, 4766},
     {"StartHomingPhase", 52, 4, 0x0008, 4767},
     {"StopHomingPhase", 56, 4, 0x0008, 4768},
@@ -5844,7 +6755,24 @@ inline constexpr Field kFields_0194[] = {
     {"PredictionCancelNeedsEvade", 135, 1, 0x0014, 1217},
 };
 
-inline constexpr Field kFields_0195[] = {
+inline constexpr Field kFields_L0057_S018F[] = {
+    {"Type", 0, 1, 0x0105, 594},
+    {"LifeSpan", 4, 4, 0x0008, 4787},
+    {"Velocity", 8, 4, 0x0008, 4788},
+    {"MaxVelocity", 12, 4, 0x0008, 4789},
+    {"MinVelocity", 16, 4, 0x0008, 4790},
+    {"Acceleration", 20, 4, 0x0008, 4791},
+    {"Gravity", 24, 4, 0x0008, 4792},
+};
+
+inline constexpr Field kFields_L0057_S0193[] = {
+    {"Subtype", 28, 1, 0x0105, 595},
+    {"CurveName", 32, 8, 0x0010, 0},
+    {"StartPhase", 40, 4, 0x0008, 4793},
+    {"EndPhase", 44, 4, 0x0008, 4794},
+};
+
+inline constexpr Field kFields_L0057_S0195[] = {
     {"PathFlags", 48, 1, 0x0204, 596},
     {"RotateX", 52, 4, 0x0008, 4795},
     {"RotateY", 56, 4, 0x0008, 4796},
@@ -5860,12 +6788,12 @@ inline constexpr Field kFields_0195[] = {
     {"ScaleMaxZ", 96, 4, 0x0008, 4806},
 };
 
-inline constexpr Field kFields_0196[] = {
+inline constexpr Field kFields_L0057_S0196[] = {
     {"When", 0, 8, 0x0030, 65535},
     {"Priority", 8, 4, 0x0008, 4807},
 };
 
-inline constexpr Field kFields_0197[] = {
+inline constexpr Field kFields_L0057_S0197[] = {
     {"ScaleDamage", 16, 4, 0x0008, 4809},
     {"ScaleStatusMeterDamage", 20, 4, 0x0008, 4810},
     {"Payload", 24, 8, 0x001C, 257},
@@ -5873,19 +6801,24 @@ inline constexpr Field kFields_0197[] = {
     {"CollisionFX", 40, 8, 0x001C, 272},
 };
 
-inline constexpr Field kFields_0198[] = {
+inline constexpr Field kFields_L0058_S0196[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"Priority", 8, 4, 0x0008, 4811},
+};
+
+inline constexpr Field kFields_L0058_S0198[] = {
     {"HalfConeWidthInner", 16, 4, 0x0008, 4812},
     {"HalfConeWidthOuter", 20, 4, 0x0008, 4813},
     {"Falloff", 24, 1, 0x0104, 597},
 };
 
-inline constexpr Field kFields_0199[] = {
+inline constexpr Field kFields_L0058_S0199[] = {
     {"ImpactOverrides", 0, 12, 0x0024, 255},
     {"AtDistance", 12, 4, 0x0008, 4814},
     {"TargetingOverrides", 16, 12, 0x0024, 256},
 };
 
-inline constexpr Field kFields_019A[] = {
+inline constexpr Field kFields_L0058_S019A[] = {
     {"StuckTime", 0, 4, 0x0008, 4815},
     {"FadeTime", 4, 4, 0x0008, 4816},
     {"DeflectionFactor", 8, 4, 0x0008, 4817},
@@ -5941,7 +6874,7 @@ inline constexpr Field kFields_019A[] = {
     {"RotationSpeedZ", 692, 4, 0x0008, 4900},
 };
 
-inline constexpr Field kFields_019B[] = {
+inline constexpr Field kFields_L0058_S019B[] = {
     {"EmitList", 0, 12, 0x0024, 268},
     {"AmountGameSlowDown", 12, 4, 0x0008, 4901},
     {"AimJoint", 16, 8, 0x0018, 0},
@@ -5963,7 +6896,7 @@ inline constexpr Field kFields_019B[] = {
     {"ConsiderTargetVelocity", 89, 1, 0x0014, 1232},
 };
 
-inline constexpr Field kFields_019C[] = {
+inline constexpr Field kFields_L0058_S019C[] = {
     {"Collision", 0, 0, 0x002C, 396},
     {"PayloadForCreatureContact", 376, 8, 0x001C, 257},
     {"PayloadForSheetContact", 384, 8, 0x001C, 257},
@@ -5981,7 +6914,7 @@ inline constexpr Field kFields_019C[] = {
     {"ShouldIgnoreCompanions", 447, 1, 0x0014, 1241},
 };
 
-inline constexpr Field kFields_019D[] = {
+inline constexpr Field kFields_L0058_S019D[] = {
     {"HitResponseName", 0, 8, 0x0010, 0},
     {"StartNewMode", 8, 8, 0x001C, 423},
     {"PhysicsDeflect", 16, 8, 0x001C, 421},
@@ -5989,20 +6922,20 @@ inline constexpr Field kFields_019D[] = {
     {"MaxNumberBounces", 25, 1, 0x0000, 353},
 };
 
-inline constexpr Field kFields_019E[] = {
+inline constexpr Field kFields_L0058_S019E[] = {
     {"JointName", 0, 8, 0x0010, 0},
     {"JointOffset", 8, 0, 0x002C, 6},
     {"JointRotation", 14, 0, 0x002C, 6},
 };
 
-inline constexpr Field kFields_019F[] = {
+inline constexpr Field kFields_L0058_S019F[] = {
     {"ReticleSubName", 0, 8, 0x0010, 0},
     {"DebugReticleText", 8, 8, 0x0018, 0},
     {"DebugOffsetX", 16, 4, 0x0008, 4984},
     {"DebugOffsetY", 20, 4, 0x0008, 4985},
 };
 
-inline constexpr Field kFields_01A0[] = {
+inline constexpr Field kFields_L0058_S01A0[] = {
     {"TargetEmbedJoints", 0, 12, 0x0024, 275},
     {"OverrideDistance", 12, 4, 0x0008, 4986},
     {"ReticleTargetGroupName", 16, 8, 0x0018, 0},
@@ -6011,7 +6944,7 @@ inline constexpr Field kFields_01A0[] = {
     {"MaxLookAngle", 36, 4, 0x0008, 4988},
 };
 
-inline constexpr Field kFields_01A1[] = {
+inline constexpr Field kFields_L0058_S01A1[] = {
     {"WeaponType", 0, 4, 0x0000, 354},
     {"Original", 8, 8, 0x0010, 0},
     {"Override", 16, 8, 0x0010, 0},
@@ -6019,7 +6952,7 @@ inline constexpr Field kFields_01A1[] = {
     {"MaxHitAngle", 28, 4, 0x0008, 4990},
 };
 
-inline constexpr Field kFields_01A2[] = {
+inline constexpr Field kFields_L0058_S01A2[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"ResponseOverrides", 8, 12, 0x0024, 276},
     {"TargetGroups", 24, 12, 0x0024, 277},
@@ -6027,17 +6960,17 @@ inline constexpr Field kFields_01A2[] = {
     {"IgnoreAll", 37, 1, 0x0014, 1242},
 };
 
-inline constexpr Field kFields_01A3[] = {
+inline constexpr Field kFields_L0058_S01A3[] = {
     {"HitType", 0, 8, 0x0010, 0},
     {"OverrideHitType", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01A4[] = {
+inline constexpr Field kFields_L0058_S01A4[] = {
     {"HitReaction", 0, 8, 0x0010, 0},
     {"HitResponse", 8, 12, 0x0024, 278},
 };
 
-inline constexpr Field kFields_01A5[] = {
+inline constexpr Field kFields_L0058_S01A5[] = {
     {"SpeedType", 0, 1, 0x0104, 650},
     {"DeflectMinSpeed", 4, 4, 0x0008, 4991},
     {"DeflectMaxSpeed", 8, 4, 0x0008, 4992},
@@ -6047,7 +6980,7 @@ inline constexpr Field kFields_01A5[] = {
     {"StartNewMode", 24, 8, 0x001C, 423},
 };
 
-inline constexpr Field kFields_01A6[] = {
+inline constexpr Field kFields_L0058_S01A6[] = {
     {"Attachment", 0, 8, 0x0010, 120},
     {"AttachName", 8, 8, 0x0010, 0},
     {"SurfaceMaterial", 16, 8, 0x0010, 0},
@@ -6058,7 +6991,7 @@ inline constexpr Field kFields_01A6[] = {
     {"CanThrowAtTarget", 32, 1, 0x0014, 1243},
 };
 
-inline constexpr Field kFields_01A7[] = {
+inline constexpr Field kFields_L0058_S01A7[] = {
     {"Speed", 0, 0, 0x002C, 229},
     {"ThrowName", 40, 8, 0x0018, 0},
     {"Collision", 48, 8, 0x001C, 396},
@@ -6137,7 +7070,7 @@ inline constexpr Field kFields_01A7[] = {
     {"FauxEmbedded", 365, 1, 0x0014, 1256},
 };
 
-inline constexpr Field kFields_01A8[] = {
+inline constexpr Field kFields_L0058_S01A8[] = {
     {"OutwardVertical", 368, 4, 0x0008, 5102},
     {"RotateArc", 372, 4, 0x0008, 5103},
     {"LobTossCurveOut", 376, 4, 0x0008, 5104},
@@ -6146,7 +7079,86 @@ inline constexpr Field kFields_01A8[] = {
     {"LobTossCurveToHand", 388, 4, 0x0008, 5107},
 };
 
-inline constexpr Field kFields_01A9[] = {
+inline constexpr Field kFields_L0059_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 135},
+    {"OnHitWorldAction", 64, 8, 0x0010, 136},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 137},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 138},
+    {"ModelRootJointName", 96, 8, 0x0018, 139},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 140},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 141},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5126},
+    {"MaxSpeed", 204, 4, 0x0008, 5127},
+    {"TimeDilation", 208, 4, 0x0008, 5128},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5129},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5130},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5131},
+    {"OutwardDistance", 224, 4, 0x0008, 5132},
+    {"EaseIn", 228, 4, 0x0008, 5133},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5134},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5135},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5136},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5137},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5138},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5139},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5140},
+    {"EmbedMask", 260, 4, 0x0000, 362},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5141},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5142},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5143},
+    {"GrindTime", 276, 4, 0x0008, 5144},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5145},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5146},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5147},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5148},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5149},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5150},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5151},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5152},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5153},
+    {"MaxTargets", 316, 4, 0x0000, 363},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5154},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5155},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5156},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5157},
+    {"BounceAmount", 336, 4, 0x0008, 5158},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5159},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5160},
+    {"ThrowStatePickup", 348, 2, 0x0000, 364},
+    {"Type", 350, 1, 0x0105, 669},
+    {"FollowPath", 351, 1, 0x0014, 1270},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1271},
+    {"SeekTarget", 353, 1, 0x0014, 1272},
+    {"ThrowFlags", 354, 1, 0x0204, 670},
+    {"AlignToSurface", 355, 1, 0x0014, 1273},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1274},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1275},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1276},
+    {"TargetType", 359, 1, 0x0104, 671},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1277},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1278},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1279},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1280},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1281},
+    {"FauxEmbedded", 365, 1, 0x0014, 1282},
+};
+
+inline constexpr Field kFields_L0059_S01A9[] = {
     {"ConcussionOffset", 368, 4, 0x0008, 5161},
     {"EmbedDelayFromLastConcussion", 372, 4, 0x0008, 5162},
     {"DrillConcussionList", 376, 12, 0x0024, 282},
@@ -6160,7 +7172,86 @@ inline constexpr Field kFields_01A9[] = {
     {"ResistanceMaxAngle", 428, 4, 0x0008, 5167},
 };
 
-inline constexpr Field kFields_01AA[] = {
+inline constexpr Field kFields_L005A_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 142},
+    {"OnHitWorldAction", 64, 8, 0x0010, 143},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 144},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 145},
+    {"ModelRootJointName", 96, 8, 0x0018, 146},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 147},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 148},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5186},
+    {"MaxSpeed", 204, 4, 0x0008, 5187},
+    {"TimeDilation", 208, 4, 0x0008, 5188},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5189},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5190},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5191},
+    {"OutwardDistance", 224, 4, 0x0008, 5192},
+    {"EaseIn", 228, 4, 0x0008, 5193},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5194},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5195},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5196},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5197},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5198},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5199},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5200},
+    {"EmbedMask", 260, 4, 0x0000, 365},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5201},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5202},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5203},
+    {"GrindTime", 276, 4, 0x0008, 5204},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5205},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5206},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5207},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5208},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5209},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5210},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5211},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5212},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5213},
+    {"MaxTargets", 316, 4, 0x0000, 366},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5214},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5215},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5216},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5217},
+    {"BounceAmount", 336, 4, 0x0008, 5218},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5219},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5220},
+    {"ThrowStatePickup", 348, 2, 0x0000, 367},
+    {"Type", 350, 1, 0x0105, 675},
+    {"FollowPath", 351, 1, 0x0014, 1284},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1285},
+    {"SeekTarget", 353, 1, 0x0014, 1286},
+    {"ThrowFlags", 354, 1, 0x0204, 676},
+    {"AlignToSurface", 355, 1, 0x0014, 1287},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1288},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1289},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1290},
+    {"TargetType", 359, 1, 0x0104, 677},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1291},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1292},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1293},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1294},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1295},
+    {"FauxEmbedded", 365, 1, 0x0014, 1296},
+};
+
+inline constexpr Field kFields_L005A_S01AA[] = {
     {"BaseOffset", 368, 0, 0x002C, 6},
     {"AngularVelocity", 374, 0, 0x002C, 6},
     {"ScaleGravity", 380, 4, 0x0008, 5227},
@@ -6169,7 +7260,86 @@ inline constexpr Field kFields_01AA[] = {
     {"RotationTweenTime", 392, 4, 0x0008, 5230},
 };
 
-inline constexpr Field kFields_01AB[] = {
+inline constexpr Field kFields_L005B_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 149},
+    {"OnHitWorldAction", 64, 8, 0x0010, 150},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 151},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 152},
+    {"ModelRootJointName", 96, 8, 0x0018, 153},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 154},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 155},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5249},
+    {"MaxSpeed", 204, 4, 0x0008, 5250},
+    {"TimeDilation", 208, 4, 0x0008, 5251},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5252},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5253},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5254},
+    {"OutwardDistance", 224, 4, 0x0008, 5255},
+    {"EaseIn", 228, 4, 0x0008, 5256},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5257},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5258},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5259},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5260},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5261},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5262},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5263},
+    {"EmbedMask", 260, 4, 0x0000, 368},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5264},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5265},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5266},
+    {"GrindTime", 276, 4, 0x0008, 5267},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5268},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5269},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5270},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5271},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5272},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5273},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5274},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5275},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5276},
+    {"MaxTargets", 316, 4, 0x0000, 369},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5277},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5278},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5279},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5280},
+    {"BounceAmount", 336, 4, 0x0008, 5281},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5282},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5283},
+    {"ThrowStatePickup", 348, 2, 0x0000, 370},
+    {"Type", 350, 1, 0x0105, 681},
+    {"FollowPath", 351, 1, 0x0014, 1297},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1298},
+    {"SeekTarget", 353, 1, 0x0014, 1299},
+    {"ThrowFlags", 354, 1, 0x0204, 682},
+    {"AlignToSurface", 355, 1, 0x0014, 1300},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1301},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1302},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1303},
+    {"TargetType", 359, 1, 0x0104, 683},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1304},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1305},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1306},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1307},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1308},
+    {"FauxEmbedded", 365, 1, 0x0014, 1309},
+};
+
+inline constexpr Field kFields_L005B_S01AB[] = {
     {"SpinTime", 368, 4, 0x0008, 5284},
     {"StartRotationSpeed", 372, 4, 0x0008, 5285},
     {"TargetRevolutionsPerSecond", 376, 4, 0x0008, 5286},
@@ -6179,7 +7349,86 @@ inline constexpr Field kFields_01AB[] = {
     {"StartNewMode", 400, 8, 0x001C, 423},
 };
 
-inline constexpr Field kFields_01AC[] = {
+inline constexpr Field kFields_L005C_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 156},
+    {"OnHitWorldAction", 64, 8, 0x0010, 157},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 158},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 159},
+    {"ModelRootJointName", 96, 8, 0x0018, 160},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 161},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 162},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5306},
+    {"MaxSpeed", 204, 4, 0x0008, 5307},
+    {"TimeDilation", 208, 4, 0x0008, 5308},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5309},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5310},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5311},
+    {"OutwardDistance", 224, 4, 0x0008, 5312},
+    {"EaseIn", 228, 4, 0x0008, 5313},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5314},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5315},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5316},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5317},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5318},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5319},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5320},
+    {"EmbedMask", 260, 4, 0x0000, 371},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5321},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5322},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5323},
+    {"GrindTime", 276, 4, 0x0008, 5324},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5325},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5326},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5327},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5328},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5329},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5330},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5331},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5332},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5333},
+    {"MaxTargets", 316, 4, 0x0000, 372},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5334},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5335},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5336},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5337},
+    {"BounceAmount", 336, 4, 0x0008, 5338},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5339},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5340},
+    {"ThrowStatePickup", 348, 2, 0x0000, 373},
+    {"Type", 350, 1, 0x0105, 687},
+    {"FollowPath", 351, 1, 0x0014, 1311},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1312},
+    {"SeekTarget", 353, 1, 0x0014, 1313},
+    {"ThrowFlags", 354, 1, 0x0204, 688},
+    {"AlignToSurface", 355, 1, 0x0014, 1314},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1315},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1316},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1317},
+    {"TargetType", 359, 1, 0x0104, 689},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1318},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1319},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1320},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1321},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1322},
+    {"FauxEmbedded", 365, 1, 0x0014, 1323},
+};
+
+inline constexpr Field kFields_L005C_S01AC[] = {
     {"GrindPickup", 368, 2, 0x0000, 374},
     {"RotationalAccelerationAcceleration", 372, 4, 0x0008, 5341},
     {"RotationStartSpeed", 376, 4, 0x0008, 5342},
@@ -6199,7 +7448,86 @@ inline constexpr Field kFields_01AC[] = {
     {"StickToTarget", 426, 1, 0x0014, 1326},
 };
 
-inline constexpr Field kFields_01AD[] = {
+inline constexpr Field kFields_L005D_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 163},
+    {"OnHitWorldAction", 64, 8, 0x0010, 164},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 165},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 166},
+    {"ModelRootJointName", 96, 8, 0x0018, 167},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 168},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 169},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5372},
+    {"MaxSpeed", 204, 4, 0x0008, 5373},
+    {"TimeDilation", 208, 4, 0x0008, 5374},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5375},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5376},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5377},
+    {"OutwardDistance", 224, 4, 0x0008, 5378},
+    {"EaseIn", 228, 4, 0x0008, 5379},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5380},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5381},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5382},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5383},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5384},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5385},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5386},
+    {"EmbedMask", 260, 4, 0x0000, 375},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5387},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5388},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5389},
+    {"GrindTime", 276, 4, 0x0008, 5390},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5391},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5392},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5393},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5394},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5395},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5396},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5397},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5398},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5399},
+    {"MaxTargets", 316, 4, 0x0000, 376},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5400},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5401},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5402},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5403},
+    {"BounceAmount", 336, 4, 0x0008, 5404},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5405},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5406},
+    {"ThrowStatePickup", 348, 2, 0x0000, 377},
+    {"Type", 350, 1, 0x0105, 693},
+    {"FollowPath", 351, 1, 0x0014, 1327},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1328},
+    {"SeekTarget", 353, 1, 0x0014, 1329},
+    {"ThrowFlags", 354, 1, 0x0204, 694},
+    {"AlignToSurface", 355, 1, 0x0014, 1330},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1331},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1332},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1333},
+    {"TargetType", 359, 1, 0x0104, 695},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1334},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1335},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1336},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1337},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1338},
+    {"FauxEmbedded", 365, 1, 0x0014, 1339},
+};
+
+inline constexpr Field kFields_L005D_S01AD[] = {
     {"DeflectSmashPickup", 368, 2, 0x0000, 378},
     {"ScaleGravity", 372, 4, 0x0008, 5407},
     {"MaxDeflectSpinAxisOnHit", 376, 4, 0x0008, 5408},
@@ -6225,7 +7553,86 @@ inline constexpr Field kFields_01AD[] = {
     {"OrientTowardsTrajectory", 450, 1, 0x0014, 1342},
 };
 
-inline constexpr Field kFields_01AE[] = {
+inline constexpr Field kFields_L005E_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 170},
+    {"OnHitWorldAction", 64, 8, 0x0010, 171},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 172},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 173},
+    {"ModelRootJointName", 96, 8, 0x0018, 174},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 175},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 176},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5444},
+    {"MaxSpeed", 204, 4, 0x0008, 5445},
+    {"TimeDilation", 208, 4, 0x0008, 5446},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5447},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5448},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5449},
+    {"OutwardDistance", 224, 4, 0x0008, 5450},
+    {"EaseIn", 228, 4, 0x0008, 5451},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5452},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5453},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5454},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5455},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5456},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5457},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5458},
+    {"EmbedMask", 260, 4, 0x0000, 379},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5459},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5460},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5461},
+    {"GrindTime", 276, 4, 0x0008, 5462},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5463},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5464},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5465},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5466},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5467},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5468},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5469},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5470},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5471},
+    {"MaxTargets", 316, 4, 0x0000, 380},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5472},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5473},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5474},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5475},
+    {"BounceAmount", 336, 4, 0x0008, 5476},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5477},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5478},
+    {"ThrowStatePickup", 348, 2, 0x0000, 381},
+    {"Type", 350, 1, 0x0105, 699},
+    {"FollowPath", 351, 1, 0x0014, 1343},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1344},
+    {"SeekTarget", 353, 1, 0x0014, 1345},
+    {"ThrowFlags", 354, 1, 0x0204, 700},
+    {"AlignToSurface", 355, 1, 0x0014, 1346},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1347},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1348},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1349},
+    {"TargetType", 359, 1, 0x0104, 701},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1350},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1351},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1352},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1353},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1354},
+    {"FauxEmbedded", 365, 1, 0x0014, 1355},
+};
+
+inline constexpr Field kFields_L005E_S01AE[] = {
     {"MaxRange", 368, 4, 0x0008, 5479},
     {"ScaleGravity", 372, 4, 0x0008, 5480},
     {"ScaleDamping", 376, 4, 0x0008, 5481},
@@ -6233,7 +7640,86 @@ inline constexpr Field kFields_01AE[] = {
     {"CurvatureBeforeTarget", 384, 4, 0x0008, 5483},
 };
 
-inline constexpr Field kFields_01AF[] = {
+inline constexpr Field kFields_L005F_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 177},
+    {"OnHitWorldAction", 64, 8, 0x0010, 178},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 179},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 180},
+    {"ModelRootJointName", 96, 8, 0x0018, 181},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 182},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 183},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5502},
+    {"MaxSpeed", 204, 4, 0x0008, 5503},
+    {"TimeDilation", 208, 4, 0x0008, 5504},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5505},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5506},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5507},
+    {"OutwardDistance", 224, 4, 0x0008, 5508},
+    {"EaseIn", 228, 4, 0x0008, 5509},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5510},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5511},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5512},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5513},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5514},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5515},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5516},
+    {"EmbedMask", 260, 4, 0x0000, 382},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5517},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5518},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5519},
+    {"GrindTime", 276, 4, 0x0008, 5520},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5521},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5522},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5523},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5524},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5525},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5526},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5527},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5528},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5529},
+    {"MaxTargets", 316, 4, 0x0000, 383},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5530},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5531},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5532},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5533},
+    {"BounceAmount", 336, 4, 0x0008, 5534},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5535},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5536},
+    {"ThrowStatePickup", 348, 2, 0x0000, 384},
+    {"Type", 350, 1, 0x0105, 705},
+    {"FollowPath", 351, 1, 0x0014, 1356},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1357},
+    {"SeekTarget", 353, 1, 0x0014, 1358},
+    {"ThrowFlags", 354, 1, 0x0204, 706},
+    {"AlignToSurface", 355, 1, 0x0014, 1359},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1360},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1361},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1362},
+    {"TargetType", 359, 1, 0x0104, 707},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1363},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1364},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1365},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1366},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1367},
+    {"FauxEmbedded", 365, 1, 0x0014, 1368},
+};
+
+inline constexpr Field kFields_L005F_S01AF[] = {
     {"MaxRange", 368, 4, 0x0008, 5537},
     {"ScaleGravity", 372, 4, 0x0008, 5538},
     {"TautRotateSpeed", 376, 4, 0x0008, 5539},
@@ -6250,7 +7736,86 @@ inline constexpr Field kFields_01AF[] = {
     {"WeaponPositionTweenTime", 416, 4, 0x0008, 5550},
 };
 
-inline constexpr Field kFields_01B0[] = {
+inline constexpr Field kFields_L0060_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 184},
+    {"OnHitWorldAction", 64, 8, 0x0010, 185},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 186},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 187},
+    {"ModelRootJointName", 96, 8, 0x0018, 188},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 189},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 190},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5569},
+    {"MaxSpeed", 204, 4, 0x0008, 5570},
+    {"TimeDilation", 208, 4, 0x0008, 5571},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5572},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5573},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5574},
+    {"OutwardDistance", 224, 4, 0x0008, 5575},
+    {"EaseIn", 228, 4, 0x0008, 5576},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5577},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5578},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5579},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5580},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5581},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5582},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5583},
+    {"EmbedMask", 260, 4, 0x0000, 385},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5584},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5585},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5586},
+    {"GrindTime", 276, 4, 0x0008, 5587},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5588},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5589},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5590},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5591},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5592},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5593},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5594},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5595},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5596},
+    {"MaxTargets", 316, 4, 0x0000, 386},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5597},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5598},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5599},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5600},
+    {"BounceAmount", 336, 4, 0x0008, 5601},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5602},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5603},
+    {"ThrowStatePickup", 348, 2, 0x0000, 387},
+    {"Type", 350, 1, 0x0105, 711},
+    {"FollowPath", 351, 1, 0x0014, 1371},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1372},
+    {"SeekTarget", 353, 1, 0x0014, 1373},
+    {"ThrowFlags", 354, 1, 0x0204, 712},
+    {"AlignToSurface", 355, 1, 0x0014, 1374},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1375},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1376},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1377},
+    {"TargetType", 359, 1, 0x0104, 713},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1378},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1379},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1380},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1381},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1382},
+    {"FauxEmbedded", 365, 1, 0x0014, 1383},
+};
+
+inline constexpr Field kFields_L0060_S01B0[] = {
     {"CurveStartDepthBias", 368, 4, 0x0008, 5604},
     {"CurveStartHorizontalBias", 372, 4, 0x0008, 5605},
     {"CurveStartVerticalBias", 376, 4, 0x0008, 5606},
@@ -6266,7 +7831,86 @@ inline constexpr Field kFields_01B0[] = {
     {"OnWeaponUnembedHook", 416, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_01B1[] = {
+inline constexpr Field kFields_L0061_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 191},
+    {"OnHitWorldAction", 64, 8, 0x0010, 192},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 193},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 194},
+    {"ModelRootJointName", 96, 8, 0x0018, 195},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 196},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 197},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5635},
+    {"MaxSpeed", 204, 4, 0x0008, 5636},
+    {"TimeDilation", 208, 4, 0x0008, 5637},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5638},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5639},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5640},
+    {"OutwardDistance", 224, 4, 0x0008, 5641},
+    {"EaseIn", 228, 4, 0x0008, 5642},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5643},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5644},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5645},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5646},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5647},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5648},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5649},
+    {"EmbedMask", 260, 4, 0x0000, 389},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5650},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5651},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5652},
+    {"GrindTime", 276, 4, 0x0008, 5653},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5654},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5655},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5656},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5657},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5658},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5659},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5660},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5661},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5662},
+    {"MaxTargets", 316, 4, 0x0000, 390},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5663},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5664},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5665},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5666},
+    {"BounceAmount", 336, 4, 0x0008, 5667},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5668},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5669},
+    {"ThrowStatePickup", 348, 2, 0x0000, 391},
+    {"Type", 350, 1, 0x0105, 717},
+    {"FollowPath", 351, 1, 0x0014, 1384},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1385},
+    {"SeekTarget", 353, 1, 0x0014, 1386},
+    {"ThrowFlags", 354, 1, 0x0204, 718},
+    {"AlignToSurface", 355, 1, 0x0014, 1387},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1388},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1389},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1390},
+    {"TargetType", 359, 1, 0x0104, 719},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1391},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1392},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1393},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1394},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1395},
+    {"FauxEmbedded", 365, 1, 0x0014, 1396},
+};
+
+inline constexpr Field kFields_L0061_S01B1[] = {
     {"LaunchMode", 368, 1, 0x0104, 720},
     {"GoToTargetInStraightLineLaunchMode", 369, 1, 0x0014, 1397},
     {"LaunchSpeed", 372, 4, 0x0008, 5670},
@@ -6275,7 +7919,86 @@ inline constexpr Field kFields_01B1[] = {
     {"AccuracyRadius", 384, 4, 0x0008, 5673},
 };
 
-inline constexpr Field kFields_01B3[] = {
+inline constexpr Field kFields_L0062_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 198},
+    {"OnHitWorldAction", 64, 8, 0x0010, 199},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 200},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 201},
+    {"ModelRootJointName", 96, 8, 0x0018, 202},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 203},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 204},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5692},
+    {"MaxSpeed", 204, 4, 0x0008, 5693},
+    {"TimeDilation", 208, 4, 0x0008, 5694},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5695},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5696},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5697},
+    {"OutwardDistance", 224, 4, 0x0008, 5698},
+    {"EaseIn", 228, 4, 0x0008, 5699},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5700},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5701},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5702},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5703},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5704},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5705},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5706},
+    {"EmbedMask", 260, 4, 0x0000, 392},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5707},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5708},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5709},
+    {"GrindTime", 276, 4, 0x0008, 5710},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5711},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5712},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5713},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5714},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5715},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5716},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5717},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5718},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5719},
+    {"MaxTargets", 316, 4, 0x0000, 393},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5720},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5721},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5722},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5723},
+    {"BounceAmount", 336, 4, 0x0008, 5724},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5725},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5726},
+    {"ThrowStatePickup", 348, 2, 0x0000, 394},
+    {"Type", 350, 1, 0x0105, 724},
+    {"FollowPath", 351, 1, 0x0014, 1398},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1399},
+    {"SeekTarget", 353, 1, 0x0014, 1400},
+    {"ThrowFlags", 354, 1, 0x0204, 725},
+    {"AlignToSurface", 355, 1, 0x0014, 1401},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1402},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1403},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1404},
+    {"TargetType", 359, 1, 0x0104, 726},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1405},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1406},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1407},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1408},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1409},
+    {"FauxEmbedded", 365, 1, 0x0014, 1410},
+};
+
+inline constexpr Field kFields_L0062_S01B3[] = {
     {"MinLoopSize", 368, 4, 0x0008, 5780},
     {"DistanceToActAsSelfLoop", 372, 4, 0x0008, 5781},
     {"MinLoopMultiplier", 376, 4, 0x0008, 5782},
@@ -6287,7 +8010,86 @@ inline constexpr Field kFields_01B3[] = {
     {"SelfLoopSlowdown", 400, 4, 0x0008, 5788},
 };
 
-inline constexpr Field kFields_01B4[] = {
+inline constexpr Field kFields_L0063_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 212},
+    {"OnHitWorldAction", 64, 8, 0x0010, 213},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 214},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 215},
+    {"ModelRootJointName", 96, 8, 0x0018, 216},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 217},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 218},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5807},
+    {"MaxSpeed", 204, 4, 0x0008, 5808},
+    {"TimeDilation", 208, 4, 0x0008, 5809},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5810},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5811},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5812},
+    {"OutwardDistance", 224, 4, 0x0008, 5813},
+    {"EaseIn", 228, 4, 0x0008, 5814},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5815},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5816},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5817},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5818},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5819},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5820},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5821},
+    {"EmbedMask", 260, 4, 0x0000, 398},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5822},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5823},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5824},
+    {"GrindTime", 276, 4, 0x0008, 5825},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5826},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5827},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5828},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5829},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5830},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5831},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5832},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5833},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5834},
+    {"MaxTargets", 316, 4, 0x0000, 399},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5835},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5836},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5837},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5838},
+    {"BounceAmount", 336, 4, 0x0008, 5839},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5840},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5841},
+    {"ThrowStatePickup", 348, 2, 0x0000, 400},
+    {"Type", 350, 1, 0x0105, 736},
+    {"FollowPath", 351, 1, 0x0014, 1424},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1425},
+    {"SeekTarget", 353, 1, 0x0014, 1426},
+    {"ThrowFlags", 354, 1, 0x0204, 737},
+    {"AlignToSurface", 355, 1, 0x0014, 1427},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1428},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1429},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1430},
+    {"TargetType", 359, 1, 0x0104, 738},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1431},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1432},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1433},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1434},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1435},
+    {"FauxEmbedded", 365, 1, 0x0014, 1436},
+};
+
+inline constexpr Field kFields_L0063_S01B4[] = {
     {"OnWeaponUnembedHook", 368, 8, 0x0018, 0},
     {"WiggleSound", 376, 8, 0x0018, 0},
     {"WiggleEmitter", 384, 8, 0x0018, 0},
@@ -6317,7 +8119,86 @@ inline constexpr Field kFields_01B4[] = {
     {"IncludeWeaponWithOtherOwner", 479, 1, 0x0014, 1440},
 };
 
-inline constexpr Field kFields_01B6[] = {
+inline constexpr Field kFields_L0064_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 219},
+    {"OnHitWorldAction", 64, 8, 0x0010, 220},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 221},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 222},
+    {"ModelRootJointName", 96, 8, 0x0018, 223},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 224},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 225},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5879},
+    {"MaxSpeed", 204, 4, 0x0008, 5880},
+    {"TimeDilation", 208, 4, 0x0008, 5881},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5882},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5883},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5884},
+    {"OutwardDistance", 224, 4, 0x0008, 5885},
+    {"EaseIn", 228, 4, 0x0008, 5886},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5887},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5888},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5889},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5890},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 5891},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 5892},
+    {"CollisionDeadTime", 256, 4, 0x0008, 5893},
+    {"EmbedMask", 260, 4, 0x0000, 401},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 5894},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 5895},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 5896},
+    {"GrindTime", 276, 4, 0x0008, 5897},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 5898},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 5899},
+    {"EmbedMinDistance", 288, 4, 0x0008, 5900},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 5901},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 5902},
+    {"MinAngleToGlance", 300, 4, 0x0008, 5903},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 5904},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 5905},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 5906},
+    {"MaxTargets", 316, 4, 0x0000, 402},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 5907},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 5908},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 5909},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 5910},
+    {"BounceAmount", 336, 4, 0x0008, 5911},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 5912},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 5913},
+    {"ThrowStatePickup", 348, 2, 0x0000, 403},
+    {"Type", 350, 1, 0x0105, 742},
+    {"FollowPath", 351, 1, 0x0014, 1441},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1442},
+    {"SeekTarget", 353, 1, 0x0014, 1443},
+    {"ThrowFlags", 354, 1, 0x0204, 743},
+    {"AlignToSurface", 355, 1, 0x0014, 1444},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1445},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1446},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1447},
+    {"TargetType", 359, 1, 0x0104, 744},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1448},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1449},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1450},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1451},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1452},
+    {"FauxEmbedded", 365, 1, 0x0014, 1453},
+};
+
+inline constexpr Field kFields_L0064_S01B6[] = {
     {"ThrowDownAngle", 368, 4, 0x0008, 5967},
     {"WeaponPositionTweenTime", 372, 4, 0x0008, 5968},
     {"Gravity", 376, 4, 0x0008, 5969},
@@ -6326,7 +8207,86 @@ inline constexpr Field kFields_01B6[] = {
     {"pointer_3", 400, 8, 0x001C, 268},
 };
 
-inline constexpr Field kFields_01B7[] = {
+inline constexpr Field kFields_L0065_S01A7[] = {
+    {"Speed", 0, 0, 0x002C, 229},
+    {"ThrowName", 40, 8, 0x0018, 0},
+    {"Collision", 48, 8, 0x001C, 396},
+    {"OnHitAction", 56, 8, 0x0010, 233},
+    {"OnHitWorldAction", 64, 8, 0x0010, 234},
+    {"OnStartReturnModeOverride", 72, 8, 0x0010, 0},
+    {"EmbedJointName", 80, 8, 0x0018, 235},
+    {"HitSurfaceJointName", 88, 8, 0x0018, 236},
+    {"ModelRootJointName", 96, 8, 0x0018, 237},
+    {"SeekTargetMode", 104, 8, 0x001C, 435},
+    {"OverrideDefaultReturnMode", 112, 8, 0x001C, 423},
+    {"ThrowEffect", 120, 8, 0x001C, 272},
+    {"Sound", 128, 8, 0x0018, 0},
+    {"Emitter", 136, 8, 0x0018, 0},
+    {"SyncSound", 144, 8, 0x0018, 0},
+    {"SyncEmitter", 152, 8, 0x0018, 0},
+    {"NonReticleThrowFromJointName", 160, 8, 0x0018, 238},
+    {"NonReticleThrowToJointName", 168, 8, 0x0018, 239},
+    {"RotationAxis", 176, 0, 0x002C, 6},
+    {"RotateSurfaceNormalEmbed", 182, 0, 0x002C, 6},
+    {"FollowupEmbedTargetOffset", 188, 0, 0x002C, 6},
+    {"CatchLocalOffset", 194, 0, 0x002C, 6},
+    {"ThrowRelease", 200, 4, 0x0008, 5988},
+    {"MaxSpeed", 204, 4, 0x0008, 5989},
+    {"TimeDilation", 208, 4, 0x0008, 5990},
+    {"StartSpeedOverride", 212, 4, 0x0008, 5991},
+    {"ReleaseAcceleration", 216, 4, 0x0008, 5992},
+    {"RevolutionsPerMeter", 220, 4, 0x0008, 5993},
+    {"OutwardDistance", 224, 4, 0x0008, 5994},
+    {"EaseIn", 228, 4, 0x0008, 5995},
+    {"AxeSpinAxis", 232, 4, 0x0008, 5996},
+    {"OffsetRotationCenter", 236, 4, 0x0008, 5997},
+    {"ThrowableTargetsWeight", 240, 4, 0x0008, 5998},
+    {"ThrowableTargetsMaxSeekAngleInitial", 244, 4, 0x0008, 5999},
+    {"ThrowableTargetsMaxSeekAngleInFlight", 248, 4, 0x0008, 6000},
+    {"MinFreeThrowVerticalAngle", 252, 4, 0x0008, 6001},
+    {"CollisionDeadTime", 256, 4, 0x0008, 6002},
+    {"EmbedMask", 260, 4, 0x0000, 407},
+    {"AlignToSurfaceNormalAmount", 264, 4, 0x0008, 6003},
+    {"AlignToSurfaceMaxAngle", 268, 4, 0x0008, 6004},
+    {"AlignToSurfaceFlipThreshold", 272, 4, 0x0008, 6005},
+    {"GrindTime", 276, 4, 0x0008, 6006},
+    {"BaseOffsetAngle", 280, 4, 0x0008, 6007},
+    {"HitRotationRandomAngle", 284, 4, 0x0008, 6008},
+    {"EmbedMinDistance", 288, 4, 0x0008, 6009},
+    {"EmbedMaxDistance", 292, 4, 0x0008, 6010},
+    {"BounceSlowSpeedFactor", 296, 4, 0x0008, 6011},
+    {"MinAngleToGlance", 300, 4, 0x0008, 6012},
+    {"GlancingRotationAngle", 304, 4, 0x0008, 6013},
+    {"GlancingDistanceExtend", 308, 4, 0x0008, 6014},
+    {"GlancingBounceAmount", 312, 4, 0x0008, 6015},
+    {"MaxTargets", 316, 4, 0x0000, 408},
+    {"AutoTargetMaxAngle", 320, 4, 0x0008, 6016},
+    {"AutoTargetMaxDistance", 324, 4, 0x0008, 6017},
+    {"SecondaryTargetMaxDistance", 328, 4, 0x0008, 6018},
+    {"MultiHitMaxLength", 332, 4, 0x0008, 6019},
+    {"BounceAmount", 336, 4, 0x0008, 6020},
+    {"NonReticleThrowHorizontalMaxTrackingAngle", 340, 4, 0x0008, 6021},
+    {"NonReticleThrowVerticalMaxTrackingAngle", 344, 4, 0x0008, 6022},
+    {"ThrowStatePickup", 348, 2, 0x0000, 409},
+    {"Type", 350, 1, 0x0105, 754},
+    {"FollowPath", 351, 1, 0x0014, 1468},
+    {"ForceUseCurrentTarget", 352, 1, 0x0014, 1469},
+    {"SeekTarget", 353, 1, 0x0014, 1470},
+    {"ThrowFlags", 354, 1, 0x0204, 755},
+    {"AlignToSurface", 355, 1, 0x0014, 1471},
+    {"AlignToSurfaceNormal", 356, 1, 0x0014, 1472},
+    {"IsRotateToEmbed", 357, 1, 0x0014, 1473},
+    {"AllowAcquireTarget", 358, 1, 0x0014, 1474},
+    {"TargetType", 359, 1, 0x0104, 756},
+    {"AutoTargetVertical", 360, 1, 0x0014, 1475},
+    {"AutoTargetCurve", 361, 1, 0x0014, 1476},
+    {"ThrowableSeamlessPhysics", 362, 1, 0x0014, 1477},
+    {"UpdateOnEmbed", 363, 1, 0x0014, 1478},
+    {"KeepPickUpOnUntilNextThrow", 364, 1, 0x0014, 1479},
+    {"FauxEmbedded", 365, 1, 0x0014, 1480},
+};
+
+inline constexpr Field kFields_L0065_S01B7[] = {
     {"WhirlWindTime", 368, 4, 0x0008, 6023},
     {"WhirlWindRadius", 372, 4, 0x0008, 6024},
     {"WhirlWindSpeedScale", 376, 4, 0x0008, 6025},
@@ -6335,7 +8295,7 @@ inline constexpr Field kFields_01B7[] = {
     {"CurveTarget", 388, 4, 0x0008, 6028},
 };
 
-inline constexpr Field kFields_01B8[] = {
+inline constexpr Field kFields_L0065_S01B8[] = {
     {"Speed", 0, 0, 0x002C, 229},
     {"EmbedJointName", 40, 8, 0x0018, 240},
     {"HitSurfaceJointName", 48, 8, 0x0018, 241},
@@ -6381,7 +8341,7 @@ inline constexpr Field kFields_01B8[] = {
     {"AutoTargetCurve", 209, 1, 0x0014, 1485},
 };
 
-inline constexpr Field kFields_01B9[] = {
+inline constexpr Field kFields_L0065_S01B9[] = {
     {"TautCurveAmount", 0, 4, 0x0008, 6065},
     {"TautNoise", 4, 4, 0x0008, 6066},
     {"TautStartForwardBias", 8, 4, 0x0008, 6067},
@@ -6398,7 +8358,7 @@ inline constexpr Field kFields_01B9[] = {
     {"EnableIKFixup", 46, 1, 0x0014, 1487},
 };
 
-inline constexpr Field kFields_01BA[] = {
+inline constexpr Field kFields_L0065_S01BA[] = {
     {"SlackLength", 0, 4, 0x0008, 6076},
     {"SlackRecoilSpeed", 4, 4, 0x0008, 6077},
     {"MinSlackToRecoil", 8, 4, 0x0008, 6078},
@@ -6407,7 +8367,7 @@ inline constexpr Field kFields_01BA[] = {
     {"ShapeSettings", 24, 8, 0x001C, 441},
 };
 
-inline constexpr Field kFields_01BB[] = {
+inline constexpr Field kFields_L0065_S01BB[] = {
     {"HitType", 0, 1, 0x0104, 762},
     {"EmbedInCreatures", 1, 1, 0x0000, 411},
     {"DeflectData", 8, 8, 0x001C, 421},
@@ -6419,24 +8379,36 @@ inline constexpr Field kFields_01BB[] = {
     {"MaxRotateOnEmbed", 36, 4, 0x0008, 6086},
 };
 
-inline constexpr Field kFields_01BC[] = {
+inline constexpr Field kFields_L0065_S01BC[] = {
     {"Type", 0, 1, 0x0105, 763},
     {"Comparison", 1, 1, 0x0104, 764},
     {"NextOperation", 2, 1, 0x0104, 765},
 };
 
-inline constexpr Field kFields_01BD[] = {
+inline constexpr Field kFields_L0065_S01BD[] = {
     {"State", 3, 1, 0x0104, 769},
     {"QuestName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01BE[] = {
+inline constexpr Field kFields_L0066_S01BC[] = {
+    {"Type", 0, 1, 0x0105, 770},
+    {"Comparison", 1, 1, 0x0104, 771},
+    {"NextOperation", 2, 1, 0x0104, 772},
+};
+
+inline constexpr Field kFields_L0066_S01BE[] = {
     {"Wallet", 8, 8, 0x0010, 0},
     {"Resource", 16, 8, 0x0010, 0},
     {"Amount", 24, 4, 0x0000, 412},
 };
 
-inline constexpr Field kFields_01BF[] = {
+inline constexpr Field kFields_L0067_S01BC[] = {
+    {"Type", 0, 1, 0x0105, 773},
+    {"Comparison", 1, 1, 0x0104, 774},
+    {"NextOperation", 2, 1, 0x0104, 775},
+};
+
+inline constexpr Field kFields_L0067_S01BF[] = {
     {"Level", 3, 1, 0x0000, 413},
     {"Wallet", 8, 8, 0x0010, 0},
     {"Equipment", 16, 8, 0x0010, 0},
@@ -6444,27 +8416,51 @@ inline constexpr Field kFields_01BF[] = {
     {"OverrideLevelTrait", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01C0[] = {
+inline constexpr Field kFields_L0068_S01BC[] = {
+    {"Type", 0, 1, 0x0105, 776},
+    {"Comparison", 1, 1, 0x0104, 777},
+    {"NextOperation", 2, 1, 0x0104, 778},
+};
+
+inline constexpr Field kFields_L0068_S01C0[] = {
     {"Label", 8, 8, 0x0010, 0},
     {"NumberValue", 16, 4, 0x0008, 6087},
     {"StringValue", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01C1[] = {
+inline constexpr Field kFields_L0069_S01BC[] = {
+    {"Type", 0, 1, 0x0105, 779},
+    {"Comparison", 1, 1, 0x0104, 780},
+    {"NextOperation", 2, 1, 0x0104, 781},
+};
+
+inline constexpr Field kFields_L0069_S01C1[] = {
     {"Loaded", 3, 1, 0x0014, 1488},
     {"WadName", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_01C2[] = {
+inline constexpr Field kFields_L006A_S01BC[] = {
+    {"Type", 0, 1, 0x0105, 782},
+    {"Comparison", 1, 1, 0x0104, 783},
+    {"NextOperation", 2, 1, 0x0104, 784},
+};
+
+inline constexpr Field kFields_L006A_S01C2[] = {
     {"SkillTree", 8, 8, 0x0018, 0},
     {"SkillTreeNode", 16, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_01C5[] = {
+inline constexpr Field kFields_L006B_S01BC[] = {
+    {"Type", 0, 1, 0x0105, 785},
+    {"Comparison", 1, 1, 0x0104, 786},
+    {"NextOperation", 2, 1, 0x0104, 787},
+};
+
+inline constexpr Field kFields_L006B_S01C5[] = {
     {"Type", 0, 1, 0x0105, 791},
 };
 
-inline constexpr Field kFields_01C6[] = {
+inline constexpr Field kFields_L006B_S01C6[] = {
     {"SoftSave", 1, 1, 0x0014, 1489},
     {"AdditionalLams", 8, 12, 0x0024, 299},
     {"OverrideLams", 20, 4, 0x0000, 415},
@@ -6473,7 +8469,37 @@ inline constexpr Field kFields_01C6[] = {
     {"WalletName", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01C9[] = {
+inline constexpr Field kFields_L006C_S01C5[] = {
+    {"Type", 0, 1, 0x0105, 793},
+};
+
+inline constexpr Field kFields_L006C_S01C6[] = {
+    {"SoftSave", 1, 1, 0x0014, 1490},
+    {"AdditionalLams", 8, 12, 0x0024, 300},
+    {"OverrideLams", 20, 4, 0x0000, 417},
+    {"AwardName", 24, 8, 0x0010, 0},
+    {"DistributorName", 32, 8, 0x0010, 0},
+    {"WalletName", 40, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L006D_S01C5[] = {
+    {"Type", 0, 1, 0x0105, 794},
+};
+
+inline constexpr Field kFields_L006D_S01C6[] = {
+    {"SoftSave", 1, 1, 0x0014, 1491},
+    {"AdditionalLams", 8, 12, 0x0024, 301},
+    {"OverrideLams", 20, 4, 0x0000, 419},
+    {"AwardName", 24, 8, 0x0010, 0},
+    {"DistributorName", 32, 8, 0x0010, 0},
+    {"WalletName", 40, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L006E_S01C5[] = {
+    {"Type", 0, 1, 0x0105, 795},
+};
+
+inline constexpr Field kFields_L006E_S01C9[] = {
     {"HeaderLams", 4, 4, 0x0000, 420},
     {"BodyLams", 8, 4, 0x0000, 421},
     {"CategoryLams", 12, 4, 0x0000, 422},
@@ -6482,27 +8508,47 @@ inline constexpr Field kFields_01C9[] = {
     {"MessageType", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01CA[] = {
+inline constexpr Field kFields_L006F_S01C5[] = {
+    {"Type", 0, 1, 0x0105, 797},
+};
+
+inline constexpr Field kFields_L006F_S01CA[] = {
     {"TrophyID", 4, 4, 0x0000, 423},
 };
 
-inline constexpr Field kFields_01CB[] = {
+inline constexpr Field kFields_L0070_S01C5[] = {
+    {"Type", 0, 1, 0x0105, 798},
+};
+
+inline constexpr Field kFields_L0070_S01CB[] = {
     {"Label", 8, 8, 0x0010, 0},
     {"StringValue", 16, 8, 0x0010, 0},
     {"NumberValue", 24, 4, 0x0008, 6089},
     {"Increment", 28, 1, 0x0014, 1492},
 };
 
-inline constexpr Field kFields_01CC[] = {
+inline constexpr Field kFields_L0071_S01C5[] = {
+    {"Type", 0, 1, 0x0105, 799},
+};
+
+inline constexpr Field kFields_L0071_S01CC[] = {
     {"Criteria", 8, 12, 0x0024, 302},
     {"Behaviors", 24, 12, 0x0024, 303},
 };
 
-inline constexpr Field kFields_01CD[] = {
+inline constexpr Field kFields_L0072_S01C5[] = {
+    {"Type", 0, 1, 0x0105, 800},
+};
+
+inline constexpr Field kFields_L0072_S01CD[] = {
     {"Identifier", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01CF[] = {
+inline constexpr Field kFields_L0073_S01C5[] = {
+    {"Type", 0, 1, 0x0105, 801},
+};
+
+inline constexpr Field kFields_L0073_S01CF[] = {
     {"DesignerFlags", 0, 12, 0x0024, 304},
     {"TitleLams", 12, 4, 0x0000, 424},
     {"BehaviorSets", 16, 12, 0x0024, 305},
@@ -6515,20 +8561,69 @@ inline constexpr Field kFields_01CF[] = {
     {"UniqueName", 80, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_01D0[] = {
+inline constexpr Field kFields_L0073_S01D0[] = {
     {"Markers", 88, 12, 0x0024, 314},
     {"FailureCriteria", 104, 12, 0x0024, 315},
 };
 
-inline constexpr Field kFields_01D1[] = {
+inline constexpr Field kFields_L0074_S01CF[] = {
+    {"DesignerFlags", 0, 12, 0x0024, 316},
+    {"TitleLams", 12, 4, 0x0000, 428},
+    {"BehaviorSets", 16, 12, 0x0024, 317},
+    {"DescriptionLams", 28, 4, 0x0000, 429},
+    {"ChildList", 32, 12, 0x0024, 318},
+    {"CodeFlags", 44, 2, 0x0204, 806},
+    {"CompletionType", 46, 1, 0x0105, 807},
+    {"ActivateCriteria", 48, 12, 0x0024, 319},
+    {"CompletionCriteria", 64, 12, 0x0024, 320},
+    {"UniqueName", 80, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0074_S01D0[] = {
+    {"Markers", 88, 12, 0x0024, 321},
+    {"FailureCriteria", 104, 12, 0x0024, 322},
+};
+
+inline constexpr Field kFields_L0074_S01D1[] = {
     {"CompletionCriteriaForCount", 120, 4, 0x0000, 430},
 };
 
-inline constexpr Field kFields_01D3[] = {
+inline constexpr Field kFields_L0075_S01CF[] = {
+    {"DesignerFlags", 0, 12, 0x0024, 323},
+    {"TitleLams", 12, 4, 0x0000, 431},
+    {"BehaviorSets", 16, 12, 0x0024, 324},
+    {"DescriptionLams", 28, 4, 0x0000, 432},
+    {"ChildList", 32, 12, 0x0024, 325},
+    {"CodeFlags", 44, 2, 0x0204, 808},
+    {"CompletionType", 46, 1, 0x0105, 809},
+    {"ActivateCriteria", 48, 12, 0x0024, 326},
+    {"CompletionCriteria", 64, 12, 0x0024, 327},
+    {"UniqueName", 80, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0075_S01D0[] = {
+    {"Markers", 88, 12, 0x0024, 328},
+    {"FailureCriteria", 104, 12, 0x0024, 329},
+};
+
+inline constexpr Field kFields_L0076_S01CF[] = {
+    {"DesignerFlags", 0, 12, 0x0024, 330},
+    {"TitleLams", 12, 4, 0x0000, 433},
+    {"BehaviorSets", 16, 12, 0x0024, 331},
+    {"DescriptionLams", 28, 4, 0x0000, 434},
+    {"ChildList", 32, 12, 0x0024, 332},
+    {"CodeFlags", 44, 2, 0x0204, 810},
+    {"CompletionType", 46, 1, 0x0105, 811},
+    {"ActivateCriteria", 48, 12, 0x0024, 333},
+    {"CompletionCriteria", 64, 12, 0x0024, 334},
+    {"UniqueName", 80, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0076_S01D3[] = {
     {"MaterialSwap", 88, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01D4[] = {
+inline constexpr Field kFields_L0076_S01D4[] = {
     {"Categories", 0, 12, 0x0024, 335},
     {"HeaderLams", 12, 4, 0x0000, 435},
     {"FlagsHasAll", 16, 12, 0x0024, 336},
@@ -6538,7 +8633,7 @@ inline constexpr Field kFields_01D4[] = {
     {"Name", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01D5[] = {
+inline constexpr Field kFields_L0076_S01D5[] = {
     {"QuestList", 0, 12, 0x0024, 339},
     {"Categories", 16, 12, 0x0024, 340},
     {"HardSaveFacts", 32, 12, 0x0024, 341},
@@ -6546,58 +8641,100 @@ inline constexpr Field kFields_01D5[] = {
     {"SnapshotRelevantVSGlobalVars", 64, 12, 0x0024, 343},
 };
 
-inline constexpr Field kFields_01D6[] = {
+inline constexpr Field kFields_L0076_S01D6[] = {
     {"TemplateName", 0, 8, 0x0010, 0},
     {"DefaultGOName", 8, 8, 0x0010, 0},
     {"GameObjectBehaviors", 16, 12, 0x0024, 344},
     {"AllowInMenus", 28, 1, 0x0014, 1493},
 };
 
-inline constexpr Field kFields_01D7[] = {
+inline constexpr Field kFields_L0076_S01D7[] = {
     {"RequiresBehaviorList", 0, 12, 0x0024, 345},
     {"Type", 12, 1, 0x0105, 813},
     {"Enabled", 13, 1, 0x0014, 1494},
     {"PauseFlags", 14, 1, 0x0204, 814},
 };
 
-inline constexpr Field kFields_01D8[] = {
+inline constexpr Field kFields_L0076_S01D8[] = {
     {"ChildAttachJoint", 16, 8, 0x0010, 0},
     {"SynchDefaultAnim", 24, 8, 0x0010, 0},
     {"HideJoints", 32, 12, 0x0024, 347},
     {"Flags", 44, 1, 0x0204, 818},
 };
 
-inline constexpr Field kFields_01D9[] = {
+inline constexpr Field kFields_L0077_S01D7[] = {
+    {"RequiresBehaviorList", 0, 12, 0x0024, 348},
+    {"Type", 12, 1, 0x0105, 820},
+    {"Enabled", 13, 1, 0x0014, 1496},
+    {"PauseFlags", 14, 1, 0x0204, 821},
+};
+
+inline constexpr Field kFields_L0077_S01D9[] = {
     {"DebugText", 16, 8, 0x0018, 0},
     {"DebugRadius", 24, 4, 0x0008, 6090},
 };
 
-inline constexpr Field kFields_01DA[] = {
+inline constexpr Field kFields_L0078_S01D7[] = {
+    {"RequiresBehaviorList", 0, 12, 0x0024, 349},
+    {"Type", 12, 1, 0x0105, 823},
+    {"Enabled", 13, 1, 0x0014, 1497},
+    {"PauseFlags", 14, 1, 0x0204, 824},
+};
+
+inline constexpr Field kFields_L0078_S01DA[] = {
     {"PhysicsJoint", 16, 8, 0x0010, 243},
     {"InitialPhysicsState", 24, 1, 0x0104, 825},
 };
 
-inline constexpr Field kFields_01DB[] = {
+inline constexpr Field kFields_L0079_S01D7[] = {
+    {"RequiresBehaviorList", 0, 12, 0x0024, 350},
+    {"Type", 12, 1, 0x0105, 827},
+    {"Enabled", 13, 1, 0x0014, 1498},
+    {"PauseFlags", 14, 1, 0x0204, 828},
+};
+
+inline constexpr Field kFields_L0079_S01DB[] = {
     {"InitialMove", 16, 8, 0x001C, 1283},
     {"InitialFlags", 24, 1, 0x0204, 829},
     {"AllowEmptyState", 25, 1, 0x0014, 1499},
     {"UpdateActionsWhileHidden", 26, 1, 0x0014, 1500},
 };
 
-inline constexpr Field kFields_01DC[] = {
+inline constexpr Field kFields_L007A_S01D7[] = {
+    {"RequiresBehaviorList", 0, 12, 0x0024, 351},
+    {"Type", 12, 1, 0x0105, 831},
+    {"Enabled", 13, 1, 0x0014, 1501},
+    {"PauseFlags", 14, 1, 0x0204, 832},
+};
+
+inline constexpr Field kFields_L007A_S01DC[] = {
     {"val_4", 16, 1, 0x0104, 833},
     {"Attachments", 24, 8, 0x001C, 1138},
 };
 
-inline constexpr Field kFields_01DD[] = {
+inline constexpr Field kFields_L007B_S01D7[] = {
+    {"RequiresBehaviorList", 0, 12, 0x0024, 352},
+    {"Type", 12, 1, 0x0105, 835},
+    {"Enabled", 13, 1, 0x0014, 1502},
+    {"PauseFlags", 14, 1, 0x0204, 836},
+};
+
+inline constexpr Field kFields_L007B_S01DD[] = {
     {"WeaponTrailJointData", 16, 8, 0x001C, 1137},
 };
 
-inline constexpr Field kFields_01DE[] = {
+inline constexpr Field kFields_L007C_S01D7[] = {
+    {"RequiresBehaviorList", 0, 12, 0x0024, 353},
+    {"Type", 12, 1, 0x0105, 838},
+    {"Enabled", 13, 1, 0x0014, 1503},
+    {"PauseFlags", 14, 1, 0x0204, 839},
+};
+
+inline constexpr Field kFields_L007C_S01DE[] = {
     {"WeaponRayCastList", 16, 12, 0x0024, 354},
 };
 
-inline constexpr Field kFields_01DF[] = {
+inline constexpr Field kFields_L007C_S01DF[] = {
     {"ShowJoints", 0, 12, 0x0024, 355},
     {"WeaponLevel", 12, 4, 0x0000, 437},
     {"PlaySoundNames", 16, 12, 0x0024, 356},
@@ -6605,7 +8742,14 @@ inline constexpr Field kFields_01DF[] = {
     {"WeaponTrail", 48, 12, 0x0024, 358},
 };
 
-inline constexpr Field kFields_01E0[] = {
+inline constexpr Field kFields_L007D_S01D7[] = {
+    {"RequiresBehaviorList", 0, 12, 0x0024, 359},
+    {"Type", 12, 1, 0x0105, 841},
+    {"Enabled", 13, 1, 0x0014, 1504},
+    {"PauseFlags", 14, 1, 0x0204, 842},
+};
+
+inline constexpr Field kFields_L007D_S01E0[] = {
     {"WeaponUseSlot", 16, 12, 0x0024, 360},
     {"WeaponType", 28, 4, 0x0000, 439},
     {"InitialShowJoints", 32, 12, 0x0024, 361},
@@ -6650,41 +8794,109 @@ inline constexpr Field kFields_01E0[] = {
     {"ShouldSave", 221, 1, 0x0014, 1514},
 };
 
-inline constexpr Field kFields_01E1[] = {
+inline constexpr Field kFields_L007D_S01E1[] = {
     {"Type", 0, 1, 0x0105, 846},
     {"ChildList", 8, 12, 0x0024, 366},
     {"Delay", 20, 4, 0x0008, 6098},
 };
 
-inline constexpr Field kFields_01E2[] = {
+inline constexpr Field kFields_L007D_S01E2[] = {
     {"Frequency", 24, 4, 0x0008, 6100},
     {"Amplitude", 28, 4, 0x0008, 6101},
     {"Pan", 32, 4, 0x0008, 6102},
 };
 
-inline constexpr Field kFields_01E3[] = {
+inline constexpr Field kFields_L007E_S01E1[] = {
+    {"Type", 0, 1, 0x0105, 848},
+    {"ChildList", 8, 12, 0x0024, 368},
+    {"Delay", 20, 4, 0x0008, 6103},
+};
+
+inline constexpr Field kFields_L007E_S01E2[] = {
+    {"Frequency", 24, 4, 0x0008, 6104},
+    {"Amplitude", 28, 4, 0x0008, 6105},
+    {"Pan", 32, 4, 0x0008, 6106},
+};
+
+inline constexpr Field kFields_L007E_S01E3[] = {
     {"WaveType", 40, 1, 0x0104, 849},
 };
 
-inline constexpr Field kFields_01E4[] = {
+inline constexpr Field kFields_L007F_S01E1[] = {
+    {"Type", 0, 1, 0x0105, 850},
+    {"ChildList", 8, 12, 0x0024, 369},
+    {"Delay", 20, 4, 0x0008, 6107},
+};
+
+inline constexpr Field kFields_L007F_S01E2[] = {
+    {"Frequency", 24, 4, 0x0008, 6108},
+    {"Amplitude", 28, 4, 0x0008, 6109},
+    {"Pan", 32, 4, 0x0008, 6110},
+};
+
+inline constexpr Field kFields_L007F_S01E3[] = {
+    {"WaveType", 40, 1, 0x0104, 851},
+};
+
+inline constexpr Field kFields_L007F_S01E4[] = {
     {"NumPulses", 48, 4, 0x0008, 6111},
 };
 
-inline constexpr Field kFields_01E5[] = {
+inline constexpr Field kFields_L0080_S01E1[] = {
+    {"Type", 0, 1, 0x0105, 852},
+    {"ChildList", 8, 12, 0x0024, 370},
+    {"Delay", 20, 4, 0x0008, 6112},
+};
+
+inline constexpr Field kFields_L0080_S01E2[] = {
+    {"Frequency", 24, 4, 0x0008, 6113},
+    {"Amplitude", 28, 4, 0x0008, 6114},
+    {"Pan", 32, 4, 0x0008, 6115},
+};
+
+inline constexpr Field kFields_L0080_S01E3[] = {
+    {"WaveType", 40, 1, 0x0104, 853},
+};
+
+inline constexpr Field kFields_L0080_S01E5[] = {
     {"Duration", 48, 4, 0x0008, 6116},
 };
 
-inline constexpr Field kFields_01E6[] = {
+inline constexpr Field kFields_L0081_S01E1[] = {
+    {"Type", 0, 1, 0x0105, 854},
+    {"ChildList", 8, 12, 0x0024, 371},
+    {"Delay", 20, 4, 0x0008, 6117},
+};
+
+inline constexpr Field kFields_L0081_S01E2[] = {
+    {"Frequency", 24, 4, 0x0008, 6118},
+    {"Amplitude", 28, 4, 0x0008, 6119},
+    {"Pan", 32, 4, 0x0008, 6120},
+};
+
+inline constexpr Field kFields_L0081_S01E6[] = {
     {"Duration", 40, 4, 0x0008, 6121},
 };
 
-inline constexpr Field kFields_01E7[] = {
+inline constexpr Field kFields_L0082_S01E1[] = {
+    {"Type", 0, 1, 0x0105, 855},
+    {"ChildList", 8, 12, 0x0024, 372},
+    {"Delay", 20, 4, 0x0008, 6122},
+};
+
+inline constexpr Field kFields_L0082_S01E7[] = {
     {"Duration", 24, 4, 0x0008, 6123},
     {"Frequency", 28, 4, 0x0008, 6124},
     {"RandomDelay", 32, 4, 0x0008, 6125},
 };
 
-inline constexpr Field kFields_01E8[] = {
+inline constexpr Field kFields_L0083_S01E1[] = {
+    {"Type", 0, 1, 0x0105, 856},
+    {"ChildList", 8, 12, 0x0024, 373},
+    {"Delay", 20, 4, 0x0008, 6126},
+};
+
+inline constexpr Field kFields_L0083_S01E8[] = {
     {"Duration", 24, 4, 0x0008, 6127},
     {"Attack", 28, 4, 0x0008, 6128},
     {"Decay", 32, 4, 0x0008, 6129},
@@ -6692,11 +8904,11 @@ inline constexpr Field kFields_01E8[] = {
     {"Release", 40, 4, 0x0008, 6131},
 };
 
-inline constexpr Field kFields_01E9[] = {
+inline constexpr Field kFields_L0083_S01E9[] = {
     {"ParamType", 0, 1, 0x0105, 857},
 };
 
-inline constexpr Field kFields_01EA[] = {
+inline constexpr Field kFields_L0083_S01EA[] = {
     {"ParamName", 8, 8, 0x0010, 0},
     {"ParamMin", 16, 4, 0x0008, 6132},
     {"ParamMax", 20, 4, 0x0008, 6133},
@@ -6704,63 +8916,121 @@ inline constexpr Field kFields_01EA[] = {
     {"ResultMax", 28, 4, 0x0008, 6135},
 };
 
-inline constexpr Field kFields_01EB[] = {
+inline constexpr Field kFields_L0084_S01E9[] = {
+    {"ParamType", 0, 1, 0x0105, 859},
+};
+
+inline constexpr Field kFields_L0084_S01EB[] = {
     {"KeyframeList", 8, 12, 0x0024, 374},
     {"Loop", 20, 1, 0x0014, 1515},
 };
 
-inline constexpr Field kFields_01EC[] = {
+inline constexpr Field kFields_L0085_S01E9[] = {
+    {"ParamType", 0, 1, 0x0105, 860},
+};
+
+inline constexpr Field kFields_L0085_S01EC[] = {
     {"Min", 4, 4, 0x0008, 6136},
     {"Max", 8, 4, 0x0008, 6137},
 };
 
-inline constexpr Field kFields_01ED[] = {
+inline constexpr Field kFields_L0086_S01E1[] = {
+    {"Type", 0, 1, 0x0105, 861},
+    {"ChildList", 8, 12, 0x0024, 375},
+    {"Delay", 20, 4, 0x0008, 6138},
+};
+
+inline constexpr Field kFields_L0086_S01ED[] = {
     {"AmplitudeParam", 24, 8, 0x001C, 489},
     {"PanParam", 32, 8, 0x001C, 489},
     {"FrequencyMultiplierParam", 40, 8, 0x001C, 489},
 };
 
-inline constexpr Field kFields_01EE[] = {
+inline constexpr Field kFields_L0086_S01EE[] = {
     {"Type", 0, 1, 0x0105, 862},
     {"Control", 1, 1, 0x0104, 863},
     {"AllowedTrigger", 2, 1, 0x0204, 864},
     {"Priority", 4, 4, 0x0000, 449},
 };
 
-inline constexpr Field kFields_01EF[] = {
+inline constexpr Field kFields_L0086_S01EF[] = {
     {"Position", 8, 1, 0x0000, 451},
     {"Strength", 9, 1, 0x0000, 452},
 };
 
-inline constexpr Field kFields_01F0[] = {
+inline constexpr Field kFields_L0087_S01EE[] = {
+    {"Type", 0, 1, 0x0105, 868},
+    {"Control", 1, 1, 0x0104, 869},
+    {"AllowedTrigger", 2, 1, 0x0204, 870},
+    {"Priority", 4, 4, 0x0000, 453},
+};
+
+inline constexpr Field kFields_L0087_S01F0[] = {
     {"StartPosition", 8, 1, 0x0000, 454},
     {"EndPosition", 9, 1, 0x0000, 455},
     {"StartStrength", 10, 1, 0x0000, 456},
     {"EndStrength", 11, 1, 0x0000, 457},
 };
 
-inline constexpr Field kFields_01F1[] = {
+inline constexpr Field kFields_L0088_S01EE[] = {
+    {"Type", 0, 1, 0x0105, 871},
+    {"Control", 1, 1, 0x0104, 872},
+    {"AllowedTrigger", 2, 1, 0x0204, 873},
+    {"Priority", 4, 4, 0x0000, 458},
+};
+
+inline constexpr Field kFields_L0088_S01F1[] = {
     {"StrengthList", 8, 10, 0x0024, 376},
 };
 
-inline constexpr Field kFields_01F2[] = {
+inline constexpr Field kFields_L0089_S01EE[] = {
+    {"Type", 0, 1, 0x0105, 874},
+    {"Control", 1, 1, 0x0104, 875},
+    {"AllowedTrigger", 2, 1, 0x0204, 876},
+    {"Priority", 4, 4, 0x0000, 460},
+};
+
+inline constexpr Field kFields_L0089_S01F2[] = {
     {"StartPosition", 8, 1, 0x0000, 461},
     {"EndPosition", 9, 1, 0x0000, 462},
     {"Strength", 10, 1, 0x0000, 463},
 };
 
-inline constexpr Field kFields_01F3[] = {
+inline constexpr Field kFields_L008A_S01EE[] = {
+    {"Type", 0, 1, 0x0105, 877},
+    {"Control", 1, 1, 0x0104, 878},
+    {"AllowedTrigger", 2, 1, 0x0204, 879},
+    {"Priority", 4, 4, 0x0000, 464},
+};
+
+inline constexpr Field kFields_L008A_S01F3[] = {
     {"Position", 8, 1, 0x0000, 465},
     {"Amplitude", 9, 1, 0x0000, 466},
     {"Frequency", 10, 1, 0x0004, 880},
 };
 
-inline constexpr Field kFields_01F4[] = {
+inline constexpr Field kFields_L008B_S01EE[] = {
+    {"Type", 0, 1, 0x0105, 881},
+    {"Control", 1, 1, 0x0104, 882},
+    {"AllowedTrigger", 2, 1, 0x0204, 883},
+    {"Priority", 4, 4, 0x0000, 467},
+};
+
+inline constexpr Field kFields_L008B_S01F4[] = {
     {"AmplitudeList", 8, 10, 0x0024, 377},
     {"Frequency", 18, 1, 0x0004, 884},
 };
 
-inline constexpr Field kFields_01F5[] = {
+inline constexpr Field kFields_L008C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 885},
+    {"Flags", 1, 1, 0x0204, 886},
+    {"Condition", 2, 1, 0x0104, 887},
+    {"WeaponLevelMin", 3, 1, 0x0000, 469},
+    {"On", 4, 2, 0x0008, 6139},
+    {"Off", 6, 2, 0x0008, 6140},
+};
+
+inline constexpr Field kFields_L008C_S01F5[] = {
     {"ArrowEmitter", 8, 8, 0x001C, 411},
     {"Arrow", 16, 8, 0x001C, 410},
     {"UseBlackboardVariables", 24, 1, 0x0014, 1516},
@@ -6771,11 +9041,29 @@ inline constexpr Field kFields_01F5[] = {
     {"PlayerCommandVariable", 64, 8, 0x0010, 248},
 };
 
-inline constexpr Field kFields_01F6[] = {
+inline constexpr Field kFields_L008D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 888},
+    {"Flags", 1, 1, 0x0204, 889},
+    {"Condition", 2, 1, 0x0104, 890},
+    {"WeaponLevelMin", 3, 1, 0x0000, 470},
+    {"On", 4, 2, 0x0008, 6141},
+    {"Off", 6, 2, 0x0008, 6142},
+};
+
+inline constexpr Field kFields_L008D_S01F6[] = {
     {"OrbEmitter", 8, 8, 0x001C, 321},
 };
 
-inline constexpr Field kFields_01F7[] = {
+inline constexpr Field kFields_L008E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 891},
+    {"Flags", 1, 1, 0x0204, 892},
+    {"Condition", 2, 1, 0x0104, 893},
+    {"WeaponLevelMin", 3, 1, 0x0000, 471},
+    {"On", 4, 2, 0x0008, 6143},
+    {"Off", 6, 2, 0x0008, 6144},
+};
+
+inline constexpr Field kFields_L008E_S01F7[] = {
     {"BanterName", 8, 8, 0x0010, 0},
     {"Critical", 16, 1, 0x0014, 1517},
     {"DisableErrorForCritical", 17, 1, 0x0014, 1518},
@@ -6783,7 +9071,16 @@ inline constexpr Field kFields_01F7[] = {
     {"ArbitationDelay", 20, 4, 0x0008, 6145},
 };
 
-inline constexpr Field kFields_01F9[] = {
+inline constexpr Field kFields_L008F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 894},
+    {"Flags", 1, 1, 0x0204, 895},
+    {"Condition", 2, 1, 0x0104, 896},
+    {"WeaponLevelMin", 3, 1, 0x0000, 472},
+    {"On", 4, 2, 0x0008, 6146},
+    {"Off", 6, 2, 0x0008, 6147},
+};
+
+inline constexpr Field kFields_L008F_S01F9[] = {
     {"FactName", 8, 8, 0x0010, 0},
     {"Value", 16, 4, 0x0008, 6150},
     {"Duration", 20, 4, 0x0008, 6151},
@@ -6791,7 +9088,16 @@ inline constexpr Field kFields_01F9[] = {
     {"Encounter", 25, 1, 0x0014, 1521},
 };
 
-inline constexpr Field kFields_01FA[] = {
+inline constexpr Field kFields_L0090_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 900},
+    {"Flags", 1, 1, 0x0204, 901},
+    {"Condition", 2, 1, 0x0104, 902},
+    {"WeaponLevelMin", 3, 1, 0x0000, 474},
+    {"On", 4, 2, 0x0008, 6152},
+    {"Off", 6, 2, 0x0008, 6153},
+};
+
+inline constexpr Field kFields_L0090_S01FA[] = {
     {"FactName", 8, 8, 0x0010, 0},
     {"Value", 16, 8, 0x0010, 0},
     {"Duration", 24, 4, 0x0008, 6154},
@@ -6799,7 +9105,16 @@ inline constexpr Field kFields_01FA[] = {
     {"Encounter", 29, 1, 0x0014, 1523},
 };
 
-inline constexpr Field kFields_01FB[] = {
+inline constexpr Field kFields_L0091_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 903},
+    {"Flags", 1, 1, 0x0204, 904},
+    {"Condition", 2, 1, 0x0104, 905},
+    {"WeaponLevelMin", 3, 1, 0x0000, 475},
+    {"On", 4, 2, 0x0008, 6155},
+    {"Off", 6, 2, 0x0008, 6156},
+};
+
+inline constexpr Field kFields_L0091_S01FB[] = {
     {"FactName", 8, 8, 0x0010, 0},
     {"Value", 16, 4, 0x0008, 6157},
     {"Duration", 20, 4, 0x0008, 6158},
@@ -6808,21 +9123,48 @@ inline constexpr Field kFields_01FB[] = {
     {"UseNewDuration", 26, 1, 0x0014, 1526},
 };
 
-inline constexpr Field kFields_01FC[] = {
+inline constexpr Field kFields_L0092_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 906},
+    {"Flags", 1, 1, 0x0204, 907},
+    {"Condition", 2, 1, 0x0104, 908},
+    {"WeaponLevelMin", 3, 1, 0x0000, 476},
+    {"On", 4, 2, 0x0008, 6159},
+    {"Off", 6, 2, 0x0008, 6160},
+};
+
+inline constexpr Field kFields_L0092_S01FC[] = {
     {"MarkerID", 8, 8, 0x0010, 0},
     {"JointName", 16, 8, 0x0010, 0},
     {"PointTest", 24, 1, 0x0014, 1527},
 };
 
-inline constexpr Field kFields_01FD[] = {
+inline constexpr Field kFields_L0093_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 909},
+    {"Flags", 1, 1, 0x0204, 910},
+    {"Condition", 2, 1, 0x0104, 911},
+    {"WeaponLevelMin", 3, 1, 0x0000, 477},
+    {"On", 4, 2, 0x0008, 6161},
+    {"Off", 6, 2, 0x0008, 6162},
+};
+
+inline constexpr Field kFields_L0093_S01FD[] = {
     {"MarkerID", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_01FE[] = {
+inline constexpr Field kFields_L0094_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 912},
+    {"Flags", 1, 1, 0x0204, 913},
+    {"Condition", 2, 1, 0x0104, 914},
+    {"WeaponLevelMin", 3, 1, 0x0000, 478},
+    {"On", 4, 2, 0x0008, 6163},
+    {"Off", 6, 2, 0x0008, 6164},
+};
+
+inline constexpr Field kFields_L0094_S01FE[] = {
     {"NewBoatDockingState", 8, 1, 0x0104, 915},
 };
 
-inline constexpr Field kFields_01FF[] = {
+inline constexpr Field kFields_L0094_S01FF[] = {
     {"TemplateSymbol", 0, 8, 0x001A, 0},
     {"TimeAfterDeathToDespawnSec", 8, 4, 0x0008, 6165},
     {"DeathEffectAndDespawnDelaySec", 12, 4, 0x0008, 6166},
@@ -6846,38 +9188,129 @@ inline constexpr Field kFields_01FF[] = {
     {"AllowEffectWhileDying_IsNull", 36, 1, 0x0016, 1541},
 };
 
-inline constexpr Field kFields_0200[] = {
+inline constexpr Field kFields_L0095_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 916},
+    {"Flags", 1, 1, 0x0204, 917},
+    {"Condition", 2, 1, 0x0104, 918},
+    {"WeaponLevelMin", 3, 1, 0x0000, 480},
+    {"On", 4, 2, 0x0008, 6170},
+    {"Off", 6, 2, 0x0008, 6171},
+};
+
+inline constexpr Field kFields_L0095_S0200[] = {
     {"DeathParameters", 8, 0, 0x002C, 511},
     {"KillInstantly", 48, 1, 0x0014, 1556},
     {"KillInstantlyNoGameplay", 49, 1, 0x0014, 1557},
 };
 
-inline constexpr Field kFields_0201[] = {
+inline constexpr Field kFields_L0096_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 919},
+    {"Flags", 1, 1, 0x0204, 920},
+    {"Condition", 2, 1, 0x0104, 921},
+    {"WeaponLevelMin", 3, 1, 0x0000, 482},
+    {"On", 4, 2, 0x0008, 6177},
+    {"Off", 6, 2, 0x0008, 6178},
+};
+
+inline constexpr Field kFields_L0096_S0201[] = {
     {"Duration", 8, 2, 0x0008, 6179},
 };
 
-inline constexpr Field kFields_0202[] = {
+inline constexpr Field kFields_L0097_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 922},
+    {"Flags", 1, 1, 0x0204, 923},
+    {"Condition", 2, 1, 0x0104, 924},
+    {"WeaponLevelMin", 3, 1, 0x0000, 483},
+    {"On", 4, 2, 0x0008, 6180},
+    {"Off", 6, 2, 0x0008, 6181},
+};
+
+inline constexpr Field kFields_L0097_S0202[] = {
     {"Duration", 8, 2, 0x0008, 6182},
 };
 
-inline constexpr Field kFields_0203[] = {
+inline constexpr Field kFields_L0098_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 925},
+    {"Flags", 1, 1, 0x0204, 926},
+    {"Condition", 2, 1, 0x0104, 927},
+    {"WeaponLevelMin", 3, 1, 0x0000, 484},
+    {"On", 4, 2, 0x0008, 6183},
+    {"Off", 6, 2, 0x0008, 6184},
+};
+
+inline constexpr Field kFields_L0098_S0203[] = {
     {"Name", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0204[] = {
+inline constexpr Field kFields_L0099_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 928},
+    {"Flags", 1, 1, 0x0204, 929},
+    {"Condition", 2, 1, 0x0104, 930},
+    {"WeaponLevelMin", 3, 1, 0x0000, 485},
+    {"On", 4, 2, 0x0008, 6185},
+    {"Off", 6, 2, 0x0008, 6186},
+};
+
+inline constexpr Field kFields_L0099_S0204[] = {
     {"HookName", 8, 8, 0x0018, 0},
     {"SendToUI", 16, 1, 0x0015, 1558},
 };
 
-inline constexpr Field kFields_0206[] = {
+inline constexpr Field kFields_L009A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 931},
+    {"Flags", 1, 1, 0x0204, 932},
+    {"Condition", 2, 1, 0x0104, 933},
+    {"WeaponLevelMin", 3, 1, 0x0000, 486},
+    {"On", 4, 2, 0x0008, 6187},
+    {"Off", 6, 2, 0x0008, 6188},
+};
+
+inline constexpr Field kFields_L009A_S0204[] = {
+    {"HookName", 8, 8, 0x0018, 0},
+    {"SendToUI", 16, 1, 0x0015, 1559},
+};
+
+inline constexpr Field kFields_L009B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 934},
+    {"Flags", 1, 1, 0x0204, 935},
+    {"Condition", 2, 1, 0x0104, 936},
+    {"WeaponLevelMin", 3, 1, 0x0000, 487},
+    {"On", 4, 2, 0x0008, 6189},
+    {"Off", 6, 2, 0x0008, 6190},
+};
+
+inline constexpr Field kFields_L009B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 937},
+    {"ScriptName", 16, 8, 0x0010, 249},
+};
+
+inline constexpr Field kFields_L009B_S0206[] = {
     {"HookName", 24, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0207[] = {
+inline constexpr Field kFields_L009C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 938},
+    {"Flags", 1, 1, 0x0204, 939},
+    {"Condition", 2, 1, 0x0104, 940},
+    {"WeaponLevelMin", 3, 1, 0x0000, 488},
+    {"On", 4, 2, 0x0008, 6191},
+    {"Off", 6, 2, 0x0008, 6192},
+};
+
+inline constexpr Field kFields_L009C_S0207[] = {
     {"Context", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0208[] = {
+inline constexpr Field kFields_L009D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 941},
+    {"Flags", 1, 1, 0x0204, 942},
+    {"Condition", 2, 1, 0x0104, 943},
+    {"WeaponLevelMin", 3, 1, 0x0000, 489},
+    {"On", 4, 2, 0x0008, 6193},
+    {"Off", 6, 2, 0x0008, 6194},
+};
+
+inline constexpr Field kFields_L009D_S0208[] = {
     {"AttributeStatus", 8, 8, 0x001C, 1280},
     {"HitFlags", 16, 8, 0x0204, 944},
     {"ExcludeHitFlags", 24, 8, 0x0204, 945},
@@ -6888,45 +9321,131 @@ inline constexpr Field kFields_0208[] = {
     {"GrabJoint", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0209[] = {
+inline constexpr Field kFields_L009E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 948},
+    {"Flags", 1, 1, 0x0204, 949},
+    {"Condition", 2, 1, 0x0104, 950},
+    {"WeaponLevelMin", 3, 1, 0x0000, 490},
+    {"On", 4, 2, 0x0008, 6195},
+    {"Off", 6, 2, 0x0008, 6196},
+};
+
+inline constexpr Field kFields_L009E_S0209[] = {
     {"HitFlags", 8, 8, 0x0204, 951},
 };
 
-inline constexpr Field kFields_020A[] = {
+inline constexpr Field kFields_L009F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 952},
+    {"Flags", 1, 1, 0x0204, 953},
+    {"Condition", 2, 1, 0x0104, 954},
+    {"WeaponLevelMin", 3, 1, 0x0000, 491},
+    {"On", 4, 2, 0x0008, 6197},
+    {"Off", 6, 2, 0x0008, 6198},
+};
+
+inline constexpr Field kFields_L009F_S020A[] = {
     {"Info1", 8, 8, 0x0018, 250},
     {"Info2", 16, 8, 0x0018, 251},
 };
 
-inline constexpr Field kFields_020B[] = {
+inline constexpr Field kFields_L00A0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 955},
+    {"Flags", 1, 1, 0x0204, 956},
+    {"Condition", 2, 1, 0x0104, 957},
+    {"WeaponLevelMin", 3, 1, 0x0000, 492},
+    {"On", 4, 2, 0x0008, 6199},
+    {"Off", 6, 2, 0x0008, 6200},
+};
+
+inline constexpr Field kFields_L00A0_S020B[] = {
     {"JointName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_020E[] = {
+inline constexpr Field kFields_L00A1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 958},
+    {"Flags", 1, 1, 0x0204, 959},
+    {"Condition", 2, 1, 0x0104, 960},
+    {"WeaponLevelMin", 3, 1, 0x0000, 493},
+    {"On", 4, 2, 0x0008, 6201},
+    {"Off", 6, 2, 0x0008, 6202},
+};
+
+inline constexpr Field kFields_L00A1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 967},
+    {"ScriptName", 16, 8, 0x0010, 252},
+};
+
+inline constexpr Field kFields_L00A1_S020E[] = {
     {"Bifrost", 24, 8, 0x001C, 272},
 };
 
-inline constexpr Field kFields_020F[] = {
+inline constexpr Field kFields_L00A2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 968},
+    {"Flags", 1, 1, 0x0204, 969},
+    {"Condition", 2, 1, 0x0104, 970},
+    {"WeaponLevelMin", 3, 1, 0x0000, 496},
+    {"On", 4, 2, 0x0008, 6207},
+    {"Off", 6, 2, 0x0008, 6208},
+};
+
+inline constexpr Field kFields_L00A2_S020F[] = {
     {"HeadTrackingID", 8, 2, 0x0008, 6209},
     {"Amount", 10, 2, 0x0008, 6210},
     {"ParentJoint", 12, 1, 0x0000, 497},
     {"POIFlags", 13, 1, 0x0204, 971},
 };
 
-inline constexpr Field kFields_0210[] = {
+inline constexpr Field kFields_L00A3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 972},
+    {"Flags", 1, 1, 0x0204, 973},
+    {"Condition", 2, 1, 0x0104, 974},
+    {"WeaponLevelMin", 3, 1, 0x0000, 498},
+    {"On", 4, 2, 0x0008, 6211},
+    {"Off", 6, 2, 0x0008, 6212},
+};
+
+inline constexpr Field kFields_L00A3_S0210[] = {
     {"Amount", 8, 2, 0x0008, 6213},
     {"Duration", 10, 2, 0x0008, 6214},
 };
 
-inline constexpr Field kFields_0211[] = {
+inline constexpr Field kFields_L00A4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 975},
+    {"Flags", 1, 1, 0x0204, 976},
+    {"Condition", 2, 1, 0x0104, 977},
+    {"WeaponLevelMin", 3, 1, 0x0000, 499},
+    {"On", 4, 2, 0x0008, 6215},
+    {"Off", 6, 2, 0x0008, 6216},
+};
+
+inline constexpr Field kFields_L00A4_S0211[] = {
     {"BindingKey", 8, 8, 0x0010, 0},
     {"AnimName", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0212[] = {
+inline constexpr Field kFields_L00A5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 978},
+    {"Flags", 1, 1, 0x0204, 979},
+    {"Condition", 2, 1, 0x0104, 980},
+    {"WeaponLevelMin", 3, 1, 0x0000, 500},
+    {"On", 4, 2, 0x0008, 6217},
+    {"Off", 6, 2, 0x0008, 6218},
+};
+
+inline constexpr Field kFields_L00A5_S0212[] = {
     {"SetFlags", 8, 8, 0x0204, 981},
 };
 
-inline constexpr Field kFields_0213[] = {
+inline constexpr Field kFields_L00A6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 982},
+    {"Flags", 1, 1, 0x0204, 983},
+    {"Condition", 2, 1, 0x0104, 984},
+    {"WeaponLevelMin", 3, 1, 0x0000, 501},
+    {"On", 4, 2, 0x0008, 6219},
+    {"Off", 6, 2, 0x0008, 6220},
+};
+
+inline constexpr Field kFields_L00A6_S0213[] = {
     {"SynchFlags", 8, 4, 0x0204, 985},
     {"MasterSynchJoint", 16, 8, 0x0010, 0},
     {"SlaveSynchJoint", 24, 8, 0x0010, 0},
@@ -6935,16 +9454,43 @@ inline constexpr Field kFields_0213[] = {
     {"SlaveSynchJointRotation", 48, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0214[] = {
+inline constexpr Field kFields_L00A7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 986},
+    {"Flags", 1, 1, 0x0204, 987},
+    {"Condition", 2, 1, 0x0104, 988},
+    {"WeaponLevelMin", 3, 1, 0x0000, 502},
+    {"On", 4, 2, 0x0008, 6221},
+    {"Off", 6, 2, 0x0008, 6222},
+};
+
+inline constexpr Field kFields_L00A7_S0214[] = {
     {"GroupFlags", 8, 1, 0x0204, 989},
 };
 
-inline constexpr Field kFields_0215[] = {
+inline constexpr Field kFields_L00A8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 990},
+    {"Flags", 1, 1, 0x0204, 991},
+    {"Condition", 2, 1, 0x0104, 992},
+    {"WeaponLevelMin", 3, 1, 0x0000, 503},
+    {"On", 4, 2, 0x0008, 6223},
+    {"Off", 6, 2, 0x0008, 6224},
+};
+
+inline constexpr Field kFields_L00A8_S0215[] = {
     {"PartMaskFlags", 8, 1, 0x0204, 993},
     {"PartMask", 16, 8, 0x0204, 994},
 };
 
-inline constexpr Field kFields_0216[] = {
+inline constexpr Field kFields_L00A9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 995},
+    {"Flags", 1, 1, 0x0204, 996},
+    {"Condition", 2, 1, 0x0104, 997},
+    {"WeaponLevelMin", 3, 1, 0x0000, 504},
+    {"On", 4, 2, 0x0008, 6225},
+    {"Off", 6, 2, 0x0008, 6226},
+};
+
+inline constexpr Field kFields_L00A9_S0216[] = {
     {"DampingID", 8, 1, 0x0104, 998},
     {"Level", 9, 1, 0x0104, 999},
     {"EnableINT8AutoAimBugFix", 10, 1, 0x0014, 1560},
@@ -6953,39 +9499,112 @@ inline constexpr Field kFields_0216[] = {
     {"SynchDampingOverrideAmount", 16, 4, 0x0008, 6228},
 };
 
-inline constexpr Field kFields_0217[] = {
+inline constexpr Field kFields_L00AA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1000},
+    {"Flags", 1, 1, 0x0204, 1001},
+    {"Condition", 2, 1, 0x0104, 1002},
+    {"WeaponLevelMin", 3, 1, 0x0000, 505},
+    {"On", 4, 2, 0x0008, 6229},
+    {"Off", 6, 2, 0x0008, 6230},
+};
+
+inline constexpr Field kFields_L00AA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1003},
+    {"ScriptName", 16, 8, 0x0010, 253},
+};
+
+inline constexpr Field kFields_L00AA_S0217[] = {
     {"SafetyCode", 24, 8, 0x0018, 0},
     {"OverrideLevel", 32, 1, 0x0104, 1004},
     {"DampFactor", 36, 4, 0x0008, 6231},
 };
 
-inline constexpr Field kFields_0218[] = {
+inline constexpr Field kFields_L00AB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1005},
+    {"Flags", 1, 1, 0x0204, 1006},
+    {"Condition", 2, 1, 0x0104, 1007},
+    {"WeaponLevelMin", 3, 1, 0x0000, 506},
+    {"On", 4, 2, 0x0008, 6232},
+    {"Off", 6, 2, 0x0008, 6233},
+};
+
+inline constexpr Field kFields_L00AB_S0218[] = {
     {"Offset", 8, 0, 0x002C, 6},
     {"Intensity", 16, 4, 0x0008, 6237},
 };
 
-inline constexpr Field kFields_0219[] = {
+inline constexpr Field kFields_L00AC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1008},
+    {"Flags", 1, 1, 0x0204, 1009},
+    {"Condition", 2, 1, 0x0104, 1010},
+    {"WeaponLevelMin", 3, 1, 0x0000, 507},
+    {"On", 4, 2, 0x0008, 6238},
+    {"Off", 6, 2, 0x0008, 6239},
+};
+
+inline constexpr Field kFields_L00AC_S0219[] = {
     {"FootEffect", 8, 2, 0x0104, 1011},
     {"JointName", 16, 8, 0x0010, 0},
     {"SoundEvent", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_021A[] = {
+inline constexpr Field kFields_L00AD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1012},
+    {"Flags", 1, 1, 0x0204, 1013},
+    {"Condition", 2, 1, 0x0104, 1014},
+    {"WeaponLevelMin", 3, 1, 0x0000, 508},
+    {"On", 4, 2, 0x0008, 6240},
+    {"Off", 6, 2, 0x0008, 6241},
+};
+
+inline constexpr Field kFields_L00AD_S021A[] = {
     {"ArgIntList", 8, 12, 0x0024, 378},
     {"ArgInt", 20, 4, 0x0000, 510},
     {"ArgString", 24, 8, 0x0010, 0},
     {"EffectFlags", 32, 1, 0x0204, 1015},
 };
 
-inline constexpr Field kFields_021B[] = {
+inline constexpr Field kFields_L00AE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1016},
+    {"Flags", 1, 1, 0x0204, 1017},
+    {"Condition", 2, 1, 0x0104, 1018},
+    {"WeaponLevelMin", 3, 1, 0x0000, 511},
+    {"On", 4, 2, 0x0008, 6242},
+    {"Off", 6, 2, 0x0008, 6243},
+};
+
+inline constexpr Field kFields_L00AE_S021B[] = {
     {"CliffEffect", 8, 1, 0x0104, 1019},
 };
 
-inline constexpr Field kFields_021C[] = {
+inline constexpr Field kFields_L00AF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1020},
+    {"Flags", 1, 1, 0x0204, 1021},
+    {"Condition", 2, 1, 0x0104, 1022},
+    {"WeaponLevelMin", 3, 1, 0x0000, 512},
+    {"On", 4, 2, 0x0008, 6244},
+    {"Off", 6, 2, 0x0008, 6245},
+};
+
+inline constexpr Field kFields_L00AF_S021C[] = {
     {"LayerList", 8, 12, 0x0024, 379},
 };
 
-inline constexpr Field kFields_021D[] = {
+inline constexpr Field kFields_L00B0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1023},
+    {"Flags", 1, 1, 0x0204, 1024},
+    {"Condition", 2, 1, 0x0104, 1025},
+    {"WeaponLevelMin", 3, 1, 0x0000, 514},
+    {"On", 4, 2, 0x0008, 6246},
+    {"Off", 6, 2, 0x0008, 6247},
+};
+
+inline constexpr Field kFields_L00B0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1026},
+    {"ScriptName", 16, 8, 0x0010, 254},
+};
+
+inline constexpr Field kFields_L00B0_S021D[] = {
     {"TweenIn", 24, 0, 0x002C, 12},
     {"TweenOut", 48, 0, 0x002C, 12},
     {"Duration", 72, 4, 0x0008, 6260},
@@ -6997,40 +9616,207 @@ inline constexpr Field kFields_021D[] = {
     {"Priority", 100, 4, 0x0000, 515},
 };
 
-inline constexpr Field kFields_0220[] = {
+inline constexpr Field kFields_L00B1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1027},
+    {"Flags", 1, 1, 0x0204, 1028},
+    {"Condition", 2, 1, 0x0104, 1029},
+    {"WeaponLevelMin", 3, 1, 0x0000, 516},
+    {"On", 4, 2, 0x0008, 6262},
+    {"Off", 6, 2, 0x0008, 6263},
+};
+
+inline constexpr Field kFields_L00B1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1030},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L00B1_S021D[] = {
+    {"TweenIn", 24, 0, 0x002C, 12},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Duration", 72, 4, 0x0008, 6276},
+    {"IgnoreRepeats", 76, 1, 0x0014, 1564},
+    {"TweenOutAtOff", 77, 1, 0x0014, 1565},
+    {"Effect", 80, 8, 0x001C, 46},
+    {"EffectName", 88, 8, 0x0018, 0},
+    {"Weight", 96, 4, 0x0008, 6277},
+    {"Priority", 100, 4, 0x0000, 517},
+};
+
+inline constexpr Field kFields_L00B2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1031},
+    {"Flags", 1, 1, 0x0204, 1032},
+    {"Condition", 2, 1, 0x0104, 1033},
+    {"WeaponLevelMin", 3, 1, 0x0000, 518},
+    {"On", 4, 2, 0x0008, 6278},
+    {"Off", 6, 2, 0x0008, 6279},
+};
+
+inline constexpr Field kFields_L00B2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1034},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L00B2_S021D[] = {
+    {"TweenIn", 24, 0, 0x002C, 12},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Duration", 72, 4, 0x0008, 6292},
+    {"IgnoreRepeats", 76, 1, 0x0014, 1566},
+    {"TweenOutAtOff", 77, 1, 0x0014, 1567},
+    {"Effect", 80, 8, 0x001C, 46},
+    {"EffectName", 88, 8, 0x0018, 0},
+    {"Weight", 96, 4, 0x0008, 6293},
+    {"Priority", 100, 4, 0x0000, 519},
+};
+
+inline constexpr Field kFields_L00B3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1035},
+    {"Flags", 1, 1, 0x0204, 1036},
+    {"Condition", 2, 1, 0x0104, 1037},
+    {"WeaponLevelMin", 3, 1, 0x0000, 520},
+    {"On", 4, 2, 0x0008, 6294},
+    {"Off", 6, 2, 0x0008, 6295},
+};
+
+inline constexpr Field kFields_L00B3_S0220[] = {
     {"Effect", 8, 8, 0x001C, 46},
     {"EffectName", 16, 8, 0x0018, 0},
     {"TweenOut", 24, 0, 0x002C, 12},
 };
 
-inline constexpr Field kFields_0223[] = {
+inline constexpr Field kFields_L00B4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1038},
+    {"Flags", 1, 1, 0x0204, 1039},
+    {"Condition", 2, 1, 0x0104, 1040},
+    {"WeaponLevelMin", 3, 1, 0x0000, 521},
+    {"On", 4, 2, 0x0008, 6302},
+    {"Off", 6, 2, 0x0008, 6303},
+};
+
+inline constexpr Field kFields_L00B4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1041},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L00B4_S021D[] = {
+    {"TweenIn", 24, 0, 0x002C, 12},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Duration", 72, 4, 0x0008, 6316},
+    {"IgnoreRepeats", 76, 1, 0x0014, 1568},
+    {"TweenOutAtOff", 77, 1, 0x0014, 1569},
+    {"Effect", 80, 8, 0x001C, 46},
+    {"EffectName", 88, 8, 0x0018, 0},
+    {"Weight", 96, 4, 0x0008, 6317},
+    {"Priority", 100, 4, 0x0000, 522},
+};
+
+inline constexpr Field kFields_L00B5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1042},
+    {"Flags", 1, 1, 0x0204, 1043},
+    {"Condition", 2, 1, 0x0104, 1044},
+    {"WeaponLevelMin", 3, 1, 0x0000, 523},
+    {"On", 4, 2, 0x0008, 6318},
+    {"Off", 6, 2, 0x0008, 6319},
+};
+
+inline constexpr Field kFields_L00B5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1045},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L00B5_S021D[] = {
+    {"TweenIn", 24, 0, 0x002C, 12},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Duration", 72, 4, 0x0008, 6332},
+    {"IgnoreRepeats", 76, 1, 0x0014, 1570},
+    {"TweenOutAtOff", 77, 1, 0x0014, 1571},
+    {"Effect", 80, 8, 0x001C, 46},
+    {"EffectName", 88, 8, 0x0018, 0},
+    {"Weight", 96, 4, 0x0008, 6333},
+    {"Priority", 100, 4, 0x0000, 524},
+};
+
+inline constexpr Field kFields_L00B6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1046},
+    {"Flags", 1, 1, 0x0204, 1047},
+    {"Condition", 2, 1, 0x0104, 1048},
+    {"WeaponLevelMin", 3, 1, 0x0000, 525},
+    {"On", 4, 2, 0x0008, 6334},
+    {"Off", 6, 2, 0x0008, 6335},
+};
+
+inline constexpr Field kFields_L00B6_S0223[] = {
     {"Name", 8, 8, 0x0018, 0},
     {"Time", 16, 4, 0x0008, 6336},
 };
 
-inline constexpr Field kFields_0224[] = {
+inline constexpr Field kFields_L00B7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1049},
+    {"Flags", 1, 1, 0x0204, 1050},
+    {"Condition", 2, 1, 0x0104, 1051},
+    {"WeaponLevelMin", 3, 1, 0x0000, 526},
+    {"On", 4, 2, 0x0008, 6337},
+    {"Off", 6, 2, 0x0008, 6338},
+};
+
+inline constexpr Field kFields_L00B7_S0224[] = {
     {"FactName", 8, 8, 0x0010, 0},
     {"FactValue", 16, 4, 0x0008, 6339},
 };
 
-inline constexpr Field kFields_0225[] = {
+inline constexpr Field kFields_L00B8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1052},
+    {"Flags", 1, 1, 0x0204, 1053},
+    {"Condition", 2, 1, 0x0104, 1054},
+    {"WeaponLevelMin", 3, 1, 0x0000, 527},
+    {"On", 4, 2, 0x0008, 6340},
+    {"Off", 6, 2, 0x0008, 6341},
+};
+
+inline constexpr Field kFields_L00B8_S0225[] = {
     {"FactName", 8, 8, 0x0010, 0},
     {"FactValue", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0226[] = {
+inline constexpr Field kFields_L00B9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1055},
+    {"Flags", 1, 1, 0x0204, 1056},
+    {"Condition", 2, 1, 0x0104, 1057},
+    {"WeaponLevelMin", 3, 1, 0x0000, 528},
+    {"On", 4, 2, 0x0008, 6342},
+    {"Off", 6, 2, 0x0008, 6343},
+};
+
+inline constexpr Field kFields_L00B9_S0226[] = {
     {"FactName", 8, 8, 0x0010, 0},
     {"FactValue", 16, 4, 0x0008, 6344},
 };
 
-inline constexpr Field kFields_0227[] = {
+inline constexpr Field kFields_L00BA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1058},
+    {"Flags", 1, 1, 0x0204, 1059},
+    {"Condition", 2, 1, 0x0104, 1060},
+    {"WeaponLevelMin", 3, 1, 0x0000, 529},
+    {"On", 4, 2, 0x0008, 6345},
+    {"Off", 6, 2, 0x0008, 6346},
+};
+
+inline constexpr Field kFields_L00BA_S0227[] = {
     {"EventName", 8, 8, 0x0010, 0},
     {"Target", 16, 1, 0x0104, 1061},
     {"Server", 17, 1, 0x0204, 1062},
     {"SuppressWhenPaused", 18, 1, 0x0014, 1572},
 };
 
-inline constexpr Field kFields_0228[] = {
+inline constexpr Field kFields_L00BB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1063},
+    {"Flags", 1, 1, 0x0204, 1064},
+    {"Condition", 2, 1, 0x0104, 1065},
+    {"WeaponLevelMin", 3, 1, 0x0000, 530},
+    {"On", 4, 2, 0x0008, 6347},
+    {"Off", 6, 2, 0x0008, 6348},
+};
+
+inline constexpr Field kFields_L00BB_S0228[] = {
     {"QTEType", 8, 8, 0x0018, 0},
     {"Control", 16, 1, 0x0104, 1066},
     {"PosX", 20, 4, 0x0008, 6349},
@@ -7041,16 +9827,53 @@ inline constexpr Field kFields_0228[] = {
     {"ControlOverride", 52, 4, 0x0000, 532},
 };
 
-inline constexpr Field kFields_022A[] = {
+inline constexpr Field kFields_L00BC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1067},
+    {"Flags", 1, 1, 0x0204, 1068},
+    {"Condition", 2, 1, 0x0104, 1069},
+    {"WeaponLevelMin", 3, 1, 0x0000, 533},
+    {"On", 4, 2, 0x0008, 6351},
+    {"Off", 6, 2, 0x0008, 6352},
+};
+
+inline constexpr Field kFields_L00BC_S022A[] = {
     {"EventName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_022C[] = {
+inline constexpr Field kFields_L00BD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1073},
+    {"Flags", 1, 1, 0x0204, 1074},
+    {"Condition", 2, 1, 0x0104, 1075},
+    {"WeaponLevelMin", 3, 1, 0x0000, 535},
+    {"On", 4, 2, 0x0008, 6355},
+    {"Off", 6, 2, 0x0008, 6356},
+};
+
+inline constexpr Field kFields_L00BD_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1079},
+    {"ScriptName", 16, 8, 0x0010, 255},
+};
+
+inline constexpr Field kFields_L00BD_S022C[] = {
     {"DriverName", 24, 8, 0x0010, 0},
     {"RotationSeconds", 32, 4, 0x0008, 6359},
 };
 
-inline constexpr Field kFields_022D[] = {
+inline constexpr Field kFields_L00BE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1080},
+    {"Flags", 1, 1, 0x0204, 1081},
+    {"Condition", 2, 1, 0x0104, 1082},
+    {"WeaponLevelMin", 3, 1, 0x0000, 537},
+    {"On", 4, 2, 0x0008, 6360},
+    {"Off", 6, 2, 0x0008, 6361},
+};
+
+inline constexpr Field kFields_L00BE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1083},
+    {"ScriptName", 16, 8, 0x0010, 256},
+};
+
+inline constexpr Field kFields_L00BE_S022D[] = {
     {"MinPlayRate", 24, 4, 0x0008, 6362},
     {"MaxPlayRate", 28, 4, 0x0008, 6363},
     {"JumpDistance", 32, 4, 0x0008, 6364},
@@ -7060,7 +9883,21 @@ inline constexpr Field kFields_022D[] = {
     {"TargetDirectionType", 48, 1, 0x0104, 1084},
 };
 
-inline constexpr Field kFields_022E[] = {
+inline constexpr Field kFields_L00BF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1085},
+    {"Flags", 1, 1, 0x0204, 1086},
+    {"Condition", 2, 1, 0x0104, 1087},
+    {"WeaponLevelMin", 3, 1, 0x0000, 538},
+    {"On", 4, 2, 0x0008, 6368},
+    {"Off", 6, 2, 0x0008, 6369},
+};
+
+inline constexpr Field kFields_L00BF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1088},
+    {"ScriptName", 16, 8, 0x0010, 257},
+};
+
+inline constexpr Field kFields_L00BF_S022E[] = {
     {"Amount", 24, 2, 0x0008, 6370},
     {"Duration", 26, 2, 0x0008, 6371},
     {"EaseInOutTime", 28, 4, 0x0008, 6372},
@@ -7068,13 +9905,40 @@ inline constexpr Field kFields_022E[] = {
     {"ClipToMove", 33, 1, 0x0014, 1574},
 };
 
-inline constexpr Field kFields_022F[] = {
+inline constexpr Field kFields_L00C0_S002E[] = {
+    {"ID", 0, 4, 0x0001, 539},
+    {"Type", 4, 4, 0x0105, 1089},
+    {"TweenDriver", 8, 1, 0x0104, 1090},
+    {"Hold", 9, 1, 0x0014, 1575},
+    {"Priority", 12, 4, 0x0000, 540},
+    {"Weight", 16, 4, 0x0008, 6373},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 6380},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L00C0_S022F[] = {
     {"SlowPlayer", 80, 1, 0x0014, 1576},
     {"SlowUI", 81, 1, 0x0014, 1577},
     {"Amount", 84, 4, 0x0008, 6387},
 };
 
-inline constexpr Field kFields_0230[] = {
+inline constexpr Field kFields_L00C1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1091},
+    {"Flags", 1, 1, 0x0204, 1092},
+    {"Condition", 2, 1, 0x0104, 1093},
+    {"WeaponLevelMin", 3, 1, 0x0000, 541},
+    {"On", 4, 2, 0x0008, 6388},
+    {"Off", 6, 2, 0x0008, 6389},
+};
+
+inline constexpr Field kFields_L00C1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1094},
+    {"ScriptName", 16, 8, 0x0010, 258},
+};
+
+inline constexpr Field kFields_L00C1_S0230[] = {
     {"Amount", 24, 2, 0x0008, 6390},
     {"Duration", 26, 2, 0x0008, 6391},
     {"SlowPlayer", 28, 1, 0x0014, 1578},
@@ -7083,7 +9947,21 @@ inline constexpr Field kFields_0230[] = {
     {"TweenOut", 56, 0, 0x002C, 12},
 };
 
-inline constexpr Field kFields_0231[] = {
+inline constexpr Field kFields_L00C2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1095},
+    {"Flags", 1, 1, 0x0204, 1096},
+    {"Condition", 2, 1, 0x0104, 1097},
+    {"WeaponLevelMin", 3, 1, 0x0000, 542},
+    {"On", 4, 2, 0x0008, 6404},
+    {"Off", 6, 2, 0x0008, 6405},
+};
+
+inline constexpr Field kFields_L00C2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1098},
+    {"ScriptName", 16, 8, 0x0010, 259},
+};
+
+inline constexpr Field kFields_L00C2_S0231[] = {
     {"Orb", 24, 8, 0x001C, 320},
     {"AttractJointName", 32, 8, 0x0010, 0},
     {"EmitJointName", 40, 8, 0x0010, 0},
@@ -7095,22 +9973,78 @@ inline constexpr Field kFields_0231[] = {
     {"EmitPattern", 63, 1, 0x0104, 1100},
 };
 
-inline constexpr Field kFields_0232[] = {
+inline constexpr Field kFields_L00C3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1101},
+    {"Flags", 1, 1, 0x0204, 1102},
+    {"Condition", 2, 1, 0x0104, 1103},
+    {"WeaponLevelMin", 3, 1, 0x0000, 544},
+    {"On", 4, 2, 0x0008, 6409},
+    {"Off", 6, 2, 0x0008, 6410},
+};
+
+inline constexpr Field kFields_L00C3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1104},
+    {"ScriptName", 16, 8, 0x0010, 260},
+};
+
+inline constexpr Field kFields_L00C3_S0232[] = {
     {"DisableCollision", 24, 1, 0x0014, 1580},
 };
 
-inline constexpr Field kFields_0233[] = {
+inline constexpr Field kFields_L00C4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1105},
+    {"Flags", 1, 1, 0x0204, 1106},
+    {"Condition", 2, 1, 0x0104, 1107},
+    {"WeaponLevelMin", 3, 1, 0x0000, 545},
+    {"On", 4, 2, 0x0008, 6411},
+    {"Off", 6, 2, 0x0008, 6412},
+};
+
+inline constexpr Field kFields_L00C4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1108},
+    {"ScriptName", 16, 8, 0x0010, 261},
+};
+
+inline constexpr Field kFields_L00C4_S0233[] = {
     {"Params", 24, 8, 0x001C, 385},
 };
 
-inline constexpr Field kFields_0234[] = {
+inline constexpr Field kFields_L00C5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1109},
+    {"Flags", 1, 1, 0x0204, 1110},
+    {"Condition", 2, 1, 0x0104, 1111},
+    {"WeaponLevelMin", 3, 1, 0x0000, 546},
+    {"On", 4, 2, 0x0008, 6413},
+    {"Off", 6, 2, 0x0008, 6414},
+};
+
+inline constexpr Field kFields_L00C5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1112},
+    {"ScriptName", 16, 8, 0x0010, 262},
+};
+
+inline constexpr Field kFields_L00C5_S0234[] = {
     {"OverrideFacingType", 24, 1, 0x0104, 1113},
     {"MinAngle", 28, 4, 0x0008, 6415},
     {"MaxAngle", 32, 4, 0x0008, 6416},
     {"FlipDirectionTolerance", 36, 4, 0x0008, 6417},
 };
 
-inline constexpr Field kFields_0235[] = {
+inline constexpr Field kFields_L00C6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1114},
+    {"Flags", 1, 1, 0x0204, 1115},
+    {"Condition", 2, 1, 0x0104, 1116},
+    {"WeaponLevelMin", 3, 1, 0x0000, 547},
+    {"On", 4, 2, 0x0008, 6418},
+    {"Off", 6, 2, 0x0008, 6419},
+};
+
+inline constexpr Field kFields_L00C6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1117},
+    {"ScriptName", 16, 8, 0x0010, 263},
+};
+
+inline constexpr Field kFields_L00C6_S0235[] = {
     {"OverrideTargetDirReference", 24, 1, 0x0104, 1118},
     {"Scale", 28, 4, 0x0008, 6420},
     {"MinAngle", 32, 4, 0x0008, 6421},
@@ -7122,12 +10056,68 @@ inline constexpr Field kFields_0235[] = {
     {"Offset", 56, 4, 0x0008, 6427},
 };
 
-inline constexpr Field kFields_0238[] = {
+inline constexpr Field kFields_L00C7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1119},
+    {"Flags", 1, 1, 0x0204, 1120},
+    {"Condition", 2, 1, 0x0104, 1121},
+    {"WeaponLevelMin", 3, 1, 0x0000, 548},
+    {"On", 4, 2, 0x0008, 6428},
+    {"Off", 6, 2, 0x0008, 6429},
+};
+
+inline constexpr Field kFields_L00C7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1122},
+    {"ScriptName", 16, 8, 0x0010, 264},
+};
+
+inline constexpr Field kFields_L00C8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1123},
+    {"Flags", 1, 1, 0x0204, 1124},
+    {"Condition", 2, 1, 0x0104, 1125},
+    {"WeaponLevelMin", 3, 1, 0x0000, 549},
+    {"On", 4, 2, 0x0008, 6430},
+    {"Off", 6, 2, 0x0008, 6431},
+};
+
+inline constexpr Field kFields_L00C8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1126},
+    {"ScriptName", 16, 8, 0x0010, 265},
+};
+
+inline constexpr Field kFields_L00C9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1127},
+    {"Flags", 1, 1, 0x0204, 1128},
+    {"Condition", 2, 1, 0x0104, 1129},
+    {"WeaponLevelMin", 3, 1, 0x0000, 550},
+    {"On", 4, 2, 0x0008, 6432},
+    {"Off", 6, 2, 0x0008, 6433},
+};
+
+inline constexpr Field kFields_L00C9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1130},
+    {"ScriptName", 16, 8, 0x0010, 266},
+};
+
+inline constexpr Field kFields_L00C9_S0238[] = {
     {"MinAngle", 24, 4, 0x0008, 6434},
     {"MaxAngle", 28, 4, 0x0008, 6435},
 };
 
-inline constexpr Field kFields_0239[] = {
+inline constexpr Field kFields_L00CA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1131},
+    {"Flags", 1, 1, 0x0204, 1132},
+    {"Condition", 2, 1, 0x0104, 1133},
+    {"WeaponLevelMin", 3, 1, 0x0000, 551},
+    {"On", 4, 2, 0x0008, 6436},
+    {"Off", 6, 2, 0x0008, 6437},
+};
+
+inline constexpr Field kFields_L00CA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1134},
+    {"ScriptName", 16, 8, 0x0010, 267},
+};
+
+inline constexpr Field kFields_L00CA_S0239[] = {
     {"MinAngleLeft", 24, 4, 0x0008, 6438},
     {"MaxAngleLeft", 28, 4, 0x0008, 6439},
     {"MinAngleRight", 32, 4, 0x0008, 6440},
@@ -7136,12 +10126,54 @@ inline constexpr Field kFields_0239[] = {
     {"MaxRotationTime", 44, 4, 0x0008, 6443},
 };
 
-inline constexpr Field kFields_023B[] = {
+inline constexpr Field kFields_L00CB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1135},
+    {"Flags", 1, 1, 0x0204, 1136},
+    {"Condition", 2, 1, 0x0104, 1137},
+    {"WeaponLevelMin", 3, 1, 0x0000, 552},
+    {"On", 4, 2, 0x0008, 6444},
+    {"Off", 6, 2, 0x0008, 6445},
+};
+
+inline constexpr Field kFields_L00CB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1138},
+    {"ScriptName", 16, 8, 0x0010, 268},
+};
+
+inline constexpr Field kFields_L00CC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1139},
+    {"Flags", 1, 1, 0x0204, 1140},
+    {"Condition", 2, 1, 0x0104, 1141},
+    {"WeaponLevelMin", 3, 1, 0x0000, 553},
+    {"On", 4, 2, 0x0008, 6446},
+    {"Off", 6, 2, 0x0008, 6447},
+};
+
+inline constexpr Field kFields_L00CC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1142},
+    {"ScriptName", 16, 8, 0x0010, 269},
+};
+
+inline constexpr Field kFields_L00CC_S023B[] = {
     {"CoolDownTimeMin", 24, 4, 0x0008, 6448},
     {"CoolDownTimeMax", 28, 4, 0x0008, 6449},
 };
 
-inline constexpr Field kFields_023C[] = {
+inline constexpr Field kFields_L00CD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1143},
+    {"Flags", 1, 1, 0x0204, 1144},
+    {"Condition", 2, 1, 0x0104, 1145},
+    {"WeaponLevelMin", 3, 1, 0x0000, 554},
+    {"On", 4, 2, 0x0008, 6450},
+    {"Off", 6, 2, 0x0008, 6451},
+};
+
+inline constexpr Field kFields_L00CD_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1146},
+    {"ScriptName", 16, 8, 0x0010, 270},
+};
+
+inline constexpr Field kFields_L00CD_S023C[] = {
     {"Target", 24, 4, 0x0008, 6452},
     {"Speed", 28, 4, 0x0008, 6453},
     {"Damping", 32, 4, 0x0008, 6454},
@@ -7149,15 +10181,113 @@ inline constexpr Field kFields_023C[] = {
     {"Amplitude", 40, 4, 0x0008, 6456},
 };
 
-inline constexpr Field kFields_0241[] = {
+inline constexpr Field kFields_L00CE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1147},
+    {"Flags", 1, 1, 0x0204, 1148},
+    {"Condition", 2, 1, 0x0104, 1149},
+    {"WeaponLevelMin", 3, 1, 0x0000, 555},
+    {"On", 4, 2, 0x0008, 6457},
+    {"Off", 6, 2, 0x0008, 6458},
+};
+
+inline constexpr Field kFields_L00CE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1150},
+    {"ScriptName", 16, 8, 0x0010, 271},
+};
+
+inline constexpr Field kFields_L00CF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1151},
+    {"Flags", 1, 1, 0x0204, 1152},
+    {"Condition", 2, 1, 0x0104, 1153},
+    {"WeaponLevelMin", 3, 1, 0x0000, 556},
+    {"On", 4, 2, 0x0008, 6459},
+    {"Off", 6, 2, 0x0008, 6460},
+};
+
+inline constexpr Field kFields_L00CF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1154},
+    {"ScriptName", 16, 8, 0x0010, 272},
+};
+
+inline constexpr Field kFields_L00D0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1155},
+    {"Flags", 1, 1, 0x0204, 1156},
+    {"Condition", 2, 1, 0x0104, 1157},
+    {"WeaponLevelMin", 3, 1, 0x0000, 557},
+    {"On", 4, 2, 0x0008, 6461},
+    {"Off", 6, 2, 0x0008, 6462},
+};
+
+inline constexpr Field kFields_L00D0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1158},
+    {"ScriptName", 16, 8, 0x0010, 273},
+};
+
+inline constexpr Field kFields_L00D1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1159},
+    {"Flags", 1, 1, 0x0204, 1160},
+    {"Condition", 2, 1, 0x0104, 1161},
+    {"WeaponLevelMin", 3, 1, 0x0000, 558},
+    {"On", 4, 2, 0x0008, 6463},
+    {"Off", 6, 2, 0x0008, 6464},
+};
+
+inline constexpr Field kFields_L00D1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1162},
+    {"ScriptName", 16, 8, 0x0010, 274},
+};
+
+inline constexpr Field kFields_L00D2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1163},
+    {"Flags", 1, 1, 0x0204, 1164},
+    {"Condition", 2, 1, 0x0104, 1165},
+    {"WeaponLevelMin", 3, 1, 0x0000, 559},
+    {"On", 4, 2, 0x0008, 6465},
+    {"Off", 6, 2, 0x0008, 6466},
+};
+
+inline constexpr Field kFields_L00D2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1166},
+    {"ScriptName", 16, 8, 0x0010, 275},
+};
+
+inline constexpr Field kFields_L00D2_S0241[] = {
     {"EnterFollowType", 24, 1, 0x0104, 1167},
 };
 
-inline constexpr Field kFields_0242[] = {
+inline constexpr Field kFields_L00D3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1168},
+    {"Flags", 1, 1, 0x0204, 1169},
+    {"Condition", 2, 1, 0x0104, 1170},
+    {"WeaponLevelMin", 3, 1, 0x0000, 560},
+    {"On", 4, 2, 0x0008, 6467},
+    {"Off", 6, 2, 0x0008, 6468},
+};
+
+inline constexpr Field kFields_L00D3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1171},
+    {"ScriptName", 16, 8, 0x0010, 276},
+};
+
+inline constexpr Field kFields_L00D3_S0242[] = {
     {"ExitFollowType", 24, 1, 0x0104, 1172},
 };
 
-inline constexpr Field kFields_0243[] = {
+inline constexpr Field kFields_L00D4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1173},
+    {"Flags", 1, 1, 0x0204, 1174},
+    {"Condition", 2, 1, 0x0104, 1175},
+    {"WeaponLevelMin", 3, 1, 0x0000, 561},
+    {"On", 4, 2, 0x0008, 6469},
+    {"Off", 6, 2, 0x0008, 6470},
+};
+
+inline constexpr Field kFields_L00D4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1176},
+    {"ScriptName", 16, 8, 0x0010, 277},
+};
+
+inline constexpr Field kFields_L00D4_S0243[] = {
     {"DragonCenterOffset", 24, 0, 0x002C, 7},
     {"PushOrPull", 36, 4, 0x0000, 562},
     {"FromDragonCenterOrNegativeZAxis", 40, 4, 0x0000, 563},
@@ -7166,23 +10296,93 @@ inline constexpr Field kFields_0243[] = {
     {"MinOffset", 52, 4, 0x0008, 6476},
 };
 
-inline constexpr Field kFields_0244[] = {
+inline constexpr Field kFields_L00D5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1177},
+    {"Flags", 1, 1, 0x0204, 1178},
+    {"Condition", 2, 1, 0x0104, 1179},
+    {"WeaponLevelMin", 3, 1, 0x0000, 564},
+    {"On", 4, 2, 0x0008, 6477},
+    {"Off", 6, 2, 0x0008, 6478},
+};
+
+inline constexpr Field kFields_L00D5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1180},
+    {"ScriptName", 16, 8, 0x0010, 278},
+};
+
+inline constexpr Field kFields_L00D5_S0244[] = {
     {"UseLocalXZOnly", 24, 1, 0x0014, 1581},
     {"LocalX", 28, 4, 0x0008, 6479},
     {"LocalY", 32, 4, 0x0008, 6480},
     {"LocalZ", 36, 4, 0x0008, 6481},
 };
 
-inline constexpr Field kFields_0245[] = {
+inline constexpr Field kFields_L00D6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1181},
+    {"Flags", 1, 1, 0x0204, 1182},
+    {"Condition", 2, 1, 0x0104, 1183},
+    {"WeaponLevelMin", 3, 1, 0x0000, 565},
+    {"On", 4, 2, 0x0008, 6482},
+    {"Off", 6, 2, 0x0008, 6483},
+};
+
+inline constexpr Field kFields_L00D6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1184},
+    {"ScriptName", 16, 8, 0x0010, 279},
+};
+
+inline constexpr Field kFields_L00D6_S0245[] = {
     {"SpeedList", 24, 12, 0x0024, 380},
     {"SpeedPercentList", 40, 12, 0x0024, 381},
 };
 
-inline constexpr Field kFields_0247[] = {
+inline constexpr Field kFields_L00D7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1185},
+    {"Flags", 1, 1, 0x0204, 1186},
+    {"Condition", 2, 1, 0x0104, 1187},
+    {"WeaponLevelMin", 3, 1, 0x0000, 566},
+    {"On", 4, 2, 0x0008, 6486},
+    {"Off", 6, 2, 0x0008, 6487},
+};
+
+inline constexpr Field kFields_L00D7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1188},
+    {"ScriptName", 16, 8, 0x0010, 280},
+};
+
+inline constexpr Field kFields_L00D8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1189},
+    {"Flags", 1, 1, 0x0204, 1190},
+    {"Condition", 2, 1, 0x0104, 1191},
+    {"WeaponLevelMin", 3, 1, 0x0000, 567},
+    {"On", 4, 2, 0x0008, 6488},
+    {"Off", 6, 2, 0x0008, 6489},
+};
+
+inline constexpr Field kFields_L00D8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1192},
+    {"ScriptName", 16, 8, 0x0010, 281},
+};
+
+inline constexpr Field kFields_L00D8_S0247[] = {
     {"InterpolateY", 24, 1, 0x0014, 1582},
 };
 
-inline constexpr Field kFields_0248[] = {
+inline constexpr Field kFields_L00D9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1193},
+    {"Flags", 1, 1, 0x0204, 1194},
+    {"Condition", 2, 1, 0x0104, 1195},
+    {"WeaponLevelMin", 3, 1, 0x0000, 568},
+    {"On", 4, 2, 0x0008, 6490},
+    {"Off", 6, 2, 0x0008, 6491},
+};
+
+inline constexpr Field kFields_L00D9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1196},
+    {"ScriptName", 16, 8, 0x0010, 282},
+};
+
+inline constexpr Field kFields_L00D9_S0248[] = {
     {"MPIconName", 24, 8, 0x0010, 0},
     {"HintDistance", 32, 4, 0x0008, 6492},
     {"ShowDistance", 36, 4, 0x0008, 6493},
@@ -7194,15 +10394,57 @@ inline constexpr Field kFields_0248[] = {
     {"TraversalMove", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0249[] = {
+inline constexpr Field kFields_L00DA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1197},
+    {"Flags", 1, 1, 0x0204, 1198},
+    {"Condition", 2, 1, 0x0104, 1199},
+    {"WeaponLevelMin", 3, 1, 0x0000, 569},
+    {"On", 4, 2, 0x0008, 6500},
+    {"Off", 6, 2, 0x0008, 6501},
+};
+
+inline constexpr Field kFields_L00DA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1200},
+    {"ScriptName", 16, 8, 0x0010, 283},
+};
+
+inline constexpr Field kFields_L00DA_S0249[] = {
     {"Prompt", 24, 12, 0x0024, 382},
 };
 
-inline constexpr Field kFields_024A[] = {
+inline constexpr Field kFields_L00DB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1201},
+    {"Flags", 1, 1, 0x0204, 1202},
+    {"Condition", 2, 1, 0x0104, 1203},
+    {"WeaponLevelMin", 3, 1, 0x0000, 570},
+    {"On", 4, 2, 0x0008, 6502},
+    {"Off", 6, 2, 0x0008, 6503},
+};
+
+inline constexpr Field kFields_L00DB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1204},
+    {"ScriptName", 16, 8, 0x0010, 284},
+};
+
+inline constexpr Field kFields_L00DB_S024A[] = {
     {"ShowHint", 24, 1, 0x0014, 1584},
 };
 
-inline constexpr Field kFields_024B[] = {
+inline constexpr Field kFields_L00DC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1205},
+    {"Flags", 1, 1, 0x0204, 1206},
+    {"Condition", 2, 1, 0x0104, 1207},
+    {"WeaponLevelMin", 3, 1, 0x0000, 571},
+    {"On", 4, 2, 0x0008, 6504},
+    {"Off", 6, 2, 0x0008, 6505},
+};
+
+inline constexpr Field kFields_L00DC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1208},
+    {"ScriptName", 16, 8, 0x0010, 285},
+};
+
+inline constexpr Field kFields_L00DC_S024B[] = {
     {"TraversalMove", 24, 12, 0x0024, 383},
     {"MinimumIntent", 36, 4, 0x0008, 6506},
     {"TraversalExitMove", 40, 12, 0x0024, 384},
@@ -7213,12 +10455,40 @@ inline constexpr Field kFields_024B[] = {
     {"ExitPromptOffset", 78, 0, 0x002C, 6},
 };
 
-inline constexpr Field kFields_024C[] = {
+inline constexpr Field kFields_L00DD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1209},
+    {"Flags", 1, 1, 0x0204, 1210},
+    {"Condition", 2, 1, 0x0104, 1211},
+    {"WeaponLevelMin", 3, 1, 0x0000, 572},
+    {"On", 4, 2, 0x0008, 6514},
+    {"Off", 6, 2, 0x0008, 6515},
+};
+
+inline constexpr Field kFields_L00DD_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1212},
+    {"ScriptName", 16, 8, 0x0010, 286},
+};
+
+inline constexpr Field kFields_L00DD_S024C[] = {
     {"ZiplineObjectName", 24, 8, 0x0018, 0},
     {"TransitionTime", 32, 4, 0x0008, 6516},
 };
 
-inline constexpr Field kFields_024D[] = {
+inline constexpr Field kFields_L00DE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1213},
+    {"Flags", 1, 1, 0x0204, 1214},
+    {"Condition", 2, 1, 0x0104, 1215},
+    {"WeaponLevelMin", 3, 1, 0x0000, 573},
+    {"On", 4, 2, 0x0008, 6517},
+    {"Off", 6, 2, 0x0008, 6518},
+};
+
+inline constexpr Field kFields_L00DE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1216},
+    {"ScriptName", 16, 8, 0x0010, 287},
+};
+
+inline constexpr Field kFields_L00DE_S024D[] = {
     {"GroundPoundLandingZoneScale", 24, 4, 0x0008, 6519},
     {"GroundPoundTargetOffset", 28, 0, 0x002C, 6},
     {"MaxAttackDistance", 36, 4, 0x0008, 6523},
@@ -7228,7 +10498,35 @@ inline constexpr Field kFields_024D[] = {
     {"GroundPoundNoTargetMaxHorizontalDelta", 52, 4, 0x0008, 6526},
 };
 
-inline constexpr Field kFields_024F[] = {
+inline constexpr Field kFields_L00DF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1217},
+    {"Flags", 1, 1, 0x0204, 1218},
+    {"Condition", 2, 1, 0x0104, 1219},
+    {"WeaponLevelMin", 3, 1, 0x0000, 574},
+    {"On", 4, 2, 0x0008, 6527},
+    {"Off", 6, 2, 0x0008, 6528},
+};
+
+inline constexpr Field kFields_L00DF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1220},
+    {"ScriptName", 16, 8, 0x0010, 288},
+};
+
+inline constexpr Field kFields_L00E0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1221},
+    {"Flags", 1, 1, 0x0204, 1222},
+    {"Condition", 2, 1, 0x0104, 1223},
+    {"WeaponLevelMin", 3, 1, 0x0000, 575},
+    {"On", 4, 2, 0x0008, 6529},
+    {"Off", 6, 2, 0x0008, 6530},
+};
+
+inline constexpr Field kFields_L00E0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1224},
+    {"ScriptName", 16, 8, 0x0010, 289},
+};
+
+inline constexpr Field kFields_L00E0_S024F[] = {
     {"WeaponModeList", 24, 12, 0x0024, 385},
     {"EnterDistance", 36, 4, 0x0008, 6531},
     {"WeaponMode", 40, 8, 0x0010, 0},
@@ -7238,45 +10536,269 @@ inline constexpr Field kFields_024F[] = {
     {"MarkWeapon", 60, 1, 0x0014, 1586},
 };
 
-inline constexpr Field kFields_0250[] = {
+inline constexpr Field kFields_L00E1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1225},
+    {"Flags", 1, 1, 0x0204, 1226},
+    {"Condition", 2, 1, 0x0104, 1227},
+    {"WeaponLevelMin", 3, 1, 0x0000, 576},
+    {"On", 4, 2, 0x0008, 6535},
+    {"Off", 6, 2, 0x0008, 6536},
+};
+
+inline constexpr Field kFields_L00E1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1228},
+    {"ScriptName", 16, 8, 0x0010, 290},
+};
+
+inline constexpr Field kFields_L00E1_S0250[] = {
     {"WeaponMode", 24, 8, 0x0010, 0},
     {"MarkWeapon", 32, 1, 0x0014, 1587},
 };
 
-inline constexpr Field kFields_0252[] = {
+inline constexpr Field kFields_L00E2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1229},
+    {"Flags", 1, 1, 0x0204, 1230},
+    {"Condition", 2, 1, 0x0104, 1231},
+    {"WeaponLevelMin", 3, 1, 0x0000, 577},
+    {"On", 4, 2, 0x0008, 6537},
+    {"Off", 6, 2, 0x0008, 6538},
+};
+
+inline constexpr Field kFields_L00E2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1232},
+    {"ScriptName", 16, 8, 0x0010, 291},
+};
+
+inline constexpr Field kFields_L00E3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1233},
+    {"Flags", 1, 1, 0x0204, 1234},
+    {"Condition", 2, 1, 0x0104, 1235},
+    {"WeaponLevelMin", 3, 1, 0x0000, 578},
+    {"On", 4, 2, 0x0008, 6539},
+    {"Off", 6, 2, 0x0008, 6540},
+};
+
+inline constexpr Field kFields_L00E3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1236},
+    {"ScriptName", 16, 8, 0x0010, 292},
+};
+
+inline constexpr Field kFields_L00E3_S0252[] = {
     {"Amplitude", 24, 4, 0x0008, 6541},
     {"Frequency", 28, 4, 0x0008, 6542},
     {"BreathingTweenTime", 32, 4, 0x0008, 6543},
 };
 
-inline constexpr Field kFields_0253[] = {
+inline constexpr Field kFields_L00E4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1237},
+    {"Flags", 1, 1, 0x0204, 1238},
+    {"Condition", 2, 1, 0x0104, 1239},
+    {"WeaponLevelMin", 3, 1, 0x0000, 579},
+    {"On", 4, 2, 0x0008, 6544},
+    {"Off", 6, 2, 0x0008, 6545},
+};
+
+inline constexpr Field kFields_L00E4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1240},
+    {"ScriptName", 16, 8, 0x0010, 293},
+};
+
+inline constexpr Field kFields_L00E4_S0253[] = {
     {"Slot", 24, 4, 0x0000, 580},
     {"PlayerEnteringBoatFromCheckpoint", 28, 1, 0x0014, 1588},
 };
 
-inline constexpr Field kFields_0254[] = {
+inline constexpr Field kFields_L00E5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1241},
+    {"Flags", 1, 1, 0x0204, 1242},
+    {"Condition", 2, 1, 0x0104, 1243},
+    {"WeaponLevelMin", 3, 1, 0x0000, 581},
+    {"On", 4, 2, 0x0008, 6546},
+    {"Off", 6, 2, 0x0008, 6547},
+};
+
+inline constexpr Field kFields_L00E5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1244},
+    {"ScriptName", 16, 8, 0x0010, 294},
+};
+
+inline constexpr Field kFields_L00E5_S0254[] = {
     {"DisableCreatureVehicleIK", 24, 1, 0x0014, 1589},
     {"DisableWeaponAdjustments", 25, 1, 0x0014, 1590},
     {"DisablePassengerParticleIK", 26, 1, 0x0014, 1591},
 };
 
-inline constexpr Field kFields_0256[] = {
+inline constexpr Field kFields_L00E6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1245},
+    {"Flags", 1, 1, 0x0204, 1246},
+    {"Condition", 2, 1, 0x0104, 1247},
+    {"WeaponLevelMin", 3, 1, 0x0000, 582},
+    {"On", 4, 2, 0x0008, 6548},
+    {"Off", 6, 2, 0x0008, 6549},
+};
+
+inline constexpr Field kFields_L00E6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1248},
+    {"ScriptName", 16, 8, 0x0010, 295},
+};
+
+inline constexpr Field kFields_L00E7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1249},
+    {"Flags", 1, 1, 0x0204, 1250},
+    {"Condition", 2, 1, 0x0104, 1251},
+    {"WeaponLevelMin", 3, 1, 0x0000, 583},
+    {"On", 4, 2, 0x0008, 6550},
+    {"Off", 6, 2, 0x0008, 6551},
+};
+
+inline constexpr Field kFields_L00E7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1252},
+    {"ScriptName", 16, 8, 0x0010, 296},
+};
+
+inline constexpr Field kFields_L00E7_S0256[] = {
     {"BranchName", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0257[] = {
+inline constexpr Field kFields_L00E8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1253},
+    {"Flags", 1, 1, 0x0204, 1254},
+    {"Condition", 2, 1, 0x0104, 1255},
+    {"WeaponLevelMin", 3, 1, 0x0000, 584},
+    {"On", 4, 2, 0x0008, 6552},
+    {"Off", 6, 2, 0x0008, 6553},
+};
+
+inline constexpr Field kFields_L00E8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1256},
+    {"ScriptName", 16, 8, 0x0010, 297},
+};
+
+inline constexpr Field kFields_L00E8_S0257[] = {
     {"BranchName", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_025D[] = {
+inline constexpr Field kFields_L00E9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1257},
+    {"Flags", 1, 1, 0x0204, 1258},
+    {"Condition", 2, 1, 0x0104, 1259},
+    {"WeaponLevelMin", 3, 1, 0x0000, 585},
+    {"On", 4, 2, 0x0008, 6554},
+    {"Off", 6, 2, 0x0008, 6555},
+};
+
+inline constexpr Field kFields_L00E9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1260},
+    {"ScriptName", 16, 8, 0x0010, 298},
+};
+
+inline constexpr Field kFields_L00EA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1261},
+    {"Flags", 1, 1, 0x0204, 1262},
+    {"Condition", 2, 1, 0x0104, 1263},
+    {"WeaponLevelMin", 3, 1, 0x0000, 586},
+    {"On", 4, 2, 0x0008, 6556},
+    {"Off", 6, 2, 0x0008, 6557},
+};
+
+inline constexpr Field kFields_L00EA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1264},
+    {"ScriptName", 16, 8, 0x0010, 299},
+};
+
+inline constexpr Field kFields_L00EB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1265},
+    {"Flags", 1, 1, 0x0204, 1266},
+    {"Condition", 2, 1, 0x0104, 1267},
+    {"WeaponLevelMin", 3, 1, 0x0000, 587},
+    {"On", 4, 2, 0x0008, 6558},
+    {"Off", 6, 2, 0x0008, 6559},
+};
+
+inline constexpr Field kFields_L00EB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1268},
+    {"ScriptName", 16, 8, 0x0010, 300},
+};
+
+inline constexpr Field kFields_L00EC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1269},
+    {"Flags", 1, 1, 0x0204, 1270},
+    {"Condition", 2, 1, 0x0104, 1271},
+    {"WeaponLevelMin", 3, 1, 0x0000, 588},
+    {"On", 4, 2, 0x0008, 6560},
+    {"Off", 6, 2, 0x0008, 6561},
+};
+
+inline constexpr Field kFields_L00EC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1272},
+    {"ScriptName", 16, 8, 0x0010, 301},
+};
+
+inline constexpr Field kFields_L00ED_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1273},
+    {"Flags", 1, 1, 0x0204, 1274},
+    {"Condition", 2, 1, 0x0104, 1275},
+    {"WeaponLevelMin", 3, 1, 0x0000, 589},
+    {"On", 4, 2, 0x0008, 6562},
+    {"Off", 6, 2, 0x0008, 6563},
+};
+
+inline constexpr Field kFields_L00ED_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1276},
+    {"ScriptName", 16, 8, 0x0010, 302},
+};
+
+inline constexpr Field kFields_L00EE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1277},
+    {"Flags", 1, 1, 0x0204, 1278},
+    {"Condition", 2, 1, 0x0104, 1279},
+    {"WeaponLevelMin", 3, 1, 0x0000, 590},
+    {"On", 4, 2, 0x0008, 6564},
+    {"Off", 6, 2, 0x0008, 6565},
+};
+
+inline constexpr Field kFields_L00EE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1280},
+    {"ScriptName", 16, 8, 0x0010, 303},
+};
+
+inline constexpr Field kFields_L00EE_S025D[] = {
     {"TransitionMultiplier", 24, 4, 0x0008, 6566},
 };
 
-inline constexpr Field kFields_025E[] = {
+inline constexpr Field kFields_L00EF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1281},
+    {"Flags", 1, 1, 0x0204, 1282},
+    {"Condition", 2, 1, 0x0104, 1283},
+    {"WeaponLevelMin", 3, 1, 0x0000, 591},
+    {"On", 4, 2, 0x0008, 6567},
+    {"Off", 6, 2, 0x0008, 6568},
+};
+
+inline constexpr Field kFields_L00EF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1284},
+    {"ScriptName", 16, 8, 0x0010, 304},
+};
+
+inline constexpr Field kFields_L00EF_S025E[] = {
     {"DelayAfterCachingDisabled", 24, 4, 0x0008, 6569},
 };
 
-inline constexpr Field kFields_025F[] = {
+inline constexpr Field kFields_L00F0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1285},
+    {"Flags", 1, 1, 0x0204, 1286},
+    {"Condition", 2, 1, 0x0104, 1287},
+    {"WeaponLevelMin", 3, 1, 0x0000, 592},
+    {"On", 4, 2, 0x0008, 6570},
+    {"Off", 6, 2, 0x0008, 6571},
+};
+
+inline constexpr Field kFields_L00F0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1288},
+    {"ScriptName", 16, 8, 0x0010, 305},
+};
+
+inline constexpr Field kFields_L00F0_S025F[] = {
     {"ClosestDistanceFromCamera", 24, 4, 0x0008, 6572},
     {"FarthestDistanceFromCamera", 28, 4, 0x0008, 6573},
     {"SearchInterval", 32, 4, 0x0008, 6574},
@@ -7289,7 +10811,21 @@ inline constexpr Field kFields_025F[] = {
     {"ThresholdToCenterPlane", 48, 4, 0x0008, 6576},
 };
 
-inline constexpr Field kFields_0260[] = {
+inline constexpr Field kFields_L00F1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1290},
+    {"Flags", 1, 1, 0x0204, 1291},
+    {"Condition", 2, 1, 0x0104, 1292},
+    {"WeaponLevelMin", 3, 1, 0x0000, 593},
+    {"On", 4, 2, 0x0008, 6577},
+    {"Off", 6, 2, 0x0008, 6578},
+};
+
+inline constexpr Field kFields_L00F1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1293},
+    {"ScriptName", 16, 8, 0x0010, 306},
+};
+
+inline constexpr Field kFields_L00F1_S0260[] = {
     {"TargetJointName", 24, 8, 0x0010, 0},
     {"ClosestJointName", 32, 8, 0x0010, 0},
     {"FurthestJointName", 40, 8, 0x0010, 0},
@@ -7306,7 +10842,21 @@ inline constexpr Field kFields_0260[] = {
     {"StretchType", 77, 1, 0x0104, 1295},
 };
 
-inline constexpr Field kFields_0261[] = {
+inline constexpr Field kFields_L00F2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1296},
+    {"Flags", 1, 1, 0x0204, 1297},
+    {"Condition", 2, 1, 0x0104, 1298},
+    {"WeaponLevelMin", 3, 1, 0x0000, 594},
+    {"On", 4, 2, 0x0008, 6588},
+    {"Off", 6, 2, 0x0008, 6589},
+};
+
+inline constexpr Field kFields_L00F2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1299},
+    {"ScriptName", 16, 8, 0x0010, 307},
+};
+
+inline constexpr Field kFields_L00F2_S0261[] = {
     {"Throttle", 24, 0, 0x002C, 1511},
     {"Rotation", 40, 0, 0x002C, 1511},
     {"AccelerationScaleCurveValueList", 56, 12, 0x0024, 386},
@@ -7314,126 +10864,536 @@ inline constexpr Field kFields_0261[] = {
     {"AccelerationScaleCurveTimingList", 72, 12, 0x0024, 387},
 };
 
-inline constexpr Field kFields_0263[] = {
+inline constexpr Field kFields_L00F3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1302},
+    {"Flags", 1, 1, 0x0204, 1303},
+    {"Condition", 2, 1, 0x0104, 1304},
+    {"WeaponLevelMin", 3, 1, 0x0000, 595},
+    {"On", 4, 2, 0x0008, 6595},
+    {"Off", 6, 2, 0x0008, 6596},
+};
+
+inline constexpr Field kFields_L00F3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1305},
+    {"ScriptName", 16, 8, 0x0010, 308},
+};
+
+inline constexpr Field kFields_L00F4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1306},
+    {"Flags", 1, 1, 0x0204, 1307},
+    {"Condition", 2, 1, 0x0104, 1308},
+    {"WeaponLevelMin", 3, 1, 0x0000, 596},
+    {"On", 4, 2, 0x0008, 6597},
+    {"Off", 6, 2, 0x0008, 6598},
+};
+
+inline constexpr Field kFields_L00F4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1309},
+    {"ScriptName", 16, 8, 0x0010, 309},
+};
+
+inline constexpr Field kFields_L00F4_S0263[] = {
     {"DampingScale", 24, 4, 0x0008, 6599},
 };
 
-inline constexpr Field kFields_0264[] = {
+inline constexpr Field kFields_L00F5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1310},
+    {"Flags", 1, 1, 0x0204, 1311},
+    {"Condition", 2, 1, 0x0104, 1312},
+    {"WeaponLevelMin", 3, 1, 0x0000, 597},
+    {"On", 4, 2, 0x0008, 6600},
+    {"Off", 6, 2, 0x0008, 6601},
+};
+
+inline constexpr Field kFields_L00F5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1313},
+    {"ScriptName", 16, 8, 0x0010, 310},
+};
+
+inline constexpr Field kFields_L00F5_S0264[] = {
     {"Duration", 24, 2, 0x0008, 6602},
     {"ResetTimerAcrossMoves", 26, 1, 0x0014, 1598},
 };
 
-inline constexpr Field kFields_0266[] = {
+inline constexpr Field kFields_L00F6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1314},
+    {"Flags", 1, 1, 0x0204, 1315},
+    {"Condition", 2, 1, 0x0104, 1316},
+    {"WeaponLevelMin", 3, 1, 0x0000, 598},
+    {"On", 4, 2, 0x0008, 6603},
+    {"Off", 6, 2, 0x0008, 6604},
+};
+
+inline constexpr Field kFields_L00F6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1317},
+    {"ScriptName", 16, 8, 0x0010, 311},
+};
+
+inline constexpr Field kFields_L00F7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1318},
+    {"Flags", 1, 1, 0x0204, 1319},
+    {"Condition", 2, 1, 0x0104, 1320},
+    {"WeaponLevelMin", 3, 1, 0x0000, 599},
+    {"On", 4, 2, 0x0008, 6605},
+    {"Off", 6, 2, 0x0008, 6606},
+};
+
+inline constexpr Field kFields_L00F7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1321},
+    {"ScriptName", 16, 8, 0x0010, 312},
+};
+
+inline constexpr Field kFields_L00F7_S0266[] = {
     {"Amount", 24, 2, 0x0008, 6607},
 };
 
-inline constexpr Field kFields_0267[] = {
+inline constexpr Field kFields_L00F8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1322},
+    {"Flags", 1, 1, 0x0204, 1323},
+    {"Condition", 2, 1, 0x0104, 1324},
+    {"WeaponLevelMin", 3, 1, 0x0000, 600},
+    {"On", 4, 2, 0x0008, 6608},
+    {"Off", 6, 2, 0x0008, 6609},
+};
+
+inline constexpr Field kFields_L00F8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1325},
+    {"ScriptName", 16, 8, 0x0010, 313},
+};
+
+inline constexpr Field kFields_L00F8_S0267[] = {
     {"PhaseID", 24, 1, 0x0000, 601},
 };
 
-inline constexpr Field kFields_0268[] = {
+inline constexpr Field kFields_L00F9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1326},
+    {"Flags", 1, 1, 0x0204, 1327},
+    {"Condition", 2, 1, 0x0104, 1328},
+    {"WeaponLevelMin", 3, 1, 0x0000, 602},
+    {"On", 4, 2, 0x0008, 6610},
+    {"Off", 6, 2, 0x0008, 6611},
+};
+
+inline constexpr Field kFields_L00F9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1329},
+    {"ScriptName", 16, 8, 0x0010, 314},
+};
+
+inline constexpr Field kFields_L00F9_S0268[] = {
     {"Overlay", 24, 8, 0x001C, 246},
 };
 
-inline constexpr Field kFields_0269[] = {
+inline constexpr Field kFields_L00FA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1330},
+    {"Flags", 1, 1, 0x0204, 1331},
+    {"Condition", 2, 1, 0x0104, 1332},
+    {"WeaponLevelMin", 3, 1, 0x0000, 603},
+    {"On", 4, 2, 0x0008, 6612},
+    {"Off", 6, 2, 0x0008, 6613},
+};
+
+inline constexpr Field kFields_L00FA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1333},
+    {"ScriptName", 16, 8, 0x0010, 315},
+};
+
+inline constexpr Field kFields_L00FA_S0269[] = {
     {"MaterialConstantName", 24, 8, 0x0018, 0},
     {"Value", 32, 4, 0x0008, 6614},
 };
 
-inline constexpr Field kFields_026A[] = {
+inline constexpr Field kFields_L00FB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1334},
+    {"Flags", 1, 1, 0x0204, 1335},
+    {"Condition", 2, 1, 0x0104, 1336},
+    {"WeaponLevelMin", 3, 1, 0x0000, 604},
+    {"On", 4, 2, 0x0008, 6615},
+    {"Off", 6, 2, 0x0008, 6616},
+};
+
+inline constexpr Field kFields_L00FB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1337},
+    {"ScriptName", 16, 8, 0x0010, 316},
+};
+
+inline constexpr Field kFields_L00FB_S026A[] = {
     {"Team", 24, 1, 0x0104, 1338},
 };
 
-inline constexpr Field kFields_026B[] = {
+inline constexpr Field kFields_L00FC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1339},
+    {"Flags", 1, 1, 0x0204, 1340},
+    {"Condition", 2, 1, 0x0104, 1341},
+    {"WeaponLevelMin", 3, 1, 0x0000, 605},
+    {"On", 4, 2, 0x0008, 6617},
+    {"Off", 6, 2, 0x0008, 6618},
+};
+
+inline constexpr Field kFields_L00FC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1342},
+    {"ScriptName", 16, 8, 0x0010, 317},
+};
+
+inline constexpr Field kFields_L00FC_S026B[] = {
     {"MinCombatDistance", 24, 2, 0x0008, 6619},
 };
 
-inline constexpr Field kFields_026C[] = {
+inline constexpr Field kFields_L00FD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1343},
+    {"Flags", 1, 1, 0x0204, 1344},
+    {"Condition", 2, 1, 0x0104, 1345},
+    {"WeaponLevelMin", 3, 1, 0x0000, 606},
+    {"On", 4, 2, 0x0008, 6620},
+    {"Off", 6, 2, 0x0008, 6621},
+};
+
+inline constexpr Field kFields_L00FD_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1346},
+    {"ScriptName", 16, 8, 0x0010, 318},
+};
+
+inline constexpr Field kFields_L00FD_S026C[] = {
     {"Stance", 24, 8, 0x001C, 328},
 };
 
-inline constexpr Field kFields_026D[] = {
+inline constexpr Field kFields_L00FE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1347},
+    {"Flags", 1, 1, 0x0204, 1348},
+    {"Condition", 2, 1, 0x0104, 1349},
+    {"WeaponLevelMin", 3, 1, 0x0000, 607},
+    {"On", 4, 2, 0x0008, 6622},
+    {"Off", 6, 2, 0x0008, 6623},
+};
+
+inline constexpr Field kFields_L00FE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1350},
+    {"ScriptName", 16, 8, 0x0010, 319},
+};
+
+inline constexpr Field kFields_L00FE_S026D[] = {
     {"DistanceThreshold", 24, 4, 0x0008, 6624},
     {"WorldOffsetY", 28, 4, 0x0008, 6625},
 };
 
-inline constexpr Field kFields_026E[] = {
+inline constexpr Field kFields_L00FF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1351},
+    {"Flags", 1, 1, 0x0204, 1352},
+    {"Condition", 2, 1, 0x0104, 1353},
+    {"WeaponLevelMin", 3, 1, 0x0000, 608},
+    {"On", 4, 2, 0x0008, 6626},
+    {"Off", 6, 2, 0x0008, 6627},
+};
+
+inline constexpr Field kFields_L00FF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1354},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L00FF_S026E[] = {
     {"EventType", 24, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_026F[] = {
+inline constexpr Field kFields_L0100_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1355},
+    {"Flags", 1, 1, 0x0204, 1356},
+    {"Condition", 2, 1, 0x0104, 1357},
+    {"WeaponLevelMin", 3, 1, 0x0000, 609},
+    {"On", 4, 2, 0x0008, 6628},
+    {"Off", 6, 2, 0x0008, 6629},
+};
+
+inline constexpr Field kFields_L0100_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1358},
+    {"ScriptName", 16, 8, 0x0010, 320},
+};
+
+inline constexpr Field kFields_L0100_S026E[] = {
+    {"EventType", 24, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0100_S026F[] = {
     {"DeleteEntity", 32, 1, 0x0000, 610},
     {"IntArg0", 36, 4, 0x0000, 611},
     {"FloatArg1", 40, 4, 0x0008, 6630},
 };
 
-inline constexpr Field kFields_0270[] = {
+inline constexpr Field kFields_L0101_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1359},
+    {"Flags", 1, 1, 0x0204, 1360},
+    {"Condition", 2, 1, 0x0104, 1361},
+    {"WeaponLevelMin", 3, 1, 0x0000, 612},
+    {"On", 4, 2, 0x0008, 6631},
+    {"Off", 6, 2, 0x0008, 6632},
+};
+
+inline constexpr Field kFields_L0101_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1362},
+    {"ScriptName", 16, 8, 0x0010, 321},
+};
+
+inline constexpr Field kFields_L0101_S0270[] = {
     {"MarkerID", 24, 8, 0x0010, 0},
     {"JointName", 32, 8, 0x0010, 0},
     {"PointTest", 40, 1, 0x0014, 1599},
 };
 
-inline constexpr Field kFields_0271[] = {
+inline constexpr Field kFields_L0102_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1363},
+    {"Flags", 1, 1, 0x0204, 1364},
+    {"Condition", 2, 1, 0x0104, 1365},
+    {"WeaponLevelMin", 3, 1, 0x0000, 613},
+    {"On", 4, 2, 0x0008, 6633},
+    {"Off", 6, 2, 0x0008, 6634},
+};
+
+inline constexpr Field kFields_L0102_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1366},
+    {"ScriptName", 16, 8, 0x0010, 322},
+};
+
+inline constexpr Field kFields_L0102_S0271[] = {
     {"MarkerID", 24, 8, 0x0010, 0},
     {"JointName", 32, 8, 0x0010, 0},
     {"WeaponType", 40, 4, 0x0000, 614},
     {"PointTest", 44, 1, 0x0014, 1600},
 };
 
-inline constexpr Field kFields_0272[] = {
+inline constexpr Field kFields_L0103_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1367},
+    {"Flags", 1, 1, 0x0204, 1368},
+    {"Condition", 2, 1, 0x0104, 1369},
+    {"WeaponLevelMin", 3, 1, 0x0000, 615},
+    {"On", 4, 2, 0x0008, 6635},
+    {"Off", 6, 2, 0x0008, 6636},
+};
+
+inline constexpr Field kFields_L0103_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1370},
+    {"ScriptName", 16, 8, 0x0010, 323},
+};
+
+inline constexpr Field kFields_L0103_S0272[] = {
     {"WeaponType", 24, 4, 0x0000, 616},
     {"MarkerID", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0273[] = {
+inline constexpr Field kFields_L0104_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1371},
+    {"Flags", 1, 1, 0x0204, 1372},
+    {"Condition", 2, 1, 0x0104, 1373},
+    {"WeaponLevelMin", 3, 1, 0x0000, 617},
+    {"On", 4, 2, 0x0008, 6637},
+    {"Off", 6, 2, 0x0008, 6638},
+};
+
+inline constexpr Field kFields_L0104_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1374},
+    {"ScriptName", 16, 8, 0x0010, 324},
+};
+
+inline constexpr Field kFields_L0104_S0273[] = {
     {"MarkerID", 24, 8, 0x0010, 0},
     {"JointName", 32, 8, 0x0010, 0},
     {"WeaponType", 40, 4, 0x0000, 618},
     {"PointTest", 44, 1, 0x0014, 1601},
 };
 
-inline constexpr Field kFields_0274[] = {
+inline constexpr Field kFields_L0105_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1375},
+    {"Flags", 1, 1, 0x0204, 1376},
+    {"Condition", 2, 1, 0x0104, 1377},
+    {"WeaponLevelMin", 3, 1, 0x0000, 619},
+    {"On", 4, 2, 0x0008, 6639},
+    {"Off", 6, 2, 0x0008, 6640},
+};
+
+inline constexpr Field kFields_L0105_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1378},
+    {"ScriptName", 16, 8, 0x0010, 325},
+};
+
+inline constexpr Field kFields_L0105_S0274[] = {
     {"WeaponType", 24, 4, 0x0000, 620},
     {"MaxActions", 28, 4, 0x0000, 621},
     {"MarkerID", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0275[] = {
+inline constexpr Field kFields_L0106_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1379},
+    {"Flags", 1, 1, 0x0204, 1380},
+    {"Condition", 2, 1, 0x0104, 1381},
+    {"WeaponLevelMin", 3, 1, 0x0000, 622},
+    {"On", 4, 2, 0x0008, 6641},
+    {"Off", 6, 2, 0x0008, 6642},
+};
+
+inline constexpr Field kFields_L0106_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1382},
+    {"ScriptName", 16, 8, 0x0010, 326},
+};
+
+inline constexpr Field kFields_L0106_S0275[] = {
     {"FlagID", 24, 8, 0x0010, 0},
     {"Persist", 32, 1, 0x0014, 1602},
 };
 
-inline constexpr Field kFields_0276[] = {
+inline constexpr Field kFields_L0107_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1383},
+    {"Flags", 1, 1, 0x0204, 1384},
+    {"Condition", 2, 1, 0x0104, 1385},
+    {"WeaponLevelMin", 3, 1, 0x0000, 623},
+    {"On", 4, 2, 0x0008, 6643},
+    {"Off", 6, 2, 0x0008, 6644},
+};
+
+inline constexpr Field kFields_L0107_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1386},
+    {"ScriptName", 16, 8, 0x0010, 327},
+};
+
+inline constexpr Field kFields_L0107_S0276[] = {
     {"FlagID", 24, 8, 0x0010, 0},
     {"Persist", 32, 1, 0x0014, 1603},
 };
 
-inline constexpr Field kFields_0277[] = {
+inline constexpr Field kFields_L0108_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1387},
+    {"Flags", 1, 1, 0x0204, 1388},
+    {"Condition", 2, 1, 0x0104, 1389},
+    {"WeaponLevelMin", 3, 1, 0x0000, 624},
+    {"On", 4, 2, 0x0008, 6645},
+    {"Off", 6, 2, 0x0008, 6646},
+};
+
+inline constexpr Field kFields_L0108_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1390},
+    {"ScriptName", 16, 8, 0x0010, 328},
+};
+
+inline constexpr Field kFields_L0108_S0277[] = {
     {"FlagID", 24, 8, 0x0010, 0},
     {"Persist", 32, 1, 0x0014, 1604},
 };
 
-inline constexpr Field kFields_027A[] = {
+inline constexpr Field kFields_L0109_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1391},
+    {"Flags", 1, 1, 0x0204, 1392},
+    {"Condition", 2, 1, 0x0104, 1393},
+    {"WeaponLevelMin", 3, 1, 0x0000, 625},
+    {"On", 4, 2, 0x0008, 6647},
+    {"Off", 6, 2, 0x0008, 6648},
+};
+
+inline constexpr Field kFields_L0109_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1394},
+    {"ScriptName", 16, 8, 0x0010, 329},
+};
+
+inline constexpr Field kFields_L010A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1395},
+    {"Flags", 1, 1, 0x0204, 1396},
+    {"Condition", 2, 1, 0x0104, 1397},
+    {"WeaponLevelMin", 3, 1, 0x0000, 626},
+    {"On", 4, 2, 0x0008, 6649},
+    {"Off", 6, 2, 0x0008, 6650},
+};
+
+inline constexpr Field kFields_L010A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1398},
+    {"ScriptName", 16, 8, 0x0010, 330},
+};
+
+inline constexpr Field kFields_L010B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1399},
+    {"Flags", 1, 1, 0x0204, 1400},
+    {"Condition", 2, 1, 0x0104, 1401},
+    {"WeaponLevelMin", 3, 1, 0x0000, 627},
+    {"On", 4, 2, 0x0008, 6651},
+    {"Off", 6, 2, 0x0008, 6652},
+};
+
+inline constexpr Field kFields_L010B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1402},
+    {"ScriptName", 16, 8, 0x0010, 331},
+};
+
+inline constexpr Field kFields_L010B_S027A[] = {
     {"MoveType", 24, 1, 0x0104, 1403},
 };
 
-inline constexpr Field kFields_027B[] = {
+inline constexpr Field kFields_L010C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1404},
+    {"Flags", 1, 1, 0x0204, 1405},
+    {"Condition", 2, 1, 0x0104, 1406},
+    {"WeaponLevelMin", 3, 1, 0x0000, 628},
+    {"On", 4, 2, 0x0008, 6653},
+    {"Off", 6, 2, 0x0008, 6654},
+};
+
+inline constexpr Field kFields_L010C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1407},
+    {"ScriptName", 16, 8, 0x0010, 332},
+};
+
+inline constexpr Field kFields_L010C_S027B[] = {
     {"Parameters", 24, 0, 0x002C, 239},
     {"TargetsType", 152, 1, 0x0204, 1409},
 };
 
-inline constexpr Field kFields_027C[] = {
+inline constexpr Field kFields_L010D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1410},
+    {"Flags", 1, 1, 0x0204, 1411},
+    {"Condition", 2, 1, 0x0104, 1412},
+    {"WeaponLevelMin", 3, 1, 0x0000, 629},
+    {"On", 4, 2, 0x0008, 6680},
+    {"Off", 6, 2, 0x0008, 6681},
+};
+
+inline constexpr Field kFields_L010D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1413},
+    {"ScriptName", 16, 8, 0x0010, 333},
+};
+
+inline constexpr Field kFields_L010D_S027C[] = {
     {"Joint", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_027D[] = {
+inline constexpr Field kFields_L010E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1414},
+    {"Flags", 1, 1, 0x0204, 1415},
+    {"Condition", 2, 1, 0x0104, 1416},
+    {"WeaponLevelMin", 3, 1, 0x0000, 630},
+    {"On", 4, 2, 0x0008, 6685},
+    {"Off", 6, 2, 0x0008, 6686},
+};
+
+inline constexpr Field kFields_L010E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1417},
+    {"ScriptName", 16, 8, 0x0010, 334},
+};
+
+inline constexpr Field kFields_L010E_S027D[] = {
     {"Amount", 24, 4, 0x0008, 6687},
     {"ApplyToTargetOnly", 28, 1, 0x0014, 1605},
     {"ApplyOnlyToThisMove", 29, 1, 0x0014, 1606},
     {"RestorOriginalTimeScaleAfter", 30, 1, 0x0014, 1607},
 };
 
-inline constexpr Field kFields_027E[] = {
+inline constexpr Field kFields_L010F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1418},
+    {"Flags", 1, 1, 0x0204, 1419},
+    {"Condition", 2, 1, 0x0104, 1420},
+    {"WeaponLevelMin", 3, 1, 0x0000, 631},
+    {"On", 4, 2, 0x0008, 6688},
+    {"Off", 6, 2, 0x0008, 6689},
+};
+
+inline constexpr Field kFields_L010F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1421},
+    {"ScriptName", 16, 8, 0x0010, 335},
+};
+
+inline constexpr Field kFields_L010F_S027E[] = {
     {"IgnorePickupSlot", 24, 1, 0x0014, 1608},
     {"IgnoreMoveSystemSlot", 25, 1, 0x0014, 1609},
     {"IgnoreHitPauseSlot", 26, 1, 0x0014, 1610},
@@ -7442,34 +11402,160 @@ inline constexpr Field kFields_027E[] = {
     {"IgnoreTimeBubbleSlot", 29, 1, 0x0014, 1613},
 };
 
-inline constexpr Field kFields_027F[] = {
+inline constexpr Field kFields_L0110_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1422},
+    {"Flags", 1, 1, 0x0204, 1423},
+    {"Condition", 2, 1, 0x0104, 1424},
+    {"WeaponLevelMin", 3, 1, 0x0000, 632},
+    {"On", 4, 2, 0x0008, 6690},
+    {"Off", 6, 2, 0x0008, 6691},
+};
+
+inline constexpr Field kFields_L0110_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1425},
+    {"ScriptName", 16, 8, 0x0010, 336},
+};
+
+inline constexpr Field kFields_L0110_S027F[] = {
     {"WeaponType", 24, 4, 0x0000, 633},
 };
 
-inline constexpr Field kFields_0280[] = {
+inline constexpr Field kFields_L0111_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1426},
+    {"Flags", 1, 1, 0x0204, 1427},
+    {"Condition", 2, 1, 0x0104, 1428},
+    {"WeaponLevelMin", 3, 1, 0x0000, 634},
+    {"On", 4, 2, 0x0008, 6692},
+    {"Off", 6, 2, 0x0008, 6693},
+};
+
+inline constexpr Field kFields_L0111_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1429},
+    {"ScriptName", 16, 8, 0x0010, 337},
+};
+
+inline constexpr Field kFields_L0111_S0280[] = {
     {"WeaponType", 24, 4, 0x0000, 635},
     {"TweenTime", 28, 4, 0x0008, 6694},
 };
 
-inline constexpr Field kFields_0281[] = {
+inline constexpr Field kFields_L0112_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1430},
+    {"Flags", 1, 1, 0x0204, 1431},
+    {"Condition", 2, 1, 0x0104, 1432},
+    {"WeaponLevelMin", 3, 1, 0x0000, 636},
+    {"On", 4, 2, 0x0008, 6695},
+    {"Off", 6, 2, 0x0008, 6696},
+};
+
+inline constexpr Field kFields_L0112_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1433},
+    {"ScriptName", 16, 8, 0x0010, 338},
+};
+
+inline constexpr Field kFields_L0112_S0281[] = {
     {"WeaponType", 24, 4, 0x0000, 637},
     {"SnapTarget", 28, 4, 0x0000, 638},
 };
 
-inline constexpr Field kFields_0282[] = {
+inline constexpr Field kFields_L0113_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1434},
+    {"Flags", 1, 1, 0x0204, 1435},
+    {"Condition", 2, 1, 0x0104, 1436},
+    {"WeaponLevelMin", 3, 1, 0x0000, 639},
+    {"On", 4, 2, 0x0008, 6697},
+    {"Off", 6, 2, 0x0008, 6698},
+};
+
+inline constexpr Field kFields_L0113_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1437},
+    {"ScriptName", 16, 8, 0x0010, 339},
+};
+
+inline constexpr Field kFields_L0113_S0282[] = {
     {"HorizontalOffset", 24, 4, 0x0008, 6699},
 };
 
-inline constexpr Field kFields_0284[] = {
+inline constexpr Field kFields_L0114_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1438},
+    {"Flags", 1, 1, 0x0204, 1439},
+    {"Condition", 2, 1, 0x0104, 1440},
+    {"WeaponLevelMin", 3, 1, 0x0000, 640},
+    {"On", 4, 2, 0x0008, 6700},
+    {"Off", 6, 2, 0x0008, 6701},
+};
+
+inline constexpr Field kFields_L0114_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1441},
+    {"ScriptName", 16, 8, 0x0010, 340},
+};
+
+inline constexpr Field kFields_L0115_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1442},
+    {"Flags", 1, 1, 0x0204, 1443},
+    {"Condition", 2, 1, 0x0104, 1444},
+    {"WeaponLevelMin", 3, 1, 0x0000, 641},
+    {"On", 4, 2, 0x0008, 6702},
+    {"Off", 6, 2, 0x0008, 6703},
+};
+
+inline constexpr Field kFields_L0115_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1445},
+    {"ScriptName", 16, 8, 0x0010, 341},
+};
+
+inline constexpr Field kFields_L0115_S0284[] = {
     {"LeftStickDamping", 24, 4, 0x0008, 6704},
     {"RightStickDamping", 28, 4, 0x0008, 6705},
 };
 
-inline constexpr Field kFields_0286[] = {
+inline constexpr Field kFields_L0116_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1446},
+    {"Flags", 1, 1, 0x0204, 1447},
+    {"Condition", 2, 1, 0x0104, 1448},
+    {"WeaponLevelMin", 3, 1, 0x0000, 642},
+    {"On", 4, 2, 0x0008, 6706},
+    {"Off", 6, 2, 0x0008, 6707},
+};
+
+inline constexpr Field kFields_L0116_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1449},
+    {"ScriptName", 16, 8, 0x0010, 342},
+};
+
+inline constexpr Field kFields_L0117_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1450},
+    {"Flags", 1, 1, 0x0204, 1451},
+    {"Condition", 2, 1, 0x0104, 1452},
+    {"WeaponLevelMin", 3, 1, 0x0000, 643},
+    {"On", 4, 2, 0x0008, 6708},
+    {"Off", 6, 2, 0x0008, 6709},
+};
+
+inline constexpr Field kFields_L0117_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1453},
+    {"ScriptName", 16, 8, 0x0010, 343},
+};
+
+inline constexpr Field kFields_L0117_S0286[] = {
     {"MeterName", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0287[] = {
+inline constexpr Field kFields_L0118_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1454},
+    {"Flags", 1, 1, 0x0204, 1455},
+    {"Condition", 2, 1, 0x0104, 1456},
+    {"WeaponLevelMin", 3, 1, 0x0000, 644},
+    {"On", 4, 2, 0x0008, 6710},
+    {"Off", 6, 2, 0x0008, 6711},
+};
+
+inline constexpr Field kFields_L0118_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1457},
+    {"ScriptName", 16, 8, 0x0010, 344},
+};
+
+inline constexpr Field kFields_L0118_S0287[] = {
     {"Amount", 24, 0, 0x002C, 229},
     {"SourceMeterName", 64, 8, 0x0010, 0},
     {"MeterName", 72, 8, 0x0010, 0},
@@ -7487,20 +11573,62 @@ inline constexpr Field kFields_0287[] = {
     {"DamageSource", 102, 1, 0x0104, 1464},
 };
 
-inline constexpr Field kFields_0288[] = {
+inline constexpr Field kFields_L0119_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1465},
+    {"Flags", 1, 1, 0x0204, 1466},
+    {"Condition", 2, 1, 0x0104, 1467},
+    {"WeaponLevelMin", 3, 1, 0x0000, 646},
+    {"On", 4, 2, 0x0008, 6719},
+    {"Off", 6, 2, 0x0008, 6720},
+};
+
+inline constexpr Field kFields_L0119_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1468},
+    {"ScriptName", 16, 8, 0x0010, 345},
+};
+
+inline constexpr Field kFields_L0119_S0288[] = {
     {"AdjustTime", 24, 0, 0x002C, 229},
     {"ScaleTime", 64, 0, 0x002C, 229},
     {"AdjustByPercentMax", 104, 0, 0x002C, 229},
     {"MeterName", 144, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0289[] = {
+inline constexpr Field kFields_L011A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1478},
+    {"Flags", 1, 1, 0x0204, 1479},
+    {"Condition", 2, 1, 0x0104, 1480},
+    {"WeaponLevelMin", 3, 1, 0x0000, 647},
+    {"On", 4, 2, 0x0008, 6739},
+    {"Off", 6, 2, 0x0008, 6740},
+};
+
+inline constexpr Field kFields_L011A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1481},
+    {"ScriptName", 16, 8, 0x0010, 346},
+};
+
+inline constexpr Field kFields_L011A_S0289[] = {
     {"Amount", 24, 4, 0x0000, 648},
     {"CFlags", 28, 1, 0x0204, 1482},
     {"Name", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_028A[] = {
+inline constexpr Field kFields_L011B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1483},
+    {"Flags", 1, 1, 0x0204, 1484},
+    {"Condition", 2, 1, 0x0104, 1485},
+    {"WeaponLevelMin", 3, 1, 0x0000, 649},
+    {"On", 4, 2, 0x0008, 6741},
+    {"Off", 6, 2, 0x0008, 6742},
+};
+
+inline constexpr Field kFields_L011B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1486},
+    {"ScriptName", 16, 8, 0x0010, 347},
+};
+
+inline constexpr Field kFields_L011B_S028A[] = {
     {"EnemyContextList", 24, 12, 0x0024, 394},
     {"ExcludeActivationFlags", 36, 1, 0x0014, 1620},
     {"ExcludePartFlags", 37, 1, 0x0014, 1621},
@@ -7516,20 +11644,76 @@ inline constexpr Field kFields_028A[] = {
     {"HitModifier", 96, 8, 0x001C, 341},
 };
 
-inline constexpr Field kFields_028B[] = {
+inline constexpr Field kFields_L011C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1490},
+    {"Flags", 1, 1, 0x0204, 1491},
+    {"Condition", 2, 1, 0x0104, 1492},
+    {"WeaponLevelMin", 3, 1, 0x0000, 650},
+    {"On", 4, 2, 0x0008, 6743},
+    {"Off", 6, 2, 0x0008, 6744},
+};
+
+inline constexpr Field kFields_L011C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1493},
+    {"ScriptName", 16, 8, 0x0010, 348},
+};
+
+inline constexpr Field kFields_L011C_S028B[] = {
     {"MeterName", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_028C[] = {
+inline constexpr Field kFields_L011D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1494},
+    {"Flags", 1, 1, 0x0204, 1495},
+    {"Condition", 2, 1, 0x0104, 1496},
+    {"WeaponLevelMin", 3, 1, 0x0000, 651},
+    {"On", 4, 2, 0x0008, 6745},
+    {"Off", 6, 2, 0x0008, 6746},
+};
+
+inline constexpr Field kFields_L011D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1497},
+    {"ScriptName", 16, 8, 0x0010, 349},
+};
+
+inline constexpr Field kFields_L011D_S028C[] = {
     {"Status", 24, 1, 0x0104, 1498},
     {"CircleID", 25, 1, 0x0000, 652},
 };
 
-inline constexpr Field kFields_028D[] = {
+inline constexpr Field kFields_L011E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1499},
+    {"Flags", 1, 1, 0x0204, 1500},
+    {"Condition", 2, 1, 0x0104, 1501},
+    {"WeaponLevelMin", 3, 1, 0x0000, 653},
+    {"On", 4, 2, 0x0008, 6747},
+    {"Off", 6, 2, 0x0008, 6748},
+};
+
+inline constexpr Field kFields_L011E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1502},
+    {"ScriptName", 16, 8, 0x0010, 350},
+};
+
+inline constexpr Field kFields_L011E_S028D[] = {
     {"Threshold", 24, 1, 0x0000, 654},
 };
 
-inline constexpr Field kFields_028E[] = {
+inline constexpr Field kFields_L011F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1503},
+    {"Flags", 1, 1, 0x0204, 1504},
+    {"Condition", 2, 1, 0x0104, 1505},
+    {"WeaponLevelMin", 3, 1, 0x0000, 655},
+    {"On", 4, 2, 0x0008, 6749},
+    {"Off", 6, 2, 0x0008, 6750},
+};
+
+inline constexpr Field kFields_L011F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1506},
+    {"ScriptName", 16, 8, 0x0010, 351},
+};
+
+inline constexpr Field kFields_L011F_S028E[] = {
     {"Position", 24, 0, 0x002C, 6},
     {"Rotation", 30, 0, 0x002C, 6},
     {"JumpHeight", 36, 4, 0x0008, 6757},
@@ -7537,19 +11721,61 @@ inline constexpr Field kFields_028E[] = {
     {"Landing", 44, 4, 0x0008, 6759},
 };
 
-inline constexpr Field kFields_028F[] = {
+inline constexpr Field kFields_L0120_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1507},
+    {"Flags", 1, 1, 0x0204, 1508},
+    {"Condition", 2, 1, 0x0104, 1509},
+    {"WeaponLevelMin", 3, 1, 0x0000, 656},
+    {"On", 4, 2, 0x0008, 6760},
+    {"Off", 6, 2, 0x0008, 6761},
+};
+
+inline constexpr Field kFields_L0120_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1510},
+    {"ScriptName", 16, 8, 0x0010, 352},
+};
+
+inline constexpr Field kFields_L0120_S028F[] = {
     {"Choice", 24, 12, 0x0024, 397},
     {"RecoveryTime", 36, 4, 0x0008, 6762},
     {"DriverName", 40, 8, 0x0010, 353},
 };
 
-inline constexpr Field kFields_0290[] = {
+inline constexpr Field kFields_L0121_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1511},
+    {"Flags", 1, 1, 0x0204, 1512},
+    {"Condition", 2, 1, 0x0104, 1513},
+    {"WeaponLevelMin", 3, 1, 0x0000, 657},
+    {"On", 4, 2, 0x0008, 6763},
+    {"Off", 6, 2, 0x0008, 6764},
+};
+
+inline constexpr Field kFields_L0121_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1514},
+    {"ScriptName", 16, 8, 0x0010, 354},
+};
+
+inline constexpr Field kFields_L0121_S0290[] = {
     {"DriverName", 24, 8, 0x0010, 0},
     {"Value", 32, 4, 0x0008, 6765},
     {"Duration", 36, 1, 0x0104, 1515},
 };
 
-inline constexpr Field kFields_0291[] = {
+inline constexpr Field kFields_L0122_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1516},
+    {"Flags", 1, 1, 0x0204, 1517},
+    {"Condition", 2, 1, 0x0104, 1518},
+    {"WeaponLevelMin", 3, 1, 0x0000, 658},
+    {"On", 4, 2, 0x0008, 6766},
+    {"Off", 6, 2, 0x0008, 6767},
+};
+
+inline constexpr Field kFields_L0122_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1519},
+    {"ScriptName", 16, 8, 0x0010, 355},
+};
+
+inline constexpr Field kFields_L0122_S0291[] = {
     {"JointName", 24, 8, 0x0010, 0},
     {"ChildGameObjectName", 32, 8, 0x0010, 0},
     {"ChildGameObjectPartialName", 40, 8, 0x0018, 0},
@@ -7557,46 +11783,214 @@ inline constexpr Field kFields_0291[] = {
     {"Team", 49, 1, 0x0104, 1521},
 };
 
-inline constexpr Field kFields_0293[] = {
+inline constexpr Field kFields_L0123_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1522},
+    {"Flags", 1, 1, 0x0204, 1523},
+    {"Condition", 2, 1, 0x0104, 1524},
+    {"WeaponLevelMin", 3, 1, 0x0000, 659},
+    {"On", 4, 2, 0x0008, 6768},
+    {"Off", 6, 2, 0x0008, 6769},
+};
+
+inline constexpr Field kFields_L0123_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1525},
+    {"ScriptName", 16, 8, 0x0010, 356},
+};
+
+inline constexpr Field kFields_L0124_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1526},
+    {"Flags", 1, 1, 0x0204, 1527},
+    {"Condition", 2, 1, 0x0104, 1528},
+    {"WeaponLevelMin", 3, 1, 0x0000, 660},
+    {"On", 4, 2, 0x0008, 6770},
+    {"Off", 6, 2, 0x0008, 6771},
+};
+
+inline constexpr Field kFields_L0124_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1529},
+    {"ScriptName", 16, 8, 0x0010, 357},
+};
+
+inline constexpr Field kFields_L0124_S0293[] = {
     {"Set", 24, 4, 0x0204, 1530},
     {"Clear", 28, 4, 0x0204, 1531},
 };
 
-inline constexpr Field kFields_0294[] = {
+inline constexpr Field kFields_L0125_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1532},
+    {"Flags", 1, 1, 0x0204, 1533},
+    {"Condition", 2, 1, 0x0104, 1534},
+    {"WeaponLevelMin", 3, 1, 0x0000, 661},
+    {"On", 4, 2, 0x0008, 6772},
+    {"Off", 6, 2, 0x0008, 6773},
+};
+
+inline constexpr Field kFields_L0125_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1535},
+    {"ScriptName", 16, 8, 0x0010, 358},
+};
+
+inline constexpr Field kFields_L0125_S0294[] = {
     {"ChildGameObjectName", 24, 8, 0x0010, 0},
     {"AnimName", 32, 8, 0x0010, 0},
     {"PlayFlags", 40, 1, 0x0204, 1536},
 };
 
-inline constexpr Field kFields_0295[] = {
+inline constexpr Field kFields_L0126_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1537},
+    {"Flags", 1, 1, 0x0204, 1538},
+    {"Condition", 2, 1, 0x0104, 1539},
+    {"WeaponLevelMin", 3, 1, 0x0000, 662},
+    {"On", 4, 2, 0x0008, 6774},
+    {"Off", 6, 2, 0x0008, 6775},
+};
+
+inline constexpr Field kFields_L0126_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1540},
+    {"ScriptName", 16, 8, 0x0010, 359},
+};
+
+inline constexpr Field kFields_L0126_S0295[] = {
     {"ConfigSpecs", 24, 12, 0x0024, 398},
 };
 
-inline constexpr Field kFields_0297[] = {
+inline constexpr Field kFields_L0127_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1541},
+    {"Flags", 1, 1, 0x0204, 1542},
+    {"Condition", 2, 1, 0x0104, 1543},
+    {"WeaponLevelMin", 3, 1, 0x0000, 663},
+    {"On", 4, 2, 0x0008, 6776},
+    {"Off", 6, 2, 0x0008, 6777},
+};
+
+inline constexpr Field kFields_L0127_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1544},
+    {"ScriptName", 16, 8, 0x0010, 360},
+};
+
+inline constexpr Field kFields_L0128_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1545},
+    {"Flags", 1, 1, 0x0204, 1546},
+    {"Condition", 2, 1, 0x0104, 1547},
+    {"WeaponLevelMin", 3, 1, 0x0000, 664},
+    {"On", 4, 2, 0x0008, 6778},
+    {"Off", 6, 2, 0x0008, 6779},
+};
+
+inline constexpr Field kFields_L0128_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1548},
+    {"ScriptName", 16, 8, 0x0010, 361},
+};
+
+inline constexpr Field kFields_L0128_S0297[] = {
     {"NoClimbTime", 24, 4, 0x0008, 6780},
     {"DetachImpulse", 28, 0, 0x002C, 11},
 };
 
-inline constexpr Field kFields_0298[] = {
+inline constexpr Field kFields_L0129_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1552},
+    {"Flags", 1, 1, 0x0204, 1553},
+    {"Condition", 2, 1, 0x0104, 1554},
+    {"WeaponLevelMin", 3, 1, 0x0000, 665},
+    {"On", 4, 2, 0x0008, 6786},
+    {"Off", 6, 2, 0x0008, 6787},
+};
+
+inline constexpr Field kFields_L0129_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1555},
+    {"ScriptName", 16, 8, 0x0010, 362},
+};
+
+inline constexpr Field kFields_L0129_S0298[] = {
     {"Bomb", 24, 8, 0x001C, 258},
     {"TargetJointID", 32, 1, 0x0000, 666},
 };
 
-inline constexpr Field kFields_0299[] = {
+inline constexpr Field kFields_L012A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1556},
+    {"Flags", 1, 1, 0x0204, 1557},
+    {"Condition", 2, 1, 0x0104, 1558},
+    {"WeaponLevelMin", 3, 1, 0x0000, 667},
+    {"On", 4, 2, 0x0008, 6788},
+    {"Off", 6, 2, 0x0008, 6789},
+};
+
+inline constexpr Field kFields_L012A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1559},
+    {"ScriptName", 16, 8, 0x0010, 363},
+};
+
+inline constexpr Field kFields_L012A_S0299[] = {
     {"Stick", 24, 1, 0x0104, 1560},
     {"Adjustment", 25, 1, 0x0104, 1561},
     {"Dampening", 28, 4, 0x0008, 6790},
 };
 
-inline constexpr Field kFields_029A[] = {
+inline constexpr Field kFields_L012B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1562},
+    {"Flags", 1, 1, 0x0204, 1563},
+    {"Condition", 2, 1, 0x0104, 1564},
+    {"WeaponLevelMin", 3, 1, 0x0000, 668},
+    {"On", 4, 2, 0x0008, 6791},
+    {"Off", 6, 2, 0x0008, 6792},
+};
+
+inline constexpr Field kFields_L012B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1565},
+    {"ScriptName", 16, 8, 0x0010, 364},
+};
+
+inline constexpr Field kFields_L012B_S029A[] = {
     {"MaxControllerSpeed", 24, 4, 0x0008, 6793},
 };
 
-inline constexpr Field kFields_029C[] = {
+inline constexpr Field kFields_L012C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1566},
+    {"Flags", 1, 1, 0x0204, 1567},
+    {"Condition", 2, 1, 0x0104, 1568},
+    {"WeaponLevelMin", 3, 1, 0x0000, 669},
+    {"On", 4, 2, 0x0008, 6794},
+    {"Off", 6, 2, 0x0008, 6795},
+};
+
+inline constexpr Field kFields_L012C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1569},
+    {"ScriptName", 16, 8, 0x0010, 365},
+};
+
+inline constexpr Field kFields_L012D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1570},
+    {"Flags", 1, 1, 0x0204, 1571},
+    {"Condition", 2, 1, 0x0104, 1572},
+    {"WeaponLevelMin", 3, 1, 0x0000, 670},
+    {"On", 4, 2, 0x0008, 6796},
+    {"Off", 6, 2, 0x0008, 6797},
+};
+
+inline constexpr Field kFields_L012D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1573},
+    {"ScriptName", 16, 8, 0x0010, 366},
+};
+
+inline constexpr Field kFields_L012D_S029C[] = {
     {"BlockBlendFlags", 24, 1, 0x0204, 1574},
 };
 
-inline constexpr Field kFields_029D[] = {
+inline constexpr Field kFields_L012E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1575},
+    {"Flags", 1, 1, 0x0204, 1576},
+    {"Condition", 2, 1, 0x0104, 1577},
+    {"WeaponLevelMin", 3, 1, 0x0000, 671},
+    {"On", 4, 2, 0x0008, 6798},
+    {"Off", 6, 2, 0x0008, 6799},
+};
+
+inline constexpr Field kFields_L012E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1578},
+    {"ScriptName", 16, 8, 0x0010, 367},
+};
+
+inline constexpr Field kFields_L012E_S029D[] = {
     {"WarpBegin", 24, 4, 0x0008, 6800},
     {"WarpEnd", 28, 4, 0x0008, 6801},
     {"Distance", 32, 4, 0x0008, 6802},
@@ -7604,7 +11998,21 @@ inline constexpr Field kFields_029D[] = {
     {"AnimName", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_029E[] = {
+inline constexpr Field kFields_L012F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1579},
+    {"Flags", 1, 1, 0x0204, 1580},
+    {"Condition", 2, 1, 0x0104, 1581},
+    {"WeaponLevelMin", 3, 1, 0x0000, 672},
+    {"On", 4, 2, 0x0008, 6803},
+    {"Off", 6, 2, 0x0008, 6804},
+};
+
+inline constexpr Field kFields_L012F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1582},
+    {"ScriptName", 16, 8, 0x0010, 368},
+};
+
+inline constexpr Field kFields_L012F_S029E[] = {
     {"CharacterID", 24, 8, 0x0010, 0},
     {"BlendBegin", 32, 4, 0x0008, 6805},
     {"BlendEnd", 36, 4, 0x0008, 6806},
@@ -7613,7 +12021,21 @@ inline constexpr Field kFields_029E[] = {
     {"TimeType", 43, 1, 0x0104, 1585},
 };
 
-inline constexpr Field kFields_029F[] = {
+inline constexpr Field kFields_L0130_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1586},
+    {"Flags", 1, 1, 0x0204, 1587},
+    {"Condition", 2, 1, 0x0104, 1588},
+    {"WeaponLevelMin", 3, 1, 0x0000, 673},
+    {"On", 4, 2, 0x0008, 6807},
+    {"Off", 6, 2, 0x0008, 6808},
+};
+
+inline constexpr Field kFields_L0130_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1589},
+    {"ScriptName", 16, 8, 0x0010, 369},
+};
+
+inline constexpr Field kFields_L0130_S029F[] = {
     {"DismountDirection", 24, 1, 0x0104, 1590},
     {"MaxSlopeAngle", 28, 4, 0x0008, 6809},
     {"DismountOffsetX", 32, 4, 0x0008, 6810},
@@ -7622,7 +12044,21 @@ inline constexpr Field kFields_029F[] = {
     {"DismountEndTime", 44, 4, 0x0008, 6813},
 };
 
-inline constexpr Field kFields_02A0[] = {
+inline constexpr Field kFields_L0131_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1591},
+    {"Flags", 1, 1, 0x0204, 1592},
+    {"Condition", 2, 1, 0x0104, 1593},
+    {"WeaponLevelMin", 3, 1, 0x0000, 674},
+    {"On", 4, 2, 0x0008, 6814},
+    {"Off", 6, 2, 0x0008, 6815},
+};
+
+inline constexpr Field kFields_L0131_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1594},
+    {"ScriptName", 16, 8, 0x0010, 370},
+};
+
+inline constexpr Field kFields_L0131_S02A0[] = {
     {"StartJoint", 24, 8, 0x0010, 0},
     {"MidJoint", 32, 8, 0x0010, 0},
     {"EndJoint", 40, 8, 0x0010, 0},
@@ -7642,12 +12078,82 @@ inline constexpr Field kFields_02A0[] = {
     {"ScaleFlags", 108, 1, 0x0204, 1595},
 };
 
-inline constexpr Field kFields_02A2[] = {
+inline constexpr Field kFields_L0132_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1596},
+    {"Flags", 1, 1, 0x0204, 1597},
+    {"Condition", 2, 1, 0x0104, 1598},
+    {"WeaponLevelMin", 3, 1, 0x0000, 675},
+    {"On", 4, 2, 0x0008, 6829},
+    {"Off", 6, 2, 0x0008, 6830},
+};
+
+inline constexpr Field kFields_L0132_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1599},
+    {"ScriptName", 16, 8, 0x0010, 371},
+};
+
+inline constexpr Field kFields_L0133_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1600},
+    {"Flags", 1, 1, 0x0204, 1601},
+    {"Condition", 2, 1, 0x0104, 1602},
+    {"WeaponLevelMin", 3, 1, 0x0000, 676},
+    {"On", 4, 2, 0x0008, 6831},
+    {"Off", 6, 2, 0x0008, 6832},
+};
+
+inline constexpr Field kFields_L0133_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1603},
+    {"ScriptName", 16, 8, 0x0010, 372},
+};
+
+inline constexpr Field kFields_L0133_S02A2[] = {
     {"FadeTime", 24, 4, 0x0008, 6833},
     {"FadeFlags", 28, 1, 0x0204, 1604},
 };
 
-inline constexpr Field kFields_02A5[] = {
+inline constexpr Field kFields_L0134_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1605},
+    {"Flags", 1, 1, 0x0204, 1606},
+    {"Condition", 2, 1, 0x0104, 1607},
+    {"WeaponLevelMin", 3, 1, 0x0000, 677},
+    {"On", 4, 2, 0x0008, 6834},
+    {"Off", 6, 2, 0x0008, 6835},
+};
+
+inline constexpr Field kFields_L0134_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1608},
+    {"ScriptName", 16, 8, 0x0010, 373},
+};
+
+inline constexpr Field kFields_L0135_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1609},
+    {"Flags", 1, 1, 0x0204, 1610},
+    {"Condition", 2, 1, 0x0104, 1611},
+    {"WeaponLevelMin", 3, 1, 0x0000, 678},
+    {"On", 4, 2, 0x0008, 6836},
+    {"Off", 6, 2, 0x0008, 6837},
+};
+
+inline constexpr Field kFields_L0135_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1612},
+    {"ScriptName", 16, 8, 0x0010, 374},
+};
+
+inline constexpr Field kFields_L0136_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1613},
+    {"Flags", 1, 1, 0x0204, 1614},
+    {"Condition", 2, 1, 0x0104, 1615},
+    {"WeaponLevelMin", 3, 1, 0x0000, 679},
+    {"On", 4, 2, 0x0008, 6838},
+    {"Off", 6, 2, 0x0008, 6839},
+};
+
+inline constexpr Field kFields_L0136_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1616},
+    {"ScriptName", 16, 8, 0x0010, 375},
+};
+
+inline constexpr Field kFields_L0136_S02A5[] = {
     {"JointName", 24, 8, 0x0010, 0},
     {"Distance", 32, 4, 0x0008, 6840},
     {"ConeBaseRadius", 36, 4, 0x0008, 6841},
@@ -7658,7 +12164,21 @@ inline constexpr Field kFields_02A5[] = {
     {"Visibility", 53, 1, 0x0204, 1618},
 };
 
-inline constexpr Field kFields_02A6[] = {
+inline constexpr Field kFields_L0137_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1619},
+    {"Flags", 1, 1, 0x0204, 1620},
+    {"Condition", 2, 1, 0x0104, 1621},
+    {"WeaponLevelMin", 3, 1, 0x0000, 680},
+    {"On", 4, 2, 0x0008, 6845},
+    {"Off", 6, 2, 0x0008, 6846},
+};
+
+inline constexpr Field kFields_L0137_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1622},
+    {"ScriptName", 16, 8, 0x0010, 376},
+};
+
+inline constexpr Field kFields_L0137_S02A6[] = {
     {"JointName", 24, 8, 0x0010, 0},
     {"Radius", 32, 4, 0x0008, 6847},
     {"EdgeForce", 36, 4, 0x0008, 6848},
@@ -7666,7 +12186,21 @@ inline constexpr Field kFields_02A6[] = {
     {"Visibility", 44, 1, 0x0204, 1623},
 };
 
-inline constexpr Field kFields_02A7[] = {
+inline constexpr Field kFields_L0138_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1624},
+    {"Flags", 1, 1, 0x0204, 1625},
+    {"Condition", 2, 1, 0x0104, 1626},
+    {"WeaponLevelMin", 3, 1, 0x0000, 681},
+    {"On", 4, 2, 0x0008, 6850},
+    {"Off", 6, 2, 0x0008, 6851},
+};
+
+inline constexpr Field kFields_L0138_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1627},
+    {"ScriptName", 16, 8, 0x0010, 377},
+};
+
+inline constexpr Field kFields_L0138_S02A7[] = {
     {"IndicatorFX", 24, 8, 0x001C, 272},
     {"IndicatorConcussion", 32, 8, 0x001C, 268},
     {"Concussion", 40, 8, 0x001C, 268},
@@ -7679,22 +12213,84 @@ inline constexpr Field kFields_02A7[] = {
     {"PlayerFollowFlags", 73, 1, 0x0204, 1628},
 };
 
-inline constexpr Field kFields_02A8[] = {
+inline constexpr Field kFields_L0139_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1629},
+    {"Flags", 1, 1, 0x0204, 1630},
+    {"Condition", 2, 1, 0x0104, 1631},
+    {"WeaponLevelMin", 3, 1, 0x0000, 684},
+    {"On", 4, 2, 0x0008, 6855},
+    {"Off", 6, 2, 0x0008, 6856},
+};
+
+inline constexpr Field kFields_L0139_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1632},
+    {"ScriptName", 16, 8, 0x0010, 378},
+};
+
+inline constexpr Field kFields_L0139_S02A8[] = {
     {"AnimName", 24, 8, 0x0010, 0},
     {"TweenTime", 32, 4, 0x0008, 6857},
 };
 
-inline constexpr Field kFields_02A9[] = {
+inline constexpr Field kFields_L013A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1633},
+    {"Flags", 1, 1, 0x0204, 1634},
+    {"Condition", 2, 1, 0x0104, 1635},
+    {"WeaponLevelMin", 3, 1, 0x0000, 685},
+    {"On", 4, 2, 0x0008, 6858},
+    {"Off", 6, 2, 0x0008, 6859},
+};
+
+inline constexpr Field kFields_L013A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1636},
+    {"ScriptName", 16, 8, 0x0010, 379},
+};
+
+inline constexpr Field kFields_L013A_S00B0[] = {
+    {"JointName", 24, 8, 0x0010, 0},
+    {"Offset", 32, 0, 0x002C, 6},
+    {"SpawnFlags", 38, 1, 0x0204, 1637},
+};
+
+inline constexpr Field kFields_L013A_S02A9[] = {
     {"EntityName", 40, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_02AA[] = {
+inline constexpr Field kFields_L013B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1638},
+    {"Flags", 1, 1, 0x0204, 1639},
+    {"Condition", 2, 1, 0x0104, 1640},
+    {"WeaponLevelMin", 3, 1, 0x0000, 686},
+    {"On", 4, 2, 0x0008, 6863},
+    {"Off", 6, 2, 0x0008, 6864},
+};
+
+inline constexpr Field kFields_L013B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1641},
+    {"ScriptName", 16, 8, 0x0010, 380},
+};
+
+inline constexpr Field kFields_L013B_S02AA[] = {
     {"SwitchToGameObject", 24, 8, 0x0010, 0},
     {"TransitionTime", 32, 4, 0x0008, 6865},
     {"ResourceInLevelWad", 36, 1, 0x0014, 1627},
 };
 
-inline constexpr Field kFields_02AB[] = {
+inline constexpr Field kFields_L013C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1642},
+    {"Flags", 1, 1, 0x0204, 1643},
+    {"Condition", 2, 1, 0x0104, 1644},
+    {"WeaponLevelMin", 3, 1, 0x0000, 687},
+    {"On", 4, 2, 0x0008, 6866},
+    {"Off", 6, 2, 0x0008, 6867},
+};
+
+inline constexpr Field kFields_L013C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1645},
+    {"ScriptName", 16, 8, 0x0010, 381},
+};
+
+inline constexpr Field kFields_L013C_S02AB[] = {
     {"RegenSpeed", 24, 4, 0x0008, 6868},
     {"NoRegenTime", 28, 4, 0x0008, 6869},
     {"HealthMaxPct", 32, 4, 0x0008, 6870},
@@ -7703,7 +12299,21 @@ inline constexpr Field kFields_02AB[] = {
     {"SoundName", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_02AC[] = {
+inline constexpr Field kFields_L013D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1646},
+    {"Flags", 1, 1, 0x0204, 1647},
+    {"Condition", 2, 1, 0x0104, 1648},
+    {"WeaponLevelMin", 3, 1, 0x0000, 690},
+    {"On", 4, 2, 0x0008, 6871},
+    {"Off", 6, 2, 0x0008, 6872},
+};
+
+inline constexpr Field kFields_L013D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1649},
+    {"ScriptName", 16, 8, 0x0010, 382},
+};
+
+inline constexpr Field kFields_L013D_S02AC[] = {
     {"OverrideScaleAngleList", 24, 12, 0x0024, 399},
     {"Range", 36, 4, 0x0008, 6874},
     {"OverrideScaleDistanceList", 40, 12, 0x0024, 400},
@@ -7719,7 +12329,21 @@ inline constexpr Field kFields_02AC[] = {
     {"TargetInitialPosition", 87, 1, 0x0014, 1631},
 };
 
-inline constexpr Field kFields_02AD[] = {
+inline constexpr Field kFields_L013E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1650},
+    {"Flags", 1, 1, 0x0204, 1651},
+    {"Condition", 2, 1, 0x0104, 1652},
+    {"WeaponLevelMin", 3, 1, 0x0000, 691},
+    {"On", 4, 2, 0x0008, 6880},
+    {"Off", 6, 2, 0x0008, 6881},
+};
+
+inline constexpr Field kFields_L013E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1653},
+    {"ScriptName", 16, 8, 0x0010, 385},
+};
+
+inline constexpr Field kFields_L013E_S02AD[] = {
     {"SourceJoint", 24, 8, 0x0010, 386},
     {"MoveJoint", 32, 8, 0x0010, 387},
     {"TargetJoint", 40, 8, 0x0010, 388},
@@ -7742,7 +12366,72 @@ inline constexpr Field kFields_02AD[] = {
     {"TargetWeight", 100, 4, 0x0008, 6892},
 };
 
-inline constexpr Field kFields_02B0[] = {
+inline constexpr Field kFields_L013F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1654},
+    {"Flags", 1, 1, 0x0204, 1655},
+    {"Condition", 2, 1, 0x0104, 1656},
+    {"WeaponLevelMin", 3, 1, 0x0000, 692},
+    {"On", 4, 2, 0x0008, 6893},
+    {"Off", 6, 2, 0x0008, 6894},
+};
+
+inline constexpr Field kFields_L013F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1657},
+    {"ScriptName", 16, 8, 0x0010, 389},
+};
+
+inline constexpr Field kFields_L013F_S02AD[] = {
+    {"SourceJoint", 24, 8, 0x0010, 390},
+    {"MoveJoint", 32, 8, 0x0010, 391},
+    {"TargetJoint", 40, 8, 0x0010, 392},
+    {"TargetCreatureBlackboardVarName", 48, 8, 0x0010, 0},
+    {"ApplyDeltaToSiblings", 56, 1, 0x0014, 1639},
+    {"ApplyDeltaToSourceJoint", 57, 1, 0x0014, 1640},
+    {"DampedRotation", 58, 1, 0x0014, 1641},
+    {"DampedRotationAngularFrequency", 60, 4, 0x0008, 6895},
+    {"DampedRotationDampingRatio", 64, 4, 0x0008, 6896},
+    {"MaxDampedRotationError", 68, 4, 0x0008, 6897},
+    {"ProjectRotationAlignmentOnGroundPlane", 72, 1, 0x0014, 1642},
+    {"DampedTranslation", 73, 1, 0x0014, 1643},
+    {"DampedTranslationAngularFrequency", 76, 4, 0x0008, 6898},
+    {"DampedTranslationDampingRatio", 80, 4, 0x0008, 6899},
+    {"MaxDampedTranslationError", 84, 4, 0x0008, 6900},
+    {"RotationAlignmentWeight", 88, 0, 0x002C, 6},
+    {"AlignTranslation", 94, 1, 0x0014, 1644},
+    {"ReverseAttachment", 95, 1, 0x0014, 1645},
+    {"BlendInComplete", 96, 2, 0x0008, 6904},
+    {"TargetWeight", 100, 4, 0x0008, 6905},
+};
+
+inline constexpr Field kFields_L0140_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1658},
+    {"Flags", 1, 1, 0x0204, 1659},
+    {"Condition", 2, 1, 0x0104, 1660},
+    {"WeaponLevelMin", 3, 1, 0x0000, 693},
+    {"On", 4, 2, 0x0008, 6906},
+    {"Off", 6, 2, 0x0008, 6907},
+};
+
+inline constexpr Field kFields_L0140_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1661},
+    {"ScriptName", 16, 8, 0x0010, 393},
+};
+
+inline constexpr Field kFields_L0141_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1662},
+    {"Flags", 1, 1, 0x0204, 1663},
+    {"Condition", 2, 1, 0x0104, 1664},
+    {"WeaponLevelMin", 3, 1, 0x0000, 694},
+    {"On", 4, 2, 0x0008, 6908},
+    {"Off", 6, 2, 0x0008, 6909},
+};
+
+inline constexpr Field kFields_L0141_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1665},
+    {"ScriptName", 16, 8, 0x0010, 394},
+};
+
+inline constexpr Field kFields_L0141_S02B0[] = {
     {"MoveJoint", 24, 8, 0x0010, 395},
     {"LineJointA", 32, 8, 0x0010, 396},
     {"LineJointB", 40, 8, 0x0010, 397},
@@ -7752,7 +12441,21 @@ inline constexpr Field kFields_02B0[] = {
     {"StopBegin", 62, 2, 0x0008, 6917},
 };
 
-inline constexpr Field kFields_02B1[] = {
+inline constexpr Field kFields_L0142_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1666},
+    {"Flags", 1, 1, 0x0204, 1667},
+    {"Condition", 2, 1, 0x0104, 1668},
+    {"WeaponLevelMin", 3, 1, 0x0000, 695},
+    {"On", 4, 2, 0x0008, 6918},
+    {"Off", 6, 2, 0x0008, 6919},
+};
+
+inline constexpr Field kFields_L0142_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1669},
+    {"ScriptName", 16, 8, 0x0010, 398},
+};
+
+inline constexpr Field kFields_L0142_S02B1[] = {
     {"SourceJoint", 24, 8, 0x0010, 399},
     {"TargetJoint", 32, 8, 0x0010, 400},
     {"TargetObjectBlackboardVarName", 40, 8, 0x0010, 0},
@@ -7760,33 +12463,117 @@ inline constexpr Field kFields_02B1[] = {
     {"StopBegin", 50, 2, 0x0008, 6921},
 };
 
-inline constexpr Field kFields_02B2[] = {
+inline constexpr Field kFields_L0143_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1670},
+    {"Flags", 1, 1, 0x0204, 1671},
+    {"Condition", 2, 1, 0x0104, 1672},
+    {"WeaponLevelMin", 3, 1, 0x0000, 696},
+    {"On", 4, 2, 0x0008, 6922},
+    {"Off", 6, 2, 0x0008, 6923},
+};
+
+inline constexpr Field kFields_L0143_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1673},
+    {"ScriptName", 16, 8, 0x0010, 401},
+};
+
+inline constexpr Field kFields_L0143_S02B2[] = {
     {"Joint", 24, 8, 0x0010, 402},
 };
 
-inline constexpr Field kFields_02B3[] = {
+inline constexpr Field kFields_L0144_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1674},
+    {"Flags", 1, 1, 0x0204, 1675},
+    {"Condition", 2, 1, 0x0104, 1676},
+    {"WeaponLevelMin", 3, 1, 0x0000, 697},
+    {"On", 4, 2, 0x0008, 6924},
+    {"Off", 6, 2, 0x0008, 6925},
+};
+
+inline constexpr Field kFields_L0144_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1677},
+    {"ScriptName", 16, 8, 0x0010, 403},
+};
+
+inline constexpr Field kFields_L0144_S02B3[] = {
     {"Joint", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_02B4[] = {
+inline constexpr Field kFields_L0145_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1678},
+    {"Flags", 1, 1, 0x0204, 1679},
+    {"Condition", 2, 1, 0x0104, 1680},
+    {"WeaponLevelMin", 3, 1, 0x0000, 698},
+    {"On", 4, 2, 0x0008, 6926},
+    {"Off", 6, 2, 0x0008, 6927},
+};
+
+inline constexpr Field kFields_L0145_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1681},
+    {"ScriptName", 16, 8, 0x0010, 404},
+};
+
+inline constexpr Field kFields_L0145_S02B4[] = {
     {"CacheJointList", 24, 8, 0x0010, 0},
     {"JointChainCacheBlackboardVarName", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_02B5[] = {
+inline constexpr Field kFields_L0146_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1682},
+    {"Flags", 1, 1, 0x0204, 1683},
+    {"Condition", 2, 1, 0x0104, 1684},
+    {"WeaponLevelMin", 3, 1, 0x0000, 699},
+    {"On", 4, 2, 0x0008, 6928},
+    {"Off", 6, 2, 0x0008, 6929},
+};
+
+inline constexpr Field kFields_L0146_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1685},
+    {"ScriptName", 16, 8, 0x0010, 405},
+};
+
+inline constexpr Field kFields_L0146_S02B5[] = {
     {"JointChainAngularFrequencyData", 24, 8, 0x0010, 0},
     {"JointChainDampingRatioData", 32, 8, 0x0010, 0},
     {"BlendInComplete", 40, 2, 0x0008, 6930},
     {"TargetWeight", 44, 4, 0x0008, 6931},
 };
 
-inline constexpr Field kFields_02B6[] = {
+inline constexpr Field kFields_L0147_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1686},
+    {"Flags", 1, 1, 0x0204, 1687},
+    {"Condition", 2, 1, 0x0104, 1688},
+    {"WeaponLevelMin", 3, 1, 0x0000, 700},
+    {"On", 4, 2, 0x0008, 6932},
+    {"Off", 6, 2, 0x0008, 6933},
+};
+
+inline constexpr Field kFields_L0147_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1689},
+    {"ScriptName", 16, 8, 0x0010, 406},
+};
+
+inline constexpr Field kFields_L0147_S02B6[] = {
     {"JointChainCacheBlackboardVarName", 24, 8, 0x0010, 0},
     {"BlendInComplete", 32, 2, 0x0008, 6934},
     {"TargetWeight", 36, 4, 0x0008, 6935},
 };
 
-inline constexpr Field kFields_02B7[] = {
+inline constexpr Field kFields_L0148_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1690},
+    {"Flags", 1, 1, 0x0204, 1691},
+    {"Condition", 2, 1, 0x0104, 1692},
+    {"WeaponLevelMin", 3, 1, 0x0000, 701},
+    {"On", 4, 2, 0x0008, 6936},
+    {"Off", 6, 2, 0x0008, 6937},
+};
+
+inline constexpr Field kFields_L0148_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1693},
+    {"ScriptName", 16, 8, 0x0010, 407},
+};
+
+inline constexpr Field kFields_L0148_S02B7[] = {
     {"TargetHelperData", 24, 0, 0x002C, 301},
     {"PivotJointChainAngularFrequencyData", 88, 8, 0x0010, 0},
     {"PivotJointChainDampingRatioData", 96, 8, 0x0010, 0},
@@ -7819,7 +12606,21 @@ inline constexpr Field kFields_02B7[] = {
     {"AlignAxis", 246, 1, 0x0104, 1698},
 };
 
-inline constexpr Field kFields_02B8[] = {
+inline constexpr Field kFields_L0149_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1699},
+    {"Flags", 1, 1, 0x0204, 1700},
+    {"Condition", 2, 1, 0x0104, 1701},
+    {"WeaponLevelMin", 3, 1, 0x0000, 702},
+    {"On", 4, 2, 0x0008, 6968},
+    {"Off", 6, 2, 0x0008, 6969},
+};
+
+inline constexpr Field kFields_L0149_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1702},
+    {"ScriptName", 16, 8, 0x0010, 409},
+};
+
+inline constexpr Field kFields_L0149_S02B8[] = {
     {"PivotJoint", 24, 8, 0x0010, 0},
     {"HeightJoint", 32, 8, 0x0010, 0},
     {"NeckAlignChainDampingRatio", 40, 8, 0x0010, 410},
@@ -7840,12 +12641,26 @@ inline constexpr Field kFields_02B8[] = {
     {"NeckAlignChainUseDamping", 127, 1, 0x0014, 1647},
 };
 
-inline constexpr Field kFields_02B9[] = {
+inline constexpr Field kFields_L014A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1703},
+    {"Flags", 1, 1, 0x0204, 1704},
+    {"Condition", 2, 1, 0x0104, 1705},
+    {"WeaponLevelMin", 3, 1, 0x0000, 703},
+    {"On", 4, 2, 0x0008, 6976},
+    {"Off", 6, 2, 0x0008, 6977},
+};
+
+inline constexpr Field kFields_L014A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1706},
+    {"ScriptName", 16, 8, 0x0010, 418},
+};
+
+inline constexpr Field kFields_L014A_S02B9[] = {
     {"OffsetAngle", 24, 4, 0x0008, 6978},
     {"RotationDriver", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_02BA[] = {
+inline constexpr Field kFields_L014A_S02BA[] = {
     {"PivotJoint", 0, 8, 0x0010, 0},
     {"JiggleJoint", 8, 8, 0x0010, 0},
     {"InertialJoint", 16, 8, 0x0010, 419},
@@ -7860,7 +12675,7 @@ inline constexpr Field kFields_02BA[] = {
     {"SquashSpringDampingRatio", 52, 4, 0x0008, 6984},
 };
 
-inline constexpr Field kFields_02BB[] = {
+inline constexpr Field kFields_L014A_S02BB[] = {
     {"ChildBones", 56, 12, 0x0024, 401},
     {"EnableHitReaction", 68, 1, 0x0014, 1654},
     {"EnableAnimationReaction", 69, 1, 0x0014, 1655},
@@ -7868,12 +12683,54 @@ inline constexpr Field kFields_02BB[] = {
     {"PartFlags", 80, 8, 0x0204, 1708},
 };
 
-inline constexpr Field kFields_02BD[] = {
+inline constexpr Field kFields_L014B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1709},
+    {"Flags", 1, 1, 0x0204, 1710},
+    {"Condition", 2, 1, 0x0104, 1711},
+    {"WeaponLevelMin", 3, 1, 0x0000, 704},
+    {"On", 4, 2, 0x0008, 6991},
+    {"Off", 6, 2, 0x0008, 6992},
+};
+
+inline constexpr Field kFields_L014B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1712},
+    {"ScriptName", 16, 8, 0x0010, 421},
+};
+
+inline constexpr Field kFields_L014C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1713},
+    {"Flags", 1, 1, 0x0204, 1714},
+    {"Condition", 2, 1, 0x0104, 1715},
+    {"WeaponLevelMin", 3, 1, 0x0000, 705},
+    {"On", 4, 2, 0x0008, 6993},
+    {"Off", 6, 2, 0x0008, 6994},
+};
+
+inline constexpr Field kFields_L014C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1716},
+    {"ScriptName", 16, 8, 0x0010, 422},
+};
+
+inline constexpr Field kFields_L014C_S02BD[] = {
     {"Enabled", 24, 1, 0x0014, 1656},
     {"UseZeroJointKeysDirectly", 25, 1, 0x0014, 1657},
 };
 
-inline constexpr Field kFields_02BE[] = {
+inline constexpr Field kFields_L014D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1717},
+    {"Flags", 1, 1, 0x0204, 1718},
+    {"Condition", 2, 1, 0x0104, 1719},
+    {"WeaponLevelMin", 3, 1, 0x0000, 706},
+    {"On", 4, 2, 0x0008, 6995},
+    {"Off", 6, 2, 0x0008, 6996},
+};
+
+inline constexpr Field kFields_L014D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1720},
+    {"ScriptName", 16, 8, 0x0010, 423},
+};
+
+inline constexpr Field kFields_L014D_S02BE[] = {
     {"JiggleBones", 24, 12, 0x0024, 402},
     {"ImpactDecayStartDistance", 36, 4, 0x0008, 6997},
     {"JointsToFreeze", 40, 12, 0x0024, 403},
@@ -7895,32 +12752,88 @@ inline constexpr Field kFields_02BE[] = {
     {"TryOverrideImpactDirection", 139, 1, 0x0014, 1659},
 };
 
-inline constexpr Field kFields_02BF[] = {
+inline constexpr Field kFields_L014E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1729},
+    {"Flags", 1, 1, 0x0204, 1730},
+    {"Condition", 2, 1, 0x0104, 1731},
+    {"WeaponLevelMin", 3, 1, 0x0000, 707},
+    {"On", 4, 2, 0x0008, 7004},
+    {"Off", 6, 2, 0x0008, 7005},
+};
+
+inline constexpr Field kFields_L014E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1732},
+    {"ScriptName", 16, 8, 0x0010, 424},
+};
+
+inline constexpr Field kFields_L014E_S02BF[] = {
     {"JointName", 24, 8, 0x0018, 0},
     {"PositionBlackboardVariableKey", 32, 8, 0x0010, 0},
     {"QuatBlackboardVariableKey", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_02C2[] = {
+inline constexpr Field kFields_L014F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1733},
+    {"Flags", 1, 1, 0x0204, 1734},
+    {"Condition", 2, 1, 0x0104, 1735},
+    {"WeaponLevelMin", 3, 1, 0x0000, 708},
+    {"On", 4, 2, 0x0008, 7006},
+    {"Off", 6, 2, 0x0008, 7007},
+};
+
+inline constexpr Field kFields_L014F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1736},
+    {"ScriptName", 16, 8, 0x0010, 425},
+};
+
+inline constexpr Field kFields_L0150_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1737},
+    {"Flags", 1, 1, 0x0204, 1738},
+    {"Condition", 2, 1, 0x0104, 1739},
+    {"WeaponLevelMin", 3, 1, 0x0000, 709},
+    {"On", 4, 2, 0x0008, 7008},
+    {"Off", 6, 2, 0x0008, 7009},
+};
+
+inline constexpr Field kFields_L0150_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1740},
+    {"ScriptName", 16, 8, 0x0010, 426},
+};
+
+inline constexpr Field kFields_L0150_S02C2[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"TwistWeight", 8, 4, 0x0008, 7010},
     {"SpringFrequency", 12, 4, 0x0008, 7011},
     {"SpringDampingRatio", 16, 4, 0x0008, 7012},
 };
 
-inline constexpr Field kFields_02C3[] = {
+inline constexpr Field kFields_L0150_S02C3[] = {
     {"ReferenceJoint", 0, 8, 0x0010, 0},
     {"ReferenceJointTwistAxis", 8, 1, 0x0104, 1741},
     {"TwistWeight", 12, 4, 0x0008, 7013},
     {"Joints", 16, 12, 0x0024, 404},
 };
 
-inline constexpr Field kFields_02C4[] = {
+inline constexpr Field kFields_L0150_S02C4[] = {
     {"PartFlags", 0, 8, 0x0204, 1742},
     {"HitFlags", 8, 8, 0x0204, 1743},
 };
 
-inline constexpr Field kFields_02C5[] = {
+inline constexpr Field kFields_L0151_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1744},
+    {"Flags", 1, 1, 0x0204, 1745},
+    {"Condition", 2, 1, 0x0104, 1746},
+    {"WeaponLevelMin", 3, 1, 0x0000, 710},
+    {"On", 4, 2, 0x0008, 7014},
+    {"Off", 6, 2, 0x0008, 7015},
+};
+
+inline constexpr Field kFields_L0151_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1747},
+    {"ScriptName", 16, 8, 0x0010, 427},
+};
+
+inline constexpr Field kFields_L0151_S02C5[] = {
     {"NoTwistFlagCombos", 24, 12, 0x0024, 405},
     {"ProjectileTwistDeadzoneRadius", 36, 4, 0x0008, 7016},
     {"JointSegments", 40, 12, 0x0024, 406},
@@ -7936,32 +12849,135 @@ inline constexpr Field kFields_02C5[] = {
     {"TwistOnConcussion", 113, 1, 0x0014, 1661},
 };
 
-inline constexpr Field kFields_02C7[] = {
+inline constexpr Field kFields_L0152_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1755},
+    {"Flags", 1, 1, 0x0204, 1756},
+    {"Condition", 2, 1, 0x0104, 1757},
+    {"WeaponLevelMin", 3, 1, 0x0000, 711},
+    {"On", 4, 2, 0x0008, 7018},
+    {"Off", 6, 2, 0x0008, 7019},
+};
+
+inline constexpr Field kFields_L0152_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1758},
+    {"ScriptName", 16, 8, 0x0010, 428},
+};
+
+inline constexpr Field kFields_L0153_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1759},
+    {"Flags", 1, 1, 0x0204, 1760},
+    {"Condition", 2, 1, 0x0104, 1761},
+    {"WeaponLevelMin", 3, 1, 0x0000, 712},
+    {"On", 4, 2, 0x0008, 7020},
+    {"Off", 6, 2, 0x0008, 7021},
+};
+
+inline constexpr Field kFields_L0153_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1762},
+    {"ScriptName", 16, 8, 0x0010, 429},
+};
+
+inline constexpr Field kFields_L0153_S02C7[] = {
     {"MarkersGameObjectName", 24, 8, 0x0018, 430},
     {"Duration", 32, 4, 0x0008, 7022},
 };
 
-inline constexpr Field kFields_02C9[] = {
+inline constexpr Field kFields_L0154_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1763},
+    {"Flags", 1, 1, 0x0204, 1764},
+    {"Condition", 2, 1, 0x0104, 1765},
+    {"WeaponLevelMin", 3, 1, 0x0000, 713},
+    {"On", 4, 2, 0x0008, 7023},
+    {"Off", 6, 2, 0x0008, 7024},
+};
+
+inline constexpr Field kFields_L0154_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1766},
+    {"ScriptName", 16, 8, 0x0010, 431},
+};
+
+inline constexpr Field kFields_L0154_S02C7[] = {
+    {"MarkersGameObjectName", 24, 8, 0x0018, 432},
+    {"Duration", 32, 4, 0x0008, 7025},
+};
+
+inline constexpr Field kFields_L0155_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1767},
+    {"Flags", 1, 1, 0x0204, 1768},
+    {"Condition", 2, 1, 0x0104, 1769},
+    {"WeaponLevelMin", 3, 1, 0x0000, 714},
+    {"On", 4, 2, 0x0008, 7026},
+    {"Off", 6, 2, 0x0008, 7027},
+};
+
+inline constexpr Field kFields_L0155_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1770},
+    {"ScriptName", 16, 8, 0x0010, 433},
+};
+
+inline constexpr Field kFields_L0155_S02C9[] = {
     {"ModulateTarget", 24, 1, 0x0104, 1771},
     {"TargetValue", 28, 4, 0x0008, 7028},
     {"ModulateVelocity", 32, 4, 0x0008, 7029},
 };
 
-inline constexpr Field kFields_02CA[] = {
+inline constexpr Field kFields_L0156_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1772},
+    {"Flags", 1, 1, 0x0204, 1773},
+    {"Condition", 2, 1, 0x0104, 1774},
+    {"WeaponLevelMin", 3, 1, 0x0000, 715},
+    {"On", 4, 2, 0x0008, 7030},
+    {"Off", 6, 2, 0x0008, 7031},
+};
+
+inline constexpr Field kFields_L0156_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1775},
+    {"ScriptName", 16, 8, 0x0010, 434},
+};
+
+inline constexpr Field kFields_L0156_S02CA[] = {
     {"POIName", 24, 8, 0x0018, 0},
     {"ExactPos", 32, 0, 0x002C, 6},
     {"ArgVal", 40, 4, 0x0008, 7035},
     {"YRotation", 44, 4, 0x0008, 7036},
 };
 
-inline constexpr Field kFields_02CB[] = {
+inline constexpr Field kFields_L0157_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1776},
+    {"Flags", 1, 1, 0x0204, 1777},
+    {"Condition", 2, 1, 0x0104, 1778},
+    {"WeaponLevelMin", 3, 1, 0x0000, 716},
+    {"On", 4, 2, 0x0008, 7037},
+    {"Off", 6, 2, 0x0008, 7038},
+};
+
+inline constexpr Field kFields_L0157_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1779},
+    {"ScriptName", 16, 8, 0x0010, 435},
+};
+
+inline constexpr Field kFields_L0157_S02CB[] = {
     {"ID", 24, 8, 0x0010, 0},
     {"Radius", 32, 4, 0x0008, 7039},
     {"YRotation", 36, 4, 0x0008, 7040},
     {"YHeight", 40, 4, 0x0008, 7041},
 };
 
-inline constexpr Field kFields_02CC[] = {
+inline constexpr Field kFields_L0158_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1780},
+    {"Flags", 1, 1, 0x0204, 1781},
+    {"Condition", 2, 1, 0x0104, 1782},
+    {"WeaponLevelMin", 3, 1, 0x0000, 717},
+    {"On", 4, 2, 0x0008, 7042},
+    {"Off", 6, 2, 0x0008, 7043},
+};
+
+inline constexpr Field kFields_L0158_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1783},
+    {"ScriptName", 16, 8, 0x0010, 436},
+};
+
+inline constexpr Field kFields_L0158_S02CC[] = {
     {"Impulse", 24, 0, 0x002C, 6},
     {"Duration", 32, 4, 0x0008, 7047},
     {"FaceOverride", 36, 1, 0x0104, 1784},
@@ -7969,22 +12985,92 @@ inline constexpr Field kFields_02CC[] = {
     {"IgnoreNoImpulse", 38, 1, 0x0014, 1662},
 };
 
-inline constexpr Field kFields_02CD[] = {
+inline constexpr Field kFields_L0159_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1786},
+    {"Flags", 1, 1, 0x0204, 1787},
+    {"Condition", 2, 1, 0x0104, 1788},
+    {"WeaponLevelMin", 3, 1, 0x0000, 718},
+    {"On", 4, 2, 0x0008, 7048},
+    {"Off", 6, 2, 0x0008, 7049},
+};
+
+inline constexpr Field kFields_L0159_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1789},
+    {"ScriptName", 16, 8, 0x0010, 437},
+};
+
+inline constexpr Field kFields_L0159_S02CD[] = {
     {"MaxFallDistance", 24, 4, 0x0008, 7050},
 };
 
-inline constexpr Field kFields_02CE[] = {
+inline constexpr Field kFields_L015A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1790},
+    {"Flags", 1, 1, 0x0204, 1791},
+    {"Condition", 2, 1, 0x0104, 1792},
+    {"WeaponLevelMin", 3, 1, 0x0000, 719},
+    {"On", 4, 2, 0x0008, 7051},
+    {"Off", 6, 2, 0x0008, 7052},
+};
+
+inline constexpr Field kFields_L015A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1793},
+    {"ScriptName", 16, 8, 0x0010, 438},
+};
+
+inline constexpr Field kFields_L015A_S02CE[] = {
     {"InterestingTargetRedirectionAngle", 24, 4, 0x0008, 7053},
     {"InterestingTargetRedirectionMaximumDistance", 28, 4, 0x0008, 7054},
     {"InterestingTargetRedirectionMinimumDistance", 32, 4, 0x0008, 7055},
 };
 
-inline constexpr Field kFields_02D0[] = {
+inline constexpr Field kFields_L015B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1794},
+    {"Flags", 1, 1, 0x0204, 1795},
+    {"Condition", 2, 1, 0x0104, 1796},
+    {"WeaponLevelMin", 3, 1, 0x0000, 720},
+    {"On", 4, 2, 0x0008, 7056},
+    {"Off", 6, 2, 0x0008, 7057},
+};
+
+inline constexpr Field kFields_L015B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1797},
+    {"ScriptName", 16, 8, 0x0010, 439},
+};
+
+inline constexpr Field kFields_L015C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1798},
+    {"Flags", 1, 1, 0x0204, 1799},
+    {"Condition", 2, 1, 0x0104, 1800},
+    {"WeaponLevelMin", 3, 1, 0x0000, 721},
+    {"On", 4, 2, 0x0008, 7058},
+    {"Off", 6, 2, 0x0008, 7059},
+};
+
+inline constexpr Field kFields_L015C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1801},
+    {"ScriptName", 16, 8, 0x0010, 440},
+};
+
+inline constexpr Field kFields_L015C_S02D0[] = {
     {"Radius", 24, 4, 0x0008, 7060},
     {"Height", 28, 4, 0x0008, 7061},
 };
 
-inline constexpr Field kFields_02D1[] = {
+inline constexpr Field kFields_L015D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1802},
+    {"Flags", 1, 1, 0x0204, 1803},
+    {"Condition", 2, 1, 0x0104, 1804},
+    {"WeaponLevelMin", 3, 1, 0x0000, 722},
+    {"On", 4, 2, 0x0008, 7062},
+    {"Off", 6, 2, 0x0008, 7063},
+};
+
+inline constexpr Field kFields_L015D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1805},
+    {"ScriptName", 16, 8, 0x0010, 441},
+};
+
+inline constexpr Field kFields_L015D_S02D1[] = {
     {"ExcludeFilters", 24, 12, 0x0024, 407},
     {"SnapDistance", 36, 4, 0x0008, 7064},
     {"JointName", 40, 8, 0x0010, 0},
@@ -8012,7 +13098,21 @@ inline constexpr Field kFields_02D1[] = {
     {"LockAxis", 128, 1, 0x0014, 1664},
 };
 
-inline constexpr Field kFields_02D2[] = {
+inline constexpr Field kFields_L015E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1810},
+    {"Flags", 1, 1, 0x0204, 1811},
+    {"Condition", 2, 1, 0x0104, 1812},
+    {"WeaponLevelMin", 3, 1, 0x0000, 724},
+    {"On", 4, 2, 0x0008, 7089},
+    {"Off", 6, 2, 0x0008, 7090},
+};
+
+inline constexpr Field kFields_L015E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1813},
+    {"ScriptName", 16, 8, 0x0010, 442},
+};
+
+inline constexpr Field kFields_L015E_S02D2[] = {
     {"ArgData", 24, 8, 0x001C, 65535},
     {"ArgInt", 32, 4, 0x0000, 725},
     {"StateOverride", 36, 2, 0x0104, 1814},
@@ -8020,51 +13120,217 @@ inline constexpr Field kFields_02D2[] = {
     {"CommonFlags", 39, 1, 0x0204, 1816},
 };
 
-inline constexpr Field kFields_02D3[] = {
+inline constexpr Field kFields_L015F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1817},
+    {"Flags", 1, 1, 0x0204, 1818},
+    {"Condition", 2, 1, 0x0104, 1819},
+    {"WeaponLevelMin", 3, 1, 0x0000, 726},
+    {"On", 4, 2, 0x0008, 7091},
+    {"Off", 6, 2, 0x0008, 7092},
+};
+
+inline constexpr Field kFields_L015F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1820},
+    {"ScriptName", 16, 8, 0x0010, 443},
+};
+
+inline constexpr Field kFields_L015F_S02D3[] = {
     {"Field1", 24, 4, 0x0000, 727},
     {"Field2", 28, 4, 0x0000, 728},
     {"SendToUI", 32, 1, 0x0000, 729},
     {"LocalOnly", 33, 1, 0x0000, 730},
 };
 
-inline constexpr Field kFields_02D4[] = {
+inline constexpr Field kFields_L0160_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1821},
+    {"Flags", 1, 1, 0x0204, 1822},
+    {"Condition", 2, 1, 0x0104, 1823},
+    {"WeaponLevelMin", 3, 1, 0x0000, 731},
+    {"On", 4, 2, 0x0008, 7093},
+    {"Off", 6, 2, 0x0008, 7094},
+};
+
+inline constexpr Field kFields_L0160_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1824},
+    {"ScriptName", 16, 8, 0x0010, 444},
+};
+
+inline constexpr Field kFields_L0160_S02D4[] = {
     {"BranchName", 24, 8, 0x0010, 0},
     {"Duration", 32, 4, 0x0008, 7095},
     {"Timer", 36, 1, 0x0000, 732},
     {"CancelCurrent", 37, 1, 0x0000, 733},
 };
 
-inline constexpr Field kFields_02D5[] = {
+inline constexpr Field kFields_L0161_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1825},
+    {"Flags", 1, 1, 0x0204, 1826},
+    {"Condition", 2, 1, 0x0104, 1827},
+    {"WeaponLevelMin", 3, 1, 0x0000, 734},
+    {"On", 4, 2, 0x0008, 7096},
+    {"Off", 6, 2, 0x0008, 7097},
+};
+
+inline constexpr Field kFields_L0161_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1828},
+    {"ScriptName", 16, 8, 0x0010, 445},
+};
+
+inline constexpr Field kFields_L0161_S02D5[] = {
     {"Timer", 24, 1, 0x0000, 735},
 };
 
-inline constexpr Field kFields_02D6[] = {
+inline constexpr Field kFields_L0162_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1829},
+    {"Flags", 1, 1, 0x0204, 1830},
+    {"Condition", 2, 1, 0x0104, 1831},
+    {"WeaponLevelMin", 3, 1, 0x0000, 736},
+    {"On", 4, 2, 0x0008, 7098},
+    {"Off", 6, 2, 0x0008, 7099},
+};
+
+inline constexpr Field kFields_L0162_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1832},
+    {"ScriptName", 16, 8, 0x0010, 446},
+};
+
+inline constexpr Field kFields_L0162_S02D6[] = {
     {"HeroJoint", 24, 8, 0x0010, 447},
     {"Joint", 32, 8, 0x0010, 448},
 };
 
-inline constexpr Field kFields_02D7[] = {
+inline constexpr Field kFields_L0163_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1833},
+    {"Flags", 1, 1, 0x0204, 1834},
+    {"Condition", 2, 1, 0x0104, 1835},
+    {"WeaponLevelMin", 3, 1, 0x0000, 737},
+    {"On", 4, 2, 0x0008, 7100},
+    {"Off", 6, 2, 0x0008, 7101},
+};
+
+inline constexpr Field kFields_L0163_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1836},
+    {"ScriptName", 16, 8, 0x0010, 449},
+};
+
+inline constexpr Field kFields_L0163_S02D7[] = {
     {"Reason", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_02D8[] = {
+inline constexpr Field kFields_L0164_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1837},
+    {"Flags", 1, 1, 0x0204, 1838},
+    {"Condition", 2, 1, 0x0104, 1839},
+    {"WeaponLevelMin", 3, 1, 0x0000, 738},
+    {"On", 4, 2, 0x0008, 7102},
+    {"Off", 6, 2, 0x0008, 7103},
+};
+
+inline constexpr Field kFields_L0164_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1840},
+    {"ScriptName", 16, 8, 0x0010, 450},
+};
+
+inline constexpr Field kFields_L0164_S02D8[] = {
     {"Reason", 24, 8, 0x0010, 0},
     {"Immediate", 32, 1, 0x0014, 1665},
     {"Interruptable", 33, 1, 0x0014, 1666},
 };
 
-inline constexpr Field kFields_02DA[] = {
+inline constexpr Field kFields_L0165_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1841},
+    {"Flags", 1, 1, 0x0204, 1842},
+    {"Condition", 2, 1, 0x0104, 1843},
+    {"WeaponLevelMin", 3, 1, 0x0000, 739},
+    {"On", 4, 2, 0x0008, 7104},
+    {"Off", 6, 2, 0x0008, 7105},
+};
+
+inline constexpr Field kFields_L0165_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1844},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L0166_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1845},
+    {"Flags", 1, 1, 0x0204, 1846},
+    {"Condition", 2, 1, 0x0104, 1847},
+    {"WeaponLevelMin", 3, 1, 0x0000, 740},
+    {"On", 4, 2, 0x0008, 7106},
+    {"Off", 6, 2, 0x0008, 7107},
+};
+
+inline constexpr Field kFields_L0166_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1848},
+    {"ScriptName", 16, 8, 0x0010, 451},
+};
+
+inline constexpr Field kFields_L0166_S02DA[] = {
     {"SourceJoint", 24, 8, 0x0010, 452},
     {"TargetJoint", 32, 8, 0x0010, 453},
     {"AlignMode", 40, 1, 0x0104, 1849},
 };
 
-inline constexpr Field kFields_02DC[] = {
+inline constexpr Field kFields_L0167_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1850},
+    {"Flags", 1, 1, 0x0204, 1851},
+    {"Condition", 2, 1, 0x0104, 1852},
+    {"WeaponLevelMin", 3, 1, 0x0000, 741},
+    {"On", 4, 2, 0x0008, 7108},
+    {"Off", 6, 2, 0x0008, 7109},
+};
+
+inline constexpr Field kFields_L0167_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1853},
+    {"ScriptName", 16, 8, 0x0010, 454},
+};
+
+inline constexpr Field kFields_L0167_S02DA[] = {
+    {"SourceJoint", 24, 8, 0x0010, 455},
+    {"TargetJoint", 32, 8, 0x0010, 456},
+    {"AlignMode", 40, 1, 0x0104, 1854},
+};
+
+inline constexpr Field kFields_L0168_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1855},
+    {"Flags", 1, 1, 0x0204, 1856},
+    {"Condition", 2, 1, 0x0104, 1857},
+    {"WeaponLevelMin", 3, 1, 0x0000, 742},
+    {"On", 4, 2, 0x0008, 7110},
+    {"Off", 6, 2, 0x0008, 7111},
+};
+
+inline constexpr Field kFields_L0168_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1858},
+    {"ScriptName", 16, 8, 0x0010, 457},
+};
+
+inline constexpr Field kFields_L0168_S02DA[] = {
+    {"SourceJoint", 24, 8, 0x0010, 458},
+    {"TargetJoint", 32, 8, 0x0010, 459},
+    {"AlignMode", 40, 1, 0x0104, 1859},
+};
+
+inline constexpr Field kFields_L0168_S02DC[] = {
     {"ID", 48, 8, 0x0010, 0},
     {"Radius", 56, 4, 0x0008, 7112},
 };
 
-inline constexpr Field kFields_02DD[] = {
+inline constexpr Field kFields_L0169_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1860},
+    {"Flags", 1, 1, 0x0204, 1861},
+    {"Condition", 2, 1, 0x0104, 1862},
+    {"WeaponLevelMin", 3, 1, 0x0000, 743},
+    {"On", 4, 2, 0x0008, 7113},
+    {"Off", 6, 2, 0x0008, 7114},
+};
+
+inline constexpr Field kFields_L0169_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1863},
+    {"ScriptName", 16, 8, 0x0010, 460},
+};
+
+inline constexpr Field kFields_L0169_S02DD[] = {
     {"MaterialAnimName", 24, 8, 0x0010, 0},
     {"ExitAnimName", 32, 8, 0x0010, 0},
     {"TargetObjectName", 40, 8, 0x0010, 0},
@@ -8074,7 +13340,49 @@ inline constexpr Field kFields_02DD[] = {
     {"TargetObjectType", 54, 1, 0x0104, 1865},
 };
 
-inline constexpr Field kFields_02E0[] = {
+inline constexpr Field kFields_L016A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1866},
+    {"Flags", 1, 1, 0x0204, 1867},
+    {"Condition", 2, 1, 0x0104, 1868},
+    {"WeaponLevelMin", 3, 1, 0x0000, 744},
+    {"On", 4, 2, 0x0008, 7116},
+    {"Off", 6, 2, 0x0008, 7117},
+};
+
+inline constexpr Field kFields_L016A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1869},
+    {"ScriptName", 16, 8, 0x0010, 461},
+};
+
+inline constexpr Field kFields_L016B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1870},
+    {"Flags", 1, 1, 0x0204, 1871},
+    {"Condition", 2, 1, 0x0104, 1872},
+    {"WeaponLevelMin", 3, 1, 0x0000, 745},
+    {"On", 4, 2, 0x0008, 7118},
+    {"Off", 6, 2, 0x0008, 7119},
+};
+
+inline constexpr Field kFields_L016B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1873},
+    {"ScriptName", 16, 8, 0x0010, 462},
+};
+
+inline constexpr Field kFields_L016C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1874},
+    {"Flags", 1, 1, 0x0204, 1875},
+    {"Condition", 2, 1, 0x0104, 1876},
+    {"WeaponLevelMin", 3, 1, 0x0000, 746},
+    {"On", 4, 2, 0x0008, 7120},
+    {"Off", 6, 2, 0x0008, 7121},
+};
+
+inline constexpr Field kFields_L016C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1877},
+    {"ScriptName", 16, 8, 0x0010, 463},
+};
+
+inline constexpr Field kFields_L016C_S02E0[] = {
     {"BroadcastContext", 24, 8, 0x0010, 0},
     {"FilterData", 32, 12, 0x0024, 408},
     {"FilterFlags", 44, 1, 0x0204, 1878},
@@ -8082,37 +13390,135 @@ inline constexpr Field kFields_02E0[] = {
     {"MaxReactions", 46, 1, 0x0000, 747},
 };
 
-inline constexpr Field kFields_02E1[] = {
+inline constexpr Field kFields_L016D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1880},
+    {"Flags", 1, 1, 0x0204, 1881},
+    {"Condition", 2, 1, 0x0104, 1882},
+    {"WeaponLevelMin", 3, 1, 0x0000, 748},
+    {"On", 4, 2, 0x0008, 7122},
+    {"Off", 6, 2, 0x0008, 7123},
+};
+
+inline constexpr Field kFields_L016D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1883},
+    {"ScriptName", 16, 8, 0x0010, 464},
+};
+
+inline constexpr Field kFields_L016D_S02E1[] = {
     {"EventName", 24, 8, 0x0010, 0},
     {"Target", 32, 1, 0x0104, 1884},
     {"EnemyID", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_02E2[] = {
+inline constexpr Field kFields_L016E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1885},
+    {"Flags", 1, 1, 0x0204, 1886},
+    {"Condition", 2, 1, 0x0104, 1887},
+    {"WeaponLevelMin", 3, 1, 0x0000, 749},
+    {"On", 4, 2, 0x0008, 7124},
+    {"Off", 6, 2, 0x0008, 7125},
+};
+
+inline constexpr Field kFields_L016E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1888},
+    {"ScriptName", 16, 8, 0x0010, 465},
+};
+
+inline constexpr Field kFields_L016E_S02E2[] = {
     {"LeanFactor", 24, 4, 0x0008, 7126},
     {"Damping", 28, 4, 0x0008, 7127},
 };
 
-inline constexpr Field kFields_02E4[] = {
+inline constexpr Field kFields_L016F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1889},
+    {"Flags", 1, 1, 0x0204, 1890},
+    {"Condition", 2, 1, 0x0104, 1891},
+    {"WeaponLevelMin", 3, 1, 0x0000, 750},
+    {"On", 4, 2, 0x0008, 7128},
+    {"Off", 6, 2, 0x0008, 7129},
+};
+
+inline constexpr Field kFields_L016F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1892},
+    {"ScriptName", 16, 8, 0x0010, 466},
+};
+
+inline constexpr Field kFields_L0170_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1893},
+    {"Flags", 1, 1, 0x0204, 1894},
+    {"Condition", 2, 1, 0x0104, 1895},
+    {"WeaponLevelMin", 3, 1, 0x0000, 751},
+    {"On", 4, 2, 0x0008, 7130},
+    {"Off", 6, 2, 0x0008, 7131},
+};
+
+inline constexpr Field kFields_L0170_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1896},
+    {"ScriptName", 16, 8, 0x0010, 467},
+};
+
+inline constexpr Field kFields_L0170_S02E4[] = {
     {"CreatureName", 24, 8, 0x0018, 0},
     {"InitialBranch", 32, 8, 0x0010, 0},
     {"SpawnJoint", 40, 8, 0x0010, 468},
     {"Heap", 48, 4, 0x0000, 752},
 };
 
-inline constexpr Field kFields_02E5[] = {
+inline constexpr Field kFields_L0171_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1897},
+    {"Flags", 1, 1, 0x0204, 1898},
+    {"Condition", 2, 1, 0x0104, 1899},
+    {"WeaponLevelMin", 3, 1, 0x0000, 753},
+    {"On", 4, 2, 0x0008, 7132},
+    {"Off", 6, 2, 0x0008, 7133},
+};
+
+inline constexpr Field kFields_L0171_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1900},
+    {"ScriptName", 16, 8, 0x0010, 469},
+};
+
+inline constexpr Field kFields_L0171_S02E5[] = {
     {"PlayFXList", 24, 8, 0x001C, 273},
     {"EffectSourceJoint", 32, 8, 0x0010, 470},
     {"EffectTargetJoint", 40, 8, 0x0010, 471},
     {"TargetJointID", 48, 1, 0x0000, 754},
 };
 
-inline constexpr Field kFields_02E6[] = {
+inline constexpr Field kFields_L0172_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1901},
+    {"Flags", 1, 1, 0x0204, 1902},
+    {"Condition", 2, 1, 0x0104, 1903},
+    {"WeaponLevelMin", 3, 1, 0x0000, 755},
+    {"On", 4, 2, 0x0008, 7134},
+    {"Off", 6, 2, 0x0008, 7135},
+};
+
+inline constexpr Field kFields_L0172_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1904},
+    {"ScriptName", 16, 8, 0x0010, 472},
+};
+
+inline constexpr Field kFields_L0172_S02E6[] = {
     {"AttachmentModeFlags", 24, 4, 0x0204, 1905},
     {"TargetJoint", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_02E7[] = {
+inline constexpr Field kFields_L0173_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1906},
+    {"Flags", 1, 1, 0x0204, 1907},
+    {"Condition", 2, 1, 0x0104, 1908},
+    {"WeaponLevelMin", 3, 1, 0x0000, 756},
+    {"On", 4, 2, 0x0008, 7136},
+    {"Off", 6, 2, 0x0008, 7137},
+};
+
+inline constexpr Field kFields_L0173_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1909},
+    {"ScriptName", 16, 8, 0x0010, 473},
+};
+
+inline constexpr Field kFields_L0173_S02E7[] = {
     {"Amplitude", 24, 4, 0x0008, 7138},
     {"FadeOutTime", 28, 4, 0x0008, 7139},
     {"ForceDuration", 32, 4, 0x0008, 7140},
@@ -8123,7 +13529,21 @@ inline constexpr Field kFields_02E7[] = {
     {"EnableOnPS5", 43, 1, 0x0014, 1668},
 };
 
-inline constexpr Field kFields_02E8[] = {
+inline constexpr Field kFields_L0174_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1913},
+    {"Flags", 1, 1, 0x0204, 1914},
+    {"Condition", 2, 1, 0x0104, 1915},
+    {"WeaponLevelMin", 3, 1, 0x0000, 757},
+    {"On", 4, 2, 0x0008, 7142},
+    {"Off", 6, 2, 0x0008, 7143},
+};
+
+inline constexpr Field kFields_L0174_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1916},
+    {"ScriptName", 16, 8, 0x0010, 474},
+};
+
+inline constexpr Field kFields_L0174_S02E8[] = {
     {"EnableList", 24, 12, 0x0024, 409},
     {"HideList", 40, 12, 0x0024, 410},
     {"ShowList", 56, 12, 0x0024, 411},
@@ -8133,7 +13553,21 @@ inline constexpr Field kFields_02E8[] = {
     {"ChainHideList", 120, 12, 0x0024, 415},
 };
 
-inline constexpr Field kFields_02E9[] = {
+inline constexpr Field kFields_L0175_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1924},
+    {"Flags", 1, 1, 0x0204, 1925},
+    {"Condition", 2, 1, 0x0104, 1926},
+    {"WeaponLevelMin", 3, 1, 0x0000, 758},
+    {"On", 4, 2, 0x0008, 7144},
+    {"Off", 6, 2, 0x0008, 7145},
+};
+
+inline constexpr Field kFields_L0175_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1927},
+    {"ScriptName", 16, 8, 0x0010, 475},
+};
+
+inline constexpr Field kFields_L0175_S02E9[] = {
     {"WeaponType", 24, 4, 0x0000, 759},
     {"AttachmentName", 32, 8, 0x0010, 0},
     {"AttachMode", 40, 8, 0x0010, 0},
@@ -8144,7 +13578,7 @@ inline constexpr Field kFields_02E9[] = {
     {"ForceScaleOnExit", 61, 1, 0x0014, 1670},
 };
 
-inline constexpr Field kFields_02EA[] = {
+inline constexpr Field kFields_L0175_S02EA[] = {
     {"WeaponType", 0, 4, 0x0000, 760},
     {"SwitchMoveType", 4, 1, 0x0104, 1928},
     {"SwitchPercentage", 6, 2, 0x0008, 7149},
@@ -8152,48 +13586,188 @@ inline constexpr Field kFields_02EA[] = {
     {"StopScaleWeapon", 10, 2, 0x0008, 7151},
 };
 
-inline constexpr Field kFields_02EB[] = {
+inline constexpr Field kFields_L0176_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1929},
+    {"Flags", 1, 1, 0x0204, 1930},
+    {"Condition", 2, 1, 0x0104, 1931},
+    {"WeaponLevelMin", 3, 1, 0x0000, 761},
+    {"On", 4, 2, 0x0008, 7152},
+    {"Off", 6, 2, 0x0008, 7153},
+};
+
+inline constexpr Field kFields_L0176_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1932},
+    {"ScriptName", 16, 8, 0x0010, 476},
+};
+
+inline constexpr Field kFields_L0176_S02EB[] = {
     {"SwitchWeapon", 24, 8, 0x001C, 746},
 };
 
-inline constexpr Field kFields_02EC[] = {
+inline constexpr Field kFields_L0177_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1933},
+    {"Flags", 1, 1, 0x0204, 1934},
+    {"Condition", 2, 1, 0x0104, 1935},
+    {"WeaponLevelMin", 3, 1, 0x0000, 762},
+    {"On", 4, 2, 0x0008, 7154},
+    {"Off", 6, 2, 0x0008, 7155},
+};
+
+inline constexpr Field kFields_L0177_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1936},
+    {"ScriptName", 16, 8, 0x0010, 477},
+};
+
+inline constexpr Field kFields_L0177_S02EC[] = {
     {"SwitchWeapon", 24, 8, 0x001C, 746},
 };
 
-inline constexpr Field kFields_02ED[] = {
+inline constexpr Field kFields_L0178_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1937},
+    {"Flags", 1, 1, 0x0204, 1938},
+    {"Condition", 2, 1, 0x0104, 1939},
+    {"WeaponLevelMin", 3, 1, 0x0000, 763},
+    {"On", 4, 2, 0x0008, 7156},
+    {"Off", 6, 2, 0x0008, 7157},
+};
+
+inline constexpr Field kFields_L0178_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1940},
+    {"ScriptName", 16, 8, 0x0010, 478},
+};
+
+inline constexpr Field kFields_L0178_S02ED[] = {
     {"WeaponType", 24, 4, 0x0000, 764},
     {"Scale", 28, 4, 0x0008, 7158},
     {"BlendInEnd", 32, 2, 0x0008, 7159},
     {"BlendOutStart", 34, 2, 0x0008, 7160},
 };
 
-inline constexpr Field kFields_02EE[] = {
+inline constexpr Field kFields_L0179_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1941},
+    {"Flags", 1, 1, 0x0204, 1942},
+    {"Condition", 2, 1, 0x0104, 1943},
+    {"WeaponLevelMin", 3, 1, 0x0000, 765},
+    {"On", 4, 2, 0x0008, 7161},
+    {"Off", 6, 2, 0x0008, 7162},
+};
+
+inline constexpr Field kFields_L0179_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1944},
+    {"ScriptName", 16, 8, 0x0010, 479},
+};
+
+inline constexpr Field kFields_L0179_S02EE[] = {
     {"ActiveJointName", 24, 8, 0x0010, 0},
     {"StowJointName", 32, 8, 0x0010, 0},
     {"WeaponType", 40, 4, 0x0000, 766},
     {"Persist", 44, 1, 0x0014, 1671},
 };
 
-inline constexpr Field kFields_02F0[] = {
+inline constexpr Field kFields_L017A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1945},
+    {"Flags", 1, 1, 0x0204, 1946},
+    {"Condition", 2, 1, 0x0104, 1947},
+    {"WeaponLevelMin", 3, 1, 0x0000, 767},
+    {"On", 4, 2, 0x0008, 7163},
+    {"Off", 6, 2, 0x0008, 7164},
+};
+
+inline constexpr Field kFields_L017A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1948},
+    {"ScriptName", 16, 8, 0x0010, 480},
+};
+
+inline constexpr Field kFields_L017B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1949},
+    {"Flags", 1, 1, 0x0204, 1950},
+    {"Condition", 2, 1, 0x0104, 1951},
+    {"WeaponLevelMin", 3, 1, 0x0000, 768},
+    {"On", 4, 2, 0x0008, 7165},
+    {"Off", 6, 2, 0x0008, 7166},
+};
+
+inline constexpr Field kFields_L017B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1952},
+    {"ScriptName", 16, 8, 0x0010, 481},
+};
+
+inline constexpr Field kFields_L017B_S02F0[] = {
     {"WeaponType", 24, 4, 0x0000, 769},
 };
 
-inline constexpr Field kFields_02F1[] = {
+inline constexpr Field kFields_L017C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1953},
+    {"Flags", 1, 1, 0x0204, 1954},
+    {"Condition", 2, 1, 0x0104, 1955},
+    {"WeaponLevelMin", 3, 1, 0x0000, 770},
+    {"On", 4, 2, 0x0008, 7167},
+    {"Off", 6, 2, 0x0008, 7168},
+};
+
+inline constexpr Field kFields_L017C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1956},
+    {"ScriptName", 16, 8, 0x0010, 482},
+};
+
+inline constexpr Field kFields_L017C_S02F1[] = {
     {"WeaponType", 24, 4, 0x0000, 771},
     {"Move", 32, 8, 0x001C, 1283},
 };
 
-inline constexpr Field kFields_02F2[] = {
+inline constexpr Field kFields_L017D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1957},
+    {"Flags", 1, 1, 0x0204, 1958},
+    {"Condition", 2, 1, 0x0104, 1959},
+    {"WeaponLevelMin", 3, 1, 0x0000, 772},
+    {"On", 4, 2, 0x0008, 7169},
+    {"Off", 6, 2, 0x0008, 7170},
+};
+
+inline constexpr Field kFields_L017D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1960},
+    {"ScriptName", 16, 8, 0x0010, 483},
+};
+
+inline constexpr Field kFields_L017D_S02F2[] = {
     {"WeaponType", 24, 4, 0x0000, 773},
     {"PauseDefaultTimer", 28, 1, 0x0014, 1672},
     {"Persist", 29, 1, 0x0014, 1673},
 };
 
-inline constexpr Field kFields_02F3[] = {
+inline constexpr Field kFields_L017E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1961},
+    {"Flags", 1, 1, 0x0204, 1962},
+    {"Condition", 2, 1, 0x0104, 1963},
+    {"WeaponLevelMin", 3, 1, 0x0000, 774},
+    {"On", 4, 2, 0x0008, 7171},
+    {"Off", 6, 2, 0x0008, 7172},
+};
+
+inline constexpr Field kFields_L017E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1964},
+    {"ScriptName", 16, 8, 0x0010, 484},
+};
+
+inline constexpr Field kFields_L017E_S02F3[] = {
     {"WeaponType", 24, 4, 0x0000, 775},
 };
 
-inline constexpr Field kFields_02F4[] = {
+inline constexpr Field kFields_L017F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1965},
+    {"Flags", 1, 1, 0x0204, 1966},
+    {"Condition", 2, 1, 0x0104, 1967},
+    {"WeaponLevelMin", 3, 1, 0x0000, 776},
+    {"On", 4, 2, 0x0008, 7173},
+    {"Off", 6, 2, 0x0008, 7174},
+};
+
+inline constexpr Field kFields_L017F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1968},
+    {"ScriptName", 16, 8, 0x0010, 485},
+};
+
+inline constexpr Field kFields_L017F_S02F4[] = {
     {"NonCreatureDetonationTiming", 24, 0, 0x002C, 1518},
     {"CreatureDetonationTiming", 44, 0, 0x002C, 1518},
     {"EnvironmentConcussionList", 64, 12, 0x0024, 416},
@@ -8210,7 +13784,21 @@ inline constexpr Field kFields_02F4[] = {
     {"SpawnShrapnelCount", 116, 1, 0x0000, 778},
 };
 
-inline constexpr Field kFields_02F5[] = {
+inline constexpr Field kFields_L0180_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1971},
+    {"Flags", 1, 1, 0x0204, 1972},
+    {"Condition", 2, 1, 0x0104, 1973},
+    {"WeaponLevelMin", 3, 1, 0x0000, 779},
+    {"On", 4, 2, 0x0008, 7188},
+    {"Off", 6, 2, 0x0008, 7189},
+};
+
+inline constexpr Field kFields_L0180_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1974},
+    {"ScriptName", 16, 8, 0x0010, 486},
+};
+
+inline constexpr Field kFields_L0180_S02F5[] = {
     {"WeaponType", 24, 4, 0x0000, 780},
     {"MaxSecondsSinceHit", 28, 4, 0x0008, 7190},
     {"EmbedTime", 32, 2, 0x0008, 7191},
@@ -8219,7 +13807,21 @@ inline constexpr Field kFields_02F5[] = {
     {"EmbedFlags", 44, 1, 0x0204, 1975},
 };
 
-inline constexpr Field kFields_02F6[] = {
+inline constexpr Field kFields_L0181_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1976},
+    {"Flags", 1, 1, 0x0204, 1977},
+    {"Condition", 2, 1, 0x0104, 1978},
+    {"WeaponLevelMin", 3, 1, 0x0000, 781},
+    {"On", 4, 2, 0x0008, 7194},
+    {"Off", 6, 2, 0x0008, 7195},
+};
+
+inline constexpr Field kFields_L0181_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1979},
+    {"ScriptName", 16, 8, 0x0010, 487},
+};
+
+inline constexpr Field kFields_L0181_S02F6[] = {
     {"HandJointName", 24, 8, 0x0010, 488},
     {"WeaponType", 32, 4, 0x0000, 782},
     {"MaxSecondsSinceHit", 36, 4, 0x0008, 7196},
@@ -8228,14 +13830,42 @@ inline constexpr Field kFields_02F6[] = {
     {"EmbedFlags", 46, 1, 0x0204, 1980},
 };
 
-inline constexpr Field kFields_02F7[] = {
+inline constexpr Field kFields_L0182_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1981},
+    {"Flags", 1, 1, 0x0204, 1982},
+    {"Condition", 2, 1, 0x0104, 1983},
+    {"WeaponLevelMin", 3, 1, 0x0000, 783},
+    {"On", 4, 2, 0x0008, 7199},
+    {"Off", 6, 2, 0x0008, 7200},
+};
+
+inline constexpr Field kFields_L0182_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1984},
+    {"ScriptName", 16, 8, 0x0010, 489},
+};
+
+inline constexpr Field kFields_L0182_S02F7[] = {
     {"EmbedJointName", 24, 8, 0x0010, 0},
     {"TransitionJointName", 32, 8, 0x0010, 0},
     {"WeaponType", 40, 4, 0x0000, 784},
     {"TransitionStartTime", 44, 2, 0x0008, 7201},
 };
 
-inline constexpr Field kFields_02F8[] = {
+inline constexpr Field kFields_L0183_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1985},
+    {"Flags", 1, 1, 0x0204, 1986},
+    {"Condition", 2, 1, 0x0104, 1987},
+    {"WeaponLevelMin", 3, 1, 0x0000, 785},
+    {"On", 4, 2, 0x0008, 7202},
+    {"Off", 6, 2, 0x0008, 7203},
+};
+
+inline constexpr Field kFields_L0183_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1988},
+    {"ScriptName", 16, 8, 0x0010, 490},
+};
+
+inline constexpr Field kFields_L0183_S02F8[] = {
     {"WeaponType", 24, 4, 0x0000, 786},
     {"EmbedJointName", 32, 8, 0x0010, 0},
     {"DepthOffset", 40, 4, 0x0008, 7204},
@@ -8243,7 +13873,21 @@ inline constexpr Field kFields_02F8[] = {
     {"DepthBlendEnd", 46, 2, 0x0008, 7206},
 };
 
-inline constexpr Field kFields_02F9[] = {
+inline constexpr Field kFields_L0184_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1989},
+    {"Flags", 1, 1, 0x0204, 1990},
+    {"Condition", 2, 1, 0x0104, 1991},
+    {"WeaponLevelMin", 3, 1, 0x0000, 787},
+    {"On", 4, 2, 0x0008, 7207},
+    {"Off", 6, 2, 0x0008, 7208},
+};
+
+inline constexpr Field kFields_L0184_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1992},
+    {"ScriptName", 16, 8, 0x0010, 491},
+};
+
+inline constexpr Field kFields_L0184_S02F9[] = {
     {"EmbedJointName", 24, 8, 0x0010, 0},
     {"Position", 32, 0, 0x002C, 6},
     {"Rotation", 38, 0, 0x002C, 6},
@@ -8253,26 +13897,54 @@ inline constexpr Field kFields_02F9[] = {
     {"EmbedTime", 60, 2, 0x0008, 7221},
 };
 
-inline constexpr Field kFields_02FA[] = {
+inline constexpr Field kFields_L0185_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1993},
+    {"Flags", 1, 1, 0x0204, 1994},
+    {"Condition", 2, 1, 0x0104, 1995},
+    {"WeaponLevelMin", 3, 1, 0x0000, 789},
+    {"On", 4, 2, 0x0008, 7222},
+    {"Off", 6, 2, 0x0008, 7223},
+};
+
+inline constexpr Field kFields_L0185_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 1996},
+    {"ScriptName", 16, 8, 0x0010, 492},
+};
+
+inline constexpr Field kFields_L0185_S02FA[] = {
     {"WeaponType", 24, 4, 0x0000, 790},
 };
 
-inline constexpr Field kFields_02FB[] = {
+inline constexpr Field kFields_L0186_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 1997},
+    {"Flags", 1, 1, 0x0204, 1998},
+    {"Condition", 2, 1, 0x0104, 1999},
+    {"WeaponLevelMin", 3, 1, 0x0000, 791},
+    {"On", 4, 2, 0x0008, 7224},
+    {"Off", 6, 2, 0x0008, 7225},
+};
+
+inline constexpr Field kFields_L0186_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2000},
+    {"ScriptName", 16, 8, 0x0010, 493},
+};
+
+inline constexpr Field kFields_L0186_S02FB[] = {
     {"SnapFlags", 24, 1, 0x0204, 2001},
 };
 
-inline constexpr Field kFields_02FC[] = {
+inline constexpr Field kFields_L0186_S02FC[] = {
     {"SubObjectName", 0, 8, 0x0010, 0},
     {"JointName", 8, 8, 0x0010, 0},
     {"UseTarget", 16, 1, 0x0014, 1676},
 };
 
-inline constexpr Field kFields_02FD[] = {
+inline constexpr Field kFields_L0186_S02FD[] = {
     {"JointNames", 0, 12, 0x0024, 418},
     {"IsTargeting", 12, 1, 0x0014, 1677},
 };
 
-inline constexpr Field kFields_02FE[] = {
+inline constexpr Field kFields_L0186_S02FE[] = {
     {"ParentJoint", 0, 0, 0x002C, 764},
     {"ChildJoint", 24, 0, 0x002C, 764},
     {"JointOffset", 48, 0, 0x002C, 6},
@@ -8281,17 +13953,59 @@ inline constexpr Field kFields_02FE[] = {
     {"TweenOutTime", 68, 4, 0x0008, 7230},
 };
 
-inline constexpr Field kFields_02FF[] = {
+inline constexpr Field kFields_L0187_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2002},
+    {"Flags", 1, 1, 0x0204, 2003},
+    {"Condition", 2, 1, 0x0104, 2004},
+    {"WeaponLevelMin", 3, 1, 0x0000, 792},
+    {"On", 4, 2, 0x0008, 7231},
+    {"Off", 6, 2, 0x0008, 7232},
+};
+
+inline constexpr Field kFields_L0187_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2005},
+    {"ScriptName", 16, 8, 0x0010, 494},
+};
+
+inline constexpr Field kFields_L0187_S02FF[] = {
     {"SnapData", 24, 8, 0x001C, 766},
 };
 
-inline constexpr Field kFields_0300[] = {
+inline constexpr Field kFields_L0188_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2006},
+    {"Flags", 1, 1, 0x0204, 2007},
+    {"Condition", 2, 1, 0x0104, 2008},
+    {"WeaponLevelMin", 3, 1, 0x0000, 793},
+    {"On", 4, 2, 0x0008, 7233},
+    {"Off", 6, 2, 0x0008, 7234},
+};
+
+inline constexpr Field kFields_L0188_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2009},
+    {"ScriptName", 16, 8, 0x0010, 495},
+};
+
+inline constexpr Field kFields_L0188_S0300[] = {
     {"AttachName", 24, 8, 0x0010, 0},
     {"WeaponType", 32, 4, 0x0000, 794},
     {"ThrowMode", 40, 8, 0x001C, 423},
 };
 
-inline constexpr Field kFields_0301[] = {
+inline constexpr Field kFields_L0189_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2010},
+    {"Flags", 1, 1, 0x0204, 2011},
+    {"Condition", 2, 1, 0x0104, 2012},
+    {"WeaponLevelMin", 3, 1, 0x0000, 795},
+    {"On", 4, 2, 0x0008, 7235},
+    {"Off", 6, 2, 0x0008, 7236},
+};
+
+inline constexpr Field kFields_L0189_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2013},
+    {"ScriptName", 16, 8, 0x0010, 496},
+};
+
+inline constexpr Field kFields_L0189_S0301[] = {
     {"AttachName", 24, 8, 0x0010, 0},
     {"WeaponType", 32, 12, 0x0024, 419},
     {"DropMode", 44, 1, 0x0104, 2014},
@@ -8300,29 +14014,141 @@ inline constexpr Field kFields_0301[] = {
     {"HoldTime", 52, 4, 0x0008, 7237},
 };
 
-inline constexpr Field kFields_0302[] = {
+inline constexpr Field kFields_L018A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2015},
+    {"Flags", 1, 1, 0x0204, 2016},
+    {"Condition", 2, 1, 0x0104, 2017},
+    {"WeaponLevelMin", 3, 1, 0x0000, 798},
+    {"On", 4, 2, 0x0008, 7238},
+    {"Off", 6, 2, 0x0008, 7239},
+};
+
+inline constexpr Field kFields_L018A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2018},
+    {"ScriptName", 16, 8, 0x0010, 497},
+};
+
+inline constexpr Field kFields_L018A_S0302[] = {
     {"WeaponType", 24, 4, 0x0000, 799},
     {"AttachName", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0303[] = {
+inline constexpr Field kFields_L018B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2019},
+    {"Flags", 1, 1, 0x0204, 2020},
+    {"Condition", 2, 1, 0x0104, 2021},
+    {"WeaponLevelMin", 3, 1, 0x0000, 800},
+    {"On", 4, 2, 0x0008, 7240},
+    {"Off", 6, 2, 0x0008, 7241},
+};
+
+inline constexpr Field kFields_L018B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2022},
+    {"ScriptName", 16, 8, 0x0010, 498},
+};
+
+inline constexpr Field kFields_L018B_S0303[] = {
     {"WeaponMode", 24, 8, 0x0010, 0},
     {"Immediate", 32, 1, 0x0014, 1681},
     {"Interruptable", 33, 1, 0x0014, 1682},
 };
 
-inline constexpr Field kFields_0307[] = {
+inline constexpr Field kFields_L018C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2023},
+    {"Flags", 1, 1, 0x0204, 2024},
+    {"Condition", 2, 1, 0x0104, 2025},
+    {"WeaponLevelMin", 3, 1, 0x0000, 801},
+    {"On", 4, 2, 0x0008, 7242},
+    {"Off", 6, 2, 0x0008, 7243},
+};
+
+inline constexpr Field kFields_L018C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2026},
+    {"ScriptName", 16, 8, 0x0010, 499},
+};
+
+inline constexpr Field kFields_L018D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2027},
+    {"Flags", 1, 1, 0x0204, 2028},
+    {"Condition", 2, 1, 0x0104, 2029},
+    {"WeaponLevelMin", 3, 1, 0x0000, 802},
+    {"On", 4, 2, 0x0008, 7244},
+    {"Off", 6, 2, 0x0008, 7245},
+};
+
+inline constexpr Field kFields_L018D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2030},
+    {"ScriptName", 16, 8, 0x0010, 500},
+};
+
+inline constexpr Field kFields_L018E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2031},
+    {"Flags", 1, 1, 0x0204, 2032},
+    {"Condition", 2, 1, 0x0104, 2033},
+    {"WeaponLevelMin", 3, 1, 0x0000, 803},
+    {"On", 4, 2, 0x0008, 7246},
+    {"Off", 6, 2, 0x0008, 7247},
+};
+
+inline constexpr Field kFields_L018E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2034},
+    {"ScriptName", 16, 8, 0x0010, 501},
+};
+
+inline constexpr Field kFields_L018F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2035},
+    {"Flags", 1, 1, 0x0204, 2036},
+    {"Condition", 2, 1, 0x0104, 2037},
+    {"WeaponLevelMin", 3, 1, 0x0000, 804},
+    {"On", 4, 2, 0x0008, 7248},
+    {"Off", 6, 2, 0x0008, 7249},
+};
+
+inline constexpr Field kFields_L018F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2038},
+    {"ScriptName", 16, 8, 0x0010, 502},
+};
+
+inline constexpr Field kFields_L018F_S0307[] = {
     {"AttachName", 24, 8, 0x0010, 0},
     {"WeaponType", 32, 4, 0x0000, 805},
     {"PinAction", 36, 1, 0x0104, 2039},
 };
 
-inline constexpr Field kFields_0308[] = {
+inline constexpr Field kFields_L0190_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2040},
+    {"Flags", 1, 1, 0x0204, 2041},
+    {"Condition", 2, 1, 0x0104, 2042},
+    {"WeaponLevelMin", 3, 1, 0x0000, 806},
+    {"On", 4, 2, 0x0008, 7250},
+    {"Off", 6, 2, 0x0008, 7251},
+};
+
+inline constexpr Field kFields_L0190_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2043},
+    {"ScriptName", 16, 8, 0x0010, 503},
+};
+
+inline constexpr Field kFields_L0190_S0308[] = {
     {"CaughtAction", 24, 1, 0x0104, 2044},
     {"MaxActions", 28, 4, 0x0000, 807},
 };
 
-inline constexpr Field kFields_0309[] = {
+inline constexpr Field kFields_L0191_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2045},
+    {"Flags", 1, 1, 0x0204, 2046},
+    {"Condition", 2, 1, 0x0104, 2047},
+    {"WeaponLevelMin", 3, 1, 0x0000, 808},
+    {"On", 4, 2, 0x0008, 7252},
+    {"Off", 6, 2, 0x0008, 7253},
+};
+
+inline constexpr Field kFields_L0191_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2048},
+    {"ScriptName", 16, 8, 0x0010, 504},
+};
+
+inline constexpr Field kFields_L0191_S0309[] = {
     {"AttachName", 24, 8, 0x0010, 0},
     {"Group", 32, 8, 0x0010, 0},
     {"WeaponType", 40, 4, 0x0000, 809},
@@ -8334,7 +14160,21 @@ inline constexpr Field kFields_0309[] = {
     {"ReticleFlags", 64, 1, 0x0204, 2049},
 };
 
-inline constexpr Field kFields_030A[] = {
+inline constexpr Field kFields_L0192_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2050},
+    {"Flags", 1, 1, 0x0204, 2051},
+    {"Condition", 2, 1, 0x0104, 2052},
+    {"WeaponLevelMin", 3, 1, 0x0000, 810},
+    {"On", 4, 2, 0x0008, 7259},
+    {"Off", 6, 2, 0x0008, 7260},
+};
+
+inline constexpr Field kFields_L0192_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2053},
+    {"ScriptName", 16, 8, 0x0010, 505},
+};
+
+inline constexpr Field kFields_L0192_S030A[] = {
     {"WeaponType", 24, 4, 0x0000, 811},
     {"BaseWeaponData", 32, 8, 0x001C, 423},
     {"JointName", 40, 8, 0x0010, 0},
@@ -8343,7 +14183,21 @@ inline constexpr Field kFields_030A[] = {
     {"AngleBetweenTwoPoints", 60, 4, 0x0008, 7264},
 };
 
-inline constexpr Field kFields_030B[] = {
+inline constexpr Field kFields_L0193_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2054},
+    {"Flags", 1, 1, 0x0204, 2055},
+    {"Condition", 2, 1, 0x0104, 2056},
+    {"WeaponLevelMin", 3, 1, 0x0000, 813},
+    {"On", 4, 2, 0x0008, 7265},
+    {"Off", 6, 2, 0x0008, 7266},
+};
+
+inline constexpr Field kFields_L0193_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2057},
+    {"ScriptName", 16, 8, 0x0010, 506},
+};
+
+inline constexpr Field kFields_L0193_S030B[] = {
     {"Side", 24, 4, 0x0000, 814},
     {"GlowFlags", 28, 1, 0x0204, 2058},
     {"RampAlong", 32, 8, 0x001C, 287},
@@ -8357,7 +14211,21 @@ inline constexpr Field kFields_030B[] = {
     {"GlowEffectTint", 80, 0, 0x002C, 2},
 };
 
-inline constexpr Field kFields_030C[] = {
+inline constexpr Field kFields_L0194_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2059},
+    {"Flags", 1, 1, 0x0204, 2060},
+    {"Condition", 2, 1, 0x0104, 2061},
+    {"WeaponLevelMin", 3, 1, 0x0000, 815},
+    {"On", 4, 2, 0x0008, 7276},
+    {"Off", 6, 2, 0x0008, 7277},
+};
+
+inline constexpr Field kFields_L0194_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2062},
+    {"ScriptName", 16, 8, 0x0010, 507},
+};
+
+inline constexpr Field kFields_L0194_S030C[] = {
     {"RampAlong", 24, 8, 0x001C, 287},
     {"Tint", 32, 0, 0x002C, 2},
     {"ChainFX", 48, 8, 0x001C, 272},
@@ -8370,7 +14238,21 @@ inline constexpr Field kFields_030C[] = {
     {"FromBlade", 77, 1, 0x0014, 1683},
 };
 
-inline constexpr Field kFields_030D[] = {
+inline constexpr Field kFields_L0195_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2064},
+    {"Flags", 1, 1, 0x0204, 2065},
+    {"Condition", 2, 1, 0x0104, 2066},
+    {"WeaponLevelMin", 3, 1, 0x0000, 817},
+    {"On", 4, 2, 0x0008, 7286},
+    {"Off", 6, 2, 0x0008, 7287},
+};
+
+inline constexpr Field kFields_L0195_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2067},
+    {"ScriptName", 16, 8, 0x0010, 508},
+};
+
+inline constexpr Field kFields_L0195_S030D[] = {
     {"Side", 24, 4, 0x0000, 818},
     {"RotateAroundZ", 28, 4, 0x0008, 7288},
     {"Amplitude", 32, 4, 0x0008, 7289},
@@ -8379,32 +14261,120 @@ inline constexpr Field kFields_030D[] = {
     {"DecayTime", 44, 4, 0x0008, 7292},
 };
 
-inline constexpr Field kFields_030E[] = {
+inline constexpr Field kFields_L0196_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2068},
+    {"Flags", 1, 1, 0x0204, 2069},
+    {"Condition", 2, 1, 0x0104, 2070},
+    {"WeaponLevelMin", 3, 1, 0x0000, 819},
+    {"On", 4, 2, 0x0008, 7293},
+    {"Off", 6, 2, 0x0008, 7294},
+};
+
+inline constexpr Field kFields_L0196_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2071},
+    {"ScriptName", 16, 8, 0x0010, 509},
+};
+
+inline constexpr Field kFields_L0196_S030E[] = {
     {"ChainDriveList", 24, 12, 0x0024, 420},
     {"Side", 36, 4, 0x0000, 820},
 };
 
-inline constexpr Field kFields_030F[] = {
+inline constexpr Field kFields_L0197_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2072},
+    {"Flags", 1, 1, 0x0204, 2073},
+    {"Condition", 2, 1, 0x0104, 2074},
+    {"WeaponLevelMin", 3, 1, 0x0000, 821},
+    {"On", 4, 2, 0x0008, 7295},
+    {"Off", 6, 2, 0x0008, 7296},
+};
+
+inline constexpr Field kFields_L0197_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2075},
+    {"ScriptName", 16, 8, 0x0010, 510},
+};
+
+inline constexpr Field kFields_L0197_S030F[] = {
     {"Side", 24, 4, 0x0000, 822},
     {"ScaleGravity", 28, 4, 0x0008, 7297},
     {"EaseIn", 32, 4, 0x0008, 7298},
     {"ExtraSlack", 36, 4, 0x0008, 7299},
 };
 
-inline constexpr Field kFields_0310[] = {
+inline constexpr Field kFields_L0198_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2076},
+    {"Flags", 1, 1, 0x0204, 2077},
+    {"Condition", 2, 1, 0x0104, 2078},
+    {"WeaponLevelMin", 3, 1, 0x0000, 823},
+    {"On", 4, 2, 0x0008, 7300},
+    {"Off", 6, 2, 0x0008, 7301},
+};
+
+inline constexpr Field kFields_L0198_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2079},
+    {"ScriptName", 16, 8, 0x0010, 511},
+};
+
+inline constexpr Field kFields_L0198_S0310[] = {
     {"WeaponTrailData", 24, 8, 0x001C, 237},
 };
 
-inline constexpr Field kFields_0311[] = {
+inline constexpr Field kFields_L0199_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2080},
+    {"Flags", 1, 1, 0x0204, 2081},
+    {"Condition", 2, 1, 0x0104, 2082},
+    {"WeaponLevelMin", 3, 1, 0x0000, 824},
+    {"On", 4, 2, 0x0008, 7302},
+    {"Off", 6, 2, 0x0008, 7303},
+};
+
+inline constexpr Field kFields_L0199_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2083},
+    {"ScriptName", 16, 8, 0x0010, 512},
+};
+
+inline constexpr Field kFields_L0199_S0311[] = {
     {"WeaponType", 24, 4, 0x0000, 825},
     {"TrailType", 32, 8, 0x0010, 513},
 };
 
-inline constexpr Field kFields_0312[] = {
+inline constexpr Field kFields_L019A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2084},
+    {"Flags", 1, 1, 0x0204, 2085},
+    {"Condition", 2, 1, 0x0104, 2086},
+    {"WeaponLevelMin", 3, 1, 0x0000, 826},
+    {"On", 4, 2, 0x0008, 7304},
+    {"Off", 6, 2, 0x0008, 7305},
+};
+
+inline constexpr Field kFields_L019A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2087},
+    {"ScriptName", 16, 8, 0x0010, 514},
+};
+
+inline constexpr Field kFields_L019A_S0310[] = {
+    {"WeaponTrailData", 24, 8, 0x001C, 237},
+};
+
+inline constexpr Field kFields_L019A_S0312[] = {
     {"Side", 32, 4, 0x0000, 827},
 };
 
-inline constexpr Field kFields_0313[] = {
+inline constexpr Field kFields_L019B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2088},
+    {"Flags", 1, 1, 0x0204, 2089},
+    {"Condition", 2, 1, 0x0104, 2090},
+    {"WeaponLevelMin", 3, 1, 0x0000, 828},
+    {"On", 4, 2, 0x0008, 7306},
+    {"Off", 6, 2, 0x0008, 7307},
+};
+
+inline constexpr Field kFields_L019B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2091},
+    {"ScriptName", 16, 8, 0x0010, 515},
+};
+
+inline constexpr Field kFields_L019B_S0313[] = {
     {"Side", 24, 4, 0x0000, 829},
     {"EnableCollision", 28, 1, 0x0000, 830},
     {"AllowAnimBlending", 29, 1, 0x0000, 831},
@@ -8412,26 +14382,82 @@ inline constexpr Field kFields_0313[] = {
     {"HitProperties", 64, 8, 0x001C, 443},
 };
 
-inline constexpr Field kFields_0314[] = {
+inline constexpr Field kFields_L019C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2092},
+    {"Flags", 1, 1, 0x0204, 2093},
+    {"Condition", 2, 1, 0x0104, 2094},
+    {"WeaponLevelMin", 3, 1, 0x0000, 832},
+    {"On", 4, 2, 0x0008, 7313},
+    {"Off", 6, 2, 0x0008, 7314},
+};
+
+inline constexpr Field kFields_L019C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2095},
+    {"ScriptName", 16, 8, 0x0010, 516},
+};
+
+inline constexpr Field kFields_L019C_S0314[] = {
     {"Side", 24, 4, 0x0000, 833},
     {"EnableCollision", 28, 1, 0x0000, 834},
 };
 
-inline constexpr Field kFields_0315[] = {
+inline constexpr Field kFields_L019D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2096},
+    {"Flags", 1, 1, 0x0204, 2097},
+    {"Condition", 2, 1, 0x0104, 2098},
+    {"WeaponLevelMin", 3, 1, 0x0000, 835},
+    {"On", 4, 2, 0x0008, 7315},
+    {"Off", 6, 2, 0x0008, 7316},
+};
+
+inline constexpr Field kFields_L019D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2099},
+    {"ScriptName", 16, 8, 0x0010, 517},
+};
+
+inline constexpr Field kFields_L019D_S0315[] = {
     {"Side", 24, 4, 0x0000, 836},
     {"ChainDamping", 28, 4, 0x0008, 7317},
     {"ChainDampingY", 32, 4, 0x0008, 7318},
     {"GravityFactor", 36, 4, 0x0008, 7319},
 };
 
-inline constexpr Field kFields_0316[] = {
+inline constexpr Field kFields_L019E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2100},
+    {"Flags", 1, 1, 0x0204, 2101},
+    {"Condition", 2, 1, 0x0104, 2102},
+    {"WeaponLevelMin", 3, 1, 0x0000, 837},
+    {"On", 4, 2, 0x0008, 7320},
+    {"Off", 6, 2, 0x0008, 7321},
+};
+
+inline constexpr Field kFields_L019E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2103},
+    {"ScriptName", 16, 8, 0x0010, 518},
+};
+
+inline constexpr Field kFields_L019E_S0316[] = {
     {"Side", 24, 4, 0x0000, 838},
     {"SlackLength", 28, 4, 0x0008, 7322},
     {"SlackRecoilSpeed", 32, 4, 0x0008, 7323},
     {"BlendTime", 36, 4, 0x0008, 7324},
 };
 
-inline constexpr Field kFields_0317[] = {
+inline constexpr Field kFields_L019F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2104},
+    {"Flags", 1, 1, 0x0204, 2105},
+    {"Condition", 2, 1, 0x0104, 2106},
+    {"WeaponLevelMin", 3, 1, 0x0000, 839},
+    {"On", 4, 2, 0x0008, 7325},
+    {"Off", 6, 2, 0x0008, 7326},
+};
+
+inline constexpr Field kFields_L019F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2107},
+    {"ScriptName", 16, 8, 0x0010, 519},
+};
+
+inline constexpr Field kFields_L019F_S0317[] = {
     {"Side", 24, 4, 0x0000, 840},
     {"SlackLength", 28, 4, 0x0008, 7327},
     {"SlackRecoilSpeed", 32, 4, 0x0008, 7328},
@@ -8439,12 +14465,40 @@ inline constexpr Field kFields_0317[] = {
     {"BlendDelay", 40, 4, 0x0008, 7330},
 };
 
-inline constexpr Field kFields_0318[] = {
+inline constexpr Field kFields_L01A0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2108},
+    {"Flags", 1, 1, 0x0204, 2109},
+    {"Condition", 2, 1, 0x0104, 2110},
+    {"WeaponLevelMin", 3, 1, 0x0000, 841},
+    {"On", 4, 2, 0x0008, 7331},
+    {"Off", 6, 2, 0x0008, 7332},
+};
+
+inline constexpr Field kFields_L01A0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2111},
+    {"ScriptName", 16, 8, 0x0010, 520},
+};
+
+inline constexpr Field kFields_L01A0_S0318[] = {
     {"Side", 24, 4, 0x0000, 842},
     {"TimeToStop", 28, 2, 0x0008, 7333},
 };
 
-inline constexpr Field kFields_0319[] = {
+inline constexpr Field kFields_L01A1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2112},
+    {"Flags", 1, 1, 0x0204, 2113},
+    {"Condition", 2, 1, 0x0104, 2114},
+    {"WeaponLevelMin", 3, 1, 0x0000, 843},
+    {"On", 4, 2, 0x0008, 7334},
+    {"Off", 6, 2, 0x0008, 7335},
+};
+
+inline constexpr Field kFields_L01A1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2115},
+    {"ScriptName", 16, 8, 0x0010, 521},
+};
+
+inline constexpr Field kFields_L01A1_S0319[] = {
     {"Side", 24, 4, 0x0000, 844},
     {"FrameDuration", 28, 4, 0x0000, 845},
     {"NumLoops", 32, 4, 0x0000, 846},
@@ -8455,15 +14509,57 @@ inline constexpr Field kFields_0319[] = {
     {"VerticalScale", 52, 4, 0x0008, 7340},
 };
 
-inline constexpr Field kFields_031A[] = {
+inline constexpr Field kFields_L01A2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2116},
+    {"Flags", 1, 1, 0x0204, 2117},
+    {"Condition", 2, 1, 0x0104, 2118},
+    {"WeaponLevelMin", 3, 1, 0x0000, 847},
+    {"On", 4, 2, 0x0008, 7341},
+    {"Off", 6, 2, 0x0008, 7342},
+};
+
+inline constexpr Field kFields_L01A2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2119},
+    {"ScriptName", 16, 8, 0x0010, 522},
+};
+
+inline constexpr Field kFields_L01A2_S031A[] = {
     {"Side", 24, 4, 0x0000, 848},
 };
 
-inline constexpr Field kFields_031B[] = {
+inline constexpr Field kFields_L01A3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2120},
+    {"Flags", 1, 1, 0x0204, 2121},
+    {"Condition", 2, 1, 0x0104, 2122},
+    {"WeaponLevelMin", 3, 1, 0x0000, 849},
+    {"On", 4, 2, 0x0008, 7343},
+    {"Off", 6, 2, 0x0008, 7344},
+};
+
+inline constexpr Field kFields_L01A3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2123},
+    {"ScriptName", 16, 8, 0x0010, 523},
+};
+
+inline constexpr Field kFields_L01A3_S031B[] = {
     {"Side", 24, 4, 0x0000, 850},
 };
 
-inline constexpr Field kFields_031C[] = {
+inline constexpr Field kFields_L01A4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2124},
+    {"Flags", 1, 1, 0x0204, 2125},
+    {"Condition", 2, 1, 0x0104, 2126},
+    {"WeaponLevelMin", 3, 1, 0x0000, 851},
+    {"On", 4, 2, 0x0008, 7345},
+    {"Off", 6, 2, 0x0008, 7346},
+};
+
+inline constexpr Field kFields_L01A4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2127},
+    {"ScriptName", 16, 8, 0x0010, 524},
+};
+
+inline constexpr Field kFields_L01A4_S031C[] = {
     {"Side", 24, 4, 0x0000, 852},
     {"TautCurveAmount", 28, 4, 0x0008, 7347},
     {"TautNoise", 32, 4, 0x0008, 7348},
@@ -8479,67 +14575,291 @@ inline constexpr Field kFields_031C[] = {
     {"OverrideTautEndSideBias", 57, 1, 0x0014, 1689},
 };
 
-inline constexpr Field kFields_031D[] = {
+inline constexpr Field kFields_L01A5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2128},
+    {"Flags", 1, 1, 0x0204, 2129},
+    {"Condition", 2, 1, 0x0104, 2130},
+    {"WeaponLevelMin", 3, 1, 0x0000, 853},
+    {"On", 4, 2, 0x0008, 7353},
+    {"Off", 6, 2, 0x0008, 7354},
+};
+
+inline constexpr Field kFields_L01A5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2131},
+    {"ScriptName", 16, 8, 0x0010, 525},
+};
+
+inline constexpr Field kFields_L01A5_S031D[] = {
     {"Side", 24, 4, 0x0000, 854},
     {"TautLengthOverride", 28, 4, 0x0008, 7355},
 };
 
-inline constexpr Field kFields_031E[] = {
+inline constexpr Field kFields_L01A6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2132},
+    {"Flags", 1, 1, 0x0204, 2133},
+    {"Condition", 2, 1, 0x0104, 2134},
+    {"WeaponLevelMin", 3, 1, 0x0000, 855},
+    {"On", 4, 2, 0x0008, 7356},
+    {"Off", 6, 2, 0x0008, 7357},
+};
+
+inline constexpr Field kFields_L01A6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2135},
+    {"ScriptName", 16, 8, 0x0010, 526},
+};
+
+inline constexpr Field kFields_L01A6_S031E[] = {
     {"Side", 24, 4, 0x0000, 856},
 };
 
-inline constexpr Field kFields_031F[] = {
+inline constexpr Field kFields_L01A7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2136},
+    {"Flags", 1, 1, 0x0204, 2137},
+    {"Condition", 2, 1, 0x0104, 2138},
+    {"WeaponLevelMin", 3, 1, 0x0000, 857},
+    {"On", 4, 2, 0x0008, 7358},
+    {"Off", 6, 2, 0x0008, 7359},
+};
+
+inline constexpr Field kFields_L01A7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2139},
+    {"ScriptName", 16, 8, 0x0010, 527},
+};
+
+inline constexpr Field kFields_L01A7_S031F[] = {
     {"Side", 24, 4, 0x0000, 858},
 };
 
-inline constexpr Field kFields_0320[] = {
+inline constexpr Field kFields_L01A8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2140},
+    {"Flags", 1, 1, 0x0204, 2141},
+    {"Condition", 2, 1, 0x0104, 2142},
+    {"WeaponLevelMin", 3, 1, 0x0000, 859},
+    {"On", 4, 2, 0x0008, 7360},
+    {"Off", 6, 2, 0x0008, 7361},
+};
+
+inline constexpr Field kFields_L01A8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2143},
+    {"ScriptName", 16, 8, 0x0010, 528},
+};
+
+inline constexpr Field kFields_L01A8_S0320[] = {
     {"Side", 24, 4, 0x0000, 860},
     {"BlendTime", 28, 4, 0x0008, 7362},
 };
 
-inline constexpr Field kFields_0321[] = {
+inline constexpr Field kFields_L01A9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2144},
+    {"Flags", 1, 1, 0x0204, 2145},
+    {"Condition", 2, 1, 0x0104, 2146},
+    {"WeaponLevelMin", 3, 1, 0x0000, 861},
+    {"On", 4, 2, 0x0008, 7363},
+    {"Off", 6, 2, 0x0008, 7364},
+};
+
+inline constexpr Field kFields_L01A9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2147},
+    {"ScriptName", 16, 8, 0x0010, 529},
+};
+
+inline constexpr Field kFields_L01A9_S0321[] = {
     {"Side", 24, 4, 0x0000, 862},
 };
 
-inline constexpr Field kFields_0322[] = {
+inline constexpr Field kFields_L01AA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2148},
+    {"Flags", 1, 1, 0x0204, 2149},
+    {"Condition", 2, 1, 0x0104, 2150},
+    {"WeaponLevelMin", 3, 1, 0x0000, 863},
+    {"On", 4, 2, 0x0008, 7365},
+    {"Off", 6, 2, 0x0008, 7366},
+};
+
+inline constexpr Field kFields_L01AA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2151},
+    {"ScriptName", 16, 8, 0x0010, 530},
+};
+
+inline constexpr Field kFields_L01AA_S0322[] = {
     {"Side", 24, 4, 0x0000, 864},
     {"GrabJointName", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0323[] = {
+inline constexpr Field kFields_L01AB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2152},
+    {"Flags", 1, 1, 0x0204, 2153},
+    {"Condition", 2, 1, 0x0104, 2154},
+    {"WeaponLevelMin", 3, 1, 0x0000, 865},
+    {"On", 4, 2, 0x0008, 7367},
+    {"Off", 6, 2, 0x0008, 7368},
+};
+
+inline constexpr Field kFields_L01AB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2155},
+    {"ScriptName", 16, 8, 0x0010, 531},
+};
+
+inline constexpr Field kFields_L01AB_S0323[] = {
     {"GrabJointName", 24, 8, 0x0010, 0},
     {"Side", 32, 4, 0x0000, 866},
     {"GrabbedChainPercentage", 36, 4, 0x0008, 7369},
 };
 
-inline constexpr Field kFields_0324[] = {
+inline constexpr Field kFields_L01AC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2156},
+    {"Flags", 1, 1, 0x0204, 2157},
+    {"Condition", 2, 1, 0x0104, 2158},
+    {"WeaponLevelMin", 3, 1, 0x0000, 867},
+    {"On", 4, 2, 0x0008, 7370},
+    {"Off", 6, 2, 0x0008, 7371},
+};
+
+inline constexpr Field kFields_L01AC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2159},
+    {"ScriptName", 16, 8, 0x0010, 532},
+};
+
+inline constexpr Field kFields_L01AC_S0324[] = {
     {"Range", 24, 4, 0x0008, 7372},
     {"TargetingFlags", 28, 2, 0x0204, 2160},
     {"TargetWeightID", 30, 1, 0x0000, 868},
     {"TargetJointID", 31, 1, 0x0000, 869},
 };
 
-inline constexpr Field kFields_0325[] = {
+inline constexpr Field kFields_L01AD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2161},
+    {"Flags", 1, 1, 0x0204, 2162},
+    {"Condition", 2, 1, 0x0104, 2163},
+    {"WeaponLevelMin", 3, 1, 0x0000, 870},
+    {"On", 4, 2, 0x0008, 7373},
+    {"Off", 6, 2, 0x0008, 7374},
+};
+
+inline constexpr Field kFields_L01AD_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2164},
+    {"ScriptName", 16, 8, 0x0010, 533},
+};
+
+inline constexpr Field kFields_L01AD_S0325[] = {
     {"TargetWeight", 24, 4, 0x0008, 7375},
     {"TargetWeightID", 28, 1, 0x0000, 871},
 };
 
-inline constexpr Field kFields_0327[] = {
+inline constexpr Field kFields_L01AE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2165},
+    {"Flags", 1, 1, 0x0204, 2166},
+    {"Condition", 2, 1, 0x0104, 2167},
+    {"WeaponLevelMin", 3, 1, 0x0000, 872},
+    {"On", 4, 2, 0x0008, 7376},
+    {"Off", 6, 2, 0x0008, 7377},
+};
+
+inline constexpr Field kFields_L01AE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2168},
+    {"ScriptName", 16, 8, 0x0010, 534},
+};
+
+inline constexpr Field kFields_L01AF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2169},
+    {"Flags", 1, 1, 0x0204, 2170},
+    {"Condition", 2, 1, 0x0104, 2171},
+    {"WeaponLevelMin", 3, 1, 0x0000, 873},
+    {"On", 4, 2, 0x0008, 7378},
+    {"Off", 6, 2, 0x0008, 7379},
+};
+
+inline constexpr Field kFields_L01AF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2172},
+    {"ScriptName", 16, 8, 0x0010, 535},
+};
+
+inline constexpr Field kFields_L01AF_S0327[] = {
     {"Reacquire", 24, 1, 0x0014, 1690},
     {"OffScreen", 25, 1, 0x0014, 1691},
     {"Invisible", 26, 1, 0x0014, 1692},
 };
 
-inline constexpr Field kFields_0329[] = {
+inline constexpr Field kFields_L01B0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2173},
+    {"Flags", 1, 1, 0x0204, 2174},
+    {"Condition", 2, 1, 0x0104, 2175},
+    {"WeaponLevelMin", 3, 1, 0x0000, 874},
+    {"On", 4, 2, 0x0008, 7380},
+    {"Off", 6, 2, 0x0008, 7381},
+};
+
+inline constexpr Field kFields_L01B0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2176},
+    {"ScriptName", 16, 8, 0x0010, 536},
+};
+
+inline constexpr Field kFields_L01B1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2177},
+    {"Flags", 1, 1, 0x0204, 2178},
+    {"Condition", 2, 1, 0x0104, 2179},
+    {"WeaponLevelMin", 3, 1, 0x0000, 875},
+    {"On", 4, 2, 0x0008, 7382},
+    {"Off", 6, 2, 0x0008, 7383},
+};
+
+inline constexpr Field kFields_L01B1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2180},
+    {"ScriptName", 16, 8, 0x0010, 537},
+};
+
+inline constexpr Field kFields_L01B1_S0329[] = {
     {"Name", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_032A[] = {
+inline constexpr Field kFields_L01B2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2181},
+    {"Flags", 1, 1, 0x0204, 2182},
+    {"Condition", 2, 1, 0x0104, 2183},
+    {"WeaponLevelMin", 3, 1, 0x0000, 876},
+    {"On", 4, 2, 0x0008, 7384},
+    {"Off", 6, 2, 0x0008, 7385},
+};
+
+inline constexpr Field kFields_L01B2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2184},
+    {"ScriptName", 16, 8, 0x0010, 538},
+};
+
+inline constexpr Field kFields_L01B2_S032A[] = {
     {"Name", 24, 8, 0x0010, 0},
     {"TweenOut", 32, 4, 0x0008, 7386},
 };
 
-inline constexpr Field kFields_032C[] = {
+inline constexpr Field kFields_L01B3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2185},
+    {"Flags", 1, 1, 0x0204, 2186},
+    {"Condition", 2, 1, 0x0104, 2187},
+    {"WeaponLevelMin", 3, 1, 0x0000, 877},
+    {"On", 4, 2, 0x0008, 7387},
+    {"Off", 6, 2, 0x0008, 7388},
+};
+
+inline constexpr Field kFields_L01B3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2188},
+    {"ScriptName", 16, 8, 0x0010, 539},
+};
+
+inline constexpr Field kFields_L01B4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2189},
+    {"Flags", 1, 1, 0x0204, 2190},
+    {"Condition", 2, 1, 0x0104, 2191},
+    {"WeaponLevelMin", 3, 1, 0x0000, 878},
+    {"On", 4, 2, 0x0008, 7389},
+    {"Off", 6, 2, 0x0008, 7390},
+};
+
+inline constexpr Field kFields_L01B4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2192},
+    {"ScriptName", 16, 8, 0x0010, 540},
+};
+
+inline constexpr Field kFields_L01B4_S032C[] = {
     {"CharacterID", 24, 8, 0x0010, 0},
     {"SynchID", 32, 1, 0x0000, 879},
     {"UsePrimaryCompanion", 33, 1, 0x0014, 1693},
@@ -8548,44 +14868,198 @@ inline constexpr Field kFields_032C[] = {
     {"MoveOverride", 48, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_032D[] = {
+inline constexpr Field kFields_L01B5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2194},
+    {"Flags", 1, 1, 0x0204, 2195},
+    {"Condition", 2, 1, 0x0104, 2196},
+    {"WeaponLevelMin", 3, 1, 0x0000, 880},
+    {"On", 4, 2, 0x0008, 7391},
+    {"Off", 6, 2, 0x0008, 7392},
+};
+
+inline constexpr Field kFields_L01B5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2197},
+    {"ScriptName", 16, 8, 0x0010, 541},
+};
+
+inline constexpr Field kFields_L01B5_S032D[] = {
     {"MovePairs", 24, 12, 0x0024, 421},
     {"MoveToPlayWhenNoMatch", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_032E[] = {
+inline constexpr Field kFields_L01B6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2198},
+    {"Flags", 1, 1, 0x0204, 2199},
+    {"Condition", 2, 1, 0x0104, 2200},
+    {"WeaponLevelMin", 3, 1, 0x0000, 881},
+    {"On", 4, 2, 0x0008, 7393},
+    {"Off", 6, 2, 0x0008, 7394},
+};
+
+inline constexpr Field kFields_L01B6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2201},
+    {"ScriptName", 16, 8, 0x0010, 542},
+};
+
+inline constexpr Field kFields_L01B6_S032E[] = {
     {"ObjectName", 24, 8, 0x0010, 0},
     {"AnimationName", 32, 8, 0x0010, 0},
     {"SlaveID", 40, 1, 0x0000, 882},
 };
 
-inline constexpr Field kFields_032F[] = {
+inline constexpr Field kFields_L01B7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2202},
+    {"Flags", 1, 1, 0x0204, 2203},
+    {"Condition", 2, 1, 0x0104, 2204},
+    {"WeaponLevelMin", 3, 1, 0x0000, 883},
+    {"On", 4, 2, 0x0008, 7395},
+    {"Off", 6, 2, 0x0008, 7396},
+};
+
+inline constexpr Field kFields_L01B7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2205},
+    {"ScriptName", 16, 8, 0x0010, 543},
+};
+
+inline constexpr Field kFields_L01B7_S032F[] = {
     {"ObjectName", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0330[] = {
+inline constexpr Field kFields_L01B8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2206},
+    {"Flags", 1, 1, 0x0204, 2207},
+    {"Condition", 2, 1, 0x0104, 2208},
+    {"WeaponLevelMin", 3, 1, 0x0000, 884},
+    {"On", 4, 2, 0x0008, 7397},
+    {"Off", 6, 2, 0x0008, 7398},
+};
+
+inline constexpr Field kFields_L01B8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2209},
+    {"ScriptName", 16, 8, 0x0010, 544},
+};
+
+inline constexpr Field kFields_L01B8_S0330[] = {
     {"CreatureID", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0331[] = {
+inline constexpr Field kFields_L01B9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2210},
+    {"Flags", 1, 1, 0x0204, 2211},
+    {"Condition", 2, 1, 0x0104, 2212},
+    {"WeaponLevelMin", 3, 1, 0x0000, 885},
+    {"On", 4, 2, 0x0008, 7399},
+    {"Off", 6, 2, 0x0008, 7400},
+};
+
+inline constexpr Field kFields_L01B9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2213},
+    {"ScriptName", 16, 8, 0x0010, 545},
+};
+
+inline constexpr Field kFields_L01B9_S0331[] = {
     {"CreatureID", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0332[] = {
+inline constexpr Field kFields_L01BA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2214},
+    {"Flags", 1, 1, 0x0204, 2215},
+    {"Condition", 2, 1, 0x0104, 2216},
+    {"WeaponLevelMin", 3, 1, 0x0000, 886},
+    {"On", 4, 2, 0x0008, 7401},
+    {"Off", 6, 2, 0x0008, 7402},
+};
+
+inline constexpr Field kFields_L01BA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2217},
+    {"ScriptName", 16, 8, 0x0010, 546},
+};
+
+inline constexpr Field kFields_L01BA_S0332[] = {
     {"CharacterID", 24, 8, 0x0010, 0},
     {"SynchID", 32, 1, 0x0000, 887},
 };
 
-inline constexpr Field kFields_0333[] = {
+inline constexpr Field kFields_L01BB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2218},
+    {"Flags", 1, 1, 0x0204, 2219},
+    {"Condition", 2, 1, 0x0104, 2220},
+    {"WeaponLevelMin", 3, 1, 0x0000, 888},
+    {"On", 4, 2, 0x0008, 7403},
+    {"Off", 6, 2, 0x0008, 7404},
+};
+
+inline constexpr Field kFields_L01BB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2221},
+    {"ScriptName", 16, 8, 0x0010, 547},
+};
+
+inline constexpr Field kFields_L01BB_S0333[] = {
     {"CharacterID", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0334[] = {
+inline constexpr Field kFields_L01BC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2222},
+    {"Flags", 1, 1, 0x0204, 2223},
+    {"Condition", 2, 1, 0x0104, 2224},
+    {"WeaponLevelMin", 3, 1, 0x0000, 889},
+    {"On", 4, 2, 0x0008, 7405},
+    {"Off", 6, 2, 0x0008, 7406},
+};
+
+inline constexpr Field kFields_L01BC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2225},
+    {"ScriptName", 16, 8, 0x0010, 548},
+};
+
+inline constexpr Field kFields_L01BC_S0334[] = {
     {"EndPlaybackModifierPhase", 24, 4, 0x0008, 7407},
     {"BasePlaybackSpeed", 28, 4, 0x0008, 7408},
 };
 
-inline constexpr Field kFields_0337[] = {
+inline constexpr Field kFields_L01BD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2226},
+    {"Flags", 1, 1, 0x0204, 2227},
+    {"Condition", 2, 1, 0x0104, 2228},
+    {"WeaponLevelMin", 3, 1, 0x0000, 890},
+    {"On", 4, 2, 0x0008, 7409},
+    {"Off", 6, 2, 0x0008, 7410},
+};
+
+inline constexpr Field kFields_L01BD_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2229},
+    {"ScriptName", 16, 8, 0x0010, 549},
+};
+
+inline constexpr Field kFields_L01BE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2230},
+    {"Flags", 1, 1, 0x0204, 2231},
+    {"Condition", 2, 1, 0x0104, 2232},
+    {"WeaponLevelMin", 3, 1, 0x0000, 891},
+    {"On", 4, 2, 0x0008, 7411},
+    {"Off", 6, 2, 0x0008, 7412},
+};
+
+inline constexpr Field kFields_L01BE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2233},
+    {"ScriptName", 16, 8, 0x0010, 550},
+};
+
+inline constexpr Field kFields_L01BF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2234},
+    {"Flags", 1, 1, 0x0204, 2235},
+    {"Condition", 2, 1, 0x0104, 2236},
+    {"WeaponLevelMin", 3, 1, 0x0000, 892},
+    {"On", 4, 2, 0x0008, 7413},
+    {"Off", 6, 2, 0x0008, 7414},
+};
+
+inline constexpr Field kFields_L01BF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2237},
+    {"ScriptName", 16, 8, 0x0010, 551},
+};
+
+inline constexpr Field kFields_L01BF_S0337[] = {
     {"StartAlpha", 24, 4, 0x0008, 7415},
     {"EndAlpha", 28, 4, 0x0008, 7416},
     {"EarlyEndAlpha", 32, 4, 0x0008, 7417},
@@ -8593,18 +15067,60 @@ inline constexpr Field kFields_0337[] = {
     {"ApplyToEmbeds", 37, 1, 0x0014, 1695},
 };
 
-inline constexpr Field kFields_0338[] = {
+inline constexpr Field kFields_L01C0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2238},
+    {"Flags", 1, 1, 0x0204, 2239},
+    {"Condition", 2, 1, 0x0104, 2240},
+    {"WeaponLevelMin", 3, 1, 0x0000, 893},
+    {"On", 4, 2, 0x0008, 7418},
+    {"Off", 6, 2, 0x0008, 7419},
+};
+
+inline constexpr Field kFields_L01C0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2241},
+    {"ScriptName", 16, 8, 0x0010, 552},
+};
+
+inline constexpr Field kFields_L01C0_S0338[] = {
     {"Trophy", 24, 4, 0x0000, 894},
     {"Threshold", 28, 4, 0x0000, 895},
 };
 
-inline constexpr Field kFields_0339[] = {
+inline constexpr Field kFields_L01C1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2242},
+    {"Flags", 1, 1, 0x0204, 2243},
+    {"Condition", 2, 1, 0x0104, 2244},
+    {"WeaponLevelMin", 3, 1, 0x0000, 896},
+    {"On", 4, 2, 0x0008, 7420},
+    {"Off", 6, 2, 0x0008, 7421},
+};
+
+inline constexpr Field kFields_L01C1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2245},
+    {"ScriptName", 16, 8, 0x0010, 553},
+};
+
+inline constexpr Field kFields_L01C1_S0339[] = {
     {"Trophy", 24, 4, 0x0000, 897},
     {"FlagNumber", 28, 4, 0x0000, 898},
     {"MaxFlags", 32, 4, 0x0000, 899},
 };
 
-inline constexpr Field kFields_033A[] = {
+inline constexpr Field kFields_L01C2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2246},
+    {"Flags", 1, 1, 0x0204, 2247},
+    {"Condition", 2, 1, 0x0104, 2248},
+    {"WeaponLevelMin", 3, 1, 0x0000, 900},
+    {"On", 4, 2, 0x0008, 7422},
+    {"Off", 6, 2, 0x0008, 7423},
+};
+
+inline constexpr Field kFields_L01C2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2249},
+    {"ScriptName", 16, 8, 0x0010, 554},
+};
+
+inline constexpr Field kFields_L01C2_S033A[] = {
     {"Attribute", 24, 8, 0x0010, 0},
     {"StatsType", 32, 8, 0x0010, 0},
     {"AddBuff", 40, 4, 0x0008, 7424},
@@ -8613,25 +15129,151 @@ inline constexpr Field kFields_033A[] = {
     {"Duration", 52, 4, 0x0008, 7426},
 };
 
-inline constexpr Field kFields_033D[] = {
+inline constexpr Field kFields_L01C3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2251},
+    {"Flags", 1, 1, 0x0204, 2252},
+    {"Condition", 2, 1, 0x0104, 2253},
+    {"WeaponLevelMin", 3, 1, 0x0000, 901},
+    {"On", 4, 2, 0x0008, 7427},
+    {"Off", 6, 2, 0x0008, 7428},
+};
+
+inline constexpr Field kFields_L01C3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2254},
+    {"ScriptName", 16, 8, 0x0010, 555},
+};
+
+inline constexpr Field kFields_L01C4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2255},
+    {"Flags", 1, 1, 0x0204, 2256},
+    {"Condition", 2, 1, 0x0104, 2257},
+    {"WeaponLevelMin", 3, 1, 0x0000, 902},
+    {"On", 4, 2, 0x0008, 7429},
+    {"Off", 6, 2, 0x0008, 7430},
+};
+
+inline constexpr Field kFields_L01C4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2258},
+    {"ScriptName", 16, 8, 0x0010, 556},
+};
+
+inline constexpr Field kFields_L01C5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2259},
+    {"Flags", 1, 1, 0x0204, 2260},
+    {"Condition", 2, 1, 0x0104, 2261},
+    {"WeaponLevelMin", 3, 1, 0x0000, 903},
+    {"On", 4, 2, 0x0008, 7431},
+    {"Off", 6, 2, 0x0008, 7432},
+};
+
+inline constexpr Field kFields_L01C5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2262},
+    {"ScriptName", 16, 8, 0x0010, 557},
+};
+
+inline constexpr Field kFields_L01C5_S033D[] = {
     {"ArgData", 24, 8, 0x001C, 324},
 };
 
-inline constexpr Field kFields_033E[] = {
+inline constexpr Field kFields_L01C6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2263},
+    {"Flags", 1, 1, 0x0204, 2264},
+    {"Condition", 2, 1, 0x0104, 2265},
+    {"WeaponLevelMin", 3, 1, 0x0000, 904},
+    {"On", 4, 2, 0x0008, 7433},
+    {"Off", 6, 2, 0x0008, 7434},
+};
+
+inline constexpr Field kFields_L01C6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2266},
+    {"ScriptName", 16, 8, 0x0010, 558},
+};
+
+inline constexpr Field kFields_L01C6_S033E[] = {
     {"ArgData", 24, 8, 0x001C, 325},
 };
 
-inline constexpr Field kFields_0341[] = {
+inline constexpr Field kFields_L01C7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2267},
+    {"Flags", 1, 1, 0x0204, 2268},
+    {"Condition", 2, 1, 0x0104, 2269},
+    {"WeaponLevelMin", 3, 1, 0x0000, 905},
+    {"On", 4, 2, 0x0008, 7435},
+    {"Off", 6, 2, 0x0008, 7436},
+};
+
+inline constexpr Field kFields_L01C7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2270},
+    {"ScriptName", 16, 8, 0x0010, 559},
+};
+
+inline constexpr Field kFields_L01C8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2271},
+    {"Flags", 1, 1, 0x0204, 2272},
+    {"Condition", 2, 1, 0x0104, 2273},
+    {"WeaponLevelMin", 3, 1, 0x0000, 906},
+    {"On", 4, 2, 0x0008, 7437},
+    {"Off", 6, 2, 0x0008, 7438},
+};
+
+inline constexpr Field kFields_L01C8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2274},
+    {"ScriptName", 16, 8, 0x0010, 560},
+};
+
+inline constexpr Field kFields_L01C9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2275},
+    {"Flags", 1, 1, 0x0204, 2276},
+    {"Condition", 2, 1, 0x0104, 2277},
+    {"WeaponLevelMin", 3, 1, 0x0000, 907},
+    {"On", 4, 2, 0x0008, 7439},
+    {"Off", 6, 2, 0x0008, 7440},
+};
+
+inline constexpr Field kFields_L01C9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2278},
+    {"ScriptName", 16, 8, 0x0010, 561},
+};
+
+inline constexpr Field kFields_L01C9_S0341[] = {
     {"Distance", 24, 4, 0x0008, 7441},
     {"Size", 28, 4, 0x0008, 7442},
 };
 
-inline constexpr Field kFields_0342[] = {
+inline constexpr Field kFields_L01CA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2279},
+    {"Flags", 1, 1, 0x0204, 2280},
+    {"Condition", 2, 1, 0x0104, 2281},
+    {"WeaponLevelMin", 3, 1, 0x0000, 908},
+    {"On", 4, 2, 0x0008, 7443},
+    {"Off", 6, 2, 0x0008, 7444},
+};
+
+inline constexpr Field kFields_L01CA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2282},
+    {"ScriptName", 16, 8, 0x0010, 562},
+};
+
+inline constexpr Field kFields_L01CA_S0342[] = {
     {"ArgVal", 24, 4, 0x0008, 7445},
     {"SendTo", 28, 1, 0x0104, 2283},
 };
 
-inline constexpr Field kFields_0343[] = {
+inline constexpr Field kFields_L01CB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2284},
+    {"Flags", 1, 1, 0x0204, 2285},
+    {"Condition", 2, 1, 0x0104, 2286},
+    {"WeaponLevelMin", 3, 1, 0x0000, 909},
+    {"On", 4, 2, 0x0008, 7446},
+    {"Off", 6, 2, 0x0008, 7447},
+};
+
+inline constexpr Field kFields_L01CB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2287},
+    {"ScriptName", 16, 8, 0x0010, 563},
+};
+
+inline constexpr Field kFields_L01CB_S0343[] = {
     {"GOName", 24, 8, 0x0010, 0},
     {"JointName", 32, 8, 0x0010, 0},
     {"Heap", 40, 4, 0x0000, 910},
@@ -8642,103 +15284,439 @@ inline constexpr Field kFields_0343[] = {
     {"ExpandAmount", 60, 4, 0x0008, 7451},
 };
 
-inline constexpr Field kFields_0344[] = {
+inline constexpr Field kFields_L01CC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2289},
+    {"Flags", 1, 1, 0x0204, 2290},
+    {"Condition", 2, 1, 0x0104, 2291},
+    {"WeaponLevelMin", 3, 1, 0x0000, 911},
+    {"On", 4, 2, 0x0008, 7452},
+    {"Off", 6, 2, 0x0008, 7453},
+};
+
+inline constexpr Field kFields_L01CC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2292},
+    {"ScriptName", 16, 8, 0x0010, 564},
+};
+
+inline constexpr Field kFields_L01CC_S0344[] = {
     {"ArgData", 24, 8, 0x001C, 268},
     {"Visibility", 32, 1, 0x0204, 2293},
 };
 
-inline constexpr Field kFields_0345[] = {
+inline constexpr Field kFields_L01CD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2294},
+    {"Flags", 1, 1, 0x0204, 2295},
+    {"Condition", 2, 1, 0x0104, 2296},
+    {"WeaponLevelMin", 3, 1, 0x0000, 912},
+    {"On", 4, 2, 0x0008, 7454},
+    {"Off", 6, 2, 0x0008, 7455},
+};
+
+inline constexpr Field kFields_L01CD_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2297},
+    {"ScriptName", 16, 8, 0x0010, 565},
+};
+
+inline constexpr Field kFields_L01CD_S0345[] = {
     {"ArgData", 24, 8, 0x001C, 272},
     {"Tint", 32, 0, 0x002C, 2},
 };
 
-inline constexpr Field kFields_0346[] = {
+inline constexpr Field kFields_L01CE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2298},
+    {"Flags", 1, 1, 0x0204, 2299},
+    {"Condition", 2, 1, 0x0104, 2300},
+    {"WeaponLevelMin", 3, 1, 0x0000, 913},
+    {"On", 4, 2, 0x0008, 7460},
+    {"Off", 6, 2, 0x0008, 7461},
+};
+
+inline constexpr Field kFields_L01CE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2301},
+    {"ScriptName", 16, 8, 0x0010, 566},
+};
+
+inline constexpr Field kFields_L01CE_S0346[] = {
     {"MFXTrigger", 24, 8, 0x001C, 263},
 };
 
-inline constexpr Field kFields_0347[] = {
+inline constexpr Field kFields_L01CF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2302},
+    {"Flags", 1, 1, 0x0204, 2303},
+    {"Condition", 2, 1, 0x0104, 2304},
+    {"WeaponLevelMin", 3, 1, 0x0000, 914},
+    {"On", 4, 2, 0x0008, 7462},
+    {"Off", 6, 2, 0x0008, 7463},
+};
+
+inline constexpr Field kFields_L01CF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2305},
+    {"ScriptName", 16, 8, 0x0010, 567},
+};
+
+inline constexpr Field kFields_L01CF_S0347[] = {
     {"DecayFX", 24, 8, 0x001C, 265},
 };
 
-inline constexpr Field kFields_0348[] = {
+inline constexpr Field kFields_L01D0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2306},
+    {"Flags", 1, 1, 0x0204, 2307},
+    {"Condition", 2, 1, 0x0104, 2308},
+    {"WeaponLevelMin", 3, 1, 0x0000, 915},
+    {"On", 4, 2, 0x0008, 7464},
+    {"Off", 6, 2, 0x0008, 7465},
+};
+
+inline constexpr Field kFields_L01D0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2309},
+    {"ScriptName", 16, 8, 0x0010, 568},
+};
+
+inline constexpr Field kFields_L01D0_S0348[] = {
     {"Radius", 24, 4, 0x0008, 7466},
     {"TimeScale", 28, 4, 0x0008, 7467},
 };
 
-inline constexpr Field kFields_034A[] = {
+inline constexpr Field kFields_L01D1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2310},
+    {"Flags", 1, 1, 0x0204, 2311},
+    {"Condition", 2, 1, 0x0104, 2312},
+    {"WeaponLevelMin", 3, 1, 0x0000, 916},
+    {"On", 4, 2, 0x0008, 7468},
+    {"Off", 6, 2, 0x0008, 7469},
+};
+
+inline constexpr Field kFields_L01D1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2313},
+    {"ScriptName", 16, 8, 0x0010, 569},
+};
+
+inline constexpr Field kFields_L01D2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2314},
+    {"Flags", 1, 1, 0x0204, 2315},
+    {"Condition", 2, 1, 0x0104, 2316},
+    {"WeaponLevelMin", 3, 1, 0x0000, 917},
+    {"On", 4, 2, 0x0008, 7470},
+    {"Off", 6, 2, 0x0008, 7471},
+};
+
+inline constexpr Field kFields_L01D2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2317},
+    {"ScriptName", 16, 8, 0x0010, 570},
+};
+
+inline constexpr Field kFields_L01D2_S034A[] = {
     {"Name", 24, 8, 0x0018, 0},
     {"Enable", 32, 1, 0x0000, 918},
 };
 
-inline constexpr Field kFields_034B[] = {
+inline constexpr Field kFields_L01D3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2318},
+    {"Flags", 1, 1, 0x0204, 2319},
+    {"Condition", 2, 1, 0x0104, 2320},
+    {"WeaponLevelMin", 3, 1, 0x0000, 919},
+    {"On", 4, 2, 0x0008, 7472},
+    {"Off", 6, 2, 0x0008, 7473},
+};
+
+inline constexpr Field kFields_L01D3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2321},
+    {"ScriptName", 16, 8, 0x0010, 571},
+};
+
+inline constexpr Field kFields_L01D3_S034B[] = {
     {"StartProgression", 24, 4, 0x0008, 7474},
     {"EndProgression", 28, 4, 0x0008, 7475},
     {"TransferType", 32, 1, 0x0104, 2322},
 };
 
-inline constexpr Field kFields_034C[] = {
+inline constexpr Field kFields_L01D4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2323},
+    {"Flags", 1, 1, 0x0204, 2324},
+    {"Condition", 2, 1, 0x0104, 2325},
+    {"WeaponLevelMin", 3, 1, 0x0000, 920},
+    {"On", 4, 2, 0x0008, 7476},
+    {"Off", 6, 2, 0x0008, 7477},
+};
+
+inline constexpr Field kFields_L01D4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2326},
+    {"ScriptName", 16, 8, 0x0010, 572},
+};
+
+inline constexpr Field kFields_L01D4_S034C[] = {
     {"StartProgression", 24, 4, 0x0008, 7478},
     {"EndProgression", 28, 4, 0x0008, 7479},
     {"StartOrient", 32, 1, 0x0104, 2327},
     {"EndOrient", 33, 1, 0x0104, 2328},
 };
 
-inline constexpr Field kFields_0350[] = {
+inline constexpr Field kFields_L01D5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2329},
+    {"Flags", 1, 1, 0x0204, 2330},
+    {"Condition", 2, 1, 0x0104, 2331},
+    {"WeaponLevelMin", 3, 1, 0x0000, 921},
+    {"On", 4, 2, 0x0008, 7480},
+    {"Off", 6, 2, 0x0008, 7481},
+};
+
+inline constexpr Field kFields_L01D5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2332},
+    {"ScriptName", 16, 8, 0x0010, 573},
+};
+
+inline constexpr Field kFields_L01D6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2333},
+    {"Flags", 1, 1, 0x0204, 2334},
+    {"Condition", 2, 1, 0x0104, 2335},
+    {"WeaponLevelMin", 3, 1, 0x0000, 922},
+    {"On", 4, 2, 0x0008, 7482},
+    {"Off", 6, 2, 0x0008, 7483},
+};
+
+inline constexpr Field kFields_L01D6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2336},
+    {"ScriptName", 16, 8, 0x0010, 574},
+};
+
+inline constexpr Field kFields_L01D7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2337},
+    {"Flags", 1, 1, 0x0204, 2338},
+    {"Condition", 2, 1, 0x0104, 2339},
+    {"WeaponLevelMin", 3, 1, 0x0000, 923},
+    {"On", 4, 2, 0x0008, 7484},
+    {"Off", 6, 2, 0x0008, 7485},
+};
+
+inline constexpr Field kFields_L01D7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2340},
+    {"ScriptName", 16, 8, 0x0010, 575},
+};
+
+inline constexpr Field kFields_L01D8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2341},
+    {"Flags", 1, 1, 0x0204, 2342},
+    {"Condition", 2, 1, 0x0104, 2343},
+    {"WeaponLevelMin", 3, 1, 0x0000, 924},
+    {"On", 4, 2, 0x0008, 7486},
+    {"Off", 6, 2, 0x0008, 7487},
+};
+
+inline constexpr Field kFields_L01D8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2344},
+    {"ScriptName", 16, 8, 0x0010, 576},
+};
+
+inline constexpr Field kFields_L01D8_S0350[] = {
     {"JointName", 24, 8, 0x0010, 0},
     {"Enable", 32, 1, 0x0000, 925},
 };
 
-inline constexpr Field kFields_0351[] = {
+inline constexpr Field kFields_L01D8_S0351[] = {
     {"FromJoint", 0, 8, 0x0010, 0},
     {"ToJoint", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0352[] = {
+inline constexpr Field kFields_L01D8_S0352[] = {
     {"DefaultTint", 0, 0, 0x002C, 1},
     {"TintBhvr", 16, 1, 0x0104, 2345},
     {"LineGOName", 24, 8, 0x0010, 0},
     {"Lines", 32, 12, 0x0024, 422},
 };
 
-inline constexpr Field kFields_0353[] = {
+inline constexpr Field kFields_L01D9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2346},
+    {"Flags", 1, 1, 0x0204, 2347},
+    {"Condition", 2, 1, 0x0104, 2348},
+    {"WeaponLevelMin", 3, 1, 0x0000, 926},
+    {"On", 4, 2, 0x0008, 7492},
+    {"Off", 6, 2, 0x0008, 7493},
+};
+
+inline constexpr Field kFields_L01D9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2349},
+    {"ScriptName", 16, 8, 0x0010, 577},
+};
+
+inline constexpr Field kFields_L01D9_S0353[] = {
     {"LineSet", 24, 8, 0x001C, 850},
 };
 
-inline constexpr Field kFields_0354[] = {
+inline constexpr Field kFields_L01DA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2350},
+    {"Flags", 1, 1, 0x0204, 2351},
+    {"Condition", 2, 1, 0x0104, 2352},
+    {"WeaponLevelMin", 3, 1, 0x0000, 927},
+    {"On", 4, 2, 0x0008, 7494},
+    {"Off", 6, 2, 0x0008, 7495},
+};
+
+inline constexpr Field kFields_L01DA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2353},
+    {"ScriptName", 16, 8, 0x0010, 578},
+};
+
+inline constexpr Field kFields_L01DA_S0354[] = {
     {"TimeScale", 24, 4, 0x0008, 7496},
     {"ForEver", 28, 1, 0x0000, 928},
 };
 
-inline constexpr Field kFields_0356[] = {
+inline constexpr Field kFields_L01DB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2354},
+    {"Flags", 1, 1, 0x0204, 2355},
+    {"Condition", 2, 1, 0x0104, 2356},
+    {"WeaponLevelMin", 3, 1, 0x0000, 929},
+    {"On", 4, 2, 0x0008, 7497},
+    {"Off", 6, 2, 0x0008, 7498},
+};
+
+inline constexpr Field kFields_L01DB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2357},
+    {"ScriptName", 16, 8, 0x0010, 579},
+};
+
+inline constexpr Field kFields_L01DC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2358},
+    {"Flags", 1, 1, 0x0204, 2359},
+    {"Condition", 2, 1, 0x0104, 2360},
+    {"WeaponLevelMin", 3, 1, 0x0000, 930},
+    {"On", 4, 2, 0x0008, 7499},
+    {"Off", 6, 2, 0x0008, 7500},
+};
+
+inline constexpr Field kFields_L01DC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2361},
+    {"ScriptName", 16, 8, 0x0010, 580},
+};
+
+inline constexpr Field kFields_L01DC_S0356[] = {
     {"Enabled", 24, 1, 0x0000, 931},
 };
 
-inline constexpr Field kFields_0357[] = {
+inline constexpr Field kFields_L01DD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2362},
+    {"Flags", 1, 1, 0x0204, 2363},
+    {"Condition", 2, 1, 0x0104, 2364},
+    {"WeaponLevelMin", 3, 1, 0x0000, 932},
+    {"On", 4, 2, 0x0008, 7501},
+    {"Off", 6, 2, 0x0008, 7502},
+};
+
+inline constexpr Field kFields_L01DD_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2365},
+    {"ScriptName", 16, 8, 0x0010, 581},
+};
+
+inline constexpr Field kFields_L01DD_S0357[] = {
     {"PinMode", 24, 1, 0x0104, 2366},
     {"SpeedThreshold", 28, 4, 0x0008, 7503},
     {"Duration", 32, 4, 0x0008, 7504},
     {"ExtraSteps", 36, 1, 0x0000, 933},
 };
 
-inline constexpr Field kFields_0358[] = {
+inline constexpr Field kFields_L01DE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2367},
+    {"Flags", 1, 1, 0x0204, 2368},
+    {"Condition", 2, 1, 0x0104, 2369},
+    {"WeaponLevelMin", 3, 1, 0x0000, 934},
+    {"On", 4, 2, 0x0008, 7505},
+    {"Off", 6, 2, 0x0008, 7506},
+};
+
+inline constexpr Field kFields_L01DE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2370},
+    {"ScriptName", 16, 8, 0x0010, 582},
+};
+
+inline constexpr Field kFields_L01DE_S0358[] = {
     {"Enabled", 24, 1, 0x0000, 935},
 };
 
-inline constexpr Field kFields_0359[] = {
+inline constexpr Field kFields_L01DF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2371},
+    {"Flags", 1, 1, 0x0204, 2372},
+    {"Condition", 2, 1, 0x0104, 2373},
+    {"WeaponLevelMin", 3, 1, 0x0000, 936},
+    {"On", 4, 2, 0x0008, 7507},
+    {"Off", 6, 2, 0x0008, 7508},
+};
+
+inline constexpr Field kFields_L01DF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2374},
+    {"ScriptName", 16, 8, 0x0010, 583},
+};
+
+inline constexpr Field kFields_L01DF_S0359[] = {
     {"Persist", 24, 1, 0x0000, 937},
     {"Reset", 25, 1, 0x0000, 938},
     {"Color0", 32, 0, 0x002C, 1},
 };
 
-inline constexpr Field kFields_035A[] = {
+inline constexpr Field kFields_L01E0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2375},
+    {"Flags", 1, 1, 0x0204, 2376},
+    {"Condition", 2, 1, 0x0104, 2377},
+    {"WeaponLevelMin", 3, 1, 0x0000, 939},
+    {"On", 4, 2, 0x0008, 7513},
+    {"Off", 6, 2, 0x0008, 7514},
+};
+
+inline constexpr Field kFields_L01E0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2378},
+    {"ScriptName", 16, 8, 0x0010, 584},
+};
+
+inline constexpr Field kFields_L01E0_S035A[] = {
     {"Duration", 24, 4, 0x0008, 7515},
 };
 
-inline constexpr Field kFields_035B[] = {
+inline constexpr Field kFields_L01E1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2379},
+    {"Flags", 1, 1, 0x0204, 2380},
+    {"Condition", 2, 1, 0x0104, 2381},
+    {"WeaponLevelMin", 3, 1, 0x0000, 940},
+    {"On", 4, 2, 0x0008, 7516},
+    {"Off", 6, 2, 0x0008, 7517},
+};
+
+inline constexpr Field kFields_L01E1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2382},
+    {"ScriptName", 16, 8, 0x0010, 585},
+};
+
+inline constexpr Field kFields_L01E1_S035B[] = {
     {"HideMesh", 24, 1, 0x0000, 941},
 };
 
-inline constexpr Field kFields_035D[] = {
+inline constexpr Field kFields_L01E2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2383},
+    {"Flags", 1, 1, 0x0204, 2384},
+    {"Condition", 2, 1, 0x0104, 2385},
+    {"WeaponLevelMin", 3, 1, 0x0000, 942},
+    {"On", 4, 2, 0x0008, 7518},
+    {"Off", 6, 2, 0x0008, 7519},
+};
+
+inline constexpr Field kFields_L01E2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2386},
+    {"ScriptName", 16, 8, 0x0010, 586},
+};
+
+inline constexpr Field kFields_L01E3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2387},
+    {"Flags", 1, 1, 0x0204, 2388},
+    {"Condition", 2, 1, 0x0104, 2389},
+    {"WeaponLevelMin", 3, 1, 0x0000, 943},
+    {"On", 4, 2, 0x0008, 7520},
+    {"Off", 6, 2, 0x0008, 7521},
+};
+
+inline constexpr Field kFields_L01E3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2390},
+    {"ScriptName", 16, 8, 0x0010, 587},
+};
+
+inline constexpr Field kFields_L01E3_S035D[] = {
     {"JointName", 24, 8, 0x0010, 588},
     {"HasTargetTint", 32, 0, 0x002C, 1},
     {"HasNoTargetTint", 48, 0, 0x002C, 1},
@@ -8763,7 +15741,21 @@ inline constexpr Field kFields_035D[] = {
     {"TargetableTypes", 150, 1, 0x0204, 2392},
 };
 
-inline constexpr Field kFields_035E[] = {
+inline constexpr Field kFields_L01E4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2393},
+    {"Flags", 1, 1, 0x0204, 2394},
+    {"Condition", 2, 1, 0x0104, 2395},
+    {"WeaponLevelMin", 3, 1, 0x0000, 945},
+    {"On", 4, 2, 0x0008, 7541},
+    {"Off", 6, 2, 0x0008, 7542},
+};
+
+inline constexpr Field kFields_L01E4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2396},
+    {"ScriptName", 16, 8, 0x0010, 592},
+};
+
+inline constexpr Field kFields_L01E4_S035E[] = {
     {"State", 24, 1, 0x0104, 2397},
     {"MotorActivationCriteria", 25, 1, 0x0104, 2398},
     {"VelocityFromAnimation", 28, 4, 0x0008, 7543},
@@ -8793,7 +15785,21 @@ inline constexpr Field kFields_035E[] = {
     {"IncludeCapsuleForActivateOnCollision", 114, 1, 0x0014, 1702},
 };
 
-inline constexpr Field kFields_035F[] = {
+inline constexpr Field kFields_L01E5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2399},
+    {"Flags", 1, 1, 0x0204, 2400},
+    {"Condition", 2, 1, 0x0104, 2401},
+    {"WeaponLevelMin", 3, 1, 0x0000, 946},
+    {"On", 4, 2, 0x0008, 7559},
+    {"Off", 6, 2, 0x0008, 7560},
+};
+
+inline constexpr Field kFields_L01E5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2402},
+    {"ScriptName", 16, 8, 0x0010, 593},
+};
+
+inline constexpr Field kFields_L01E5_S035F[] = {
     {"DecapParts", 24, 2, 0x0204, 2403},
     {"AnimationVelocityScale", 28, 4, 0x0008, 7561},
     {"LinearImpulseMultiplier", 32, 4, 0x0008, 7562},
@@ -8810,14 +15816,70 @@ inline constexpr Field kFields_035F[] = {
     {"MaximumAngularSpeed", 76, 4, 0x0008, 7573},
 };
 
-inline constexpr Field kFields_0360[] = {
+inline constexpr Field kFields_L01E6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2404},
+    {"Flags", 1, 1, 0x0204, 2405},
+    {"Condition", 2, 1, 0x0104, 2406},
+    {"WeaponLevelMin", 3, 1, 0x0000, 947},
+    {"On", 4, 2, 0x0008, 7574},
+    {"Off", 6, 2, 0x0008, 7575},
+};
+
+inline constexpr Field kFields_L01E6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2407},
+    {"ScriptName", 16, 8, 0x0010, 594},
+};
+
+inline constexpr Field kFields_L01E6_S0360[] = {
     {"FadeInEnd", 24, 4, 0x0008, 7576},
     {"FadeOutStart", 28, 4, 0x0008, 7577},
     {"EnableFootPinning", 32, 1, 0x0014, 1703},
     {"EnablePelvisAdjustment", 33, 1, 0x0014, 1704},
 };
 
-inline constexpr Field kFields_0363[] = {
+inline constexpr Field kFields_L01E7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2408},
+    {"Flags", 1, 1, 0x0204, 2409},
+    {"Condition", 2, 1, 0x0104, 2410},
+    {"WeaponLevelMin", 3, 1, 0x0000, 948},
+    {"On", 4, 2, 0x0008, 7578},
+    {"Off", 6, 2, 0x0008, 7579},
+};
+
+inline constexpr Field kFields_L01E7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2411},
+    {"ScriptName", 16, 8, 0x0010, 595},
+};
+
+inline constexpr Field kFields_L01E8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2412},
+    {"Flags", 1, 1, 0x0204, 2413},
+    {"Condition", 2, 1, 0x0104, 2414},
+    {"WeaponLevelMin", 3, 1, 0x0000, 949},
+    {"On", 4, 2, 0x0008, 7580},
+    {"Off", 6, 2, 0x0008, 7581},
+};
+
+inline constexpr Field kFields_L01E8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2415},
+    {"ScriptName", 16, 8, 0x0010, 596},
+};
+
+inline constexpr Field kFields_L01E9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2416},
+    {"Flags", 1, 1, 0x0204, 2417},
+    {"Condition", 2, 1, 0x0104, 2418},
+    {"WeaponLevelMin", 3, 1, 0x0000, 950},
+    {"On", 4, 2, 0x0008, 7582},
+    {"Off", 6, 2, 0x0008, 7583},
+};
+
+inline constexpr Field kFields_L01E9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2419},
+    {"ScriptName", 16, 8, 0x0010, 597},
+};
+
+inline constexpr Field kFields_L01E9_S0363[] = {
     {"TargetJoint", 24, 8, 0x0010, 0},
     {"WeaponName", 32, 8, 0x0010, 598},
     {"LocalOffset", 40, 0, 0x002C, 6},
@@ -8825,15 +15887,71 @@ inline constexpr Field kFields_0363[] = {
     {"Duration", 48, 4, 0x0008, 7587},
 };
 
-inline constexpr Field kFields_0364[] = {
+inline constexpr Field kFields_L01EA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2421},
+    {"Flags", 1, 1, 0x0204, 2422},
+    {"Condition", 2, 1, 0x0104, 2423},
+    {"WeaponLevelMin", 3, 1, 0x0000, 951},
+    {"On", 4, 2, 0x0008, 7588},
+    {"Off", 6, 2, 0x0008, 7589},
+};
+
+inline constexpr Field kFields_L01EA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2424},
+    {"ScriptName", 16, 8, 0x0010, 599},
+};
+
+inline constexpr Field kFields_L01EA_S0364[] = {
     {"Hand", 24, 1, 0x0104, 2425},
 };
 
-inline constexpr Field kFields_0366[] = {
+inline constexpr Field kFields_L01EB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2426},
+    {"Flags", 1, 1, 0x0204, 2427},
+    {"Condition", 2, 1, 0x0104, 2428},
+    {"WeaponLevelMin", 3, 1, 0x0000, 952},
+    {"On", 4, 2, 0x0008, 7590},
+    {"Off", 6, 2, 0x0008, 7591},
+};
+
+inline constexpr Field kFields_L01EB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2429},
+    {"ScriptName", 16, 8, 0x0010, 600},
+};
+
+inline constexpr Field kFields_L01EC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2430},
+    {"Flags", 1, 1, 0x0204, 2431},
+    {"Condition", 2, 1, 0x0104, 2432},
+    {"WeaponLevelMin", 3, 1, 0x0000, 953},
+    {"On", 4, 2, 0x0008, 7592},
+    {"Off", 6, 2, 0x0008, 7593},
+};
+
+inline constexpr Field kFields_L01EC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2433},
+    {"ScriptName", 16, 8, 0x0010, 601},
+};
+
+inline constexpr Field kFields_L01EC_S0366[] = {
     {"Probe", 24, 0, 0x002C, 244},
 };
 
-inline constexpr Field kFields_0367[] = {
+inline constexpr Field kFields_L01ED_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2435},
+    {"Flags", 1, 1, 0x0204, 2436},
+    {"Condition", 2, 1, 0x0104, 2437},
+    {"WeaponLevelMin", 3, 1, 0x0000, 954},
+    {"On", 4, 2, 0x0008, 7597},
+    {"Off", 6, 2, 0x0008, 7598},
+};
+
+inline constexpr Field kFields_L01ED_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2438},
+    {"ScriptName", 16, 8, 0x0010, 602},
+};
+
+inline constexpr Field kFields_L01ED_S0367[] = {
     {"BlendTime", 24, 4, 0x0008, 7599},
     {"MaxSpeed", 28, 4, 0x0008, 7600},
     {"DebugAutoSlowMo", 32, 4, 0x0008, 7601},
@@ -8842,7 +15960,21 @@ inline constexpr Field kFields_0367[] = {
     {"ProbeFacingDirection", 44, 1, 0x0014, 1705},
 };
 
-inline constexpr Field kFields_0368[] = {
+inline constexpr Field kFields_L01EE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2439},
+    {"Flags", 1, 1, 0x0204, 2440},
+    {"Condition", 2, 1, 0x0104, 2441},
+    {"WeaponLevelMin", 3, 1, 0x0000, 955},
+    {"On", 4, 2, 0x0008, 7604},
+    {"Off", 6, 2, 0x0008, 7605},
+};
+
+inline constexpr Field kFields_L01EE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2442},
+    {"ScriptName", 16, 8, 0x0010, 603},
+};
+
+inline constexpr Field kFields_L01EE_S0368[] = {
     {"Delay", 24, 4, 0x0008, 7606},
     {"Scale", 28, 4, 0x0008, 7607},
     {"Offset", 32, 4, 0x0008, 7608},
@@ -8851,7 +15983,21 @@ inline constexpr Field kFields_0368[] = {
     {"Direction", 44, 1, 0x0204, 2443},
 };
 
-inline constexpr Field kFields_0369[] = {
+inline constexpr Field kFields_L01EF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2444},
+    {"Flags", 1, 1, 0x0204, 2445},
+    {"Condition", 2, 1, 0x0104, 2446},
+    {"WeaponLevelMin", 3, 1, 0x0000, 956},
+    {"On", 4, 2, 0x0008, 7611},
+    {"Off", 6, 2, 0x0008, 7612},
+};
+
+inline constexpr Field kFields_L01EF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2447},
+    {"ScriptName", 16, 8, 0x0010, 604},
+};
+
+inline constexpr Field kFields_L01EF_S0369[] = {
     {"AttachmentName", 24, 8, 0x0010, 0},
     {"ScaleJointName", 32, 8, 0x0010, 605},
     {"StartScale", 40, 4, 0x0008, 7613},
@@ -8863,12 +16009,54 @@ inline constexpr Field kFields_0369[] = {
     {"EaseType", 64, 1, 0x0104, 2448},
 };
 
-inline constexpr Field kFields_036A[] = {
+inline constexpr Field kFields_L01F0_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2449},
+    {"Flags", 1, 1, 0x0204, 2450},
+    {"Condition", 2, 1, 0x0104, 2451},
+    {"WeaponLevelMin", 3, 1, 0x0000, 957},
+    {"On", 4, 2, 0x0008, 7619},
+    {"Off", 6, 2, 0x0008, 7620},
+};
+
+inline constexpr Field kFields_L01F0_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2452},
+    {"ScriptName", 16, 8, 0x0010, 606},
+};
+
+inline constexpr Field kFields_L01F0_S036A[] = {
     {"BlackboardCreatureVar", 24, 8, 0x0010, 0},
     {"ReadBlackboardOnInitOnly", 32, 1, 0x0014, 1706},
 };
 
-inline constexpr Field kFields_036C[] = {
+inline constexpr Field kFields_L01F1_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2453},
+    {"Flags", 1, 1, 0x0204, 2454},
+    {"Condition", 2, 1, 0x0104, 2455},
+    {"WeaponLevelMin", 3, 1, 0x0000, 958},
+    {"On", 4, 2, 0x0008, 7621},
+    {"Off", 6, 2, 0x0008, 7622},
+};
+
+inline constexpr Field kFields_L01F1_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2456},
+    {"ScriptName", 16, 8, 0x0010, 607},
+};
+
+inline constexpr Field kFields_L01F2_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2457},
+    {"Flags", 1, 1, 0x0204, 2458},
+    {"Condition", 2, 1, 0x0104, 2459},
+    {"WeaponLevelMin", 3, 1, 0x0000, 959},
+    {"On", 4, 2, 0x0008, 7623},
+    {"Off", 6, 2, 0x0008, 7624},
+};
+
+inline constexpr Field kFields_L01F2_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2460},
+    {"ScriptName", 16, 8, 0x0010, 608},
+};
+
+inline constexpr Field kFields_L01F2_S036C[] = {
     {"PrimaryJoint", 24, 8, 0x0010, 0},
     {"AttachName", 32, 8, 0x0010, 0},
     {"YPositionJoint", 40, 8, 0x0010, 0},
@@ -8878,7 +16066,35 @@ inline constexpr Field kFields_036C[] = {
     {"Length", 64, 4, 0x0008, 7632},
 };
 
-inline constexpr Field kFields_036E[] = {
+inline constexpr Field kFields_L01F3_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2461},
+    {"Flags", 1, 1, 0x0204, 2462},
+    {"Condition", 2, 1, 0x0104, 2463},
+    {"WeaponLevelMin", 3, 1, 0x0000, 960},
+    {"On", 4, 2, 0x0008, 7633},
+    {"Off", 6, 2, 0x0008, 7634},
+};
+
+inline constexpr Field kFields_L01F3_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2464},
+    {"ScriptName", 16, 8, 0x0010, 609},
+};
+
+inline constexpr Field kFields_L01F4_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2465},
+    {"Flags", 1, 1, 0x0204, 2466},
+    {"Condition", 2, 1, 0x0104, 2467},
+    {"WeaponLevelMin", 3, 1, 0x0000, 961},
+    {"On", 4, 2, 0x0008, 7635},
+    {"Off", 6, 2, 0x0008, 7636},
+};
+
+inline constexpr Field kFields_L01F4_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2468},
+    {"ScriptName", 16, 8, 0x0010, 610},
+};
+
+inline constexpr Field kFields_L01F4_S036E[] = {
     {"PropType", 24, 8, 0x0010, 0},
     {"AngleOffset", 32, 4, 0x0008, 7637},
     {"Distance", 36, 4, 0x0008, 7638},
@@ -8887,7 +16103,21 @@ inline constexpr Field kFields_036E[] = {
     {"SpawnStatic", 48, 1, 0x0014, 1707},
 };
 
-inline constexpr Field kFields_036F[] = {
+inline constexpr Field kFields_L01F5_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2469},
+    {"Flags", 1, 1, 0x0204, 2470},
+    {"Condition", 2, 1, 0x0104, 2471},
+    {"WeaponLevelMin", 3, 1, 0x0000, 962},
+    {"On", 4, 2, 0x0008, 7641},
+    {"Off", 6, 2, 0x0008, 7642},
+};
+
+inline constexpr Field kFields_L01F5_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2472},
+    {"ScriptName", 16, 8, 0x0010, 611},
+};
+
+inline constexpr Field kFields_L01F5_S036F[] = {
     {"PropType", 24, 8, 0x0010, 0},
     {"AttachJointParent", 32, 8, 0x0010, 612},
     {"ChildAttachJoint", 40, 8, 0x0010, 0},
@@ -8899,15 +16129,85 @@ inline constexpr Field kFields_036F[] = {
     {"CylinderOffsetZ", 72, 4, 0x0008, 7646},
 };
 
-inline constexpr Field kFields_0370[] = {
+inline constexpr Field kFields_L01F6_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2473},
+    {"Flags", 1, 1, 0x0204, 2474},
+    {"Condition", 2, 1, 0x0104, 2475},
+    {"WeaponLevelMin", 3, 1, 0x0000, 964},
+    {"On", 4, 2, 0x0008, 7647},
+    {"Off", 6, 2, 0x0008, 7648},
+};
+
+inline constexpr Field kFields_L01F6_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2476},
+    {"ScriptName", 16, 8, 0x0010, 613},
+};
+
+inline constexpr Field kFields_L01F6_S0370[] = {
     {"DeleteOnDrop", 24, 1, 0x0014, 1708},
 };
 
-inline constexpr Field kFields_0372[] = {
+inline constexpr Field kFields_L01F7_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2477},
+    {"Flags", 1, 1, 0x0204, 2478},
+    {"Condition", 2, 1, 0x0104, 2479},
+    {"WeaponLevelMin", 3, 1, 0x0000, 965},
+    {"On", 4, 2, 0x0008, 7649},
+    {"Off", 6, 2, 0x0008, 7650},
+};
+
+inline constexpr Field kFields_L01F7_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2480},
+    {"ScriptName", 16, 8, 0x0010, 614},
+};
+
+inline constexpr Field kFields_L01F8_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2481},
+    {"Flags", 1, 1, 0x0204, 2482},
+    {"Condition", 2, 1, 0x0104, 2483},
+    {"WeaponLevelMin", 3, 1, 0x0000, 966},
+    {"On", 4, 2, 0x0008, 7651},
+    {"Off", 6, 2, 0x0008, 7652},
+};
+
+inline constexpr Field kFields_L01F8_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2484},
+    {"ScriptName", 16, 8, 0x0010, 615},
+};
+
+inline constexpr Field kFields_L01F8_S0372[] = {
     {"TargetCreatureFilter", 24, 0, 0x002C, 241},
 };
 
-inline constexpr Field kFields_0374[] = {
+inline constexpr Field kFields_L01F9_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2485},
+    {"Flags", 1, 1, 0x0204, 2486},
+    {"Condition", 2, 1, 0x0104, 2487},
+    {"WeaponLevelMin", 3, 1, 0x0000, 967},
+    {"On", 4, 2, 0x0008, 7653},
+    {"Off", 6, 2, 0x0008, 7654},
+};
+
+inline constexpr Field kFields_L01F9_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2488},
+    {"ScriptName", 16, 8, 0x0010, 616},
+};
+
+inline constexpr Field kFields_L01FA_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2489},
+    {"Flags", 1, 1, 0x0204, 2490},
+    {"Condition", 2, 1, 0x0104, 2491},
+    {"WeaponLevelMin", 3, 1, 0x0000, 968},
+    {"On", 4, 2, 0x0008, 7655},
+    {"Off", 6, 2, 0x0008, 7656},
+};
+
+inline constexpr Field kFields_L01FA_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2492},
+    {"ScriptName", 16, 8, 0x0010, 617},
+};
+
+inline constexpr Field kFields_L01FA_S0374[] = {
     {"MaxTargets", 24, 1, 0x0000, 969},
     {"MinTargets", 25, 1, 0x0000, 970},
     {"MaxDistanceForAutomatedTargets", 28, 4, 0x0008, 7657},
@@ -8920,14 +16220,42 @@ inline constexpr Field kFields_0374[] = {
     {"PaintControl", 53, 1, 0x0104, 2494},
 };
 
-inline constexpr Field kFields_0375[] = {
+inline constexpr Field kFields_L01FB_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2495},
+    {"Flags", 1, 1, 0x0204, 2496},
+    {"Condition", 2, 1, 0x0104, 2497},
+    {"WeaponLevelMin", 3, 1, 0x0000, 971},
+    {"On", 4, 2, 0x0008, 7663},
+    {"Off", 6, 2, 0x0008, 7664},
+};
+
+inline constexpr Field kFields_L01FB_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2498},
+    {"ScriptName", 16, 8, 0x0010, 618},
+};
+
+inline constexpr Field kFields_L01FB_S0375[] = {
     {"HitJointName", 24, 8, 0x0010, 0},
     {"DefaultCollision", 32, 8, 0x001C, 396},
     {"WeaponType", 40, 4, 0x0000, 972},
     {"AngleThreshold", 44, 4, 0x0008, 7665},
 };
 
-inline constexpr Field kFields_0376[] = {
+inline constexpr Field kFields_L01FC_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2499},
+    {"Flags", 1, 1, 0x0204, 2500},
+    {"Condition", 2, 1, 0x0104, 2501},
+    {"WeaponLevelMin", 3, 1, 0x0000, 973},
+    {"On", 4, 2, 0x0008, 7666},
+    {"Off", 6, 2, 0x0008, 7667},
+};
+
+inline constexpr Field kFields_L01FC_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2502},
+    {"ScriptName", 16, 8, 0x0010, 619},
+};
+
+inline constexpr Field kFields_L01FC_S0376[] = {
     {"PlayFXList", 24, 0, 0x002C, 273},
     {"Concussion", 40, 12, 0x0024, 424},
     {"ScaleX", 52, 4, 0x0008, 7668},
@@ -8968,14 +16296,28 @@ inline constexpr Field kFields_0376[] = {
     {"RandomConcussions", 209, 1, 0x0014, 1711},
 };
 
-inline constexpr Field kFields_0377[] = {
+inline constexpr Field kFields_L01FD_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2503},
+    {"Flags", 1, 1, 0x0204, 2504},
+    {"Condition", 2, 1, 0x0104, 2505},
+    {"WeaponLevelMin", 3, 1, 0x0000, 976},
+    {"On", 4, 2, 0x0008, 7696},
+    {"Off", 6, 2, 0x0008, 7697},
+};
+
+inline constexpr Field kFields_L01FD_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2506},
+    {"ScriptName", 16, 8, 0x0010, 620},
+};
+
+inline constexpr Field kFields_L01FD_S0377[] = {
     {"WeaponType", 24, 4, 0x0000, 977},
     {"Target", 28, 1, 0x0104, 2507},
     {"Offset", 30, 0, 0x002C, 3},
     {"TrackTarget", 34, 1, 0x0014, 1712},
 };
 
-inline constexpr Field kFields_0378[] = {
+inline constexpr Field kFields_L01FD_S0378[] = {
     {"EffectName", 0, 8, 0x0018, 0},
     {"TargetEffectName", 8, 8, 0x0018, 0},
     {"Speed", 16, 4, 0x0008, 7700},
@@ -8993,7 +16335,21 @@ inline constexpr Field kFields_0378[] = {
     {"SoundWindowAction", 88, 8, 0x001C, 972},
 };
 
-inline constexpr Field kFields_0379[] = {
+inline constexpr Field kFields_L01FE_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2508},
+    {"Flags", 1, 1, 0x0204, 2509},
+    {"Condition", 2, 1, 0x0104, 2510},
+    {"WeaponLevelMin", 3, 1, 0x0000, 979},
+    {"On", 4, 2, 0x0008, 7705},
+    {"Off", 6, 2, 0x0008, 7706},
+};
+
+inline constexpr Field kFields_L01FE_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2511},
+    {"ScriptName", 16, 8, 0x0010, 622},
+};
+
+inline constexpr Field kFields_L01FE_S0379[] = {
     {"AreaConcussionList", 24, 12, 0x0024, 425},
     {"Heap", 36, 4, 0x0000, 980},
     {"AreaEffectGOName", 40, 8, 0x0010, 0},
@@ -9021,7 +16377,35 @@ inline constexpr Field kFields_0379[] = {
     {"AccessibilityHighlightCategory", 139, 1, 0x0104, 2513},
 };
 
-inline constexpr Field kFields_037B[] = {
+inline constexpr Field kFields_L01FF_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2514},
+    {"Flags", 1, 1, 0x0204, 2515},
+    {"Condition", 2, 1, 0x0104, 2516},
+    {"WeaponLevelMin", 3, 1, 0x0000, 985},
+    {"On", 4, 2, 0x0008, 7725},
+    {"Off", 6, 2, 0x0008, 7726},
+};
+
+inline constexpr Field kFields_L01FF_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2517},
+    {"ScriptName", 16, 8, 0x0010, 623},
+};
+
+inline constexpr Field kFields_L0200_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2518},
+    {"Flags", 1, 1, 0x0204, 2519},
+    {"Condition", 2, 1, 0x0104, 2520},
+    {"WeaponLevelMin", 3, 1, 0x0000, 986},
+    {"On", 4, 2, 0x0008, 7727},
+    {"Off", 6, 2, 0x0008, 7728},
+};
+
+inline constexpr Field kFields_L0200_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2521},
+    {"ScriptName", 16, 8, 0x0010, 624},
+};
+
+inline constexpr Field kFields_L0200_S037B[] = {
     {"Projectile", 24, 8, 0x001C, 888},
     {"JointName", 32, 8, 0x0010, 0},
     {"TargetJointName", 40, 8, 0x0010, 0},
@@ -9032,24 +16416,94 @@ inline constexpr Field kFields_037B[] = {
     {"Distance", 68, 4, 0x0008, 7736},
 };
 
-inline constexpr Field kFields_037C[] = {
+inline constexpr Field kFields_L0201_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2522},
+    {"Flags", 1, 1, 0x0204, 2523},
+    {"Condition", 2, 1, 0x0104, 2524},
+    {"WeaponLevelMin", 3, 1, 0x0000, 988},
+    {"On", 4, 2, 0x0008, 7737},
+    {"Off", 6, 2, 0x0008, 7738},
+};
+
+inline constexpr Field kFields_L0201_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2525},
+    {"ScriptName", 16, 8, 0x0010, 625},
+};
+
+inline constexpr Field kFields_L0201_S037C[] = {
     {"Percent", 24, 4, 0x0008, 7739},
     {"RandomRange", 28, 4, 0x0008, 7740},
 };
 
-inline constexpr Field kFields_037D[] = {
+inline constexpr Field kFields_L0202_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2526},
+    {"Flags", 1, 1, 0x0204, 2527},
+    {"Condition", 2, 1, 0x0104, 2528},
+    {"WeaponLevelMin", 3, 1, 0x0000, 989},
+    {"On", 4, 2, 0x0008, 7741},
+    {"Off", 6, 2, 0x0008, 7742},
+};
+
+inline constexpr Field kFields_L0202_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2529},
+    {"ScriptName", 16, 8, 0x0010, 626},
+};
+
+inline constexpr Field kFields_L0202_S037D[] = {
     {"Resist", 24, 4, 0x0008, 7743},
 };
 
-inline constexpr Field kFields_037E[] = {
+inline constexpr Field kFields_L0203_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2530},
+    {"Flags", 1, 1, 0x0204, 2531},
+    {"Condition", 2, 1, 0x0104, 2532},
+    {"WeaponLevelMin", 3, 1, 0x0000, 990},
+    {"On", 4, 2, 0x0008, 7744},
+    {"Off", 6, 2, 0x0008, 7745},
+};
+
+inline constexpr Field kFields_L0203_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2533},
+    {"ScriptName", 16, 8, 0x0010, 627},
+};
+
+inline constexpr Field kFields_L0203_S037E[] = {
     {"CanBouncePendulum", 24, 1, 0x0014, 1713},
 };
 
-inline constexpr Field kFields_037F[] = {
+inline constexpr Field kFields_L0204_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2534},
+    {"Flags", 1, 1, 0x0204, 2535},
+    {"Condition", 2, 1, 0x0104, 2536},
+    {"WeaponLevelMin", 3, 1, 0x0000, 991},
+    {"On", 4, 2, 0x0008, 7746},
+    {"Off", 6, 2, 0x0008, 7747},
+};
+
+inline constexpr Field kFields_L0204_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2537},
+    {"ScriptName", 16, 8, 0x0010, 628},
+};
+
+inline constexpr Field kFields_L0204_S037F[] = {
     {"CanHitPendulum", 24, 1, 0x0014, 1714},
 };
 
-inline constexpr Field kFields_0380[] = {
+inline constexpr Field kFields_L0205_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2538},
+    {"Flags", 1, 1, 0x0204, 2539},
+    {"Condition", 2, 1, 0x0104, 2540},
+    {"WeaponLevelMin", 3, 1, 0x0000, 992},
+    {"On", 4, 2, 0x0008, 7748},
+    {"Off", 6, 2, 0x0008, 7749},
+};
+
+inline constexpr Field kFields_L0205_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2541},
+    {"ScriptName", 16, 8, 0x0010, 629},
+};
+
+inline constexpr Field kFields_L0205_S0380[] = {
     {"Beam", 24, 8, 0x001C, 412},
     {"SourceJointName", 32, 8, 0x0010, 630},
     {"SourceJointOffset", 40, 0, 0x002C, 6},
@@ -9057,7 +16511,21 @@ inline constexpr Field kFields_0380[] = {
     {"EmitSpeed", 52, 4, 0x0008, 7756},
 };
 
-inline constexpr Field kFields_0381[] = {
+inline constexpr Field kFields_L0206_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2542},
+    {"Flags", 1, 1, 0x0204, 2543},
+    {"Condition", 2, 1, 0x0104, 2544},
+    {"WeaponLevelMin", 3, 1, 0x0000, 993},
+    {"On", 4, 2, 0x0008, 7757},
+    {"Off", 6, 2, 0x0008, 7758},
+};
+
+inline constexpr Field kFields_L0206_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2545},
+    {"ScriptName", 16, 8, 0x0010, 631},
+};
+
+inline constexpr Field kFields_L0206_S0381[] = {
     {"Beam", 24, 8, 0x001C, 412},
     {"SourceJointName", 32, 8, 0x0010, 632},
     {"TargetJointName", 40, 8, 0x0010, 633},
@@ -9074,7 +16542,52 @@ inline constexpr Field kFields_0381[] = {
     {"ChasingSpeed", 92, 4, 0x0008, 7773},
 };
 
-inline constexpr Field kFields_0383[] = {
+inline constexpr Field kFields_L0207_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2546},
+    {"Flags", 1, 1, 0x0204, 2547},
+    {"Condition", 2, 1, 0x0104, 2548},
+    {"WeaponLevelMin", 3, 1, 0x0000, 994},
+    {"On", 4, 2, 0x0008, 7774},
+    {"Off", 6, 2, 0x0008, 7775},
+};
+
+inline constexpr Field kFields_L0207_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2549},
+    {"ScriptName", 16, 8, 0x0010, 634},
+};
+
+inline constexpr Field kFields_L0207_S0381[] = {
+    {"Beam", 24, 8, 0x001C, 412},
+    {"SourceJointName", 32, 8, 0x0010, 635},
+    {"TargetJointName", 40, 8, 0x0010, 636},
+    {"SourceJointOffset", 48, 0, 0x002C, 6},
+    {"NoTargetOffset", 54, 0, 0x002C, 6},
+    {"PrepareTime", 60, 4, 0x0008, 7782},
+    {"HitPlayerPauseTime", 64, 4, 0x0008, 7783},
+    {"HitPauseTime", 68, 4, 0x0008, 7784},
+    {"HorizontalAngleMin", 72, 4, 0x0008, 7785},
+    {"HorizontalAngleMax", 76, 4, 0x0008, 7786},
+    {"VerticalAngleMin", 80, 4, 0x0008, 7787},
+    {"VerticalAngleMax", 84, 4, 0x0008, 7788},
+    {"RotationSpeed", 88, 4, 0x0008, 7789},
+    {"ChasingSpeed", 92, 4, 0x0008, 7790},
+};
+
+inline constexpr Field kFields_L0208_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2550},
+    {"Flags", 1, 1, 0x0204, 2551},
+    {"Condition", 2, 1, 0x0104, 2552},
+    {"WeaponLevelMin", 3, 1, 0x0000, 995},
+    {"On", 4, 2, 0x0008, 7791},
+    {"Off", 6, 2, 0x0008, 7792},
+};
+
+inline constexpr Field kFields_L0208_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2553},
+    {"ScriptName", 16, 8, 0x0010, 637},
+};
+
+inline constexpr Field kFields_L0208_S0383[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"NeckAngularAccel", 32, 4, 0x0008, 7793},
     {"NeckMaxAngularVel", 36, 4, 0x0008, 7794},
@@ -9106,11 +16619,39 @@ inline constexpr Field kFields_0383[] = {
     {"EaseOutSpeed_IsNull", 101, 1, 0x0016, 1728},
 };
 
-inline constexpr Field kFields_0384[] = {
+inline constexpr Field kFields_L0209_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2554},
+    {"Flags", 1, 1, 0x0204, 2555},
+    {"Condition", 2, 1, 0x0104, 2556},
+    {"WeaponLevelMin", 3, 1, 0x0000, 996},
+    {"On", 4, 2, 0x0008, 7807},
+    {"Off", 6, 2, 0x0008, 7808},
+};
+
+inline constexpr Field kFields_L0209_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2557},
+    {"ScriptName", 16, 8, 0x0010, 638},
+};
+
+inline constexpr Field kFields_L0209_S0384[] = {
     {"EaseOutSpeed", 24, 4, 0x0008, 7809},
 };
 
-inline constexpr Field kFields_0385[] = {
+inline constexpr Field kFields_L020A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2558},
+    {"Flags", 1, 1, 0x0204, 2559},
+    {"Condition", 2, 1, 0x0104, 2560},
+    {"WeaponLevelMin", 3, 1, 0x0000, 997},
+    {"On", 4, 2, 0x0008, 7810},
+    {"Off", 6, 2, 0x0008, 7811},
+};
+
+inline constexpr Field kFields_L020A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2561},
+    {"ScriptName", 16, 8, 0x0010, 639},
+};
+
+inline constexpr Field kFields_L020A_S0385[] = {
     {"AnimName", 24, 8, 0x0010, 0},
     {"LeftWristTarget", 32, 8, 0x0010, 0},
     {"RightWristTarget", 40, 8, 0x0010, 0},
@@ -9133,28 +16674,112 @@ inline constexpr Field kFields_0385[] = {
     {"SolveSteps", 128, 4, 0x0204, 2562},
 };
 
-inline constexpr Field kFields_0386[] = {
+inline constexpr Field kFields_L020B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2563},
+    {"Flags", 1, 1, 0x0204, 2564},
+    {"Condition", 2, 1, 0x0104, 2565},
+    {"WeaponLevelMin", 3, 1, 0x0000, 998},
+    {"On", 4, 2, 0x0008, 7823},
+    {"Off", 6, 2, 0x0008, 7824},
+};
+
+inline constexpr Field kFields_L020B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2566},
+    {"ScriptName", 16, 8, 0x0010, 640},
+};
+
+inline constexpr Field kFields_L020B_S0386[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
 };
 
-inline constexpr Field kFields_0387[] = {
+inline constexpr Field kFields_L020C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2567},
+    {"Flags", 1, 1, 0x0204, 2568},
+    {"Condition", 2, 1, 0x0104, 2569},
+    {"WeaponLevelMin", 3, 1, 0x0000, 999},
+    {"On", 4, 2, 0x0008, 7825},
+    {"Off", 6, 2, 0x0008, 7826},
+};
+
+inline constexpr Field kFields_L020C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2570},
+    {"ScriptName", 16, 8, 0x0010, 641},
+};
+
+inline constexpr Field kFields_L020C_S0387[] = {
     {"AnimName", 24, 8, 0x0010, 0},
     {"TweenTime", 32, 4, 0x0008, 7827},
 };
 
-inline constexpr Field kFields_0389[] = {
+inline constexpr Field kFields_L020D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2571},
+    {"Flags", 1, 1, 0x0204, 2572},
+    {"Condition", 2, 1, 0x0104, 2573},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1000},
+    {"On", 4, 2, 0x0008, 7828},
+    {"Off", 6, 2, 0x0008, 7829},
+};
+
+inline constexpr Field kFields_L020D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2574},
+    {"ScriptName", 16, 8, 0x0010, 642},
+};
+
+inline constexpr Field kFields_L020E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2575},
+    {"Flags", 1, 1, 0x0204, 2576},
+    {"Condition", 2, 1, 0x0104, 2577},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1001},
+    {"On", 4, 2, 0x0008, 7830},
+    {"Off", 6, 2, 0x0008, 7831},
+};
+
+inline constexpr Field kFields_L020E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2578},
+    {"ScriptName", 16, 8, 0x0010, 643},
+};
+
+inline constexpr Field kFields_L020E_S0389[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"Exit", 32, 1, 0x0014, 1730},
     {"Exit_IsNull", 33, 1, 0x0016, 1731},
 };
 
-inline constexpr Field kFields_038A[] = {
+inline constexpr Field kFields_L020F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2579},
+    {"Flags", 1, 1, 0x0204, 2580},
+    {"Condition", 2, 1, 0x0104, 2581},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1002},
+    {"On", 4, 2, 0x0008, 7832},
+    {"Off", 6, 2, 0x0008, 7833},
+};
+
+inline constexpr Field kFields_L020F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2582},
+    {"ScriptName", 16, 8, 0x0010, 644},
+};
+
+inline constexpr Field kFields_L020F_S038A[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"HookName", 32, 8, 0x0018, 0},
     {"HookName_IsNull", 40, 1, 0x0016, 1732},
 };
 
-inline constexpr Field kFields_038B[] = {
+inline constexpr Field kFields_L0210_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2583},
+    {"Flags", 1, 1, 0x0204, 2584},
+    {"Condition", 2, 1, 0x0104, 2585},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1003},
+    {"On", 4, 2, 0x0008, 7834},
+    {"Off", 6, 2, 0x0008, 7835},
+};
+
+inline constexpr Field kFields_L0210_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2586},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L0210_S038B[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"EntryName", 32, 8, 0x0010, 0},
     {"ReadValueEntryName", 40, 8, 0x0010, 0},
@@ -9170,21 +16795,93 @@ inline constexpr Field kFields_038B[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1739},
 };
 
-inline constexpr Field kFields_038C[] = {
+inline constexpr Field kFields_L0211_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2589},
+    {"Flags", 1, 1, 0x0204, 2590},
+    {"Condition", 2, 1, 0x0104, 2591},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1004},
+    {"On", 4, 2, 0x0008, 7837},
+    {"Off", 6, 2, 0x0008, 7838},
+};
+
+inline constexpr Field kFields_L0211_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2592},
+    {"ScriptName", 16, 8, 0x0010, 645},
+};
+
+inline constexpr Field kFields_L0211_S038B[] = {
+    {"TemplateSymbol", 24, 8, 0x001A, 0},
+    {"EntryName", 32, 8, 0x0010, 0},
+    {"ReadValueEntryName", 40, 8, 0x0010, 0},
+    {"Duration", 48, 4, 0x0008, 7839},
+    {"BlackboardType", 52, 1, 0x0104, 2593},
+};
+
+inline constexpr Field kFields_L0211_S038C[] = {
     {"BlackboardType_IsNull", 53, 1, 0x0016, 1740},
+};
+
+inline constexpr Field kFields_L0212_S038B[] = {
+    {"OnTarget", 54, 1, 0x0014, 1741},
+};
+
+inline constexpr Field kFields_L0212_S038C[] = {
     {"OnTarget_IsNull", 55, 1, 0x0016, 1742},
     {"EntryName_IsNull", 56, 1, 0x0016, 1743},
     {"ReadValueEntryName_IsNull", 57, 1, 0x0016, 1744},
     {"Duration_IsNull", 58, 1, 0x0016, 1745},
+};
+
+inline constexpr Field kFields_L0213_S038B[] = {
+    {"ReadValueBlackboardType", 59, 1, 0x0104, 2594},
+};
+
+inline constexpr Field kFields_L0213_S038C[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1746},
 };
 
-inline constexpr Field kFields_038D[] = {
+inline constexpr Field kFields_L0214_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2595},
+    {"Flags", 1, 1, 0x0204, 2596},
+    {"Condition", 2, 1, 0x0104, 2597},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1005},
+    {"On", 4, 2, 0x0008, 7840},
+    {"Off", 6, 2, 0x0008, 7841},
+};
+
+inline constexpr Field kFields_L0214_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2598},
+    {"ScriptName", 16, 8, 0x0010, 646},
+};
+
+inline constexpr Field kFields_L0214_S038B[] = {
+    {"TemplateSymbol", 24, 8, 0x001A, 0},
+    {"EntryName", 32, 8, 0x0010, 0},
+    {"ReadValueEntryName", 40, 8, 0x0010, 0},
+    {"Duration", 48, 4, 0x0008, 7842},
+    {"BlackboardType", 52, 1, 0x0104, 2599},
+};
+
+inline constexpr Field kFields_L0214_S038D[] = {
     {"BlackboardType_IsNull", 53, 1, 0x0016, 1747},
+};
+
+inline constexpr Field kFields_L0215_S038B[] = {
+    {"OnTarget", 54, 1, 0x0014, 1748},
+};
+
+inline constexpr Field kFields_L0215_S038D[] = {
     {"OnTarget_IsNull", 55, 1, 0x0016, 1749},
     {"EntryName_IsNull", 56, 1, 0x0016, 1750},
     {"ReadValueEntryName_IsNull", 57, 1, 0x0016, 1751},
     {"Duration_IsNull", 58, 1, 0x0016, 1752},
+};
+
+inline constexpr Field kFields_L0216_S038B[] = {
+    {"ReadValueBlackboardType", 59, 1, 0x0104, 2600},
+};
+
+inline constexpr Field kFields_L0216_S038D[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1753},
     {"ModFloatValue", 64, 0, 0x002C, 229},
     {"Value", 104, 4, 0x0008, 7849},
@@ -9192,56 +16889,236 @@ inline constexpr Field kFields_038D[] = {
     {"ModFloatValue_IsNull", 109, 1, 0x0016, 1755},
 };
 
-inline constexpr Field kFields_038E[] = {
+inline constexpr Field kFields_L0217_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2604},
+    {"Flags", 1, 1, 0x0204, 2605},
+    {"Condition", 2, 1, 0x0104, 2606},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1006},
+    {"On", 4, 2, 0x0008, 7850},
+    {"Off", 6, 2, 0x0008, 7851},
+};
+
+inline constexpr Field kFields_L0217_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2607},
+    {"ScriptName", 16, 8, 0x0010, 647},
+};
+
+inline constexpr Field kFields_L0217_S038B[] = {
+    {"TemplateSymbol", 24, 8, 0x001A, 0},
+    {"EntryName", 32, 8, 0x0010, 0},
+    {"ReadValueEntryName", 40, 8, 0x0010, 0},
+    {"Duration", 48, 4, 0x0008, 7852},
+    {"BlackboardType", 52, 1, 0x0104, 2608},
+};
+
+inline constexpr Field kFields_L0217_S038E[] = {
     {"BlackboardType_IsNull", 53, 1, 0x0016, 1756},
+};
+
+inline constexpr Field kFields_L0218_S038B[] = {
+    {"OnTarget", 54, 1, 0x0014, 1757},
+};
+
+inline constexpr Field kFields_L0218_S038E[] = {
     {"OnTarget_IsNull", 55, 1, 0x0016, 1758},
     {"EntryName_IsNull", 56, 1, 0x0016, 1759},
     {"ReadValueEntryName_IsNull", 57, 1, 0x0016, 1760},
     {"Duration_IsNull", 58, 1, 0x0016, 1761},
+};
+
+inline constexpr Field kFields_L0219_S038B[] = {
+    {"ReadValueBlackboardType", 59, 1, 0x0104, 2609},
+};
+
+inline constexpr Field kFields_L0219_S038E[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1762},
     {"Value", 64, 0, 0x002C, 9},
     {"Value_IsNull", 72, 1, 0x0016, 1763},
 };
 
-inline constexpr Field kFields_038F[] = {
+inline constexpr Field kFields_L021A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2610},
+    {"Flags", 1, 1, 0x0204, 2611},
+    {"Condition", 2, 1, 0x0104, 2612},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1007},
+    {"On", 4, 2, 0x0008, 7857},
+    {"Off", 6, 2, 0x0008, 7858},
+};
+
+inline constexpr Field kFields_L021A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2613},
+    {"ScriptName", 16, 8, 0x0010, 648},
+};
+
+inline constexpr Field kFields_L021A_S038B[] = {
+    {"TemplateSymbol", 24, 8, 0x001A, 0},
+    {"EntryName", 32, 8, 0x0010, 0},
+    {"ReadValueEntryName", 40, 8, 0x0010, 0},
+    {"Duration", 48, 4, 0x0008, 7859},
+    {"BlackboardType", 52, 1, 0x0104, 2614},
+};
+
+inline constexpr Field kFields_L021A_S038F[] = {
     {"BlackboardType_IsNull", 53, 1, 0x0016, 1764},
+};
+
+inline constexpr Field kFields_L021B_S038B[] = {
+    {"OnTarget", 54, 1, 0x0014, 1765},
+};
+
+inline constexpr Field kFields_L021B_S038F[] = {
     {"OnTarget_IsNull", 55, 1, 0x0016, 1766},
     {"EntryName_IsNull", 56, 1, 0x0016, 1767},
     {"ReadValueEntryName_IsNull", 57, 1, 0x0016, 1768},
     {"Duration_IsNull", 58, 1, 0x0016, 1769},
+};
+
+inline constexpr Field kFields_L021C_S038B[] = {
+    {"ReadValueBlackboardType", 59, 1, 0x0104, 2615},
+};
+
+inline constexpr Field kFields_L021C_S038F[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1770},
     {"Value", 64, 1, 0x0014, 1771},
     {"Value_IsNull", 65, 1, 0x0016, 1772},
 };
 
-inline constexpr Field kFields_0390[] = {
+inline constexpr Field kFields_L021D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2616},
+    {"Flags", 1, 1, 0x0204, 2617},
+    {"Condition", 2, 1, 0x0104, 2618},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1008},
+    {"On", 4, 2, 0x0008, 7860},
+    {"Off", 6, 2, 0x0008, 7861},
+};
+
+inline constexpr Field kFields_L021D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2619},
+    {"ScriptName", 16, 8, 0x0010, 649},
+};
+
+inline constexpr Field kFields_L021D_S038B[] = {
+    {"TemplateSymbol", 24, 8, 0x001A, 0},
+    {"EntryName", 32, 8, 0x0010, 0},
+    {"ReadValueEntryName", 40, 8, 0x0010, 0},
+    {"Duration", 48, 4, 0x0008, 7862},
+    {"BlackboardType", 52, 1, 0x0104, 2620},
+};
+
+inline constexpr Field kFields_L021D_S0390[] = {
     {"BlackboardType_IsNull", 53, 1, 0x0016, 1773},
+};
+
+inline constexpr Field kFields_L021E_S038B[] = {
+    {"OnTarget", 54, 1, 0x0014, 1774},
+};
+
+inline constexpr Field kFields_L021E_S0390[] = {
     {"OnTarget_IsNull", 55, 1, 0x0016, 1775},
     {"EntryName_IsNull", 56, 1, 0x0016, 1776},
     {"ReadValueEntryName_IsNull", 57, 1, 0x0016, 1777},
     {"Duration_IsNull", 58, 1, 0x0016, 1778},
+};
+
+inline constexpr Field kFields_L021F_S038B[] = {
+    {"ReadValueBlackboardType", 59, 1, 0x0104, 2621},
+};
+
+inline constexpr Field kFields_L021F_S0390[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1779},
     {"Value", 64, 8, 0x0010, 0},
     {"Value_IsNull", 72, 1, 0x0016, 1780},
 };
 
-inline constexpr Field kFields_0391[] = {
+inline constexpr Field kFields_L0220_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2622},
+    {"Flags", 1, 1, 0x0204, 2623},
+    {"Condition", 2, 1, 0x0104, 2624},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1009},
+    {"On", 4, 2, 0x0008, 7863},
+    {"Off", 6, 2, 0x0008, 7864},
+};
+
+inline constexpr Field kFields_L0220_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2625},
+    {"ScriptName", 16, 8, 0x0010, 650},
+};
+
+inline constexpr Field kFields_L0220_S038B[] = {
+    {"TemplateSymbol", 24, 8, 0x001A, 0},
+    {"EntryName", 32, 8, 0x0010, 0},
+    {"ReadValueEntryName", 40, 8, 0x0010, 0},
+    {"Duration", 48, 4, 0x0008, 7865},
+    {"BlackboardType", 52, 1, 0x0104, 2626},
+};
+
+inline constexpr Field kFields_L0220_S0391[] = {
     {"BlackboardType_IsNull", 53, 1, 0x0016, 1781},
+};
+
+inline constexpr Field kFields_L0221_S038B[] = {
+    {"OnTarget", 54, 1, 0x0014, 1782},
+};
+
+inline constexpr Field kFields_L0221_S0391[] = {
     {"OnTarget_IsNull", 55, 1, 0x0016, 1783},
     {"EntryName_IsNull", 56, 1, 0x0016, 1784},
     {"ReadValueEntryName_IsNull", 57, 1, 0x0016, 1785},
     {"Duration_IsNull", 58, 1, 0x0016, 1786},
+};
+
+inline constexpr Field kFields_L0222_S038B[] = {
+    {"ReadValueBlackboardType", 59, 1, 0x0104, 2627},
+};
+
+inline constexpr Field kFields_L0222_S0391[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1787},
     {"Value", 64, 4, 0x0000, 1010},
     {"Value_IsNull", 68, 1, 0x0016, 1788},
 };
 
-inline constexpr Field kFields_0392[] = {
+inline constexpr Field kFields_L0223_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2628},
+    {"Flags", 1, 1, 0x0204, 2629},
+    {"Condition", 2, 1, 0x0104, 2630},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1011},
+    {"On", 4, 2, 0x0008, 7866},
+    {"Off", 6, 2, 0x0008, 7867},
+};
+
+inline constexpr Field kFields_L0223_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2631},
+    {"ScriptName", 16, 8, 0x0010, 651},
+};
+
+inline constexpr Field kFields_L0223_S038B[] = {
+    {"TemplateSymbol", 24, 8, 0x001A, 0},
+    {"EntryName", 32, 8, 0x0010, 0},
+    {"ReadValueEntryName", 40, 8, 0x0010, 0},
+    {"Duration", 48, 4, 0x0008, 7868},
+    {"BlackboardType", 52, 1, 0x0104, 2632},
+};
+
+inline constexpr Field kFields_L0223_S0392[] = {
     {"BlackboardType_IsNull", 53, 1, 0x0016, 1789},
+};
+
+inline constexpr Field kFields_L0224_S038B[] = {
+    {"OnTarget", 54, 1, 0x0014, 1790},
+};
+
+inline constexpr Field kFields_L0224_S0392[] = {
     {"OnTarget_IsNull", 55, 1, 0x0016, 1791},
     {"EntryName_IsNull", 56, 1, 0x0016, 1792},
     {"ReadValueEntryName_IsNull", 57, 1, 0x0016, 1793},
     {"Duration_IsNull", 58, 1, 0x0016, 1794},
+};
+
+inline constexpr Field kFields_L0225_S038B[] = {
+    {"ReadValueBlackboardType", 59, 1, 0x0104, 2633},
+};
+
+inline constexpr Field kFields_L0225_S0392[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1795},
     {"ModFloatValue", 64, 0, 0x002C, 229},
     {"Value", 104, 4, 0x0008, 7875},
@@ -9249,29 +17126,115 @@ inline constexpr Field kFields_0392[] = {
     {"ModFloatValue_IsNull", 109, 1, 0x0016, 1797},
 };
 
-inline constexpr Field kFields_0393[] = {
+inline constexpr Field kFields_L0226_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2637},
+    {"Flags", 1, 1, 0x0204, 2638},
+    {"Condition", 2, 1, 0x0104, 2639},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1012},
+    {"On", 4, 2, 0x0008, 7876},
+    {"Off", 6, 2, 0x0008, 7877},
+};
+
+inline constexpr Field kFields_L0226_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2640},
+    {"ScriptName", 16, 8, 0x0010, 652},
+};
+
+inline constexpr Field kFields_L0226_S038B[] = {
+    {"TemplateSymbol", 24, 8, 0x001A, 0},
+    {"EntryName", 32, 8, 0x0010, 0},
+    {"ReadValueEntryName", 40, 8, 0x0010, 0},
+    {"Duration", 48, 4, 0x0008, 7878},
+    {"BlackboardType", 52, 1, 0x0104, 2641},
+};
+
+inline constexpr Field kFields_L0226_S0393[] = {
     {"BlackboardType_IsNull", 53, 1, 0x0016, 1798},
+};
+
+inline constexpr Field kFields_L0227_S038B[] = {
+    {"OnTarget", 54, 1, 0x0014, 1799},
+};
+
+inline constexpr Field kFields_L0227_S0393[] = {
     {"OnTarget_IsNull", 55, 1, 0x0016, 1800},
     {"EntryName_IsNull", 56, 1, 0x0016, 1801},
     {"ReadValueEntryName_IsNull", 57, 1, 0x0016, 1802},
     {"Duration_IsNull", 58, 1, 0x0016, 1803},
+};
+
+inline constexpr Field kFields_L0228_S038B[] = {
+    {"ReadValueBlackboardType", 59, 1, 0x0104, 2642},
+};
+
+inline constexpr Field kFields_L0228_S0393[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1804},
     {"SetToOneIfNull", 64, 1, 0x0014, 1805},
     {"SetToOneIfNull_IsNull", 65, 1, 0x0016, 1806},
 };
 
-inline constexpr Field kFields_0394[] = {
+inline constexpr Field kFields_L0229_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2643},
+    {"Flags", 1, 1, 0x0204, 2644},
+    {"Condition", 2, 1, 0x0104, 2645},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1013},
+    {"On", 4, 2, 0x0008, 7879},
+    {"Off", 6, 2, 0x0008, 7880},
+};
+
+inline constexpr Field kFields_L0229_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2646},
+    {"ScriptName", 16, 8, 0x0010, 653},
+};
+
+inline constexpr Field kFields_L0229_S038B[] = {
+    {"TemplateSymbol", 24, 8, 0x001A, 0},
+    {"EntryName", 32, 8, 0x0010, 0},
+    {"ReadValueEntryName", 40, 8, 0x0010, 0},
+    {"Duration", 48, 4, 0x0008, 7881},
+    {"BlackboardType", 52, 1, 0x0104, 2647},
+};
+
+inline constexpr Field kFields_L0229_S0394[] = {
     {"BlackboardType_IsNull", 53, 1, 0x0016, 1807},
+};
+
+inline constexpr Field kFields_L022A_S038B[] = {
+    {"OnTarget", 54, 1, 0x0014, 1808},
+};
+
+inline constexpr Field kFields_L022A_S0394[] = {
     {"OnTarget_IsNull", 55, 1, 0x0016, 1809},
     {"EntryName_IsNull", 56, 1, 0x0016, 1810},
     {"ReadValueEntryName_IsNull", 57, 1, 0x0016, 1811},
     {"Duration_IsNull", 58, 1, 0x0016, 1812},
+};
+
+inline constexpr Field kFields_L022B_S038B[] = {
+    {"ReadValueBlackboardType", 59, 1, 0x0104, 2648},
+};
+
+inline constexpr Field kFields_L022B_S0394[] = {
     {"ReadValueBlackboardType_IsNull", 60, 1, 0x0016, 1813},
     {"ReduceBelowZero", 64, 1, 0x0014, 1814},
     {"ReduceBelowZero_IsNull", 65, 1, 0x0016, 1815},
 };
 
-inline constexpr Field kFields_0395[] = {
+inline constexpr Field kFields_L022C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2649},
+    {"Flags", 1, 1, 0x0204, 2650},
+    {"Condition", 2, 1, 0x0104, 2651},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1014},
+    {"On", 4, 2, 0x0008, 7882},
+    {"Off", 6, 2, 0x0008, 7883},
+};
+
+inline constexpr Field kFields_L022C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2652},
+    {"ScriptName", 16, 8, 0x0010, 654},
+};
+
+inline constexpr Field kFields_L022C_S0395[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"CreatureJoint", 32, 8, 0x0010, 655},
     {"InteractJoint", 40, 8, 0x0010, 656},
@@ -9287,79 +17250,303 @@ inline constexpr Field kFields_0395[] = {
     {"HideOnFinish_IsNull", 70, 1, 0x0016, 1822},
 };
 
-inline constexpr Field kFields_0396[] = {
+inline constexpr Field kFields_L022D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2653},
+    {"Flags", 1, 1, 0x0204, 2654},
+    {"Condition", 2, 1, 0x0104, 2655},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1016},
+    {"On", 4, 2, 0x0008, 7885},
+    {"Off", 6, 2, 0x0008, 7886},
+};
+
+inline constexpr Field kFields_L022D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2656},
+    {"ScriptName", 16, 8, 0x0010, 658},
+};
+
+inline constexpr Field kFields_L022D_S0396[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
 };
 
-inline constexpr Field kFields_0397[] = {
+inline constexpr Field kFields_L022E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2657},
+    {"Flags", 1, 1, 0x0204, 2658},
+    {"Condition", 2, 1, 0x0104, 2659},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1017},
+    {"On", 4, 2, 0x0008, 7887},
+    {"Off", 6, 2, 0x0008, 7888},
+};
+
+inline constexpr Field kFields_L022E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2660},
+    {"ScriptName", 16, 8, 0x0010, 659},
+};
+
+inline constexpr Field kFields_L022E_S0397[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
 };
 
-inline constexpr Field kFields_0398[] = {
+inline constexpr Field kFields_L022F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2661},
+    {"Flags", 1, 1, 0x0204, 2662},
+    {"Condition", 2, 1, 0x0104, 2663},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1018},
+    {"On", 4, 2, 0x0008, 7889},
+    {"Off", 6, 2, 0x0008, 7890},
+};
+
+inline constexpr Field kFields_L022F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2664},
+    {"ScriptName", 16, 8, 0x0010, 660},
+};
+
+inline constexpr Field kFields_L022F_S0398[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"Restore", 32, 4, 0x0008, 7891},
     {"Restore_IsNull", 36, 1, 0x0016, 1823},
 };
 
-inline constexpr Field kFields_0399[] = {
+inline constexpr Field kFields_L0230_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2665},
+    {"Flags", 1, 1, 0x0204, 2666},
+    {"Condition", 2, 1, 0x0104, 2667},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1019},
+    {"On", 4, 2, 0x0008, 7892},
+    {"Off", 6, 2, 0x0008, 7893},
+};
+
+inline constexpr Field kFields_L0230_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2668},
+    {"ScriptName", 16, 8, 0x0010, 661},
+};
+
+inline constexpr Field kFields_L0230_S0399[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
 };
 
-inline constexpr Field kFields_039A[] = {
+inline constexpr Field kFields_L0231_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2669},
+    {"Flags", 1, 1, 0x0204, 2670},
+    {"Condition", 2, 1, 0x0104, 2671},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1020},
+    {"On", 4, 2, 0x0008, 7894},
+    {"Off", 6, 2, 0x0008, 7895},
+};
+
+inline constexpr Field kFields_L0231_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2672},
+    {"ScriptName", 16, 8, 0x0010, 662},
+};
+
+inline constexpr Field kFields_L0231_S039A[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
 };
 
-inline constexpr Field kFields_039B[] = {
+inline constexpr Field kFields_L0232_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2673},
+    {"Flags", 1, 1, 0x0204, 2674},
+    {"Condition", 2, 1, 0x0104, 2675},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1021},
+    {"On", 4, 2, 0x0008, 7896},
+    {"Off", 6, 2, 0x0008, 7897},
+};
+
+inline constexpr Field kFields_L0232_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2676},
+    {"ScriptName", 16, 8, 0x0010, 663},
+};
+
+inline constexpr Field kFields_L0232_S039B[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"Mode", 32, 8, 0x0010, 0},
     {"Mode_IsNull", 40, 1, 0x0016, 1824},
 };
 
-inline constexpr Field kFields_039C[] = {
+inline constexpr Field kFields_L0233_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2677},
+    {"Flags", 1, 1, 0x0204, 2678},
+    {"Condition", 2, 1, 0x0104, 2679},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1022},
+    {"On", 4, 2, 0x0008, 7898},
+    {"Off", 6, 2, 0x0008, 7899},
+};
+
+inline constexpr Field kFields_L0233_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2680},
+    {"ScriptName", 16, 8, 0x0010, 664},
+};
+
+inline constexpr Field kFields_L0233_S039C[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"Mode", 32, 8, 0x0010, 0},
     {"Mode_IsNull", 40, 1, 0x0016, 1825},
 };
 
-inline constexpr Field kFields_039D[] = {
+inline constexpr Field kFields_L0234_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2681},
+    {"Flags", 1, 1, 0x0204, 2682},
+    {"Condition", 2, 1, 0x0104, 2683},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1023},
+    {"On", 4, 2, 0x0008, 7900},
+    {"Off", 6, 2, 0x0008, 7901},
+};
+
+inline constexpr Field kFields_L0234_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2684},
+    {"ScriptName", 16, 8, 0x0010, 665},
+};
+
+inline constexpr Field kFields_L0234_S039D[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
 };
 
-inline constexpr Field kFields_039E[] = {
+inline constexpr Field kFields_L0235_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2685},
+    {"Flags", 1, 1, 0x0204, 2686},
+    {"Condition", 2, 1, 0x0104, 2687},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1024},
+    {"On", 4, 2, 0x0008, 7902},
+    {"Off", 6, 2, 0x0008, 7903},
+};
+
+inline constexpr Field kFields_L0235_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2688},
+    {"ScriptName", 16, 8, 0x0010, 666},
+};
+
+inline constexpr Field kFields_L0235_S039E[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"Tags", 32, 12, 0x0024, 428},
     {"Tags_IsNull", 44, 1, 0x0016, 1826},
 };
 
-inline constexpr Field kFields_039F[] = {
+inline constexpr Field kFields_L0236_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2689},
+    {"Flags", 1, 1, 0x0204, 2690},
+    {"Condition", 2, 1, 0x0104, 2691},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1025},
+    {"On", 4, 2, 0x0008, 7904},
+    {"Off", 6, 2, 0x0008, 7905},
+};
+
+inline constexpr Field kFields_L0236_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2692},
+    {"ScriptName", 16, 8, 0x0010, 667},
+};
+
+inline constexpr Field kFields_L0236_S039F[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"Tags", 32, 12, 0x0024, 429},
     {"Tags_IsNull", 44, 1, 0x0016, 1827},
 };
 
-inline constexpr Field kFields_03A0[] = {
+inline constexpr Field kFields_L0237_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2693},
+    {"Flags", 1, 1, 0x0204, 2694},
+    {"Condition", 2, 1, 0x0104, 2695},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1026},
+    {"On", 4, 2, 0x0008, 7906},
+    {"Off", 6, 2, 0x0008, 7907},
+};
+
+inline constexpr Field kFields_L0237_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2696},
+    {"ScriptName", 16, 8, 0x0010, 668},
+};
+
+inline constexpr Field kFields_L0237_S03A0[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
     {"Tags", 32, 12, 0x0024, 430},
     {"Tags_IsNull", 44, 1, 0x0016, 1828},
 };
 
-inline constexpr Field kFields_03A1[] = {
+inline constexpr Field kFields_L0238_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2697},
+    {"Flags", 1, 1, 0x0204, 2698},
+    {"Condition", 2, 1, 0x0104, 2699},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1027},
+    {"On", 4, 2, 0x0008, 7908},
+    {"Off", 6, 2, 0x0008, 7909},
+};
+
+inline constexpr Field kFields_L0238_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2700},
+    {"ScriptName", 16, 8, 0x0010, 669},
+};
+
+inline constexpr Field kFields_L0238_S03A1[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
 };
 
-inline constexpr Field kFields_03A2[] = {
+inline constexpr Field kFields_L0239_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2701},
+    {"Flags", 1, 1, 0x0204, 2702},
+    {"Condition", 2, 1, 0x0104, 2703},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1028},
+    {"On", 4, 2, 0x0008, 7910},
+    {"Off", 6, 2, 0x0008, 7911},
+};
+
+inline constexpr Field kFields_L0239_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2704},
+    {"ScriptName", 16, 8, 0x0010, 670},
+};
+
+inline constexpr Field kFields_L0239_S03A2[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
 };
 
-inline constexpr Field kFields_03A3[] = {
+inline constexpr Field kFields_L023A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2705},
+    {"Flags", 1, 1, 0x0204, 2706},
+    {"Condition", 2, 1, 0x0104, 2707},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1029},
+    {"On", 4, 2, 0x0008, 7912},
+    {"Off", 6, 2, 0x0008, 7913},
+};
+
+inline constexpr Field kFields_L023A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2708},
+    {"ScriptName", 16, 8, 0x0010, 671},
+};
+
+inline constexpr Field kFields_L023A_S03A3[] = {
     {"TemplateSymbol", 24, 8, 0x001A, 0},
 };
 
-inline constexpr Field kFields_03A4[] = {
+inline constexpr Field kFields_L023B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2709},
+    {"Flags", 1, 1, 0x0204, 2710},
+    {"Condition", 2, 1, 0x0104, 2711},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1030},
+    {"On", 4, 2, 0x0008, 7914},
+    {"Off", 6, 2, 0x0008, 7915},
+};
+
+inline constexpr Field kFields_L023B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2712},
+    {"ScriptName", 16, 8, 0x0010, 672},
+};
+
+inline constexpr Field kFields_L023B_S03A4[] = {
     {"Event", 24, 0, 0x002C, 180},
 };
 
-inline constexpr Field kFields_03A5[] = {
+inline constexpr Field kFields_L023C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2713},
+    {"Flags", 1, 1, 0x0204, 2714},
+    {"Condition", 2, 1, 0x0104, 2715},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1031},
+    {"On", 4, 2, 0x0008, 7917},
+    {"Off", 6, 2, 0x0008, 7918},
+};
+
+inline constexpr Field kFields_L023C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2716},
+    {"ScriptName", 16, 8, 0x0010, 673},
+};
+
+inline constexpr Field kFields_L023C_S03A5[] = {
     {"Layer", 24, 1, 0x0104, 2717},
     {"Mode", 25, 1, 0x0104, 2718},
     {"RegionID", 26, 1, 0x0104, 2719},
@@ -9369,76 +17556,300 @@ inline constexpr Field kFields_03A5[] = {
     {"CreatureID", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_03A6[] = {
+inline constexpr Field kFields_L023D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2721},
+    {"Flags", 1, 1, 0x0204, 2722},
+    {"Condition", 2, 1, 0x0104, 2723},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1032},
+    {"On", 4, 2, 0x0008, 7921},
+    {"Off", 6, 2, 0x0008, 7922},
+};
+
+inline constexpr Field kFields_L023D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2724},
+    {"ScriptName", 16, 8, 0x0010, 674},
+};
+
+inline constexpr Field kFields_L023D_S03A6[] = {
     {"Layer", 24, 1, 0x0104, 2725},
 };
 
-inline constexpr Field kFields_03A7[] = {
+inline constexpr Field kFields_L023E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2726},
+    {"Flags", 1, 1, 0x0204, 2727},
+    {"Condition", 2, 1, 0x0104, 2728},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1033},
+    {"On", 4, 2, 0x0008, 7923},
+    {"Off", 6, 2, 0x0008, 7924},
+};
+
+inline constexpr Field kFields_L023E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2729},
+    {"ScriptName", 16, 8, 0x0010, 675},
+};
+
+inline constexpr Field kFields_L023E_S03A7[] = {
     {"Layer", 24, 1, 0x0104, 2730},
 };
 
-inline constexpr Field kFields_03A8[] = {
+inline constexpr Field kFields_L023F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2731},
+    {"Flags", 1, 1, 0x0204, 2732},
+    {"Condition", 2, 1, 0x0104, 2733},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1034},
+    {"On", 4, 2, 0x0008, 7925},
+    {"Off", 6, 2, 0x0008, 7926},
+};
+
+inline constexpr Field kFields_L023F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2734},
+    {"ScriptName", 16, 8, 0x0010, 676},
+};
+
+inline constexpr Field kFields_L023F_S03A8[] = {
     {"EmissiveScale", 24, 4, 0x0008, 7927},
     {"EaseInTime", 28, 4, 0x0008, 7928},
     {"EaseOutTime", 32, 4, 0x0008, 7929},
     {"ApplyToActiveWeaponsOnly", 36, 1, 0x0014, 1829},
 };
 
-inline constexpr Field kFields_03A9[] = {
+inline constexpr Field kFields_L0240_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2735},
+    {"Flags", 1, 1, 0x0204, 2736},
+    {"Condition", 2, 1, 0x0104, 2737},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1035},
+    {"On", 4, 2, 0x0008, 7930},
+    {"Off", 6, 2, 0x0008, 7931},
+};
+
+inline constexpr Field kFields_L0240_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2738},
+    {"ScriptName", 16, 8, 0x0010, 677},
+};
+
+inline constexpr Field kFields_L0240_S03A9[] = {
     {"HealthBarState", 24, 1, 0x0104, 2739},
 };
 
-inline constexpr Field kFields_03AA[] = {
+inline constexpr Field kFields_L0240_S03AA[] = {
     {"ForceToShow", 0, 1, 0x0014, 1830},
     {"ShouldShow", 1, 1, 0x0014, 1831},
     {"RingRadius", 4, 4, 0x0008, 7932},
 };
 
-inline constexpr Field kFields_03AB[] = {
+inline constexpr Field kFields_L0241_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2740},
+    {"Flags", 1, 1, 0x0204, 2741},
+    {"Condition", 2, 1, 0x0104, 2742},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1036},
+    {"On", 4, 2, 0x0008, 7933},
+    {"Off", 6, 2, 0x0008, 7934},
+};
+
+inline constexpr Field kFields_L0241_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2743},
+    {"ScriptName", 16, 8, 0x0010, 678},
+};
+
+inline constexpr Field kFields_L0241_S03AB[] = {
     {"Param", 24, 0, 0x002C, 938},
 };
 
-inline constexpr Field kFields_03AC[] = {
+inline constexpr Field kFields_L0242_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2744},
+    {"Flags", 1, 1, 0x0204, 2745},
+    {"Condition", 2, 1, 0x0104, 2746},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1037},
+    {"On", 4, 2, 0x0008, 7936},
+    {"Off", 6, 2, 0x0008, 7937},
+};
+
+inline constexpr Field kFields_L0242_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2747},
+    {"ScriptName", 16, 8, 0x0010, 679},
+};
+
+inline constexpr Field kFields_L0242_S03AC[] = {
     {"ForceOn", 24, 1, 0x0014, 1834},
     {"HudElements", 25, 1, 0x0204, 2748},
 };
 
-inline constexpr Field kFields_03AD[] = {
+inline constexpr Field kFields_L0243_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2749},
+    {"Flags", 1, 1, 0x0204, 2750},
+    {"Condition", 2, 1, 0x0104, 2751},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1038},
+    {"On", 4, 2, 0x0008, 7938},
+    {"Off", 6, 2, 0x0008, 7939},
+};
+
+inline constexpr Field kFields_L0243_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2752},
+    {"ScriptName", 16, 8, 0x0010, 680},
+};
+
+inline constexpr Field kFields_L0243_S03AD[] = {
     {"kickOffReactionMove", 24, 4, 0x0008, 7940},
 };
 
-inline constexpr Field kFields_03AE[] = {
+inline constexpr Field kFields_L0244_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2753},
+    {"Flags", 1, 1, 0x0204, 2754},
+    {"Condition", 2, 1, 0x0104, 2755},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1039},
+    {"On", 4, 2, 0x0008, 7941},
+    {"Off", 6, 2, 0x0008, 7942},
+};
+
+inline constexpr Field kFields_L0244_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2756},
+    {"ScriptName", 16, 8, 0x0010, 681},
+};
+
+inline constexpr Field kFields_L0244_S03AE[] = {
     {"NextAnimationTotalFrames", 24, 1, 0x0000, 1040},
     {"PhaseOfWarpStart", 28, 4, 0x0008, 7943},
 };
 
-inline constexpr Field kFields_03AF[] = {
+inline constexpr Field kFields_L0245_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2757},
+    {"Flags", 1, 1, 0x0204, 2758},
+    {"Condition", 2, 1, 0x0104, 2759},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1041},
+    {"On", 4, 2, 0x0008, 7944},
+    {"Off", 6, 2, 0x0008, 7945},
+};
+
+inline constexpr Field kFields_L0245_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2760},
+    {"ScriptName", 16, 8, 0x0010, 682},
+};
+
+inline constexpr Field kFields_L0245_S03AF[] = {
     {"StimName", 24, 8, 0x0018, 0},
     {"SendTo", 32, 1, 0x0104, 2761},
     {"CreatureID", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_03B1[] = {
+inline constexpr Field kFields_L0246_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2762},
+    {"Flags", 1, 1, 0x0204, 2763},
+    {"Condition", 2, 1, 0x0104, 2764},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1042},
+    {"On", 4, 2, 0x0008, 7946},
+    {"Off", 6, 2, 0x0008, 7947},
+};
+
+inline constexpr Field kFields_L0246_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2765},
+    {"ScriptName", 16, 8, 0x0010, 683},
+};
+
+inline constexpr Field kFields_L0247_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2766},
+    {"Flags", 1, 1, 0x0204, 2767},
+    {"Condition", 2, 1, 0x0104, 2768},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1043},
+    {"On", 4, 2, 0x0008, 7948},
+    {"Off", 6, 2, 0x0008, 7949},
+};
+
+inline constexpr Field kFields_L0247_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2769},
+    {"ScriptName", 16, 8, 0x0010, 684},
+};
+
+inline constexpr Field kFields_L0247_S03B1[] = {
     {"JointName", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_03B2[] = {
+inline constexpr Field kFields_L0248_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2770},
+    {"Flags", 1, 1, 0x0204, 2771},
+    {"Condition", 2, 1, 0x0104, 2772},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1044},
+    {"On", 4, 2, 0x0008, 7950},
+    {"Off", 6, 2, 0x0008, 7951},
+};
+
+inline constexpr Field kFields_L0248_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2773},
+    {"ScriptName", 16, 8, 0x0010, 685},
+};
+
+inline constexpr Field kFields_L0248_S03B2[] = {
     {"AnimationWeightParams", 24, 12, 0x0024, 431},
     {"AnimationWeight", 36, 4, 0x0008, 7952},
     {"AttachmentObjectName", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_03B3[] = {
+inline constexpr Field kFields_L0249_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2774},
+    {"Flags", 1, 1, 0x0204, 2775},
+    {"Condition", 2, 1, 0x0104, 2776},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1045},
+    {"On", 4, 2, 0x0008, 7953},
+    {"Off", 6, 2, 0x0008, 7954},
+};
+
+inline constexpr Field kFields_L0249_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2777},
+    {"ScriptName", 16, 8, 0x0010, 686},
+};
+
+inline constexpr Field kFields_L0249_S03B3[] = {
     {"AttachmentObjectName", 24, 8, 0x0010, 0},
     {"TimeUntilDeactivateSimulation", 32, 2, 0x0008, 7955},
 };
 
-inline constexpr Field kFields_03B4[] = {
+inline constexpr Field kFields_L024A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2778},
+    {"Flags", 1, 1, 0x0204, 2779},
+    {"Condition", 2, 1, 0x0104, 2780},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1046},
+    {"On", 4, 2, 0x0008, 7956},
+    {"Off", 6, 2, 0x0008, 7957},
+};
+
+inline constexpr Field kFields_L024A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2781},
+    {"ScriptName", 16, 8, 0x0010, 687},
+};
+
+inline constexpr Field kFields_L024A_S03B4[] = {
     {"AttachmentObjectName", 24, 8, 0x0010, 0},
     {"CollideWithGround", 32, 1, 0x0014, 1835},
 };
 
-inline constexpr Field kFields_03B6[] = {
+inline constexpr Field kFields_L024B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2782},
+    {"Flags", 1, 1, 0x0204, 2783},
+    {"Condition", 2, 1, 0x0104, 2784},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1047},
+    {"On", 4, 2, 0x0008, 7958},
+    {"Off", 6, 2, 0x0008, 7959},
+};
+
+inline constexpr Field kFields_L024B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2785},
+    {"ScriptName", 16, 8, 0x0010, 688},
+};
+
+inline constexpr Field kFields_L024C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2786},
+    {"Flags", 1, 1, 0x0204, 2787},
+    {"Condition", 2, 1, 0x0104, 2788},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1048},
+    {"On", 4, 2, 0x0008, 7960},
+    {"Off", 6, 2, 0x0008, 7961},
+};
+
+inline constexpr Field kFields_L024C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2789},
+    {"ScriptName", 16, 8, 0x0010, 689},
+};
+
+inline constexpr Field kFields_L024C_S03B6[] = {
     {"Effect", 24, 8, 0x001C, 481},
     {"ParameterList", 32, 12, 0x0024, 432},
     {"JointName", 48, 8, 0x0010, 690},
@@ -9446,24 +17857,122 @@ inline constexpr Field kFields_03B6[] = {
     {"UseActionDuration", 60, 1, 0x0014, 1836},
 };
 
-inline constexpr Field kFields_03B7[] = {
+inline constexpr Field kFields_L024D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2790},
+    {"Flags", 1, 1, 0x0204, 2791},
+    {"Condition", 2, 1, 0x0104, 2792},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1050},
+    {"On", 4, 2, 0x0008, 7962},
+    {"Off", 6, 2, 0x0008, 7963},
+};
+
+inline constexpr Field kFields_L024D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2793},
+    {"ScriptName", 16, 8, 0x0010, 691},
+};
+
+inline constexpr Field kFields_L024D_S03B7[] = {
     {"Effect", 24, 8, 0x001C, 494},
 };
 
-inline constexpr Field kFields_03B9[] = {
+inline constexpr Field kFields_L024E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2794},
+    {"Flags", 1, 1, 0x0204, 2795},
+    {"Condition", 2, 1, 0x0104, 2796},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1051},
+    {"On", 4, 2, 0x0008, 7964},
+    {"Off", 6, 2, 0x0008, 7965},
+};
+
+inline constexpr Field kFields_L024E_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2797},
+    {"ScriptName", 16, 8, 0x0010, 692},
+};
+
+inline constexpr Field kFields_L024F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2798},
+    {"Flags", 1, 1, 0x0204, 2799},
+    {"Condition", 2, 1, 0x0104, 2800},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1052},
+    {"On", 4, 2, 0x0008, 7966},
+    {"Off", 6, 2, 0x0008, 7967},
+};
+
+inline constexpr Field kFields_L024F_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2801},
+    {"ScriptName", 16, 8, 0x0010, 693},
+};
+
+inline constexpr Field kFields_L024F_S03B9[] = {
     {"ToggleType", 24, 1, 0x0104, 2802},
 };
 
-inline constexpr Field kFields_03BA[] = {
+inline constexpr Field kFields_L0250_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2803},
+    {"Flags", 1, 1, 0x0204, 2804},
+    {"Condition", 2, 1, 0x0104, 2805},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1053},
+    {"On", 4, 2, 0x0008, 7968},
+    {"Off", 6, 2, 0x0008, 7969},
+};
+
+inline constexpr Field kFields_L0250_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2806},
+    {"ScriptName", 16, 8, 0x0010, 694},
+};
+
+inline constexpr Field kFields_L0250_S03BA[] = {
     {"AtLeastOneUpdate", 24, 1, 0x0014, 1837},
 };
 
-inline constexpr Field kFields_03BC[] = {
+inline constexpr Field kFields_L0251_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2807},
+    {"Flags", 1, 1, 0x0204, 2808},
+    {"Condition", 2, 1, 0x0104, 2809},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1054},
+    {"On", 4, 2, 0x0008, 7970},
+    {"Off", 6, 2, 0x0008, 7971},
+};
+
+inline constexpr Field kFields_L0251_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2810},
+    {"ScriptName", 16, 8, 0x0010, 695},
+};
+
+inline constexpr Field kFields_L0252_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2811},
+    {"Flags", 1, 1, 0x0204, 2812},
+    {"Condition", 2, 1, 0x0104, 2813},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1055},
+    {"On", 4, 2, 0x0008, 7972},
+    {"Off", 6, 2, 0x0008, 7973},
+};
+
+inline constexpr Field kFields_L0252_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2814},
+    {"ScriptName", 16, 8, 0x0010, 696},
+};
+
+inline constexpr Field kFields_L0252_S03BC[] = {
     {"CreatureCollision", 24, 1, 0x0014, 1838},
     {"GrabChainInHand", 25, 1, 0x0014, 1839},
 };
 
-inline constexpr Field kFields_03BD[] = {
+inline constexpr Field kFields_L0253_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2815},
+    {"Flags", 1, 1, 0x0204, 2816},
+    {"Condition", 2, 1, 0x0104, 2817},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1056},
+    {"On", 4, 2, 0x0008, 7974},
+    {"Off", 6, 2, 0x0008, 7975},
+};
+
+inline constexpr Field kFields_L0253_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2818},
+    {"ScriptName", 16, 8, 0x0010, 697},
+};
+
+inline constexpr Field kFields_L0253_S03BD[] = {
     {"IconName", 24, 8, 0x0010, 0},
     {"OverrideHeight", 32, 4, 0x0008, 7976},
     {"BlendIn", 36, 4, 0x0008, 7977},
@@ -9471,33 +17980,47 @@ inline constexpr Field kFields_03BD[] = {
     {"Persistence", 44, 1, 0x0104, 2819},
 };
 
-inline constexpr Field kFields_03BF[] = {
+inline constexpr Field kFields_L0254_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2820},
+    {"Flags", 1, 1, 0x0204, 2821},
+    {"Condition", 2, 1, 0x0104, 2822},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1057},
+    {"On", 4, 2, 0x0008, 7979},
+    {"Off", 6, 2, 0x0008, 7980},
+};
+
+inline constexpr Field kFields_L0254_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2823},
+    {"ScriptName", 16, 8, 0x0010, 698},
+};
+
+inline constexpr Field kFields_L0254_S03BF[] = {
     {"VFSEvents", 0, 12, 0x0024, 433},
 };
 
-inline constexpr Field kFields_03C0[] = {
+inline constexpr Field kFields_L0254_S03C0[] = {
     {"Setting", 0, 1, 0x0104, 2824},
     {"VFSSettingName", 8, 8, 0x0018, 0},
     {"RTPCName", 16, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_03C1[] = {
+inline constexpr Field kFields_L0254_S03C1[] = {
     {"Bus", 0, 1, 0x0104, 2825},
     {"BusName", 8, 8, 0x0018, 0},
     {"RTPCName", 16, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_03C2[] = {
+inline constexpr Field kFields_L0254_S03C2[] = {
     {"UpToPortalSize", 0, 4, 0x0008, 7981},
     {"MinBlendDistance", 4, 4, 0x0008, 7982},
     {"MaxBlendDistance", 8, 4, 0x0008, 7983},
 };
 
-inline constexpr Field kFields_03C3[] = {
+inline constexpr Field kFields_L0254_S03C3[] = {
     {"KeyPoints", 0, 12, 0x0024, 434},
 };
 
-inline constexpr Field kFields_03C4[] = {
+inline constexpr Field kFields_L0254_S03C4[] = {
     {"DefaultPortalBlendDistancesCurve", 0, 0, 0x002C, 963},
     {"SoundSettingRTPCs", 16, 12, 0x0024, 436},
     {"StreamingIOMemory", 28, 4, 0x0000, 1058},
@@ -9514,7 +18037,7 @@ inline constexpr Field kFields_03C4[] = {
     {"UseStreamingCache", 68, 1, 0x0014, 1840},
 };
 
-inline constexpr Field kFields_03C5[] = {
+inline constexpr Field kFields_L0254_S03C5[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Environment", 8, 12, 0x0024, 437},
     {"StateGroup", 24, 8, 0x0018, 0},
@@ -9524,7 +18047,7 @@ inline constexpr Field kFields_03C5[] = {
     {"ReverbVolumedB", 52, 4, 0x0008, 7989},
 };
 
-inline constexpr Field kFields_03C6[] = {
+inline constexpr Field kFields_L0254_S03C6[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"OcclusionOpen", 8, 4, 0x0008, 7990},
     {"OcclusionClosed", 12, 4, 0x0008, 7991},
@@ -9553,12 +18076,12 @@ inline constexpr Field kFields_03C6[] = {
     {"EnableVirtualPositions", 101, 1, 0x0014, 1842},
 };
 
-inline constexpr Field kFields_03C7[] = {
+inline constexpr Field kFields_L0254_S03C7[] = {
     {"Regions", 0, 12, 0x0024, 438},
     {"Portals", 16, 12, 0x0024, 439},
 };
 
-inline constexpr Field kFields_03C8[] = {
+inline constexpr Field kFields_L0254_S03C8[] = {
     {"Actor", 0, 8, 0x0018, 0},
     {"Sound", 8, 8, 0x0018, 0},
     {"MarkerID", 16, 2, 0x0000, 1065},
@@ -9572,95 +18095,398 @@ inline constexpr Field kFields_03C8[] = {
     {"Off", 60, 4, 0x0008, 8018},
 };
 
-inline constexpr Field kFields_03C9[] = {
+inline constexpr Field kFields_L0254_S03C9[] = {
     {"Cue", 0, 12, 0x0024, 440},
 };
 
-inline constexpr Field kFields_03CA[] = {
+inline constexpr Field kFields_L0255_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2826},
+    {"Flags", 1, 1, 0x0204, 2827},
+    {"Condition", 2, 1, 0x0104, 2828},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1066},
+    {"On", 4, 2, 0x0008, 8019},
+    {"Off", 6, 2, 0x0008, 8020},
+};
+
+inline constexpr Field kFields_L0255_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2829},
+    {"ScriptName", 16, 8, 0x0010, 699},
+};
+
+inline constexpr Field kFields_L0255_S03CA[] = {
     {"EventType", 24, 1, 0x0104, 2830},
 };
 
-inline constexpr Field kFields_03CE[] = {
+inline constexpr Field kFields_L0256_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2831},
+    {"Flags", 1, 1, 0x0204, 2832},
+    {"Condition", 2, 1, 0x0104, 2833},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1067},
+    {"On", 4, 2, 0x0008, 8021},
+    {"Off", 6, 2, 0x0008, 8022},
+};
+
+inline constexpr Field kFields_L0256_S00B1[] = {
+    {"Name", 8, 8, 0x0010, 0},
+    {"RemoteName", 16, 8, 0x0010, 0},
+    {"EmitterName", 24, 8, 0x0018, 0},
+    {"JointName", 32, 8, 0x0018, 0},
+    {"EmitterParm", 40, 8, 0x0010, 0},
+    {"ArbitrationLayer", 48, 8, 0x0010, 0},
+    {"Gain", 56, 4, 0x0008, 8023},
+    {"Inner", 60, 4, 0x0008, 8024},
+    {"Outer", 64, 4, 0x0008, 8025},
+    {"RemoteFlag", 68, 1, 0x0104, 2834},
+    {"EmitterFlags", 69, 1, 0x0204, 2835},
+    {"Mode", 70, 1, 0x0104, 2836},
+    {"PlayOnChild", 71, 1, 0x0014, 1843},
+};
+
+inline constexpr Field kFields_L0257_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2837},
+    {"Flags", 1, 1, 0x0204, 2838},
+    {"Condition", 2, 1, 0x0104, 2839},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1068},
+    {"On", 4, 2, 0x0008, 8026},
+    {"Off", 6, 2, 0x0008, 8027},
+};
+
+inline constexpr Field kFields_L0257_S00B1[] = {
+    {"Name", 8, 8, 0x0010, 0},
+    {"RemoteName", 16, 8, 0x0010, 0},
+    {"EmitterName", 24, 8, 0x0018, 0},
+    {"JointName", 32, 8, 0x0018, 0},
+    {"EmitterParm", 40, 8, 0x0010, 0},
+    {"ArbitrationLayer", 48, 8, 0x0010, 0},
+    {"Gain", 56, 4, 0x0008, 8028},
+    {"Inner", 60, 4, 0x0008, 8029},
+    {"Outer", 64, 4, 0x0008, 8030},
+    {"RemoteFlag", 68, 1, 0x0104, 2840},
+    {"EmitterFlags", 69, 1, 0x0204, 2841},
+    {"Mode", 70, 1, 0x0104, 2842},
+    {"PlayOnChild", 71, 1, 0x0014, 1844},
+};
+
+inline constexpr Field kFields_L0258_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2843},
+    {"Flags", 1, 1, 0x0204, 2844},
+    {"Condition", 2, 1, 0x0104, 2845},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1069},
+    {"On", 4, 2, 0x0008, 8031},
+    {"Off", 6, 2, 0x0008, 8032},
+};
+
+inline constexpr Field kFields_L0258_S00B1[] = {
+    {"Name", 8, 8, 0x0010, 0},
+    {"RemoteName", 16, 8, 0x0010, 0},
+    {"EmitterName", 24, 8, 0x0018, 0},
+    {"JointName", 32, 8, 0x0018, 0},
+    {"EmitterParm", 40, 8, 0x0010, 0},
+    {"ArbitrationLayer", 48, 8, 0x0010, 0},
+    {"Gain", 56, 4, 0x0008, 8033},
+    {"Inner", 60, 4, 0x0008, 8034},
+    {"Outer", 64, 4, 0x0008, 8035},
+    {"RemoteFlag", 68, 1, 0x0104, 2846},
+    {"EmitterFlags", 69, 1, 0x0204, 2847},
+    {"Mode", 70, 1, 0x0104, 2848},
+    {"PlayOnChild", 71, 1, 0x0014, 1845},
+};
+
+inline constexpr Field kFields_L0259_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2849},
+    {"Flags", 1, 1, 0x0204, 2850},
+    {"Condition", 2, 1, 0x0104, 2851},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1070},
+    {"On", 4, 2, 0x0008, 8036},
+    {"Off", 6, 2, 0x0008, 8037},
+};
+
+inline constexpr Field kFields_L0259_S00B1[] = {
+    {"Name", 8, 8, 0x0010, 0},
+    {"RemoteName", 16, 8, 0x0010, 0},
+    {"EmitterName", 24, 8, 0x0018, 0},
+    {"JointName", 32, 8, 0x0018, 0},
+    {"EmitterParm", 40, 8, 0x0010, 0},
+    {"ArbitrationLayer", 48, 8, 0x0010, 0},
+    {"Gain", 56, 4, 0x0008, 8038},
+    {"Inner", 60, 4, 0x0008, 8039},
+    {"Outer", 64, 4, 0x0008, 8040},
+    {"RemoteFlag", 68, 1, 0x0104, 2852},
+    {"EmitterFlags", 69, 1, 0x0204, 2853},
+    {"Mode", 70, 1, 0x0104, 2854},
+    {"PlayOnChild", 71, 1, 0x0014, 1846},
+};
+
+inline constexpr Field kFields_L0259_S03CE[] = {
     {"Hand", 72, 1, 0x0104, 2855},
     {"Doppler", 76, 4, 0x0008, 8041},
 };
 
-inline constexpr Field kFields_03CF[] = {
+inline constexpr Field kFields_L025A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2856},
+    {"Flags", 1, 1, 0x0204, 2857},
+    {"Condition", 2, 1, 0x0104, 2858},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1071},
+    {"On", 4, 2, 0x0008, 8042},
+    {"Off", 6, 2, 0x0008, 8043},
+};
+
+inline constexpr Field kFields_L025A_S00B1[] = {
+    {"Name", 8, 8, 0x0010, 0},
+    {"RemoteName", 16, 8, 0x0010, 0},
+    {"EmitterName", 24, 8, 0x0018, 0},
+    {"JointName", 32, 8, 0x0018, 0},
+    {"EmitterParm", 40, 8, 0x0010, 0},
+    {"ArbitrationLayer", 48, 8, 0x0010, 0},
+    {"Gain", 56, 4, 0x0008, 8044},
+    {"Inner", 60, 4, 0x0008, 8045},
+    {"Outer", 64, 4, 0x0008, 8046},
+    {"RemoteFlag", 68, 1, 0x0104, 2859},
+    {"EmitterFlags", 69, 1, 0x0204, 2860},
+    {"Mode", 70, 1, 0x0104, 2861},
+    {"PlayOnChild", 71, 1, 0x0014, 1847},
+};
+
+inline constexpr Field kFields_L025A_S03CF[] = {
     {"SoundEvent", 72, 8, 0x0018, 0},
     {"DoNotStartIfAlreadyPlaying", 80, 1, 0x0014, 1848},
 };
 
-inline constexpr Field kFields_03D0[] = {
+inline constexpr Field kFields_L025B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2862},
+    {"Flags", 1, 1, 0x0204, 2863},
+    {"Condition", 2, 1, 0x0104, 2864},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1072},
+    {"On", 4, 2, 0x0008, 8047},
+    {"Off", 6, 2, 0x0008, 8048},
+};
+
+inline constexpr Field kFields_L025B_S00B1[] = {
+    {"Name", 8, 8, 0x0010, 0},
+    {"RemoteName", 16, 8, 0x0010, 0},
+    {"EmitterName", 24, 8, 0x0018, 0},
+    {"JointName", 32, 8, 0x0018, 0},
+    {"EmitterParm", 40, 8, 0x0010, 0},
+    {"ArbitrationLayer", 48, 8, 0x0010, 0},
+    {"Gain", 56, 4, 0x0008, 8049},
+    {"Inner", 60, 4, 0x0008, 8050},
+    {"Outer", 64, 4, 0x0008, 8051},
+    {"RemoteFlag", 68, 1, 0x0104, 2865},
+    {"EmitterFlags", 69, 1, 0x0204, 2866},
+    {"Mode", 70, 1, 0x0104, 2867},
+    {"PlayOnChild", 71, 1, 0x0014, 1849},
+};
+
+inline constexpr Field kFields_L025B_S03D0[] = {
     {"SoundEvent", 72, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_03D1[] = {
+inline constexpr Field kFields_L025C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2868},
+    {"Flags", 1, 1, 0x0204, 2869},
+    {"Condition", 2, 1, 0x0104, 2870},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1073},
+    {"On", 4, 2, 0x0008, 8052},
+    {"Off", 6, 2, 0x0008, 8053},
+};
+
+inline constexpr Field kFields_L025C_S00B1[] = {
+    {"Name", 8, 8, 0x0010, 0},
+    {"RemoteName", 16, 8, 0x0010, 0},
+    {"EmitterName", 24, 8, 0x0018, 0},
+    {"JointName", 32, 8, 0x0018, 0},
+    {"EmitterParm", 40, 8, 0x0010, 0},
+    {"ArbitrationLayer", 48, 8, 0x0010, 0},
+    {"Gain", 56, 4, 0x0008, 8054},
+    {"Inner", 60, 4, 0x0008, 8055},
+    {"Outer", 64, 4, 0x0008, 8056},
+    {"RemoteFlag", 68, 1, 0x0104, 2871},
+    {"EmitterFlags", 69, 1, 0x0204, 2872},
+    {"Mode", 70, 1, 0x0104, 2873},
+    {"PlayOnChild", 71, 1, 0x0014, 1850},
+};
+
+inline constexpr Field kFields_L025C_S03D1[] = {
     {"Next", 72, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_03D2[] = {
+inline constexpr Field kFields_L025D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2874},
+    {"Flags", 1, 1, 0x0204, 2875},
+    {"Condition", 2, 1, 0x0104, 2876},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1074},
+    {"On", 4, 2, 0x0008, 8057},
+    {"Off", 6, 2, 0x0008, 8058},
+};
+
+inline constexpr Field kFields_L025D_S03D2[] = {
     {"Name", 8, 8, 0x0018, 0},
     {"Time", 16, 4, 0x0008, 8059},
     {"StartFlags", 20, 1, 0x0204, 2877},
 };
 
-inline constexpr Field kFields_03D5[] = {
+inline constexpr Field kFields_L025E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2878},
+    {"Flags", 1, 1, 0x0204, 2879},
+    {"Condition", 2, 1, 0x0104, 2880},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1075},
+    {"On", 4, 2, 0x0008, 8060},
+    {"Off", 6, 2, 0x0008, 8061},
+};
+
+inline constexpr Field kFields_L025E_S03D2[] = {
+    {"Name", 8, 8, 0x0018, 0},
+    {"Time", 16, 4, 0x0008, 8062},
+    {"StartFlags", 20, 1, 0x0204, 2881},
+};
+
+inline constexpr Field kFields_L025F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2882},
+    {"Flags", 1, 1, 0x0204, 2883},
+    {"Condition", 2, 1, 0x0104, 2884},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1076},
+    {"On", 4, 2, 0x0008, 8063},
+    {"Off", 6, 2, 0x0008, 8064},
+};
+
+inline constexpr Field kFields_L025F_S03D2[] = {
+    {"Name", 8, 8, 0x0018, 0},
+    {"Time", 16, 4, 0x0008, 8065},
+    {"StartFlags", 20, 1, 0x0204, 2885},
+};
+
+inline constexpr Field kFields_L0260_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2886},
+    {"Flags", 1, 1, 0x0204, 2887},
+    {"Condition", 2, 1, 0x0104, 2888},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1077},
+    {"On", 4, 2, 0x0008, 8066},
+    {"Off", 6, 2, 0x0008, 8067},
+};
+
+inline constexpr Field kFields_L0260_S03D5[] = {
     {"Time", 8, 4, 0x0008, 8068},
 };
 
-inline constexpr Field kFields_03D6[] = {
+inline constexpr Field kFields_L0260_S03D6[] = {
     {"CutIndex", 0, 1, 0x0004, 2889},
     {"EventName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_03D7[] = {
+inline constexpr Field kFields_L0261_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2890},
+    {"Flags", 1, 1, 0x0204, 2891},
+    {"Condition", 2, 1, 0x0104, 2892},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1078},
+    {"On", 4, 2, 0x0008, 8069},
+    {"Off", 6, 2, 0x0008, 8070},
+};
+
+inline constexpr Field kFields_L0261_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2893},
+    {"ScriptName", 16, 8, 0x0010, 700},
+};
+
+inline constexpr Field kFields_L0261_S03D7[] = {
     {"Events", 24, 12, 0x0024, 441},
 };
 
-inline constexpr Field kFields_03D8[] = {
+inline constexpr Field kFields_L0262_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2894},
+    {"Flags", 1, 1, 0x0204, 2895},
+    {"Condition", 2, 1, 0x0104, 2896},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1079},
+    {"On", 4, 2, 0x0008, 8071},
+    {"Off", 6, 2, 0x0008, 8072},
+};
+
+inline constexpr Field kFields_L0262_S03D8[] = {
     {"RTPCName", 8, 8, 0x0018, 0},
     {"RTPCValue", 16, 4, 0x0008, 8073},
     {"MarkerID", 20, 2, 0x0000, 1080},
 };
 
-inline constexpr Field kFields_03D9[] = {
+inline constexpr Field kFields_L0263_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2897},
+    {"Flags", 1, 1, 0x0204, 2898},
+    {"Condition", 2, 1, 0x0104, 2899},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1081},
+    {"On", 4, 2, 0x0008, 8074},
+    {"Off", 6, 2, 0x0008, 8075},
+};
+
+inline constexpr Field kFields_L0263_S03D9[] = {
     {"StateGroup", 8, 8, 0x0018, 0},
     {"StateName", 16, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_03DA[] = {
+inline constexpr Field kFields_L0264_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2900},
+    {"Flags", 1, 1, 0x0204, 2901},
+    {"Condition", 2, 1, 0x0104, 2902},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1082},
+    {"On", 4, 2, 0x0008, 8076},
+    {"Off", 6, 2, 0x0008, 8077},
+};
+
+inline constexpr Field kFields_L0264_S03DA[] = {
     {"MarkerID", 8, 2, 0x0000, 1083},
     {"SwitchGroup", 16, 8, 0x0018, 0},
     {"SwitchState", 24, 8, 0x0018, 0},
     {"EmitterName", 32, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_03DB[] = {
+inline constexpr Field kFields_L0265_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2903},
+    {"Flags", 1, 1, 0x0204, 2904},
+    {"Condition", 2, 1, 0x0104, 2905},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1084},
+    {"On", 4, 2, 0x0008, 8078},
+    {"Off", 6, 2, 0x0008, 8079},
+};
+
+inline constexpr Field kFields_L0265_S03DB[] = {
     {"Name", 8, 8, 0x0010, 0},
     {"SoundEventOverride", 16, 8, 0x0010, 0},
     {"TriggerRangeOverride", 24, 4, 0x0008, 8080},
 };
 
-inline constexpr Field kFields_03DC[] = {
+inline constexpr Field kFields_L0266_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2906},
+    {"Flags", 1, 1, 0x0204, 2907},
+    {"Condition", 2, 1, 0x0104, 2908},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1085},
+    {"On", 4, 2, 0x0008, 8081},
+    {"Off", 6, 2, 0x0008, 8082},
+};
+
+inline constexpr Field kFields_L0266_S03DC[] = {
     {"Name", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_03DD[] = {
+inline constexpr Field kFields_L0266_S03DD[] = {
     {"Presets", 0, 0, 0x0028, 23},
 };
 
-inline constexpr Field kFields_03DE[] = {
+inline constexpr Field kFields_L0267_S004A[] = {
+    {"MinCutoff", 0, 4, 0x0008, 8083},
+    {"MinActive", 4, 4, 0x0008, 8084},
+    {"MaxActive", 8, 4, 0x0008, 8085},
+    {"MaxCutoff", 12, 4, 0x0008, 8086},
+};
+
+inline constexpr Field kFields_L0267_S03DE[] = {
     {"MidPoint", 16, 4, 0x0008, 8087},
 };
 
-inline constexpr Field kFields_03DF[] = {
+inline constexpr Field kFields_L0267_S03DF[] = {
     {"Cap", 0, 4, 0x0008, 8088},
     {"Up", 4, 4, 0x0008, 8089},
     {"Down", 8, 4, 0x0008, 8090},
     {"Damp", 12, 4, 0x0008, 8091},
 };
 
-inline constexpr Field kFields_03E0[] = {
+inline constexpr Field kFields_L0267_S03E0[] = {
     {"UserMode", 0, 1, 0x0104, 2909},
     {"ControlType", 1, 1, 0x0104, 2910},
     {"HorizontalMin", 4, 4, 0x0008, 8092},
@@ -9669,14 +18495,14 @@ inline constexpr Field kFields_03E0[] = {
     {"VerticalMax", 16, 4, 0x0008, 8095},
 };
 
-inline constexpr Field kFields_03E1[] = {
+inline constexpr Field kFields_L0267_S03E1[] = {
     {"SelectFrame", 0, 0, 0x002C, 85},
     {"LockFrame", 16, 0, 0x002C, 85},
     {"AimSelectFrame", 32, 0, 0x002C, 85},
     {"AimLockFrame", 48, 0, 0x002C, 85},
 };
 
-inline constexpr Field kFields_03E2[] = {
+inline constexpr Field kFields_L0267_S03E2[] = {
     {"Recenter", 0, 0, 0x002C, 79},
     {"AutoRecenter", 152, 0, 0x002C, 79},
     {"DefaultFrames", 304, 0, 0x002C, 993},
@@ -9721,7 +18547,7 @@ inline constexpr Field kFields_03E2[] = {
     {"AimLockMode", 510, 1, 0x0104, 2916},
 };
 
-inline constexpr Field kFields_03E3[] = {
+inline constexpr Field kFields_L0267_S03E3[] = {
     {"RigName", 0, 8, 0x0018, 701},
     {"DefaultTweenTime", 8, 4, 0x0008, 8233},
     {"QuickPreviewCamera", 16, 12, 0x0024, 442},
@@ -9832,14 +18658,27 @@ inline constexpr Field kFields_03E3[] = {
     {"UICameraSpeedBlend", 2280, 4, 0x0008, 8726},
 };
 
-inline constexpr Field kFields_03E4[] = {
+inline constexpr Field kFields_L0267_S03E4[] = {
     {"DirectorySize", 0, 4, 0x0000, 1095},
     {"States", 4, 4, 0x0000, 1096},
     {"Rigs", 8, 4, 0x0000, 1097},
     {"MutableHeapSize", 12, 4, 0x0000, 1098},
 };
 
-inline constexpr Field kFields_03E5[] = {
+inline constexpr Field kFields_L0268_S002E[] = {
+    {"ID", 0, 4, 0x0001, 1099},
+    {"Type", 4, 4, 0x0105, 2944},
+    {"TweenDriver", 8, 1, 0x0104, 2945},
+    {"Hold", 9, 1, 0x0014, 1868},
+    {"Priority", 12, 4, 0x0000, 1100},
+    {"Weight", 16, 4, 0x0008, 8727},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 8734},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0268_S03E5[] = {
     {"AnimationName", 80, 8, 0x0018, 0},
     {"Main", 88, 4, 0x0008, 8741},
     {"Translation", 92, 4, 0x0008, 8742},
@@ -9866,21 +18705,62 @@ inline constexpr Field kFields_03E5[] = {
     {"Joint", 184, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_03E6[] = {
+inline constexpr Field kFields_L0269_S002E[] = {
+    {"ID", 0, 4, 0x0001, 1101},
+    {"Type", 4, 4, 0x0105, 2946},
+    {"TweenDriver", 8, 1, 0x0104, 2947},
+    {"Hold", 9, 1, 0x0014, 1871},
+    {"Priority", 12, 4, 0x0000, 1102},
+    {"Weight", 16, 4, 0x0008, 8764},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 8771},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0269_S03E6[] = {
     {"PlayerCapsuleRadius", 80, 4, 0x0008, 8778},
     {"PlayerCapsuleHeight", 84, 4, 0x0008, 8779},
     {"PlayerCapsuleSlopeBase", 88, 4, 0x0008, 8780},
     {"PlayerCapsuleSlopeTop", 92, 4, 0x0008, 8781},
 };
 
-inline constexpr Field kFields_03E7[] = {
+inline constexpr Field kFields_L026A_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2948},
+    {"Flags", 1, 1, 0x0204, 2949},
+    {"Condition", 2, 1, 0x0104, 2950},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1103},
+    {"On", 4, 2, 0x0008, 8782},
+    {"Off", 6, 2, 0x0008, 8783},
+};
+
+inline constexpr Field kFields_L026A_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2951},
+    {"ScriptName", 16, 8, 0x0010, 702},
+};
+
+inline constexpr Field kFields_L026A_S03E7[] = {
     {"Amount", 24, 2, 0x0008, 8784},
     {"Duration", 26, 2, 0x0008, 8785},
     {"TweenIn", 28, 0, 0x002C, 12},
     {"TweenOut", 52, 0, 0x002C, 12},
 };
 
-inline constexpr Field kFields_03E8[] = {
+inline constexpr Field kFields_L026B_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2952},
+    {"Flags", 1, 1, 0x0204, 2953},
+    {"Condition", 2, 1, 0x0104, 2954},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1104},
+    {"On", 4, 2, 0x0008, 8798},
+    {"Off", 6, 2, 0x0008, 8799},
+};
+
+inline constexpr Field kFields_L026B_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2955},
+    {"ScriptName", 16, 8, 0x0010, 703},
+};
+
+inline constexpr Field kFields_L026B_S03E8[] = {
     {"Object", 24, 8, 0x0018, 0},
     {"Name", 32, 8, 0x0018, 0},
     {"TweenIn", 40, 0, 0x002C, 12},
@@ -9896,7 +18776,37 @@ inline constexpr Field kFields_03E8[] = {
     {"SeamlessCut", 96, 1, 0x0014, 1880},
 };
 
-inline constexpr Field kFields_03E9[] = {
+inline constexpr Field kFields_L026C_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2956},
+    {"Flags", 1, 1, 0x0204, 2957},
+    {"Condition", 2, 1, 0x0104, 2958},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1105},
+    {"On", 4, 2, 0x0008, 8812},
+    {"Off", 6, 2, 0x0008, 8813},
+};
+
+inline constexpr Field kFields_L026C_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2959},
+    {"ScriptName", 16, 8, 0x0010, 704},
+};
+
+inline constexpr Field kFields_L026C_S03E8[] = {
+    {"Object", 24, 8, 0x0018, 705},
+    {"Name", 32, 8, 0x0018, 0},
+    {"TweenIn", 40, 0, 0x002C, 12},
+    {"TweenOut", 64, 0, 0x002C, 12},
+    {"TweenOutOverAnimation", 88, 1, 0x0014, 1881},
+    {"KeepWorldSpace", 89, 1, 0x0014, 1882},
+    {"IgnoreCollision", 90, 1, 0x0014, 1883},
+    {"TweenOutIgnoreRotation", 91, 1, 0x0014, 1884},
+    {"TweenOutIgnoreYaw", 92, 1, 0x0014, 1885},
+    {"TweenOutIgnorePitch", 93, 1, 0x0014, 1886},
+    {"LinearTween", 94, 1, 0x0014, 1887},
+    {"PhotoSensitive", 95, 1, 0x0014, 1888},
+    {"SeamlessCut", 96, 1, 0x0014, 1889},
+};
+
+inline constexpr Field kFields_L026C_S03E9[] = {
     {"SynchJoint", 104, 8, 0x0010, 706},
     {"Priority", 112, 2, 0x0000, 1106},
     {"TweenPriority", 114, 2, 0x0000, 1107},
@@ -9905,7 +18815,46 @@ inline constexpr Field kFields_03E9[] = {
     {"SelfTweenTime", 120, 2, 0x0008, 8828},
 };
 
-inline constexpr Field kFields_03EA[] = {
+inline constexpr Field kFields_L026D_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2960},
+    {"Flags", 1, 1, 0x0204, 2961},
+    {"Condition", 2, 1, 0x0104, 2962},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1108},
+    {"On", 4, 2, 0x0008, 8829},
+    {"Off", 6, 2, 0x0008, 8830},
+};
+
+inline constexpr Field kFields_L026D_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 2963},
+    {"ScriptName", 16, 8, 0x0010, 707},
+};
+
+inline constexpr Field kFields_L026D_S03E8[] = {
+    {"Object", 24, 8, 0x0018, 708},
+    {"Name", 32, 8, 0x0018, 0},
+    {"TweenIn", 40, 0, 0x002C, 12},
+    {"TweenOut", 64, 0, 0x002C, 12},
+    {"TweenOutOverAnimation", 88, 1, 0x0014, 1890},
+    {"KeepWorldSpace", 89, 1, 0x0014, 1891},
+    {"IgnoreCollision", 90, 1, 0x0014, 1892},
+    {"TweenOutIgnoreRotation", 91, 1, 0x0014, 1893},
+    {"TweenOutIgnoreYaw", 92, 1, 0x0014, 1894},
+    {"TweenOutIgnorePitch", 93, 1, 0x0014, 1895},
+    {"LinearTween", 94, 1, 0x0014, 1896},
+    {"PhotoSensitive", 95, 1, 0x0014, 1897},
+    {"SeamlessCut", 96, 1, 0x0014, 1898},
+};
+
+inline constexpr Field kFields_L026D_S03E9[] = {
+    {"SynchJoint", 104, 8, 0x0010, 709},
+    {"Priority", 112, 2, 0x0000, 1109},
+    {"TweenPriority", 114, 2, 0x0000, 1110},
+    {"Amount", 116, 2, 0x0008, 8843},
+    {"Shake", 118, 2, 0x0008, 8844},
+    {"SelfTweenTime", 120, 2, 0x0008, 8845},
+};
+
+inline constexpr Field kFields_L026D_S03EA[] = {
     {"ApproachTweenIn", 128, 0, 0x002C, 12},
     {"ControlTweenIn", 152, 0, 0x002C, 12},
     {"TemplateSymbol", 176, 8, 0x001A, 0},
@@ -9917,12 +18866,44 @@ inline constexpr Field kFields_03EA[] = {
     {"ApproachYawWorld_IsNull", 195, 1, 0x0016, 1902},
 };
 
-inline constexpr Field kFields_03EB[] = {
+inline constexpr Field kFields_L026E_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2964},
+    {"Flags", 1, 1, 0x0204, 2965},
+    {"Condition", 2, 1, 0x0104, 2966},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1111},
+    {"On", 4, 2, 0x0008, 8860},
+    {"Off", 6, 2, 0x0008, 8861},
+};
+
+inline constexpr Field kFields_L026E_S03EB[] = {
     {"Enable", 8, 1, 0x0000, 1112},
     {"Name", 16, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_03ED[] = {
+inline constexpr Field kFields_L026F_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2967},
+    {"Flags", 1, 1, 0x0204, 2968},
+    {"Condition", 2, 1, 0x0104, 2969},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1113},
+    {"On", 4, 2, 0x0008, 8862},
+    {"Off", 6, 2, 0x0008, 8863},
+};
+
+inline constexpr Field kFields_L026F_S03EB[] = {
+    {"Enable", 8, 1, 0x0000, 1114},
+    {"Name", 16, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0270_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2970},
+    {"Flags", 1, 1, 0x0204, 2971},
+    {"Condition", 2, 1, 0x0104, 2972},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1115},
+    {"On", 4, 2, 0x0008, 8864},
+    {"Off", 6, 2, 0x0008, 8865},
+};
+
+inline constexpr Field kFields_L0270_S03ED[] = {
     {"Recenter", 8, 0, 0x002C, 79},
     {"TemplateSymbol", 160, 8, 0x001A, 0},
     {"Facing", 168, 0, 0x002C, 6},
@@ -9938,7 +18919,16 @@ inline constexpr Field kFields_03ED[] = {
     {"Facing_IsNull", 192, 1, 0x0016, 1909},
 };
 
-inline constexpr Field kFields_03EE[] = {
+inline constexpr Field kFields_L0271_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2975},
+    {"Flags", 1, 1, 0x0204, 2976},
+    {"Condition", 2, 1, 0x0104, 2977},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1116},
+    {"On", 4, 2, 0x0008, 8909},
+    {"Off", 6, 2, 0x0008, 8910},
+};
+
+inline constexpr Field kFields_L0271_S03EE[] = {
     {"Target", 8, 8, 0x0018, 0},
     {"Recenter", 16, 0, 0x002C, 79},
     {"Lock", 168, 4, 0x0008, 8948},
@@ -9950,31 +18940,95 @@ inline constexpr Field kFields_03EE[] = {
     {"Frame", 180, 0, 0x002C, 85},
 };
 
-inline constexpr Field kFields_03EF[] = {
+inline constexpr Field kFields_L0272_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2980},
+    {"Flags", 1, 1, 0x0204, 2981},
+    {"Condition", 2, 1, 0x0104, 2982},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1117},
+    {"On", 4, 2, 0x0008, 8953},
+    {"Off", 6, 2, 0x0008, 8954},
+};
+
+inline constexpr Field kFields_L0272_S03EE[] = {
+    {"Target", 8, 8, 0x0018, 0},
+    {"Recenter", 16, 0, 0x002C, 79},
+    {"Lock", 168, 4, 0x0008, 8992},
+    {"Hold", 172, 1, 0x0014, 1915},
+    {"User", 173, 1, 0x0014, 1916},
+    {"Horizontal", 174, 1, 0x0014, 1917},
+    {"Vertical", 175, 1, 0x0014, 1918},
+    {"UseReticle", 176, 1, 0x0014, 1919},
+    {"Frame", 180, 0, 0x002C, 85},
+};
+
+inline constexpr Field kFields_L0272_S03EF[] = {
     {"Activate", 200, 1, 0x0014, 1920},
 };
 
-inline constexpr Field kFields_03F3[] = {
+inline constexpr Field kFields_L0273_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2985},
+    {"Flags", 1, 1, 0x0204, 2986},
+    {"Condition", 2, 1, 0x0104, 2987},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1118},
+    {"On", 4, 2, 0x0008, 8997},
+    {"Off", 6, 2, 0x0008, 8998},
+};
+
+inline constexpr Field kFields_L0273_S03EE[] = {
+    {"Target", 8, 8, 0x0018, 0},
+    {"Recenter", 16, 0, 0x002C, 79},
+    {"Lock", 168, 4, 0x0008, 9036},
+    {"Hold", 172, 1, 0x0014, 1921},
+    {"User", 173, 1, 0x0014, 1922},
+    {"Horizontal", 174, 1, 0x0014, 1923},
+    {"Vertical", 175, 1, 0x0014, 1924},
+    {"UseReticle", 176, 1, 0x0014, 1925},
+    {"Frame", 180, 0, 0x002C, 85},
+};
+
+inline constexpr Field kFields_L0274_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 2990},
+    {"Flags", 1, 1, 0x0204, 2991},
+    {"Condition", 2, 1, 0x0104, 2992},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1119},
+    {"On", 4, 2, 0x0008, 9041},
+    {"Off", 6, 2, 0x0008, 9042},
+};
+
+inline constexpr Field kFields_L0274_S03F3[] = {
     {"CameraFlags", 8, 1, 0x0204, 2999},
 };
 
-inline constexpr Field kFields_03F5[] = {
+inline constexpr Field kFields_L0275_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 3000},
+    {"Flags", 1, 1, 0x0204, 3001},
+    {"Condition", 2, 1, 0x0104, 3002},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1122},
+    {"On", 4, 2, 0x0008, 9047},
+    {"Off", 6, 2, 0x0008, 9048},
+};
+
+inline constexpr Field kFields_L0275_S03F3[] = {
+    {"CameraFlags", 8, 1, 0x0204, 3003},
+};
+
+inline constexpr Field kFields_L0275_S03F5[] = {
     {"Camera", 0, 0, 0x0028, 29},
     {"Priority", 12, 4, 0x0000, 1123},
 };
 
-inline constexpr Field kFields_03F6[] = {
+inline constexpr Field kFields_L0275_S03F6[] = {
     {"Left", 0, 4, 0x0008, 9049},
     {"Right", 4, 4, 0x0008, 9050},
     {"Top", 8, 4, 0x0008, 9051},
     {"Bottom", 12, 4, 0x0008, 9052},
 };
 
-inline constexpr Field kFields_03F7[] = {
+inline constexpr Field kFields_L0275_S03F7[] = {
     {"Transition", 0, 12, 0x0024, 446},
 };
 
-inline constexpr Field kFields_03F8[] = {
+inline constexpr Field kFields_L0275_S03F8[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"CursorGOName", 8, 8, 0x0018, 0},
     {"CollisionRoot", 16, 8, 0x0018, 0},
@@ -10019,23 +19073,231 @@ inline constexpr Field kFields_03F8[] = {
     {"ScaleMapCursorBasedOnZoom", 167, 1, 0x0014, 1929},
 };
 
-inline constexpr Field kFields_03F9[] = {
+inline constexpr Field kFields_L0276_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 3004},
+    {"Flags", 1, 1, 0x0204, 3005},
+    {"Condition", 2, 1, 0x0104, 3006},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1124},
+    {"On", 4, 2, 0x0008, 9088},
+    {"Off", 6, 2, 0x0008, 9089},
+};
+
+inline constexpr Field kFields_L0276_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 3007},
+    {"ScriptName", 16, 8, 0x0010, 710},
+};
+
+inline constexpr Field kFields_L0276_S03F9[] = {
     {"Name", 24, 8, 0x0018, 0},
     {"Set", 32, 8, 0x0010, 0},
     {"Suppress", 40, 1, 0x0014, 1930},
 };
 
-inline constexpr Field kFields_03FA[] = {
+inline constexpr Field kFields_L0277_S002E[] = {
+    {"ID", 0, 4, 0x0001, 1125},
+    {"Type", 4, 4, 0x0105, 3008},
+    {"TweenDriver", 8, 1, 0x0104, 3009},
+    {"Hold", 9, 1, 0x0014, 1931},
+    {"Priority", 12, 4, 0x0000, 1126},
+    {"Weight", 16, 4, 0x0008, 9090},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 9097},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0277_S005A[] = {
+    {"SafeZone", 80, 0, 0x002C, 85},
+    {"PlayerSafeZone", 96, 0, 0x002C, 85},
+    {"PlayerFrame", 112, 0, 0x002C, 85},
+    {"TargetFrame", 128, 0, 0x002C, 85},
+    {"TiltFrame", 144, 0, 0x002C, 85},
+    {"Position", 160, 0, 0x002C, 84},
+    {"Yaw", 172, 4, 0x0008, 9127},
+    {"RequireMarker", 176, 12, 0x0024, 447},
+    {"Pitch", 188, 4, 0x0008, 9128},
+    {"IgnoreMarker", 192, 12, 0x0024, 448},
+    {"Roll", 204, 4, 0x0008, 9129},
+    {"TweenOverrides", 208, 12, 0x0024, 449},
+    {"focalLength", 220, 4, 0x0008, 9130},
+    {"Transition", 224, 12, 0x0024, 450},
+    {"AngleOfView", 236, 4, 0x0008, 9131},
+    {"Effect", 240, 12, 0x0024, 451},
+    {"StaticTarget", 252, 0, 0x002C, 7},
+    {"TemplateSymbol", 264, 8, 0x001A, 0},
+    {"SplineTarget", 272, 8, 0x001C, 89},
+    {"TargetMatches", 280, 8, 0x0018, 0},
+    {"StrafeAssistTargetMatches", 288, 8, 0x0018, 0},
+    {"TargetActivatedMatches", 296, 8, 0x0018, 0},
+    {"RotateToTargetMatches", 304, 8, 0x0018, 0},
+    {"TiltTargetMatches", 312, 8, 0x0018, 0},
+    {"OrbitControl", 320, 8, 0x001C, 80},
+    {"TiltControl", 328, 8, 0x001C, 80},
+    {"OrbitConstraint", 336, 8, 0x001C, 82},
+    {"TiltConstraint", 344, 8, 0x001C, 82},
+    {"Recenter", 352, 8, 0x001C, 79},
+    {"AutoRecenter", 360, 8, 0x001C, 79},
+    {"TiltRecenter", 368, 8, 0x001C, 79},
+    {"Animation", 376, 8, 0x0018, 0},
+    {"ObjectTarget", 384, 8, 0x0018, 711},
+    {"OrbitTarget", 392, 8, 0x0018, 712},
+    {"CollisionTarget", 400, 8, 0x0018, 713},
+    {"Curve", 408, 8, 0x0018, 0},
+    {"DriveRail", 416, 8, 0x0018, 0},
+    {"Follow", 424, 8, 0x001C, 81},
+    {"PitchAdjust", 432, 8, 0x001C, 87},
+    {"StrafeAssistFrame", 440, 8, 0x001C, 86},
+    {"RotateToRail", 448, 8, 0x001C, 88},
+    {"FocusDistance", 456, 4, 0x0008, 9135},
+    {"FStop", 460, 4, 0x0008, 9136},
+    {"LensDistortion", 464, 4, 0x0008, 9137},
+    {"OrthoWidth", 468, 4, 0x0008, 9138},
+    {"DefaultTweenTime", 472, 4, 0x0008, 9139},
+    {"DefaultTweenDistance", 476, 4, 0x0008, 9140},
+    {"DefaultEaseIn", 480, 4, 0x0008, 9141},
+    {"DefaultEaseOut", 484, 4, 0x0008, 9142},
+    {"DefaultLengthIn", 488, 4, 0x0008, 9143},
+    {"DefaultLengthOut", 492, 4, 0x0008, 9144},
+    {"BoomDamping", 496, 4, 0x0008, 9145},
+    {"VerticalDamping", 500, 4, 0x0008, 9146},
+    {"HorizontalDamping", 504, 4, 0x0008, 9147},
+    {"DampingForward", 508, 4, 0x0008, 9148},
+    {"DampingBackward", 512, 4, 0x0008, 9149},
+    {"DampingLeft", 516, 4, 0x0008, 9150},
+    {"DampingRight", 520, 4, 0x0008, 9151},
+    {"DampingUp", 524, 4, 0x0008, 9152},
+    {"DampingDown", 528, 4, 0x0008, 9153},
+    {"MinVelocity", 532, 4, 0x0008, 9154},
+    {"MaxVelocity", 536, 4, 0x0008, 9155},
+    {"VelocityEaseIn", 540, 4, 0x0008, 9156},
+    {"VelocityEaseOut", 544, 4, 0x0008, 9157},
+    {"VelocityDampingTime", 548, 4, 0x0008, 9158},
+    {"AnimationRate", 552, 4, 0x0008, 9159},
+    {"BoomRatio", 556, 4, 0x0008, 9160},
+    {"MaxDistanceToDolly", 560, 4, 0x0008, 9161},
+    {"MinDistanceToDolly", 564, 4, 0x0008, 9162},
+    {"MaxDistanceToTarget", 568, 4, 0x0008, 9163},
+    {"MinDistanceToTarget", 572, 4, 0x0008, 9164},
+    {"ElevationConstraint", 576, 4, 0x0008, 9165},
+    {"RotationConstraint", 580, 4, 0x0008, 9166},
+    {"AngleOfViewConstraint", 584, 4, 0x0008, 9167},
+    {"DollyDamping", 588, 4, 0x0008, 9168},
+    {"JumpCompensationFactor", 592, 4, 0x0008, 9169},
+    {"MicBoomRatio", 596, 4, 0x0008, 9170},
+    {"DollyStartDefault", 600, 4, 0x0008, 9171},
+    {"FightLineAngle", 604, 4, 0x0008, 9172},
+    {"RailFadeShelf", 608, 4, 0x0008, 9173},
+    {"RailFadeFalloff", 612, 4, 0x0008, 9174},
+    {"RailFadeEaseIn", 616, 4, 0x0008, 9175},
+    {"RailFadeEaseOut", 620, 4, 0x0008, 9176},
+    {"LookConstraintUp", 624, 4, 0x0008, 9177},
+    {"LookConstraintDown", 628, 4, 0x0008, 9178},
+    {"LookConstraintLeft", 632, 4, 0x0008, 9179},
+    {"LookConstraintRight", 636, 4, 0x0008, 9180},
+    {"MoveConstraintUp", 640, 4, 0x0008, 9181},
+    {"MoveConstraintDown", 644, 4, 0x0008, 9182},
+    {"MoveConstraintLeft", 648, 4, 0x0008, 9183},
+    {"MoveConstraintRight", 652, 4, 0x0008, 9184},
+    {"ElevateToFrameMax", 656, 4, 0x0008, 9185},
+    {"ElevateToFrameMin", 660, 4, 0x0008, 9186},
+    {"TargetFrameDamping", 664, 4, 0x0008, 9187},
+    {"SlopeFactor", 668, 4, 0x0008, 9188},
+    {"SlopeDamping", 672, 4, 0x0008, 9189},
+    {"GroundInfluence", 676, 4, 0x0008, 9190},
+    {"PanLeft", 680, 4, 0x0008, 9191},
+    {"PanRight", 684, 4, 0x0008, 9192},
+    {"TiltUp", 688, 4, 0x0008, 9193},
+    {"TiltDown", 692, 4, 0x0008, 9194},
+    {"Distance", 696, 4, 0x0008, 9195},
+    {"StateFilter", 700, 2, 0x0204, 3010},
+    {"TargetCap", 702, 2, 0x0000, 1127},
+    {"MinimumTargetPriority", 704, 2, 0x0000, 1128},
+    {"MinimumTargetActivatedPriority", 706, 2, 0x0000, 1129},
+    {"CenterTargets", 708, 2, 0x0000, 1130},
+    {"CameraType", 710, 1, 0x0104, 3011},
+};
+
+inline constexpr Field kFields_L0277_S03FA[] = {
     {"CameraType_IsNull", 711, 1, 0x0016, 1932},
+};
+
+inline constexpr Field kFields_L0278_S005A[] = {
+    {"ParentRelative", 712, 1, 0x0014, 1933},
+};
+
+inline constexpr Field kFields_L0278_S03FA[] = {
     {"ParentRelative_IsNull", 713, 1, 0x0016, 1934},
+};
+
+inline constexpr Field kFields_L0279_S005A[] = {
+    {"Aggression", 714, 1, 0x0014, 1935},
+};
+
+inline constexpr Field kFields_L0279_S03FA[] = {
     {"Aggression_IsNull", 715, 1, 0x0016, 1936},
+};
+
+inline constexpr Field kFields_L027A_S005A[] = {
+    {"TargetActivated", 716, 1, 0x0014, 1937},
+};
+
+inline constexpr Field kFields_L027A_S03FA[] = {
     {"TargetActivated_IsNull", 717, 1, 0x0016, 1938},
+};
+
+inline constexpr Field kFields_L027B_S005A[] = {
+    {"Collision", 718, 1, 0x0014, 1939},
+};
+
+inline constexpr Field kFields_L027B_S03FA[] = {
     {"Collision_IsNull", 719, 1, 0x0016, 1940},
+};
+
+inline constexpr Field kFields_L027C_S005A[] = {
+    {"AvoidEverything", 720, 1, 0x0014, 1941},
+};
+
+inline constexpr Field kFields_L027C_S03FA[] = {
     {"AvoidEverything_IsNull", 721, 1, 0x0016, 1942},
+};
+
+inline constexpr Field kFields_L027D_S005A[] = {
+    {"DontCheckpoint", 722, 1, 0x0014, 1943},
+};
+
+inline constexpr Field kFields_L027D_S03FA[] = {
     {"DontCheckpoint_IsNull", 723, 1, 0x0016, 1944},
+};
+
+inline constexpr Field kFields_L027E_S005A[] = {
+    {"StartCentered", 724, 1, 0x0014, 1945},
+};
+
+inline constexpr Field kFields_L027E_S03FA[] = {
     {"StartCentered_IsNull", 725, 1, 0x0016, 1946},
+};
+
+inline constexpr Field kFields_L027F_S005A[] = {
+    {"RegisterName", 726, 1, 0x0014, 1947},
+};
+
+inline constexpr Field kFields_L027F_S03FA[] = {
     {"RegisterName_IsNull", 727, 1, 0x0016, 1948},
+};
+
+inline constexpr Field kFields_L0280_S005A[] = {
+    {"PhotoSensitive", 728, 1, 0x0014, 1949},
+};
+
+inline constexpr Field kFields_L0280_S03FA[] = {
     {"PhotoSensitive_IsNull", 729, 1, 0x0016, 1950},
+};
+
+inline constexpr Field kFields_L0281_S005A[] = {
+    {"ConstraintFriction", 730, 1, 0x0000, 1131},
+};
+
+inline constexpr Field kFields_L0281_S03FA[] = {
     {"ConstraintFriction_IsNull", 731, 1, 0x0016, 1951},
     {"Position_IsNull", 732, 1, 0x0016, 1952},
     {"Yaw_IsNull", 733, 1, 0x0016, 1953},
@@ -10046,7 +19308,21 @@ inline constexpr Field kFields_03FA[] = {
     {"FocusDistance_IsNull", 738, 1, 0x0016, 1958},
     {"FStop_IsNull", 739, 1, 0x0016, 1959},
     {"LensDistortion_IsNull", 740, 1, 0x0016, 1960},
+};
+
+inline constexpr Field kFields_L0282_S005A[] = {
+    {"DepthOfField", 741, 1, 0x0014, 1961},
+};
+
+inline constexpr Field kFields_L0282_S03FA[] = {
     {"DepthOfField_IsNull", 742, 1, 0x0016, 1962},
+};
+
+inline constexpr Field kFields_L0283_S005A[] = {
+    {"IsOrthographic", 743, 1, 0x0014, 1963},
+};
+
+inline constexpr Field kFields_L0283_S03FA[] = {
     {"IsOrthographic_IsNull", 744, 1, 0x0016, 1964},
     {"OrthoWidth_IsNull", 745, 1, 0x0016, 1965},
     {"StateFilter_IsNull", 746, 1, 0x0016, 1966},
@@ -10069,6 +19345,13 @@ inline constexpr Field kFields_03FA[] = {
     {"TargetActivatedMatches_IsNull", 763, 1, 0x0016, 1983},
     {"RotateToTargetMatches_IsNull", 764, 1, 0x0016, 1984},
     {"TiltTargetMatches_IsNull", 765, 1, 0x0016, 1985},
+};
+
+inline constexpr Field kFields_L0284_S005A[] = {
+    {"TargetFilter", 766, 1, 0x0204, 3012},
+};
+
+inline constexpr Field kFields_L0284_S03FA[] = {
     {"TargetFilter_IsNull", 767, 1, 0x0016, 1986},
     {"BoomDamping_IsNull", 768, 1, 0x0016, 1987},
     {"VerticalDamping_IsNull", 769, 1, 0x0016, 1988},
@@ -10094,7 +19377,21 @@ inline constexpr Field kFields_03FA[] = {
     {"TiltRecenter_IsNull", 789, 1, 0x0016, 2008},
     {"Animation_IsNull", 790, 1, 0x0016, 2009},
     {"AnimationRate_IsNull", 791, 1, 0x0016, 2010},
+};
+
+inline constexpr Field kFields_L0285_S005A[] = {
+    {"TriggerAnimation", 792, 1, 0x0014, 2011},
+};
+
+inline constexpr Field kFields_L0285_S03FA[] = {
     {"TriggerAnimation_IsNull", 793, 1, 0x0016, 2012},
+};
+
+inline constexpr Field kFields_L0286_S005A[] = {
+    {"ForceAnimation", 794, 1, 0x0014, 2013},
+};
+
+inline constexpr Field kFields_L0286_S03FA[] = {
     {"ForceAnimation_IsNull", 795, 1, 0x0016, 2014},
     {"BoomRatio_IsNull", 796, 1, 0x0016, 2015},
     {"MaxDistanceToDolly_IsNull", 797, 1, 0x0016, 2016},
@@ -10106,24 +19403,157 @@ inline constexpr Field kFields_03FA[] = {
     {"AngleOfViewConstraint_IsNull", 803, 1, 0x0016, 2022},
     {"SafeZone_IsNull", 804, 1, 0x0016, 2023},
     {"PlayerSafeZone_IsNull", 805, 1, 0x0016, 2024},
+};
+
+inline constexpr Field kFields_L0287_S005A[] = {
+    {"TrackToFrameTargets", 806, 1, 0x0014, 2025},
+};
+
+inline constexpr Field kFields_L0287_S03FA[] = {
     {"TrackToFrameTargets_IsNull", 807, 1, 0x0016, 2026},
+};
+
+inline constexpr Field kFields_L0288_S005A[] = {
+    {"FreeLook", 808, 1, 0x0014, 2027},
+};
+
+inline constexpr Field kFields_L0288_S03FA[] = {
     {"FreeLook_IsNull", 809, 1, 0x0016, 2028},
+};
+
+inline constexpr Field kFields_L0289_S005A[] = {
+    {"MultipleTargets", 810, 1, 0x0014, 2029},
+};
+
+inline constexpr Field kFields_L0289_S03FA[] = {
     {"MultipleTargets_IsNull", 811, 1, 0x0016, 2030},
+};
+
+inline constexpr Field kFields_L028A_S005A[] = {
+    {"DollyObscuredBoss", 812, 1, 0x0014, 2031},
+};
+
+inline constexpr Field kFields_L028A_S03FA[] = {
     {"DollyObscuredBoss_IsNull", 813, 1, 0x0016, 2032},
+};
+
+inline constexpr Field kFields_L028B_S005A[] = {
+    {"DollyObscuredPlayer", 814, 1, 0x0014, 2033},
+};
+
+inline constexpr Field kFields_L028B_S03FA[] = {
     {"DollyObscuredPlayer_IsNull", 815, 1, 0x0016, 2034},
+};
+
+inline constexpr Field kFields_L028C_S005A[] = {
+    {"TrackToMinimumDistance", 816, 1, 0x0014, 2035},
+};
+
+inline constexpr Field kFields_L028C_S03FA[] = {
     {"TrackToMinimumDistance_IsNull", 817, 1, 0x0016, 2036},
+};
+
+inline constexpr Field kFields_L028D_S005A[] = {
+    {"RailDrivesAnimation", 818, 1, 0x0014, 2037},
+};
+
+inline constexpr Field kFields_L028D_S03FA[] = {
     {"RailDrivesAnimation_IsNull", 819, 1, 0x0016, 2038},
+};
+
+inline constexpr Field kFields_L028E_S005A[] = {
+    {"MoveDolly", 820, 1, 0x0014, 2039},
+};
+
+inline constexpr Field kFields_L028E_S03FA[] = {
     {"MoveDolly_IsNull", 821, 1, 0x0016, 2040},
+};
+
+inline constexpr Field kFields_L028F_S005A[] = {
+    {"RailRelative", 822, 1, 0x0014, 2041},
+};
+
+inline constexpr Field kFields_L028F_S03FA[] = {
     {"RailRelative_IsNull", 823, 1, 0x0016, 2042},
+};
+
+inline constexpr Field kFields_L0290_S005A[] = {
+    {"JumpCompensation", 824, 1, 0x0014, 2043},
+};
+
+inline constexpr Field kFields_L0290_S03FA[] = {
     {"JumpCompensation_IsNull", 825, 1, 0x0016, 2044},
+};
+
+inline constexpr Field kFields_L0291_S005A[] = {
+    {"DoubleJumpComp", 826, 1, 0x0014, 2045},
+};
+
+inline constexpr Field kFields_L0291_S03FA[] = {
     {"DoubleJumpComp_IsNull", 827, 1, 0x0016, 2046},
+};
+
+inline constexpr Field kFields_L0292_S005A[] = {
+    {"UseStaticTarget", 828, 1, 0x0014, 2047},
+};
+
+inline constexpr Field kFields_L0292_S03FA[] = {
     {"UseStaticTarget_IsNull", 829, 1, 0x0016, 2048},
+};
+
+inline constexpr Field kFields_L0293_S005A[] = {
+    {"IgnoreMicMaxDistance", 830, 1, 0x0014, 2049},
+};
+
+inline constexpr Field kFields_L0293_S03FA[] = {
     {"IgnoreMicMaxDistance_IsNull", 831, 1, 0x0016, 2050},
+};
+
+inline constexpr Field kFields_L0294_S005A[] = {
+    {"OverrideMicBoomRatio", 832, 1, 0x0014, 2051},
+};
+
+inline constexpr Field kFields_L0294_S03FA[] = {
     {"OverrideMicBoomRatio_IsNull", 833, 1, 0x0016, 2052},
+};
+
+inline constexpr Field kFields_L0295_S005A[] = {
+    {"MicIsUnderwater", 834, 1, 0x0014, 2053},
+};
+
+inline constexpr Field kFields_L0295_S03FA[] = {
     {"MicIsUnderwater_IsNull", 835, 1, 0x0016, 2054},
+};
+
+inline constexpr Field kFields_L0296_S005A[] = {
+    {"CamIsUnderwater", 836, 1, 0x0014, 2055},
+};
+
+inline constexpr Field kFields_L0296_S03FA[] = {
     {"CamIsUnderwater_IsNull", 837, 1, 0x0016, 2056},
+};
+
+inline constexpr Field kFields_L0297_S005A[] = {
+    {"UsePlayerSafeZone", 838, 1, 0x0014, 2057},
+};
+
+inline constexpr Field kFields_L0297_S03FA[] = {
     {"UsePlayerSafeZone_IsNull", 839, 1, 0x0016, 2058},
+};
+
+inline constexpr Field kFields_L0298_S005A[] = {
+    {"Elevation", 840, 1, 0x0104, 3013},
+};
+
+inline constexpr Field kFields_L0298_S03FA[] = {
     {"Elevation_IsNull", 841, 1, 0x0016, 2059},
+};
+
+inline constexpr Field kFields_L0299_S005A[] = {
+    {"Rotation", 842, 1, 0x0104, 3014},
+};
+
+inline constexpr Field kFields_L0299_S03FA[] = {
     {"Rotation_IsNull", 843, 1, 0x0016, 2060},
     {"DollyDamping_IsNull", 844, 1, 0x0016, 2061},
     {"JumpCompensationFactor_IsNull", 845, 1, 0x0016, 2062},
@@ -10135,6 +19565,13 @@ inline constexpr Field kFields_03FA[] = {
     {"CollisionTarget_IsNull", 851, 1, 0x0016, 2068},
     {"FightLineAngle_IsNull", 852, 1, 0x0016, 2069},
     {"CenterTargets_IsNull", 853, 1, 0x0016, 2070},
+};
+
+inline constexpr Field kFields_L029A_S005A[] = {
+    {"RailFadeDirection", 854, 1, 0x0000, 1132},
+};
+
+inline constexpr Field kFields_L029A_S03FA[] = {
     {"RailFadeDirection_IsNull", 855, 1, 0x0016, 2071},
     {"RailFadeShelf_IsNull", 856, 1, 0x0016, 2072},
     {"RailFadeFalloff_IsNull", 857, 1, 0x0016, 2073},
@@ -10142,8 +19579,29 @@ inline constexpr Field kFields_03FA[] = {
     {"RailFadeEaseOut_IsNull", 859, 1, 0x0016, 2075},
     {"Curve_IsNull", 860, 1, 0x0016, 2076},
     {"DriveRail_IsNull", 861, 1, 0x0016, 2077},
+};
+
+inline constexpr Field kFields_L029B_S005A[] = {
+    {"LeftStick", 862, 1, 0x0104, 3015},
+};
+
+inline constexpr Field kFields_L029B_S03FA[] = {
     {"LeftStick_IsNull", 863, 1, 0x0016, 2078},
+};
+
+inline constexpr Field kFields_L029C_S005A[] = {
+    {"RightStick", 864, 1, 0x0104, 3016},
+};
+
+inline constexpr Field kFields_L029C_S03FA[] = {
     {"RightStick_IsNull", 865, 1, 0x0016, 2079},
+};
+
+inline constexpr Field kFields_L029D_S005A[] = {
+    {"LookFlags", 866, 1, 0x0204, 3017},
+};
+
+inline constexpr Field kFields_L029D_S03FA[] = {
     {"LookFlags_IsNull", 867, 1, 0x0016, 2080},
     {"LookConstraintUp_IsNull", 868, 1, 0x0016, 2081},
     {"LookConstraintDown_IsNull", 869, 1, 0x0016, 2082},
@@ -10162,9 +19620,30 @@ inline constexpr Field kFields_03FA[] = {
     {"SlopeFactor_IsNull", 882, 1, 0x0016, 2095},
     {"SlopeDamping_IsNull", 883, 1, 0x0016, 2096},
     {"GroundInfluence_IsNull", 884, 1, 0x0016, 2097},
+};
+
+inline constexpr Field kFields_L029E_S005A[] = {
+    {"FrameTargets", 885, 1, 0x0014, 2098},
+};
+
+inline constexpr Field kFields_L029E_S03FA[] = {
     {"FrameTargets_IsNull", 886, 1, 0x0016, 2099},
+};
+
+inline constexpr Field kFields_L029F_S005A[] = {
+    {"RotateToTargets", 887, 1, 0x0014, 2100},
+};
+
+inline constexpr Field kFields_L029F_S03FA[] = {
     {"RotateToTargets_IsNull", 888, 1, 0x0016, 2101},
     {"TiltFrame_IsNull", 889, 1, 0x0016, 2102},
+};
+
+inline constexpr Field kFields_L02A0_S005A[] = {
+    {"TiltFrameMode", 890, 1, 0x0104, 3018},
+};
+
+inline constexpr Field kFields_L02A0_S03FA[] = {
     {"TiltFrameMode_IsNull", 891, 1, 0x0016, 2103},
     {"PanLeft_IsNull", 892, 1, 0x0016, 2104},
     {"PanRight_IsNull", 893, 1, 0x0016, 2105},
@@ -10176,17 +19655,211 @@ inline constexpr Field kFields_03FA[] = {
     {"RotateToRail_IsNull", 899, 1, 0x0016, 2111},
 };
 
-inline constexpr Field kFields_03FB[] = {
+inline constexpr Field kFields_L02A1_S002E[] = {
+    {"ID", 0, 4, 0x0001, 1133},
+    {"Type", 4, 4, 0x0105, 3019},
+    {"TweenDriver", 8, 1, 0x0104, 3020},
+    {"Hold", 9, 1, 0x0014, 2112},
+    {"Priority", 12, 4, 0x0000, 1134},
+    {"Weight", 16, 4, 0x0008, 9196},
+    {"TweenIn", 20, 0, 0x002C, 12},
+    {"Duration", 44, 4, 0x0008, 9203},
+    {"TweenOut", 48, 0, 0x002C, 12},
+    {"Script", 72, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L02A1_S005A[] = {
+    {"SafeZone", 80, 0, 0x002C, 85},
+    {"PlayerSafeZone", 96, 0, 0x002C, 85},
+    {"PlayerFrame", 112, 0, 0x002C, 85},
+    {"TargetFrame", 128, 0, 0x002C, 85},
+    {"TiltFrame", 144, 0, 0x002C, 85},
+    {"Position", 160, 0, 0x002C, 84},
+    {"Yaw", 172, 4, 0x0008, 9233},
+    {"RequireMarker", 176, 12, 0x0024, 452},
+    {"Pitch", 188, 4, 0x0008, 9234},
+    {"IgnoreMarker", 192, 12, 0x0024, 453},
+    {"Roll", 204, 4, 0x0008, 9235},
+    {"TweenOverrides", 208, 12, 0x0024, 454},
+    {"focalLength", 220, 4, 0x0008, 9236},
+    {"Transition", 224, 12, 0x0024, 455},
+    {"AngleOfView", 236, 4, 0x0008, 9237},
+    {"Effect", 240, 12, 0x0024, 456},
+    {"StaticTarget", 252, 0, 0x002C, 7},
+    {"TemplateSymbol", 264, 8, 0x001A, 0},
+    {"SplineTarget", 272, 8, 0x001C, 89},
+    {"TargetMatches", 280, 8, 0x0018, 0},
+    {"StrafeAssistTargetMatches", 288, 8, 0x0018, 0},
+    {"TargetActivatedMatches", 296, 8, 0x0018, 0},
+    {"RotateToTargetMatches", 304, 8, 0x0018, 0},
+    {"TiltTargetMatches", 312, 8, 0x0018, 0},
+    {"OrbitControl", 320, 8, 0x001C, 80},
+    {"TiltControl", 328, 8, 0x001C, 80},
+    {"OrbitConstraint", 336, 8, 0x001C, 82},
+    {"TiltConstraint", 344, 8, 0x001C, 82},
+    {"Recenter", 352, 8, 0x001C, 79},
+    {"AutoRecenter", 360, 8, 0x001C, 79},
+    {"TiltRecenter", 368, 8, 0x001C, 79},
+    {"Animation", 376, 8, 0x0018, 0},
+    {"ObjectTarget", 384, 8, 0x0018, 714},
+    {"OrbitTarget", 392, 8, 0x0018, 715},
+    {"CollisionTarget", 400, 8, 0x0018, 716},
+    {"Curve", 408, 8, 0x0018, 0},
+    {"DriveRail", 416, 8, 0x0018, 0},
+    {"Follow", 424, 8, 0x001C, 81},
+    {"PitchAdjust", 432, 8, 0x001C, 87},
+    {"StrafeAssistFrame", 440, 8, 0x001C, 86},
+    {"RotateToRail", 448, 8, 0x001C, 88},
+    {"FocusDistance", 456, 4, 0x0008, 9241},
+    {"FStop", 460, 4, 0x0008, 9242},
+    {"LensDistortion", 464, 4, 0x0008, 9243},
+    {"OrthoWidth", 468, 4, 0x0008, 9244},
+    {"DefaultTweenTime", 472, 4, 0x0008, 9245},
+    {"DefaultTweenDistance", 476, 4, 0x0008, 9246},
+    {"DefaultEaseIn", 480, 4, 0x0008, 9247},
+    {"DefaultEaseOut", 484, 4, 0x0008, 9248},
+    {"DefaultLengthIn", 488, 4, 0x0008, 9249},
+    {"DefaultLengthOut", 492, 4, 0x0008, 9250},
+    {"BoomDamping", 496, 4, 0x0008, 9251},
+    {"VerticalDamping", 500, 4, 0x0008, 9252},
+    {"HorizontalDamping", 504, 4, 0x0008, 9253},
+    {"DampingForward", 508, 4, 0x0008, 9254},
+    {"DampingBackward", 512, 4, 0x0008, 9255},
+    {"DampingLeft", 516, 4, 0x0008, 9256},
+    {"DampingRight", 520, 4, 0x0008, 9257},
+    {"DampingUp", 524, 4, 0x0008, 9258},
+    {"DampingDown", 528, 4, 0x0008, 9259},
+    {"MinVelocity", 532, 4, 0x0008, 9260},
+    {"MaxVelocity", 536, 4, 0x0008, 9261},
+    {"VelocityEaseIn", 540, 4, 0x0008, 9262},
+    {"VelocityEaseOut", 544, 4, 0x0008, 9263},
+    {"VelocityDampingTime", 548, 4, 0x0008, 9264},
+    {"AnimationRate", 552, 4, 0x0008, 9265},
+    {"BoomRatio", 556, 4, 0x0008, 9266},
+    {"MaxDistanceToDolly", 560, 4, 0x0008, 9267},
+    {"MinDistanceToDolly", 564, 4, 0x0008, 9268},
+    {"MaxDistanceToTarget", 568, 4, 0x0008, 9269},
+    {"MinDistanceToTarget", 572, 4, 0x0008, 9270},
+    {"ElevationConstraint", 576, 4, 0x0008, 9271},
+    {"RotationConstraint", 580, 4, 0x0008, 9272},
+    {"AngleOfViewConstraint", 584, 4, 0x0008, 9273},
+    {"DollyDamping", 588, 4, 0x0008, 9274},
+    {"JumpCompensationFactor", 592, 4, 0x0008, 9275},
+    {"MicBoomRatio", 596, 4, 0x0008, 9276},
+    {"DollyStartDefault", 600, 4, 0x0008, 9277},
+    {"FightLineAngle", 604, 4, 0x0008, 9278},
+    {"RailFadeShelf", 608, 4, 0x0008, 9279},
+    {"RailFadeFalloff", 612, 4, 0x0008, 9280},
+    {"RailFadeEaseIn", 616, 4, 0x0008, 9281},
+    {"RailFadeEaseOut", 620, 4, 0x0008, 9282},
+    {"LookConstraintUp", 624, 4, 0x0008, 9283},
+    {"LookConstraintDown", 628, 4, 0x0008, 9284},
+    {"LookConstraintLeft", 632, 4, 0x0008, 9285},
+    {"LookConstraintRight", 636, 4, 0x0008, 9286},
+    {"MoveConstraintUp", 640, 4, 0x0008, 9287},
+    {"MoveConstraintDown", 644, 4, 0x0008, 9288},
+    {"MoveConstraintLeft", 648, 4, 0x0008, 9289},
+    {"MoveConstraintRight", 652, 4, 0x0008, 9290},
+    {"ElevateToFrameMax", 656, 4, 0x0008, 9291},
+    {"ElevateToFrameMin", 660, 4, 0x0008, 9292},
+    {"TargetFrameDamping", 664, 4, 0x0008, 9293},
+    {"SlopeFactor", 668, 4, 0x0008, 9294},
+    {"SlopeDamping", 672, 4, 0x0008, 9295},
+    {"GroundInfluence", 676, 4, 0x0008, 9296},
+    {"PanLeft", 680, 4, 0x0008, 9297},
+    {"PanRight", 684, 4, 0x0008, 9298},
+    {"TiltUp", 688, 4, 0x0008, 9299},
+    {"TiltDown", 692, 4, 0x0008, 9300},
+    {"Distance", 696, 4, 0x0008, 9301},
+    {"StateFilter", 700, 2, 0x0204, 3021},
+    {"TargetCap", 702, 2, 0x0000, 1135},
+    {"MinimumTargetPriority", 704, 2, 0x0000, 1136},
+    {"MinimumTargetActivatedPriority", 706, 2, 0x0000, 1137},
+    {"CenterTargets", 708, 2, 0x0000, 1138},
+    {"CameraType", 710, 1, 0x0104, 3022},
+};
+
+inline constexpr Field kFields_L02A1_S03FB[] = {
     {"CameraType_IsNull", 711, 1, 0x0016, 2113},
+};
+
+inline constexpr Field kFields_L02A2_S005A[] = {
+    {"ParentRelative", 712, 1, 0x0014, 2114},
+};
+
+inline constexpr Field kFields_L02A2_S03FB[] = {
     {"ParentRelative_IsNull", 713, 1, 0x0016, 2115},
+};
+
+inline constexpr Field kFields_L02A3_S005A[] = {
+    {"Aggression", 714, 1, 0x0014, 2116},
+};
+
+inline constexpr Field kFields_L02A3_S03FB[] = {
     {"Aggression_IsNull", 715, 1, 0x0016, 2117},
+};
+
+inline constexpr Field kFields_L02A4_S005A[] = {
+    {"TargetActivated", 716, 1, 0x0014, 2118},
+};
+
+inline constexpr Field kFields_L02A4_S03FB[] = {
     {"TargetActivated_IsNull", 717, 1, 0x0016, 2119},
+};
+
+inline constexpr Field kFields_L02A5_S005A[] = {
+    {"Collision", 718, 1, 0x0014, 2120},
+};
+
+inline constexpr Field kFields_L02A5_S03FB[] = {
     {"Collision_IsNull", 719, 1, 0x0016, 2121},
+};
+
+inline constexpr Field kFields_L02A6_S005A[] = {
+    {"AvoidEverything", 720, 1, 0x0014, 2122},
+};
+
+inline constexpr Field kFields_L02A6_S03FB[] = {
     {"AvoidEverything_IsNull", 721, 1, 0x0016, 2123},
+};
+
+inline constexpr Field kFields_L02A7_S005A[] = {
+    {"DontCheckpoint", 722, 1, 0x0014, 2124},
+};
+
+inline constexpr Field kFields_L02A7_S03FB[] = {
     {"DontCheckpoint_IsNull", 723, 1, 0x0016, 2125},
+};
+
+inline constexpr Field kFields_L02A8_S005A[] = {
+    {"StartCentered", 724, 1, 0x0014, 2126},
+};
+
+inline constexpr Field kFields_L02A8_S03FB[] = {
     {"StartCentered_IsNull", 725, 1, 0x0016, 2127},
+};
+
+inline constexpr Field kFields_L02A9_S005A[] = {
+    {"RegisterName", 726, 1, 0x0014, 2128},
+};
+
+inline constexpr Field kFields_L02A9_S03FB[] = {
     {"RegisterName_IsNull", 727, 1, 0x0016, 2129},
+};
+
+inline constexpr Field kFields_L02AA_S005A[] = {
+    {"PhotoSensitive", 728, 1, 0x0014, 2130},
+};
+
+inline constexpr Field kFields_L02AA_S03FB[] = {
     {"PhotoSensitive_IsNull", 729, 1, 0x0016, 2131},
+};
+
+inline constexpr Field kFields_L02AB_S005A[] = {
+    {"ConstraintFriction", 730, 1, 0x0000, 1139},
+};
+
+inline constexpr Field kFields_L02AB_S03FB[] = {
     {"ConstraintFriction_IsNull", 731, 1, 0x0016, 2132},
     {"Position_IsNull", 732, 1, 0x0016, 2133},
     {"Yaw_IsNull", 733, 1, 0x0016, 2134},
@@ -10197,7 +19870,21 @@ inline constexpr Field kFields_03FB[] = {
     {"FocusDistance_IsNull", 738, 1, 0x0016, 2139},
     {"FStop_IsNull", 739, 1, 0x0016, 2140},
     {"LensDistortion_IsNull", 740, 1, 0x0016, 2141},
+};
+
+inline constexpr Field kFields_L02AC_S005A[] = {
+    {"DepthOfField", 741, 1, 0x0014, 2142},
+};
+
+inline constexpr Field kFields_L02AC_S03FB[] = {
     {"DepthOfField_IsNull", 742, 1, 0x0016, 2143},
+};
+
+inline constexpr Field kFields_L02AD_S005A[] = {
+    {"IsOrthographic", 743, 1, 0x0014, 2144},
+};
+
+inline constexpr Field kFields_L02AD_S03FB[] = {
     {"IsOrthographic_IsNull", 744, 1, 0x0016, 2145},
     {"OrthoWidth_IsNull", 745, 1, 0x0016, 2146},
     {"StateFilter_IsNull", 746, 1, 0x0016, 2147},
@@ -10220,6 +19907,13 @@ inline constexpr Field kFields_03FB[] = {
     {"TargetActivatedMatches_IsNull", 763, 1, 0x0016, 2164},
     {"RotateToTargetMatches_IsNull", 764, 1, 0x0016, 2165},
     {"TiltTargetMatches_IsNull", 765, 1, 0x0016, 2166},
+};
+
+inline constexpr Field kFields_L02AE_S005A[] = {
+    {"TargetFilter", 766, 1, 0x0204, 3023},
+};
+
+inline constexpr Field kFields_L02AE_S03FB[] = {
     {"TargetFilter_IsNull", 767, 1, 0x0016, 2167},
     {"BoomDamping_IsNull", 768, 1, 0x0016, 2168},
     {"VerticalDamping_IsNull", 769, 1, 0x0016, 2169},
@@ -10245,7 +19939,21 @@ inline constexpr Field kFields_03FB[] = {
     {"TiltRecenter_IsNull", 789, 1, 0x0016, 2189},
     {"Animation_IsNull", 790, 1, 0x0016, 2190},
     {"AnimationRate_IsNull", 791, 1, 0x0016, 2191},
+};
+
+inline constexpr Field kFields_L02AF_S005A[] = {
+    {"TriggerAnimation", 792, 1, 0x0014, 2192},
+};
+
+inline constexpr Field kFields_L02AF_S03FB[] = {
     {"TriggerAnimation_IsNull", 793, 1, 0x0016, 2193},
+};
+
+inline constexpr Field kFields_L02B0_S005A[] = {
+    {"ForceAnimation", 794, 1, 0x0014, 2194},
+};
+
+inline constexpr Field kFields_L02B0_S03FB[] = {
     {"ForceAnimation_IsNull", 795, 1, 0x0016, 2195},
     {"BoomRatio_IsNull", 796, 1, 0x0016, 2196},
     {"MaxDistanceToDolly_IsNull", 797, 1, 0x0016, 2197},
@@ -10257,24 +19965,157 @@ inline constexpr Field kFields_03FB[] = {
     {"AngleOfViewConstraint_IsNull", 803, 1, 0x0016, 2203},
     {"SafeZone_IsNull", 804, 1, 0x0016, 2204},
     {"PlayerSafeZone_IsNull", 805, 1, 0x0016, 2205},
+};
+
+inline constexpr Field kFields_L02B1_S005A[] = {
+    {"TrackToFrameTargets", 806, 1, 0x0014, 2206},
+};
+
+inline constexpr Field kFields_L02B1_S03FB[] = {
     {"TrackToFrameTargets_IsNull", 807, 1, 0x0016, 2207},
+};
+
+inline constexpr Field kFields_L02B2_S005A[] = {
+    {"FreeLook", 808, 1, 0x0014, 2208},
+};
+
+inline constexpr Field kFields_L02B2_S03FB[] = {
     {"FreeLook_IsNull", 809, 1, 0x0016, 2209},
+};
+
+inline constexpr Field kFields_L02B3_S005A[] = {
+    {"MultipleTargets", 810, 1, 0x0014, 2210},
+};
+
+inline constexpr Field kFields_L02B3_S03FB[] = {
     {"MultipleTargets_IsNull", 811, 1, 0x0016, 2211},
+};
+
+inline constexpr Field kFields_L02B4_S005A[] = {
+    {"DollyObscuredBoss", 812, 1, 0x0014, 2212},
+};
+
+inline constexpr Field kFields_L02B4_S03FB[] = {
     {"DollyObscuredBoss_IsNull", 813, 1, 0x0016, 2213},
+};
+
+inline constexpr Field kFields_L02B5_S005A[] = {
+    {"DollyObscuredPlayer", 814, 1, 0x0014, 2214},
+};
+
+inline constexpr Field kFields_L02B5_S03FB[] = {
     {"DollyObscuredPlayer_IsNull", 815, 1, 0x0016, 2215},
+};
+
+inline constexpr Field kFields_L02B6_S005A[] = {
+    {"TrackToMinimumDistance", 816, 1, 0x0014, 2216},
+};
+
+inline constexpr Field kFields_L02B6_S03FB[] = {
     {"TrackToMinimumDistance_IsNull", 817, 1, 0x0016, 2217},
+};
+
+inline constexpr Field kFields_L02B7_S005A[] = {
+    {"RailDrivesAnimation", 818, 1, 0x0014, 2218},
+};
+
+inline constexpr Field kFields_L02B7_S03FB[] = {
     {"RailDrivesAnimation_IsNull", 819, 1, 0x0016, 2219},
+};
+
+inline constexpr Field kFields_L02B8_S005A[] = {
+    {"MoveDolly", 820, 1, 0x0014, 2220},
+};
+
+inline constexpr Field kFields_L02B8_S03FB[] = {
     {"MoveDolly_IsNull", 821, 1, 0x0016, 2221},
+};
+
+inline constexpr Field kFields_L02B9_S005A[] = {
+    {"RailRelative", 822, 1, 0x0014, 2222},
+};
+
+inline constexpr Field kFields_L02B9_S03FB[] = {
     {"RailRelative_IsNull", 823, 1, 0x0016, 2223},
+};
+
+inline constexpr Field kFields_L02BA_S005A[] = {
+    {"JumpCompensation", 824, 1, 0x0014, 2224},
+};
+
+inline constexpr Field kFields_L02BA_S03FB[] = {
     {"JumpCompensation_IsNull", 825, 1, 0x0016, 2225},
+};
+
+inline constexpr Field kFields_L02BB_S005A[] = {
+    {"DoubleJumpComp", 826, 1, 0x0014, 2226},
+};
+
+inline constexpr Field kFields_L02BB_S03FB[] = {
     {"DoubleJumpComp_IsNull", 827, 1, 0x0016, 2227},
+};
+
+inline constexpr Field kFields_L02BC_S005A[] = {
+    {"UseStaticTarget", 828, 1, 0x0014, 2228},
+};
+
+inline constexpr Field kFields_L02BC_S03FB[] = {
     {"UseStaticTarget_IsNull", 829, 1, 0x0016, 2229},
+};
+
+inline constexpr Field kFields_L02BD_S005A[] = {
+    {"IgnoreMicMaxDistance", 830, 1, 0x0014, 2230},
+};
+
+inline constexpr Field kFields_L02BD_S03FB[] = {
     {"IgnoreMicMaxDistance_IsNull", 831, 1, 0x0016, 2231},
+};
+
+inline constexpr Field kFields_L02BE_S005A[] = {
+    {"OverrideMicBoomRatio", 832, 1, 0x0014, 2232},
+};
+
+inline constexpr Field kFields_L02BE_S03FB[] = {
     {"OverrideMicBoomRatio_IsNull", 833, 1, 0x0016, 2233},
+};
+
+inline constexpr Field kFields_L02BF_S005A[] = {
+    {"MicIsUnderwater", 834, 1, 0x0014, 2234},
+};
+
+inline constexpr Field kFields_L02BF_S03FB[] = {
     {"MicIsUnderwater_IsNull", 835, 1, 0x0016, 2235},
+};
+
+inline constexpr Field kFields_L02C0_S005A[] = {
+    {"CamIsUnderwater", 836, 1, 0x0014, 2236},
+};
+
+inline constexpr Field kFields_L02C0_S03FB[] = {
     {"CamIsUnderwater_IsNull", 837, 1, 0x0016, 2237},
+};
+
+inline constexpr Field kFields_L02C1_S005A[] = {
+    {"UsePlayerSafeZone", 838, 1, 0x0014, 2238},
+};
+
+inline constexpr Field kFields_L02C1_S03FB[] = {
     {"UsePlayerSafeZone_IsNull", 839, 1, 0x0016, 2239},
+};
+
+inline constexpr Field kFields_L02C2_S005A[] = {
+    {"Elevation", 840, 1, 0x0104, 3024},
+};
+
+inline constexpr Field kFields_L02C2_S03FB[] = {
     {"Elevation_IsNull", 841, 1, 0x0016, 2240},
+};
+
+inline constexpr Field kFields_L02C3_S005A[] = {
+    {"Rotation", 842, 1, 0x0104, 3025},
+};
+
+inline constexpr Field kFields_L02C3_S03FB[] = {
     {"Rotation_IsNull", 843, 1, 0x0016, 2241},
     {"DollyDamping_IsNull", 844, 1, 0x0016, 2242},
     {"JumpCompensationFactor_IsNull", 845, 1, 0x0016, 2243},
@@ -10286,6 +20127,13 @@ inline constexpr Field kFields_03FB[] = {
     {"CollisionTarget_IsNull", 851, 1, 0x0016, 2249},
     {"FightLineAngle_IsNull", 852, 1, 0x0016, 2250},
     {"CenterTargets_IsNull", 853, 1, 0x0016, 2251},
+};
+
+inline constexpr Field kFields_L02C4_S005A[] = {
+    {"RailFadeDirection", 854, 1, 0x0000, 1140},
+};
+
+inline constexpr Field kFields_L02C4_S03FB[] = {
     {"RailFadeDirection_IsNull", 855, 1, 0x0016, 2252},
     {"RailFadeShelf_IsNull", 856, 1, 0x0016, 2253},
     {"RailFadeFalloff_IsNull", 857, 1, 0x0016, 2254},
@@ -10293,8 +20141,29 @@ inline constexpr Field kFields_03FB[] = {
     {"RailFadeEaseOut_IsNull", 859, 1, 0x0016, 2256},
     {"Curve_IsNull", 860, 1, 0x0016, 2257},
     {"DriveRail_IsNull", 861, 1, 0x0016, 2258},
+};
+
+inline constexpr Field kFields_L02C5_S005A[] = {
+    {"LeftStick", 862, 1, 0x0104, 3026},
+};
+
+inline constexpr Field kFields_L02C5_S03FB[] = {
     {"LeftStick_IsNull", 863, 1, 0x0016, 2259},
+};
+
+inline constexpr Field kFields_L02C6_S005A[] = {
+    {"RightStick", 864, 1, 0x0104, 3027},
+};
+
+inline constexpr Field kFields_L02C6_S03FB[] = {
     {"RightStick_IsNull", 865, 1, 0x0016, 2260},
+};
+
+inline constexpr Field kFields_L02C7_S005A[] = {
+    {"LookFlags", 866, 1, 0x0204, 3028},
+};
+
+inline constexpr Field kFields_L02C7_S03FB[] = {
     {"LookFlags_IsNull", 867, 1, 0x0016, 2261},
     {"LookConstraintUp_IsNull", 868, 1, 0x0016, 2262},
     {"LookConstraintDown_IsNull", 869, 1, 0x0016, 2263},
@@ -10313,9 +20182,30 @@ inline constexpr Field kFields_03FB[] = {
     {"SlopeFactor_IsNull", 882, 1, 0x0016, 2276},
     {"SlopeDamping_IsNull", 883, 1, 0x0016, 2277},
     {"GroundInfluence_IsNull", 884, 1, 0x0016, 2278},
+};
+
+inline constexpr Field kFields_L02C8_S005A[] = {
+    {"FrameTargets", 885, 1, 0x0014, 2279},
+};
+
+inline constexpr Field kFields_L02C8_S03FB[] = {
     {"FrameTargets_IsNull", 886, 1, 0x0016, 2280},
+};
+
+inline constexpr Field kFields_L02C9_S005A[] = {
+    {"RotateToTargets", 887, 1, 0x0014, 2281},
+};
+
+inline constexpr Field kFields_L02C9_S03FB[] = {
     {"RotateToTargets_IsNull", 888, 1, 0x0016, 2282},
     {"TiltFrame_IsNull", 889, 1, 0x0016, 2283},
+};
+
+inline constexpr Field kFields_L02CA_S005A[] = {
+    {"TiltFrameMode", 890, 1, 0x0104, 3029},
+};
+
+inline constexpr Field kFields_L02CA_S03FB[] = {
     {"TiltFrameMode_IsNull", 891, 1, 0x0016, 2284},
     {"PanLeft_IsNull", 892, 1, 0x0016, 2285},
     {"PanRight_IsNull", 893, 1, 0x0016, 2286},
@@ -10327,7 +20217,7 @@ inline constexpr Field kFields_03FB[] = {
     {"RotateToRail_IsNull", 899, 1, 0x0016, 2292},
 };
 
-inline constexpr Field kFields_03FC[] = {
+inline constexpr Field kFields_L02CA_S03FC[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"When", 8, 8, 0x0030, 65535},
     {"Marker", 16, 12, 0x0024, 457},
@@ -10336,11 +20226,11 @@ inline constexpr Field kFields_03FC[] = {
     {"Camera", 64, 12, 0x0024, 460},
 };
 
-inline constexpr Field kFields_03FD[] = {
+inline constexpr Field kFields_L02CA_S03FD[] = {
     {"Rule", 0, 12, 0x0024, 461},
 };
 
-inline constexpr Field kFields_03FE[] = {
+inline constexpr Field kFields_L02CA_S03FE[] = {
     {"TemplateSymbol", 0, 8, 0x001A, 0},
     {"Ceiling", 8, 4, 0x0008, 9302},
     {"Floor", 12, 4, 0x0008, 9303},
@@ -10360,7 +20250,7 @@ inline constexpr Field kFields_03FE[] = {
     {"LargeColliderRadius_IsNull", 38, 1, 0x0016, 2303},
 };
 
-inline constexpr Field kFields_03FF[] = {
+inline constexpr Field kFields_L02CA_S03FF[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"When", 8, 8, 0x0030, 65535},
     {"Marker", 16, 12, 0x0024, 462},
@@ -10370,12 +20260,12 @@ inline constexpr Field kFields_03FF[] = {
     {"Hack", 80, 12, 0x0024, 466},
 };
 
-inline constexpr Field kFields_0400[] = {
+inline constexpr Field kFields_L02CA_S0400[] = {
     {"Rule", 0, 12, 0x0024, 467},
     {"LargeColliderCreature", 16, 12, 0x0024, 468},
 };
 
-inline constexpr Field kFields_0401[] = {
+inline constexpr Field kFields_L02CA_S0401[] = {
     {"CameraRollScale", 0, 4, 0x0008, 9307},
     {"CameraRollSpringStrength", 4, 4, 0x0008, 9308},
     {"CameraRollDampingRatio", 8, 4, 0x0008, 9309},
@@ -10399,31 +20289,31 @@ inline constexpr Field kFields_0401[] = {
     {"EnableCameraFOVSmoothing", 68, 1, 0x0014, 2308},
 };
 
-inline constexpr Field kFields_0402[] = {
+inline constexpr Field kFields_L02CA_S0402[] = {
     {"Cinematics", 0, 0, 0x0028, 30},
 };
 
-inline constexpr Field kFields_0403[] = {
+inline constexpr Field kFields_L02CA_S0403[] = {
     {"EntitlementIds", 0, 12, 0x0024, 469},
 };
 
-inline constexpr Field kFields_0404[] = {
+inline constexpr Field kFields_L02CA_S0404[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"DisplayUi", 8, 1, 0x0014, 2309},
     {"EnableComponents", 9, 1, 0x0014, 2310},
     {"SaveOption", 10, 1, 0x0104, 3030},
 };
 
-inline constexpr Field kFields_0405[] = {
+inline constexpr Field kFields_L02CA_S0405[] = {
     {"Wallets", 0, 12, 0x0024, 470},
 };
 
-inline constexpr Field kFields_0406[] = {
+inline constexpr Field kFields_L02CA_S0406[] = {
     {"ApplyTo", 0, 1, 0x0104, 3031},
     {"Type", 1, 1, 0x0105, 3032},
 };
 
-inline constexpr Field kFields_0407[] = {
+inline constexpr Field kFields_L02CA_S0407[] = {
     {"Flags", 0, 12, 0x0024, 471},
     {"LamsName", 12, 4, 0x0000, 1141},
     {"Components", 16, 12, 0x0024, 472},
@@ -10437,7 +20327,7 @@ inline constexpr Field kFields_0407[] = {
     {"UpdateVisualScripts", 66, 1, 0x0014, 2313},
 };
 
-inline constexpr Field kFields_0408[] = {
+inline constexpr Field kFields_L02CA_S0408[] = {
     {"Flags", 0, 12, 0x0024, 474},
     {"Type", 12, 1, 0x0104, 3033},
     {"Wallet", 16, 8, 0x0010, 717},
@@ -10445,7 +20335,7 @@ inline constexpr Field kFields_0408[] = {
     {"Resource", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0409[] = {
+inline constexpr Field kFields_L02CA_S0409[] = {
     {"Flags", 0, 12, 0x0024, 475},
     {"DefaultAmount", 12, 4, 0x0000, 1144},
     {"Amount", 16, 12, 0x0024, 476},
@@ -10453,7 +20343,7 @@ inline constexpr Field kFields_0409[] = {
     {"NeverReplaceFlag", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_040A[] = {
+inline constexpr Field kFields_L02CA_S040A[] = {
     {"Resources", 0, 12, 0x0024, 477},
     {"ResourceIds", 16, 0, 0x0028, 31},
     {"FlagIds", 32, 12, 0x0024, 478},
@@ -10461,13 +20351,13 @@ inline constexpr Field kFields_040A[] = {
     {"ReplacementOptions", 64, 0, 0x002C, 1033},
 };
 
-inline constexpr Field kFields_040B[] = {
+inline constexpr Field kFields_L02CA_S040B[] = {
     {"ResourceName", 0, 8, 0x0010, 0},
     {"MinLevel", 8, 4, 0x0000, 1149},
     {"MaxLevel", 12, 4, 0x0000, 1150},
 };
 
-inline constexpr Field kFields_040C[] = {
+inline constexpr Field kFields_L02CA_S040C[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Amount", 8, 4, 0x0000, 1151},
     {"SortOrder", 12, 2, 0x0000, 1152},
@@ -10475,7 +20365,7 @@ inline constexpr Field kFields_040C[] = {
     {"Consume", 15, 1, 0x0014, 2314},
 };
 
-inline constexpr Field kFields_040D[] = {
+inline constexpr Field kFields_L02CA_S040D[] = {
     {"Flags", 0, 12, 0x0024, 482},
     {"LamsName", 12, 4, 0x0000, 1153},
     {"Input", 16, 12, 0x0024, 483},
@@ -10485,40 +20375,55 @@ inline constexpr Field kFields_040D[] = {
     {"NameId", 48, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_040E[] = {
+inline constexpr Field kFields_L02CA_S040E[] = {
     {"Recipes", 0, 12, 0x0024, 485},
     {"RecipeIds", 16, 0, 0x0028, 32},
 };
 
-inline constexpr Field kFields_040F[] = {
+inline constexpr Field kFields_L02CB_S0406[] = {
+    {"ApplyTo", 0, 1, 0x0104, 3036},
+    {"Type", 1, 1, 0x0105, 3037},
+};
+
+inline constexpr Field kFields_L02CB_S040F[] = {
     {"AttributeName", 8, 8, 0x0010, 0},
     {"Value", 16, 4, 0x0008, 9323},
 };
 
-inline constexpr Field kFields_0410[] = {
+inline constexpr Field kFields_L02CC_S0406[] = {
+    {"ApplyTo", 0, 1, 0x0104, 3038},
+    {"Type", 1, 1, 0x0105, 3039},
+};
+
+inline constexpr Field kFields_L02CC_S0410[] = {
     {"ResourceName", 8, 8, 0x0010, 0},
     {"Threshold", 16, 4, 0x0000, 1156},
     {"Amount", 20, 4, 0x0000, 1157},
 };
 
-inline constexpr Field kFields_0411[] = {
+inline constexpr Field kFields_L02CD_S0406[] = {
+    {"ApplyTo", 0, 1, 0x0104, 3040},
+    {"Type", 1, 1, 0x0105, 3041},
+};
+
+inline constexpr Field kFields_L02CD_S0411[] = {
     {"MeterName", 8, 8, 0x0010, 0},
     {"Value", 16, 4, 0x0008, 9324},
 };
 
-inline constexpr Field kFields_0413[] = {
+inline constexpr Field kFields_L02CD_S0413[] = {
     {"Operand1", 0, 1, 0x0104, 3042},
     {"Operator", 1, 1, 0x0104, 3043},
     {"Operand2", 4, 4, 0x0008, 9325},
 };
 
-inline constexpr Field kFields_0414[] = {
+inline constexpr Field kFields_L02CD_S0414[] = {
     {"Type", 0, 1, 0x0104, 3044},
     {"Chance", 4, 4, 0x0008, 9326},
     {"Decision", 8, 12, 0x0024, 486},
 };
 
-inline constexpr Field kFields_0415[] = {
+inline constexpr Field kFields_L02CD_S0415[] = {
     {"FightAggression", 24, 0, 0x002C, 229},
     {"ProjectileAggression", 64, 0, 0x002C, 229},
     {"RecoveryTime", 104, 0, 0x002C, 229},
@@ -10531,30 +20436,67 @@ inline constexpr Field kFields_0415[] = {
     {"Priority", 238, 1, 0x0000, 1158},
 };
 
-inline constexpr Field kFields_0416[] = {
+inline constexpr Field kFields_L02CE_S0414[] = {
+    {"Type", 0, 1, 0x0104, 3061},
+    {"Chance", 4, 4, 0x0008, 9361},
+    {"Decision", 8, 12, 0x0024, 493},
+};
+
+inline constexpr Field kFields_L02CE_S0415[] = {
+    {"FightAggression", 24, 0, 0x002C, 229},
+    {"ProjectileAggression", 64, 0, 0x002C, 229},
+    {"RecoveryTime", 104, 0, 0x002C, 229},
+    {"Cooldown", 144, 0, 0x002C, 229},
+    {"GlobalMoveRecoveryTime", 184, 0, 0x002C, 229},
+    {"ID", 224, 8, 0x0010, 0},
+    {"MinRange", 232, 2, 0x0008, 9392},
+    {"MaxRange", 234, 2, 0x0008, 9393},
+    {"InterruptBonusTime", 236, 2, 0x0008, 9394},
+    {"Priority", 238, 1, 0x0000, 1159},
+};
+
+inline constexpr Field kFields_L02CE_S0416[] = {
     {"Move", 240, 8, 0x001C, 1286},
     {"DelayMinRange", 248, 4, 0x0008, 9395},
     {"DelayMaxRange", 252, 4, 0x0008, 9396},
 };
 
-inline constexpr Field kFields_0417[] = {
+inline constexpr Field kFields_L02CF_S0414[] = {
+    {"Type", 0, 1, 0x0104, 3077},
+    {"Chance", 4, 4, 0x0008, 9397},
+    {"Decision", 8, 12, 0x0024, 499},
+};
+
+inline constexpr Field kFields_L02CF_S0417[] = {
     {"Move", 24, 8, 0x001C, 1286},
 };
 
-inline constexpr Field kFields_0418[] = {
+inline constexpr Field kFields_L02CF_S0418[] = {
     {"Type", 0, 1, 0x0104, 3078},
 };
 
-inline constexpr Field kFields_0419[] = {
+inline constexpr Field kFields_L02CF_S0419[] = {
     {"ActionList", 8, 12, 0x0024, 500},
     {"BlockList", 24, 12, 0x0024, 501},
 };
 
-inline constexpr Field kFields_041A[] = {
+inline constexpr Field kFields_L02D0_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3080},
+    {"Operator", 1, 1, 0x0104, 3081},
+    {"Operand2", 4, 4, 0x0008, 9398},
+};
+
+inline constexpr Field kFields_L02D0_S041A[] = {
     {"EntityName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_041B[] = {
+inline constexpr Field kFields_L02D1_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3082},
+    {"Operator", 1, 1, 0x0104, 3083},
+    {"Operand2", 4, 4, 0x0008, 9399},
+};
+
+inline constexpr Field kFields_L02D1_S041B[] = {
     {"ZeroJointOffset", 8, 0, 0x002C, 6},
     {"EndPosOffset", 14, 0, 0x002C, 6},
     {"EntityType", 20, 4, 0x0204, 3084},
@@ -10567,24 +20509,54 @@ inline constexpr Field kFields_041B[] = {
     {"NavmeshCheckFlags", 39, 1, 0x0204, 3087},
 };
 
-inline constexpr Field kFields_041C[] = {
+inline constexpr Field kFields_L02D2_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3088},
+    {"Operator", 1, 1, 0x0104, 3089},
+    {"Operand2", 4, 4, 0x0008, 9408},
+};
+
+inline constexpr Field kFields_L02D2_S041C[] = {
     {"When", 8, 8, 0x0030, 65535},
 };
 
-inline constexpr Field kFields_041D[] = {
+inline constexpr Field kFields_L02D3_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3090},
+    {"Operator", 1, 1, 0x0104, 3091},
+    {"Operand2", 4, 4, 0x0008, 9409},
+};
+
+inline constexpr Field kFields_L02D3_S041D[] = {
     {"DistanceToGround", 8, 4, 0x0008, 9410},
 };
 
-inline constexpr Field kFields_041E[] = {
+inline constexpr Field kFields_L02D4_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3092},
+    {"Operator", 1, 1, 0x0104, 3093},
+    {"Operand2", 4, 4, 0x0008, 9411},
+};
+
+inline constexpr Field kFields_L02D4_S041E[] = {
     {"AttributeStatus", 8, 8, 0x001C, 1280},
 };
 
-inline constexpr Field kFields_041F[] = {
+inline constexpr Field kFields_L02D5_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3094},
+    {"Operator", 1, 1, 0x0104, 3095},
+    {"Operand2", 4, 4, 0x0008, 9412},
+};
+
+inline constexpr Field kFields_L02D5_S041F[] = {
     {"NumberRequired", 8, 2, 0x0000, 1160},
     {"GameObjectName", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0420[] = {
+inline constexpr Field kFields_L02D6_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3096},
+    {"Operator", 1, 1, 0x0104, 3097},
+    {"Operand2", 4, 4, 0x0008, 9413},
+};
+
+inline constexpr Field kFields_L02D6_S0420[] = {
     {"EnemyID", 8, 12, 0x0024, 502},
     {"CheckBlockedHit", 20, 1, 0x0014, 2317},
     {"EnemyContext", 24, 8, 0x0010, 0},
@@ -10595,111 +20567,327 @@ inline constexpr Field kFields_0420[] = {
     {"DefenderPartFlags", 64, 8, 0x0204, 3100},
 };
 
-inline constexpr Field kFields_0421[] = {
+inline constexpr Field kFields_L02D7_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3101},
+    {"Operator", 1, 1, 0x0104, 3102},
+    {"Operand2", 4, 4, 0x0008, 9414},
+};
+
+inline constexpr Field kFields_L02D7_S0421[] = {
     {"Target", 8, 1, 0x0104, 3103},
 };
 
-inline constexpr Field kFields_0422[] = {
+inline constexpr Field kFields_L02D8_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3104},
+    {"Operator", 1, 1, 0x0104, 3105},
+    {"Operand2", 4, 4, 0x0008, 9415},
+};
+
+inline constexpr Field kFields_L02D8_S0422[] = {
     {"JointName", 8, 8, 0x0010, 0},
     {"SecondsOnScreen", 16, 4, 0x0008, 9416},
     {"PercentOnScreenLR", 20, 4, 0x0008, 9417},
     {"PercentOnScreenTB", 24, 4, 0x0008, 9418},
 };
 
-inline constexpr Field kFields_0423[] = {
+inline constexpr Field kFields_L02D9_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3106},
+    {"Operator", 1, 1, 0x0104, 3107},
+    {"Operand2", 4, 4, 0x0008, 9419},
+};
+
+inline constexpr Field kFields_L02D9_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3108},
+};
+
+inline constexpr Field kFields_L02D9_S0423[] = {
     {"ID", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0424[] = {
+inline constexpr Field kFields_L02DA_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3109},
+    {"Operator", 1, 1, 0x0104, 3110},
+    {"Operand2", 4, 4, 0x0008, 9420},
+};
+
+inline constexpr Field kFields_L02DA_S0424[] = {
     {"Marker", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0425[] = {
+inline constexpr Field kFields_L02DB_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3111},
+    {"Operator", 1, 1, 0x0104, 3112},
+    {"Operand2", 4, 4, 0x0008, 9421},
+};
+
+inline constexpr Field kFields_L02DB_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3113},
+};
+
+inline constexpr Field kFields_L02DB_S0425[] = {
     {"Marker", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0426[] = {
+inline constexpr Field kFields_L02DC_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3114},
+    {"Operator", 1, 1, 0x0104, 3115},
+    {"Operand2", 4, 4, 0x0008, 9422},
+};
+
+inline constexpr Field kFields_L02DC_S0426[] = {
     {"DynamicFlag", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0427[] = {
+inline constexpr Field kFields_L02DD_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3116},
+    {"Operator", 1, 1, 0x0104, 3117},
+    {"Operand2", 4, 4, 0x0008, 9423},
+};
+
+inline constexpr Field kFields_L02DD_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3118},
+};
+
+inline constexpr Field kFields_L02DD_S0427[] = {
     {"DynamicFlag", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0428[] = {
+inline constexpr Field kFields_L02DE_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3119},
+    {"Operator", 1, 1, 0x0104, 3120},
+    {"Operand2", 4, 4, 0x0008, 9424},
+};
+
+inline constexpr Field kFields_L02DE_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3121},
+};
+
+inline constexpr Field kFields_L02DE_S0428[] = {
     {"Context", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_042A[] = {
+inline constexpr Field kFields_L02DF_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3122},
+    {"Operator", 1, 1, 0x0104, 3123},
+    {"Operand2", 4, 4, 0x0008, 9425},
+};
+
+inline constexpr Field kFields_L02DF_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3124},
+};
+
+inline constexpr Field kFields_L02E0_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3125},
+    {"Operator", 1, 1, 0x0104, 3126},
+    {"Operand2", 4, 4, 0x0008, 9426},
+};
+
+inline constexpr Field kFields_L02E0_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3127},
+};
+
+inline constexpr Field kFields_L02E0_S042A[] = {
     {"PickupStatus", 16, 12, 0x0024, 503},
     {"PickupOperator", 28, 1, 0x0104, 3128},
 };
 
-inline constexpr Field kFields_042B[] = {
+inline constexpr Field kFields_L02E1_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3129},
+    {"Operator", 1, 1, 0x0104, 3130},
+    {"Operand2", 4, 4, 0x0008, 9427},
+};
+
+inline constexpr Field kFields_L02E1_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3131},
+};
+
+inline constexpr Field kFields_L02E1_S042B[] = {
     {"PickupStatus", 16, 12, 0x0024, 504},
     {"PickupOperator", 28, 1, 0x0104, 3132},
 };
 
-inline constexpr Field kFields_042C[] = {
+inline constexpr Field kFields_L02E2_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3133},
+    {"Operator", 1, 1, 0x0104, 3134},
+    {"Operand2", 4, 4, 0x0008, 9428},
+};
+
+inline constexpr Field kFields_L02E2_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3135},
+};
+
+inline constexpr Field kFields_L02E2_S042C[] = {
     {"SlotStatus", 16, 12, 0x0024, 505},
     {"SlotOperator", 28, 1, 0x0104, 3136},
 };
 
-inline constexpr Field kFields_042D[] = {
+inline constexpr Field kFields_L02E3_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3137},
+    {"Operator", 1, 1, 0x0104, 3138},
+    {"Operand2", 4, 4, 0x0008, 9429},
+};
+
+inline constexpr Field kFields_L02E3_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3139},
+};
+
+inline constexpr Field kFields_L02E3_S042D[] = {
     {"SlotStatus", 16, 12, 0x0024, 506},
     {"SlotOperator", 28, 1, 0x0104, 3140},
 };
 
-inline constexpr Field kFields_042E[] = {
+inline constexpr Field kFields_L02E4_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3141},
+    {"Operator", 1, 1, 0x0104, 3142},
+    {"Operand2", 4, 4, 0x0008, 9430},
+};
+
+inline constexpr Field kFields_L02E4_S042E[] = {
     {"ResourceStatus", 8, 0, 0x002C, 1035},
 };
 
-inline constexpr Field kFields_042F[] = {
+inline constexpr Field kFields_L02E5_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3143},
+    {"Operator", 1, 1, 0x0104, 3144},
+    {"Operand2", 4, 4, 0x0008, 9431},
+};
+
+inline constexpr Field kFields_L02E5_S042F[] = {
     {"Tags", 8, 4, 0x0204, 3145},
 };
 
-inline constexpr Field kFields_0430[] = {
+inline constexpr Field kFields_L02E6_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3146},
+    {"Operator", 1, 1, 0x0104, 3147},
+    {"Operand2", 4, 4, 0x0008, 9432},
+};
+
+inline constexpr Field kFields_L02E6_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3148},
+};
+
+inline constexpr Field kFields_L02E6_S0430[] = {
     {"Tags", 12, 4, 0x0204, 3149},
 };
 
-inline constexpr Field kFields_0431[] = {
+inline constexpr Field kFields_L02E7_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3150},
+    {"Operator", 1, 1, 0x0104, 3151},
+    {"Operand2", 4, 4, 0x0008, 9433},
+};
+
+inline constexpr Field kFields_L02E7_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3152},
+};
+
+inline constexpr Field kFields_L02E7_S0431[] = {
     {"MoveName", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0432[] = {
+inline constexpr Field kFields_L02E8_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3153},
+    {"Operator", 1, 1, 0x0104, 3154},
+    {"Operand2", 4, 4, 0x0008, 9434},
+};
+
+inline constexpr Field kFields_L02E8_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3155},
+};
+
+inline constexpr Field kFields_L02E8_S0432[] = {
     {"ZoneGOName", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0433[] = {
+inline constexpr Field kFields_L02E9_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3156},
+    {"Operator", 1, 1, 0x0104, 3157},
+    {"Operand2", 4, 4, 0x0008, 9435},
+};
+
+inline constexpr Field kFields_L02E9_S0433[] = {
     {"EventTypeName", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0434[] = {
+inline constexpr Field kFields_L02EA_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3158},
+    {"Operator", 1, 1, 0x0104, 3159},
+    {"Operand2", 4, 4, 0x0008, 9436},
+};
+
+inline constexpr Field kFields_L02EA_S0434[] = {
     {"VariableName", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0435[] = {
+inline constexpr Field kFields_L02EB_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3160},
+    {"Operator", 1, 1, 0x0104, 3161},
+    {"Operand2", 4, 4, 0x0008, 9437},
+};
+
+inline constexpr Field kFields_L02EB_S0435[] = {
     {"DriverName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0436[] = {
+inline constexpr Field kFields_L02EC_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3162},
+    {"Operator", 1, 1, 0x0104, 3163},
+    {"Operand2", 4, 4, 0x0008, 9438},
+};
+
+inline constexpr Field kFields_L02EC_S0436[] = {
     {"Name", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0437[] = {
+inline constexpr Field kFields_L02ED_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3164},
+    {"Operator", 1, 1, 0x0104, 3165},
+    {"Operand2", 4, 4, 0x0008, 9439},
+};
+
+inline constexpr Field kFields_L02ED_S0437[] = {
     {"FilterData", 8, 0, 0x002C, 247},
     {"UsePlayerForCheck", 104, 1, 0x0014, 2318},
     {"BlackboardOperand2", 105, 1, 0x0104, 3169},
     {"BlackboardEntryName", 112, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0438[] = {
+inline constexpr Field kFields_L02EE_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3170},
+    {"Operator", 1, 1, 0x0104, 3171},
+    {"Operand2", 4, 4, 0x0008, 9442},
+};
+
+inline constexpr Field kFields_L02EE_S0438[] = {
     {"ReferenceAxis", 8, 1, 0x0104, 3172},
     {"PlaneNormal", 9, 1, 0x0104, 3173},
     {"Angle", 10, 0, 0x002C, 43},
 };
 
-inline constexpr Field kFields_043A[] = {
+inline constexpr Field kFields_L02EF_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3174},
+    {"Operator", 1, 1, 0x0104, 3175},
+    {"Operand2", 4, 4, 0x0008, 9445},
+};
+
+inline constexpr Field kFields_L02EF_S0438[] = {
+    {"ReferenceAxis", 8, 1, 0x0104, 3176},
+    {"PlaneNormal", 9, 1, 0x0104, 3177},
+    {"Angle", 10, 0, 0x002C, 43},
+};
+
+inline constexpr Field kFields_L02F0_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3178},
+    {"Operator", 1, 1, 0x0104, 3179},
+    {"Operand2", 4, 4, 0x0008, 9448},
+};
+
+inline constexpr Field kFields_L02F0_S0438[] = {
+    {"ReferenceAxis", 8, 1, 0x0104, 3180},
+    {"PlaneNormal", 9, 1, 0x0104, 3181},
+    {"Angle", 10, 0, 0x002C, 43},
+};
+
+inline constexpr Field kFields_L02F0_S043A[] = {
     {"Elevation", 16, 0, 0x002C, 43},
     {"Depth", 20, 0, 0x002C, 43},
     {"Side", 24, 0, 0x002C, 43},
@@ -10709,108 +20897,190 @@ inline constexpr Field kFields_043A[] = {
     {"Material", 48, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_043C[] = {
+inline constexpr Field kFields_L02F1_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3184},
+    {"Operator", 1, 1, 0x0104, 3185},
+    {"Operand2", 4, 4, 0x0008, 9459},
+};
+
+inline constexpr Field kFields_L02F1_S043C[] = {
     {"StateFilter", 8, 8, 0x001C, 152},
     {"LogicStateFilter", 16, 8, 0x001C, 153},
 };
 
-inline constexpr Field kFields_043D[] = {
+inline constexpr Field kFields_L02F2_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3188},
+    {"Operator", 1, 1, 0x0104, 3189},
+    {"Operand2", 4, 4, 0x0008, 9461},
+};
+
+inline constexpr Field kFields_L02F2_S043D[] = {
     {"Components", 8, 12, 0x0024, 512},
 };
 
-inline constexpr Field kFields_043E[] = {
+inline constexpr Field kFields_L02F3_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3190},
+    {"Operator", 1, 1, 0x0104, 3191},
+    {"Operand2", 4, 4, 0x0008, 9462},
+};
+
+inline constexpr Field kFields_L02F3_S043E[] = {
     {"Decision", 8, 8, 0x001C, 1043},
 };
 
-inline constexpr Field kFields_043F[] = {
+inline constexpr Field kFields_L02F4_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3192},
+    {"Operator", 1, 1, 0x0104, 3193},
+    {"Operand2", 4, 4, 0x0008, 9463},
+};
+
+inline constexpr Field kFields_L02F4_S043F[] = {
     {"Decision", 8, 12, 0x0024, 513},
 };
 
-inline constexpr Field kFields_0440[] = {
+inline constexpr Field kFields_L02F5_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3194},
+    {"Operator", 1, 1, 0x0104, 3195},
+    {"Operand2", 4, 4, 0x0008, 9464},
+};
+
+inline constexpr Field kFields_L02F5_S0440[] = {
     {"Decision", 8, 12, 0x0024, 514},
 };
 
-inline constexpr Field kFields_0441[] = {
+inline constexpr Field kFields_L02F6_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3196},
+    {"Operator", 1, 1, 0x0104, 3197},
+    {"Operand2", 4, 4, 0x0008, 9465},
+};
+
+inline constexpr Field kFields_L02F6_S0421[] = {
+    {"Target", 8, 1, 0x0104, 3198},
+};
+
+inline constexpr Field kFields_L02F6_S0441[] = {
     {"Time", 12, 4, 0x0008, 9466},
 };
 
-inline constexpr Field kFields_0442[] = {
+inline constexpr Field kFields_L02F7_S0418[] = {
+    {"Type", 0, 1, 0x0104, 3199},
+};
+
+inline constexpr Field kFields_L02F7_S0442[] = {
     {"Decision", 8, 8, 0x001C, 1043},
     {"TrueNode", 16, 8, 0x001C, 1048},
     {"FalseNode", 24, 8, 0x001C, 1048},
 };
 
-inline constexpr Field kFields_0443[] = {
+inline constexpr Field kFields_L02F8_S0418[] = {
+    {"Type", 0, 1, 0x0104, 3200},
+};
+
+inline constexpr Field kFields_L02F8_S0443[] = {
     {"Difficulty", 8, 0, 0x0028, 33},
 };
 
-inline constexpr Field kFields_0444[] = {
+inline constexpr Field kFields_L02F8_S0444[] = {
     {"Type", 0, 1, 0x0104, 3202},
     {"Multiplier", 4, 4, 0x0008, 9467},
 };
 
-inline constexpr Field kFields_0445[] = {
+inline constexpr Field kFields_L02F8_S0445[] = {
     {"Decision", 8, 12, 0x0024, 515},
     {"DTTFlags", 20, 1, 0x0204, 3204},
     {"pointer_8", 24, 8, 0x001C, 1043},
 };
 
-inline constexpr Field kFields_0446[] = {
+inline constexpr Field kFields_L02F9_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3205},
+    {"Operator", 1, 1, 0x0104, 3206},
+    {"Operand2", 4, 4, 0x0008, 9469},
+};
+
+inline constexpr Field kFields_L02F9_S0446[] = {
     {"HookName", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0448[] = {
+inline constexpr Field kFields_L02FA_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3207},
+    {"Operator", 1, 1, 0x0104, 3208},
+    {"Operand2", 4, 4, 0x0008, 9470},
+};
+
+inline constexpr Field kFields_L02FA_S0446[] = {
+    {"HookName", 8, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L02FB_S0413[] = {
+    {"Operand1", 0, 1, 0x0104, 3209},
+    {"Operator", 1, 1, 0x0104, 3210},
+    {"Operand2", 4, 4, 0x0008, 9471},
+};
+
+inline constexpr Field kFields_L02FB_S0448[] = {
     {"Flag", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0449[] = {
+inline constexpr Field kFields_L02FB_S0449[] = {
     {"Root", 0, 8, 0x001C, 1048},
 };
 
-inline constexpr Field kFields_044A[] = {
+inline constexpr Field kFields_L02FC_S0148[] = {
+    {"Class", 0, 1, 0x0104, 3211},
+};
+
+inline constexpr Field kFields_L02FC_S044A[] = {
     {"Flags", 2, 2, 0x0204, 3212},
 };
 
-inline constexpr Field kFields_044B[] = {
+inline constexpr Field kFields_L02FD_S0148[] = {
+    {"Class", 0, 1, 0x0104, 3213},
+};
+
+inline constexpr Field kFields_L02FD_S044A[] = {
+    {"Flags", 2, 2, 0x0204, 3214},
+};
+
+inline constexpr Field kFields_L02FD_S044B[] = {
     {"BlockHitFlagsList", 8, 12, 0x0024, 516},
     {"FightStanceValues", 24, 8, 0x001C, 179},
     {"CameraTargetSet", 32, 12, 0x0024, 517},
 };
 
-inline constexpr Field kFields_044E[] = {
+inline constexpr Field kFields_L02FD_S044E[] = {
     {"Distance", 0, 4, 0x0008, 9472},
     {"Angle", 4, 4, 0x0008, 9473},
     {"AcceptedIDs", 8, 12, 0x0024, 518},
 };
 
-inline constexpr Field kFields_044F[] = {
+inline constexpr Field kFields_L02FD_S044F[] = {
     {"AggressiveStandardRecoveryTime", 0, 4, 0x0008, 9474},
     {"NonAggressiveStandardRecoveryTime", 4, 4, 0x0008, 9475},
     {"DecisionTree", 8, 8, 0x001C, 1097},
 };
 
-inline constexpr Field kFields_0450[] = {
+inline constexpr Field kFields_L02FD_S0450[] = {
     {"CombatAggroStateName", 0, 8, 0x0010, 0},
     {"NoCombatAITimeoutTimer", 8, 4, 0x0008, 9476},
     {"CombatAIOutOfRangeTimeoutTimer", 12, 4, 0x0008, 9477},
     {"CombatAIOutOfRangeDistance", 16, 4, 0x0008, 9478},
 };
 
-inline constexpr Field kFields_0451[] = {
+inline constexpr Field kFields_L02FD_S0451[] = {
     {"TargetPicker", 0, 12, 0x0024, 519},
     {"VisualRadius", 12, 4, 0x0008, 9479},
     {"VisualDegree", 16, 4, 0x0008, 9480},
     {"TargetPickerRefractoryPeriod", 20, 4, 0x0008, 9481},
 };
 
-inline constexpr Field kFields_0452[] = {
+inline constexpr Field kFields_L02FD_S0452[] = {
     {"VarianceSpeed", 0, 4, 0x0008, 9482},
     {"innerRadius", 4, 4, 0x0008, 9483},
     {"tracingDistance", 8, 4, 0x0008, 9484},
     {"outerRadius", 12, 4, 0x0008, 9485},
 };
 
-inline constexpr Field kFields_0453[] = {
+inline constexpr Field kFields_L02FD_S0453[] = {
     {"Tag", 0, 8, 0x0010, 0},
     {"Consumable", 8, 1, 0x0014, 2319},
     {"AttachedToSource", 9, 1, 0x0014, 2320},
@@ -10821,7 +21091,7 @@ inline constexpr Field kFields_0453[] = {
     {"Instant", 28, 1, 0x0014, 2321},
 };
 
-inline constexpr Field kFields_0454[] = {
+inline constexpr Field kFields_L02FD_S0454[] = {
     {"CollisionAvoidance", 0, 0, 0x002C, 1529},
     {"DistanceWeight", 12, 4, 0x0008, 9493},
     {"Points", 16, 12, 0x0024, 520},
@@ -10840,7 +21110,7 @@ inline constexpr Field kFields_0454[] = {
     {"InvalidationTimerMode", 81, 1, 0x0104, 3224},
 };
 
-inline constexpr Field kFields_0455[] = {
+inline constexpr Field kFields_L02FD_S0455[] = {
     {"TheaterScale", 0, 4, 0x0008, 9499},
     {"OffCameraMultiplier", 4, 4, 0x0008, 9500},
     {"InCombatZoneMultiplier", 8, 4, 0x0008, 9501},
@@ -10914,7 +21184,7 @@ inline constexpr Field kFields_0455[] = {
     {"Flags", 238, 1, 0x0204, 3225},
 };
 
-inline constexpr Field kFields_0456[] = {
+inline constexpr Field kFields_L02FD_S0456[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"LocalX", 8, 4, 0x0008, 9555},
     {"LocalY", 12, 4, 0x0008, 9556},
@@ -10923,21 +21193,26 @@ inline constexpr Field kFields_0456[] = {
     {"Allow360Approach", 24, 1, 0x0014, 2336},
 };
 
-inline constexpr Field kFields_0457[] = {
+inline constexpr Field kFields_L02FD_S0457[] = {
     {"CABranchInfoList", 0, 12, 0x0024, 523},
 };
 
-inline constexpr Field kFields_0458[] = {
+inline constexpr Field kFields_L02FD_S0458[] = {
     {"Type", 0, 1, 0x0104, 3226},
     {"ID", 4, 4, 0x0000, 1163},
 };
 
-inline constexpr Field kFields_0459[] = {
+inline constexpr Field kFields_L02FD_S0459[] = {
     {"Start", 8, 4, 0x0008, 9559},
     {"End", 12, 4, 0x0008, 9560},
 };
 
-inline constexpr Field kFields_045A[] = {
+inline constexpr Field kFields_L02FE_S0458[] = {
+    {"Type", 0, 1, 0x0104, 3228},
+    {"ID", 4, 4, 0x0000, 1165},
+};
+
+inline constexpr Field kFields_L02FE_S045A[] = {
     {"BaseType", 8, 1, 0x0104, 3229},
     {"BaseAxis", 9, 1, 0x0104, 3230},
     {"Origin", 10, 0, 0x002C, 6},
@@ -10946,14 +21221,14 @@ inline constexpr Field kFields_045A[] = {
     {"Part", 24, 12, 0x0024, 524},
 };
 
-inline constexpr Field kFields_045B[] = {
+inline constexpr Field kFields_L02FE_S045B[] = {
     {"Partition", 0, 0, 0x002C, 1114},
     {"Match", 40, 12, 0x0024, 526},
     {"ID", 52, 4, 0x0000, 1167},
     {"RootJoint", 56, 8, 0x0018, 718},
 };
 
-inline constexpr Field kFields_045C[] = {
+inline constexpr Field kFields_L02FE_S045C[] = {
     {"DefaultStance", 0, 8, 0x001C, 1098},
     {"StartupBrain", 8, 8, 0x001C, 1042},
     {"SpawnClearRadius", 16, 4, 0x0008, 9571},
@@ -10965,26 +21240,80 @@ inline constexpr Field kFields_045C[] = {
     {"DebugFlags", 28, 1, 0x0204, 3236},
 };
 
-inline constexpr Field kFields_045D[] = {
+inline constexpr Field kFields_L02FE_S045D[] = {
     {"TargetPickerSearchRadius", 32, 4, 0x0008, 9575},
     {"TargetPickerRefractoryPeriod", 36, 4, 0x0008, 9576},
     {"TargetPicker", 40, 12, 0x0024, 527},
 };
 
-inline constexpr Field kFields_045E[] = {
+inline constexpr Field kFields_L02FF_S045C[] = {
+    {"DefaultStance", 0, 8, 0x001C, 1098},
+    {"StartupBrain", 8, 8, 0x001C, 1042},
+    {"SpawnClearRadius", 16, 4, 0x0008, 9577},
+    {"CullRadius", 20, 4, 0x0008, 9578},
+    {"Type", 24, 1, 0x0105, 3240},
+    {"SpawnCullingEnabled", 25, 1, 0x0014, 2339},
+    {"SoundRegister", 26, 1, 0x0000, 1170},
+    {"MemoryRequired", 27, 1, 0x0204, 3241},
+    {"DebugFlags", 28, 1, 0x0204, 3242},
+};
+
+inline constexpr Field kFields_L02FF_S045D[] = {
+    {"TargetPickerSearchRadius", 32, 4, 0x0008, 9579},
+    {"TargetPickerRefractoryPeriod", 36, 4, 0x0008, 9580},
+    {"TargetPicker", 40, 12, 0x0024, 528},
+};
+
+inline constexpr Field kFields_L02FF_S045E[] = {
     {"PassiveFlags", 56, 1, 0x0204, 3243},
     {"AutoUnfreeze", 60, 4, 0x0008, 9581},
     {"StartBranch", 64, 8, 0x001C, 1286},
 };
 
-inline constexpr Field kFields_0460[] = {
+inline constexpr Field kFields_L0300_S045C[] = {
+    {"DefaultStance", 0, 8, 0x001C, 1098},
+    {"StartupBrain", 8, 8, 0x001C, 1042},
+    {"SpawnClearRadius", 16, 4, 0x0008, 9582},
+    {"CullRadius", 20, 4, 0x0008, 9583},
+    {"Type", 24, 1, 0x0105, 3244},
+    {"SpawnCullingEnabled", 25, 1, 0x0014, 2340},
+    {"SoundRegister", 26, 1, 0x0000, 1171},
+    {"MemoryRequired", 27, 1, 0x0204, 3245},
+    {"DebugFlags", 28, 1, 0x0204, 3246},
+};
+
+inline constexpr Field kFields_L0300_S045D[] = {
+    {"TargetPickerSearchRadius", 32, 4, 0x0008, 9584},
+    {"TargetPickerRefractoryPeriod", 36, 4, 0x0008, 9585},
+    {"TargetPicker", 40, 12, 0x0024, 529},
+};
+
+inline constexpr Field kFields_L0300_S045E[] = {
+    {"PassiveFlags", 56, 1, 0x0204, 3247},
+    {"AutoUnfreeze", 60, 4, 0x0008, 9586},
+    {"StartBranch", 64, 8, 0x001C, 1286},
+};
+
+inline constexpr Field kFields_L0301_S045C[] = {
+    {"DefaultStance", 0, 8, 0x001C, 1098},
+    {"StartupBrain", 8, 8, 0x001C, 1042},
+    {"SpawnClearRadius", 16, 4, 0x0008, 9587},
+    {"CullRadius", 20, 4, 0x0008, 9588},
+    {"Type", 24, 1, 0x0105, 3248},
+    {"SpawnCullingEnabled", 25, 1, 0x0014, 2341},
+    {"SoundRegister", 26, 1, 0x0000, 1172},
+    {"MemoryRequired", 27, 1, 0x0204, 3249},
+    {"DebugFlags", 28, 1, 0x0204, 3250},
+};
+
+inline constexpr Field kFields_L0301_S0460[] = {
     {"VehicleControls", 32, 8, 0x001C, 1275},
     {"SlotList", 40, 12, 0x0024, 530},
     {"AttachmentList", 56, 12, 0x0024, 531},
     {"Meters", 72, 12, 0x0024, 532},
 };
 
-inline constexpr Field kFields_0461[] = {
+inline constexpr Field kFields_L0301_S0461[] = {
     {"CloseToThrowerMaxDistance", 0, 4, 0x0008, 9589},
     {"WarnApproachMinAngle", 4, 4, 0x0008, 9590},
     {"WarnApproachTime", 8, 4, 0x0008, 9591},
@@ -10992,7 +21321,19 @@ inline constexpr Field kFields_0461[] = {
     {"PredictImpactPoint", 16, 1, 0x0014, 2342},
 };
 
-inline constexpr Field kFields_0462[] = {
+inline constexpr Field kFields_L0302_S045C[] = {
+    {"DefaultStance", 0, 8, 0x001C, 1098},
+    {"StartupBrain", 8, 8, 0x001C, 1042},
+    {"SpawnClearRadius", 16, 4, 0x0008, 9593},
+    {"CullRadius", 20, 4, 0x0008, 9594},
+    {"Type", 24, 1, 0x0105, 3251},
+    {"SpawnCullingEnabled", 25, 1, 0x0014, 2343},
+    {"SoundRegister", 26, 1, 0x0000, 1173},
+    {"MemoryRequired", 27, 1, 0x0204, 3252},
+    {"DebugFlags", 28, 1, 0x0204, 3253},
+};
+
+inline constexpr Field kFields_L0302_S0462[] = {
     {"BlockMoveList", 32, 12, 0x0024, 533},
     {"FadeDist", 44, 4, 0x0008, 9595},
     {"BlockContextList", 48, 12, 0x0024, 534},
@@ -11008,12 +21349,12 @@ inline constexpr Field kFields_0462[] = {
     {"HealthMeterIdx", 100, 1, 0x0000, 1174},
 };
 
-inline constexpr Field kFields_0463[] = {
+inline constexpr Field kFields_L0302_S0463[] = {
     {"PropertiesPerForm", 0, 0, 0x0028, 34},
     {"MayaNames", 16, 0, 0x002C, 167},
 };
 
-inline constexpr Field kFields_0464[] = {
+inline constexpr Field kFields_L0302_S0464[] = {
     {"ForwardDirectionalScaleSignedTargetSpeedList", 0, 12, 0x0024, 535},
     {"Mass", 12, 4, 0x0008, 9605},
     {"ForwardDirectionalScaleAngleList", 16, 12, 0x0024, 536},
@@ -11038,7 +21379,7 @@ inline constexpr Field kFields_0464[] = {
     {"Flags", 124, 1, 0x0204, 3254},
 };
 
-inline constexpr Field kFields_0465[] = {
+inline constexpr Field kFields_L0302_S0465[] = {
     {"InertiaClamp", 0, 4, 0x0008, 9627},
     {"InertiaTurnFactor", 4, 4, 0x0008, 9628},
     {"SledFrictionResetRate", 8, 4, 0x0008, 9629},
@@ -11046,7 +21387,7 @@ inline constexpr Field kFields_0465[] = {
     {"TargetWolfFrictionDuringDrift", 16, 4, 0x0008, 9631},
 };
 
-inline constexpr Field kFields_0466[] = {
+inline constexpr Field kFields_L0302_S0466[] = {
     {"CollisionRadius", 0, 4, 0x0008, 9632},
     {"MovementPredictionCastRadius", 4, 4, 0x0008, 9633},
     {"StopTestLength", 8, 4, 0x0008, 9634},
@@ -11056,7 +21397,7 @@ inline constexpr Field kFields_0466[] = {
     {"SlowdownTestAngle", 24, 4, 0x0008, 9638},
 };
 
-inline constexpr Field kFields_0467[] = {
+inline constexpr Field kFields_L0302_S0467[] = {
     {"AngularSpeedExtremeTurnScale", 0, 4, 0x0008, 9639},
     {"LinearSpeedExtremeTurnScale", 4, 4, 0x0008, 9640},
     {"ExtremeTurnIntoDriftTransitionTime", 8, 4, 0x0008, 9641},
@@ -11103,7 +21444,7 @@ inline constexpr Field kFields_0467[] = {
     {"GeneralClampAddsVelocity", 172, 1, 0x0014, 2344},
 };
 
-inline constexpr Field kFields_0468[] = {
+inline constexpr Field kFields_L0302_S0468[] = {
     {"CastForwardOffset", 0, 4, 0x0008, 9682},
     {"CastUpwardOffset", 4, 4, 0x0008, 9683},
     {"CastLength", 8, 4, 0x0008, 9684},
@@ -11113,7 +21454,7 @@ inline constexpr Field kFields_0468[] = {
     {"DriftDisableTime", 24, 4, 0x0008, 9688},
 };
 
-inline constexpr Field kFields_0469[] = {
+inline constexpr Field kFields_L0302_S0469[] = {
     {"CylinderOffsetY", 0, 4, 0x0008, 9689},
     {"CylinderRadiusDuringFullReverse", 4, 4, 0x0008, 9690},
     {"CylinderLength", 8, 4, 0x0008, 9691},
@@ -11122,7 +21463,7 @@ inline constexpr Field kFields_0469[] = {
     {"FallbackReverseEndAngle", 20, 4, 0x0008, 9694},
 };
 
-inline constexpr Field kFields_046A[] = {
+inline constexpr Field kFields_L0302_S046A[] = {
     {"MaxSpeedForPlayerExit", 0, 4, 0x0008, 9695},
     {"WolfAngularSpeedFromAnimationScale", 4, 4, 0x0008, 9696},
     {"WolfAngularSpeedFromAnimationScaleHighGear", 8, 4, 0x0008, 9697},
@@ -11133,7 +21474,7 @@ inline constexpr Field kFields_046A[] = {
     {"WolfAngularSpeedExtremeTurnMaxAngle", 28, 4, 0x0008, 9702},
 };
 
-inline constexpr Field kFields_046B[] = {
+inline constexpr Field kFields_L0302_S046B[] = {
     {"LinearSpeedScale", 0, 4, 0x0008, 9703},
     {"AngularSpeedScale", 4, 4, 0x0008, 9704},
     {"ClampAngle", 8, 4, 0x0008, 9705},
@@ -11143,7 +21484,7 @@ inline constexpr Field kFields_046B[] = {
     {"OppositeExitTransitionTime", 24, 4, 0x0008, 9709},
 };
 
-inline constexpr Field kFields_046C[] = {
+inline constexpr Field kFields_L0302_S046C[] = {
     {"Collision", 0, 0, 0x002C, 1126},
     {"Drift", 28, 0, 0x002C, 1127},
     {"DriftCollisionReposition", 204, 0, 0x002C, 1128},
@@ -11157,7 +21498,7 @@ inline constexpr Field kFields_046C[] = {
     {"AlwaysPlayingHaptic", 360, 8, 0x001C, 481},
 };
 
-inline constexpr Field kFields_046D[] = {
+inline constexpr Field kFields_L0302_S046D[] = {
     {"RotationSpeedNormal", 0, 4, 0x0008, 9793},
     {"RotationSpeedCollision", 4, 4, 0x0008, 9794},
     {"VerticalDampingFactor", 8, 4, 0x0008, 9795},
@@ -11177,7 +21518,7 @@ inline constexpr Field kFields_046D[] = {
     {"LookAheadPercentageAmount", 64, 4, 0x0008, 9809},
 };
 
-inline constexpr Field kFields_046E[] = {
+inline constexpr Field kFields_L0302_S046E[] = {
     {"MaxSpeed", 0, 4, 0x0008, 9810},
     {"WaterSpeed", 4, 4, 0x0008, 9811},
     {"MaxWaterHeightCheck", 8, 4, 0x0008, 9812},
@@ -11205,12 +21546,12 @@ inline constexpr Field kFields_046E[] = {
     {"UseCameraRelativeStart", 90, 1, 0x0014, 2348},
 };
 
-inline constexpr Field kFields_046F[] = {
+inline constexpr Field kFields_L0302_S046F[] = {
     {"TypeName", 0, 8, 0x0010, 0},
     {"Priority", 8, 1, 0x0000, 1175},
 };
 
-inline constexpr Field kFields_0470[] = {
+inline constexpr Field kFields_L0302_S0470[] = {
     {"GazeTimerMin", 0, 4, 0x0008, 9832},
     {"GazeTimerMax", 4, 4, 0x0008, 9833},
     {"GazeCooldownMin", 8, 4, 0x0008, 9834},
@@ -11225,31 +21566,31 @@ inline constexpr Field kFields_0470[] = {
     {"LookAtStimPriority", 80, 0, 0x002C, 1135},
 };
 
-inline constexpr Field kFields_0471[] = {
+inline constexpr Field kFields_L0302_S0471[] = {
     {"WeaponTrailJoints", 0, 12, 0x0024, 540},
     {"WeaponLeadingEdgeJoints", 16, 12, 0x0024, 541},
 };
 
-inline constexpr Field kFields_0472[] = {
+inline constexpr Field kFields_L0302_S0472[] = {
     {"List", 0, 12, 0x0024, 542},
 };
 
-inline constexpr Field kFields_0473[] = {
+inline constexpr Field kFields_L0302_S0473[] = {
     {"JointName", 0, 8, 0x0010, 0},
     {"EmbedMask", 8, 2, 0x0104, 3255},
 };
 
-inline constexpr Field kFields_0474[] = {
+inline constexpr Field kFields_L0302_S0474[] = {
     {"WeaponName", 0, 8, 0x0010, 0},
     {"EmbedPoints", 8, 12, 0x0024, 543},
 };
 
-inline constexpr Field kFields_0475[] = {
+inline constexpr Field kFields_L0302_S0475[] = {
     {"DecalName", 0, 8, 0x0010, 0},
     {"Decision", 8, 8, 0x001C, 1043},
 };
 
-inline constexpr Field kFields_0476[] = {
+inline constexpr Field kFields_L0302_S0476[] = {
     {"Decals", 0, 12, 0x0024, 544},
     {"RegionWeight", 12, 4, 0x0008, 9840},
     {"JointName", 16, 8, 0x0010, 0},
@@ -11261,20 +21602,20 @@ inline constexpr Field kFields_0476[] = {
     {"Bidirectional", 49, 1, 0x0014, 2349},
 };
 
-inline constexpr Field kFields_0477[] = {
+inline constexpr Field kFields_L0302_S0477[] = {
     {"SlashWounds", 0, 12, 0x0024, 545},
 };
 
-inline constexpr Field kFields_0478[] = {
+inline constexpr Field kFields_L0302_S0478[] = {
     {"DecalA", 0, 8, 0x0010, 0},
     {"DecalB", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0479[] = {
+inline constexpr Field kFields_L0302_S0479[] = {
     {"BinaryDecals", 0, 12, 0x0024, 546},
 };
 
-inline constexpr Field kFields_047A[] = {
+inline constexpr Field kFields_L0302_S047A[] = {
     {"Allowed", 0, 1, 0x0014, 2350},
     {"HeadAngleStart", 4, 4, 0x0008, 9843},
     {"HeadAngleEnd", 8, 4, 0x0008, 9844},
@@ -11282,7 +21623,7 @@ inline constexpr Field kFields_047A[] = {
     {"SpineAngleEnd", 16, 4, 0x0008, 9846},
 };
 
-inline constexpr Field kFields_047B[] = {
+inline constexpr Field kFields_L0302_S047B[] = {
     {"ProceduralSpine", 0, 0, 0x002C, 1146},
     {"ImpactSpeedThreshold", 20, 4, 0x0008, 9851},
     {"Friction", 24, 4, 0x0008, 9852},
@@ -11297,7 +21638,7 @@ inline constexpr Field kFields_047B[] = {
     {"BounceSpeedMultiplierWhenTumbling", 60, 4, 0x0008, 9861},
 };
 
-inline constexpr Field kFields_047C[] = {
+inline constexpr Field kFields_L0302_S047C[] = {
     {"MinSpeedOnSlideMaterial", 0, 4, 0x0008, 9862},
     {"MinSpeedOnNormalGround", 4, 4, 0x0008, 9863},
     {"LinearAcceleration", 8, 4, 0x0008, 9864},
@@ -11309,7 +21650,7 @@ inline constexpr Field kFields_047C[] = {
     {"RollingAngularMuliplierOnNormalGround", 32, 4, 0x0008, 9869},
 };
 
-inline constexpr Field kFields_047D[] = {
+inline constexpr Field kFields_L0302_S047D[] = {
     {"PushAngle", 0, 4, 0x0008, 9870},
     {"WallCheckDistance", 4, 4, 0x0008, 9871},
     {"Friction", 8, 4, 0x0008, 9872},
@@ -11323,12 +21664,12 @@ inline constexpr Field kFields_047D[] = {
     {"PitchRotationMultiplier", 40, 4, 0x0008, 9880},
 };
 
-inline constexpr Field kFields_047E[] = {
+inline constexpr Field kFields_L0302_S047E[] = {
     {"AnimName", 0, 8, 0x0010, 0},
     {"TweenTime", 8, 4, 0x0008, 9881},
 };
 
-inline constexpr Field kFields_047F[] = {
+inline constexpr Field kFields_L0302_S047F[] = {
     {"DefaultGravity", 0, 4, 0x0008, 9882},
     {"MaxInitialLinearSpeed", 4, 4, 0x0008, 9883},
     {"MotionParams", 8, 8, 0x001C, 384},
@@ -11341,66 +21682,66 @@ inline constexpr Field kFields_047F[] = {
     {"ReplaceAnim", 552, 0, 0x002C, 1150},
 };
 
-inline constexpr Field kFields_0480[] = {
+inline constexpr Field kFields_L0302_S0480[] = {
     {"DefaultParams", 0, 8, 0x001C, 1151},
     {"AlternativeParams", 8, 0, 0x0028, 35},
 };
 
-inline constexpr Field kFields_0481[] = {
+inline constexpr Field kFields_L0302_S0481[] = {
     {"DefaultGroup", 0, 0, 0x002C, 1152},
     {"AlternativeGroup", 24, 0, 0x0028, 37},
     {"AllowRagdoll", 36, 1, 0x0014, 2361},
     {"IgnoreInternalCollision", 37, 1, 0x0014, 2362},
 };
 
-inline constexpr Field kFields_0482[] = {
+inline constexpr Field kFields_L0302_S0482[] = {
     {"Part", 0, 12, 0x0024, 553},
     {"KeyPart", 12, 2, 0x0104, 3281},
     {"Weight", 16, 12, 0x0024, 554},
 };
 
-inline constexpr Field kFields_0483[] = {
+inline constexpr Field kFields_L0302_S0483[] = {
     {"Rows", 0, 12, 0x0024, 555},
     {"Default", 16, 0, 0x002C, 1154},
 };
 
-inline constexpr Field kFields_0484[] = {
+inline constexpr Field kFields_L0302_S0484[] = {
     {"Difficulty", 0, 8, 0x0010, 0},
     {"Value", 8, 4, 0x0008, 9989},
 };
 
-inline constexpr Field kFields_0485[] = {
+inline constexpr Field kFields_L0302_S0485[] = {
     {"Attribute", 0, 8, 0x0010, 0},
     {"StatsValue", 8, 12, 0x0024, 558},
 };
 
-inline constexpr Field kFields_0486[] = {
+inline constexpr Field kFields_L0302_S0486[] = {
     {"DesiredStates", 0, 12, 0x0024, 559},
 };
 
-inline constexpr Field kFields_0487[] = {
+inline constexpr Field kFields_L0302_S0487[] = {
     {"WalkSpeed", 0, 4, 0x0008, 9990},
     {"JogSpeed", 4, 4, 0x0008, 9991},
     {"RunSpeed", 8, 4, 0x0008, 9992},
     {"SprintSpeed", 12, 4, 0x0008, 9993},
 };
 
-inline constexpr Field kFields_0488[] = {
+inline constexpr Field kFields_L0302_S0488[] = {
     {"WeaponSwitchList", 0, 12, 0x0024, 560},
 };
 
-inline constexpr Field kFields_0489[] = {
+inline constexpr Field kFields_L0302_S0489[] = {
     {"WeaponType", 0, 4, 0x0000, 1183},
     {"ActiveJoint", 8, 8, 0x0018, 0},
     {"StowJoint", 16, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_048A[] = {
+inline constexpr Field kFields_L0302_S048A[] = {
     {"JointName", 0, 8, 0x0010, 0},
     {"BodyPart", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_048B[] = {
+inline constexpr Field kFields_L0302_S048B[] = {
     {"NumLinks", 0, 1, 0x0000, 1184},
     {"Length", 4, 4, 0x0008, 9994},
     {"Damping", 8, 4, 0x0008, 9995},
@@ -11410,12 +21751,12 @@ inline constexpr Field kFields_048B[] = {
     {"StartJointName", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_048C[] = {
+inline constexpr Field kFields_L0302_S048C[] = {
     {"RopeConfiguration", 0, 12, 0x0024, 561},
     {"AllowAttachedRope", 12, 1, 0x0014, 2363},
 };
 
-inline constexpr Field kFields_048D[] = {
+inline constexpr Field kFields_L0302_S048D[] = {
     {"DefaultTargetingParameters", 0, 0, 0x002C, 239},
     {"DefaultInteractsTargetingParameters", 128, 0, 0x002C, 239},
     {"DefaultBreakablesTargetingParameters", 256, 0, 0x002C, 239},
@@ -11556,13 +21897,13 @@ inline constexpr Field kFields_048D[] = {
     {"DisableArrowAcquireNonReticleTarget", 1601, 1, 0x0014, 2388},
 };
 
-inline constexpr Field kFields_048E[] = {
+inline constexpr Field kFields_L0302_S048E[] = {
     {"Threshold", 0, 4, 0x0008, 10226},
     {"Anim", 8, 8, 0x0010, 0},
     {"PlayFXList", 16, 8, 0x001C, 273},
 };
 
-inline constexpr Field kFields_048F[] = {
+inline constexpr Field kFields_L0302_S048F[] = {
     {"Scale", 0, 4, 0x0008, 10227},
     {"XOffset", 4, 4, 0x0008, 10228},
     {"YOffset", 8, 4, 0x0008, 10229},
@@ -11572,11 +21913,11 @@ inline constexpr Field kFields_048F[] = {
     {"GOName", 32, 8, 0x0010, 748},
 };
 
-inline constexpr Field kFields_0490[] = {
+inline constexpr Field kFields_L0302_S0490[] = {
     {"LayerList", 0, 12, 0x0024, 591},
 };
 
-inline constexpr Field kFields_0491[] = {
+inline constexpr Field kFields_L0302_S0491[] = {
     {"PartFlags", 0, 8, 0x0204, 3302},
     {"ThrowableResponse", 8, 8, 0x0010, 0},
     {"HitTrackJoint", 16, 8, 0x0010, 0},
@@ -11584,13 +21925,13 @@ inline constexpr Field kFields_0491[] = {
     {"ID", 30, 1, 0x0000, 1195},
 };
 
-inline constexpr Field kFields_0492[] = {
+inline constexpr Field kFields_L0302_S0492[] = {
     {"ObstructedGraceTime", 0, 4, 0x0008, 10235},
     {"ObstructedTimeoutForDroppingAggressivePriority", 4, 4, 0x0008, 10236},
     {"OffscreenGraceTime", 8, 4, 0x0008, 10237},
 };
 
-inline constexpr Field kFields_0493[] = {
+inline constexpr Field kFields_L0302_S0493[] = {
     {"FightStanceValues", 0, 0, 0x002C, 179},
     {"CircleList", 16, 12, 0x0024, 592},
     {"StunThreshold", 28, 4, 0x0008, 10238},
@@ -11632,7 +21973,7 @@ inline constexpr Field kFields_0493[] = {
     {"CameraBossFocus", 221, 1, 0x0014, 2390},
 };
 
-inline constexpr Field kFields_0494[] = {
+inline constexpr Field kFields_L0302_S0494[] = {
     {"Flags", 0, 2, 0x0204, 3307},
     {"Duration", 4, 4, 0x0008, 10264},
     {"Radius", 8, 4, 0x0008, 10265},
@@ -11655,22 +21996,22 @@ inline constexpr Field kFields_0494[] = {
     {"ShardInfo", 96, 0, 0x002C, 1556},
 };
 
-inline constexpr Field kFields_0495[] = {
+inline constexpr Field kFields_L0302_S0495[] = {
     {"ID", 0, 8, 0x0010, 0},
     {"Branch", 8, 8, 0x001C, 1286},
 };
 
-inline constexpr Field kFields_0496[] = {
+inline constexpr Field kFields_L0302_S0496[] = {
     {"ZeroJoint", 0, 8, 0x0010, 749},
     {"SynchJoint", 8, 8, 0x0010, 750},
     {"LinkJoint", 16, 8, 0x0010, 751},
 };
 
-inline constexpr Field kFields_0497[] = {
+inline constexpr Field kFields_L0302_S0497[] = {
     {"RequestTypeNames", 0, 12, 0x0024, 595},
 };
 
-inline constexpr Field kFields_0498[] = {
+inline constexpr Field kFields_L0302_S0498[] = {
     {"MoveEvent", 0, 8, 0x0010, 0},
     {"MinDistanceAway", 8, 4, 0x0008, 10284},
     {"MaxDistanceAway", 12, 4, 0x0008, 10285},
@@ -11680,12 +22021,12 @@ inline constexpr Field kFields_0498[] = {
     {"PlayerSide", 22, 1, 0x0104, 3309},
 };
 
-inline constexpr Field kFields_0499[] = {
+inline constexpr Field kFields_L0302_S0499[] = {
     {"MoveEvent", 0, 8, 0x0018, 0},
     {"OneOffWeight", 8, 1, 0x0000, 1206},
 };
 
-inline constexpr Field kFields_049A[] = {
+inline constexpr Field kFields_L0302_S049A[] = {
     {"LoopBanter", 0, 12, 0x0024, 596},
     {"CooldownTimer", 12, 4, 0x0008, 10287},
     {"OneOffBanter", 16, 12, 0x0024, 597},
@@ -11707,17 +22048,17 @@ inline constexpr Field kFields_049A[] = {
     {"ComplimentaryConfigName", 144, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_049B[] = {
+inline constexpr Field kFields_L0302_S049B[] = {
     {"Elements", 0, 12, 0x0024, 601},
 };
 
-inline constexpr Field kFields_049C[] = {
+inline constexpr Field kFields_L0302_S049C[] = {
     {"JointName", 0, 8, 0x0010, 0},
     {"MarkerID", 8, 8, 0x0010, 0},
     {"PointTest", 16, 1, 0x0014, 2393},
 };
 
-inline constexpr Field kFields_049D[] = {
+inline constexpr Field kFields_L0302_S049D[] = {
     {"GOName", 0, 8, 0x0018, 0},
     {"Soldier", 8, 8, 0x001C, 1165},
     {"AI", 16, 8, 0x001C, 1116},
@@ -11758,7 +22099,7 @@ inline constexpr Field kFields_049D[] = {
     {"PlayerMemory", 904, 8, 0x001C, 296},
 };
 
-inline constexpr Field kFields_049E[] = {
+inline constexpr Field kFields_L0302_S049E[] = {
     {"MoveList", 0, 12, 0x0024, 620},
     {"Flags", 12, 1, 0x0204, 3326},
     {"CharacterConfigList", 16, 12, 0x0024, 621},
@@ -11767,18 +22108,18 @@ inline constexpr Field kFields_049E[] = {
     {"DeathEffectJoint", 48, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_049F[] = {
+inline constexpr Field kFields_L0302_S049F[] = {
     {"PickupId", 0, 2, 0x0000, 1210},
     {"Flags", 2, 1, 0x0204, 3327},
     {"StageId", 3, 1, 0x0000, 1211},
 };
 
-inline constexpr Field kFields_04A0[] = {
+inline constexpr Field kFields_L0302_S04A0[] = {
     {"Slot", 0, 1, 0x0000, 1212},
     {"HeapSize", 4, 4, 0x0000, 1213},
 };
 
-inline constexpr Field kFields_04A1[] = {
+inline constexpr Field kFields_L0302_S04A1[] = {
     {"Pickup", 0, 2, 0x0000, 1214},
     {"MinStage", 2, 1, 0x0000, 1215},
     {"MaxStage", 3, 1, 0x0000, 1216},
@@ -11786,7 +22127,7 @@ inline constexpr Field kFields_04A1[] = {
     {"State", 8, 1, 0x0104, 3329},
 };
 
-inline constexpr Field kFields_04A2[] = {
+inline constexpr Field kFields_L0302_S04A2[] = {
     {"Tags", 0, 4, 0x0204, 3330},
     {"Slot", 4, 1, 0x0000, 1217},
     {"MinStage", 5, 1, 0x0000, 1218},
@@ -11794,19 +22135,53 @@ inline constexpr Field kFields_04A2[] = {
     {"State", 7, 1, 0x0104, 3331},
 };
 
-inline constexpr Field kFields_04A3[] = {
+inline constexpr Field kFields_L0303_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 3332},
+    {"Flags", 1, 1, 0x0204, 3333},
+    {"Condition", 2, 1, 0x0104, 3334},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1220},
+    {"On", 4, 2, 0x0008, 10327},
+    {"Off", 6, 2, 0x0008, 10328},
+};
+
+inline constexpr Field kFields_L0303_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 3335},
+    {"ScriptName", 16, 8, 0x0010, 767},
+};
+
+inline constexpr Field kFields_L0303_S00B0[] = {
+    {"JointName", 24, 8, 0x0010, 0},
+    {"Offset", 32, 0, 0x002C, 6},
+    {"SpawnFlags", 38, 1, 0x0204, 3336},
+};
+
+inline constexpr Field kFields_L0303_S04A3[] = {
     {"Pickup", 40, 2, 0x0000, 1221},
     {"InitialBranchName", 48, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04A4[] = {
+inline constexpr Field kFields_L0304_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 3337},
+    {"Flags", 1, 1, 0x0204, 3338},
+    {"Condition", 2, 1, 0x0104, 3339},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1222},
+    {"On", 4, 2, 0x0008, 10332},
+    {"Off", 6, 2, 0x0008, 10333},
+};
+
+inline constexpr Field kFields_L0304_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 3340},
+    {"ScriptName", 16, 8, 0x0010, 768},
+};
+
+inline constexpr Field kFields_L0304_S04A4[] = {
     {"PickupFlags", 24, 1, 0x0204, 3341},
     {"Pickup", 26, 2, 0x0000, 1223},
     {"Stage", 28, 1, 0x0000, 1224},
     {"Index", 30, 2, 0x0000, 1225},
 };
 
-inline constexpr Field kFields_04A5[] = {
+inline constexpr Field kFields_L0304_S04A5[] = {
     {"AdjustTime", 0, 0, 0x002C, 229},
     {"ScaleTime", 40, 0, 0x002C, 229},
     {"AdjustByPercentMax", 80, 0, 0x002C, 229},
@@ -11814,32 +22189,60 @@ inline constexpr Field kFields_04A5[] = {
     {"CapToCurrentValue", 121, 1, 0x0014, 2395},
 };
 
-inline constexpr Field kFields_04A6[] = {
+inline constexpr Field kFields_L0305_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 3351},
+    {"Flags", 1, 1, 0x0204, 3352},
+    {"Condition", 2, 1, 0x0104, 3353},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1227},
+    {"On", 4, 2, 0x0008, 10352},
+    {"Off", 6, 2, 0x0008, 10353},
+};
+
+inline constexpr Field kFields_L0305_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 3354},
+    {"ScriptName", 16, 8, 0x0010, 769},
+};
+
+inline constexpr Field kFields_L0305_S04A6[] = {
     {"RefreshCooldown", 24, 8, 0x001C, 1189},
 };
 
-inline constexpr Field kFields_04A7[] = {
+inline constexpr Field kFields_L0306_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 3355},
+    {"Flags", 1, 1, 0x0204, 3356},
+    {"Condition", 2, 1, 0x0104, 3357},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1228},
+    {"On", 4, 2, 0x0008, 10354},
+    {"Off", 6, 2, 0x0008, 10355},
+};
+
+inline constexpr Field kFields_L0306_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 3358},
+    {"ScriptName", 16, 8, 0x0010, 770},
+};
+
+inline constexpr Field kFields_L0306_S04A7[] = {
     {"Pickup", 24, 2, 0x0000, 1229},
 };
 
-inline constexpr Field kFields_04A8[] = {
+inline constexpr Field kFields_L0306_S04A8[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Slot", 8, 1, 0x0000, 1230},
     {"CooldownType", 9, 1, 0x0104, 3359},
 };
 
-inline constexpr Field kFields_04A9[] = {
+inline constexpr Field kFields_L0306_S04A9[] = {
     {"Heap", 0, 1, 0x0104, 3360},
     {"Name", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_04AA[] = {
+inline constexpr Field kFields_L0306_S04AA[] = {
     {"PickupId", 0, 2, 0x0000, 1231},
     {"StageId", 2, 1, 0x0000, 1232},
     {"Money", 4, 4, 0x0000, 1233},
 };
 
-inline constexpr Field kFields_04AB[] = {
+inline constexpr Field kFields_L0306_S04AB[] = {
     {"When", 0, 8, 0x0030, 65535},
     {"RequiredWeaponMode", 8, 8, 0x0010, 0},
     {"On", 16, 4, 0x0008, 10356},
@@ -11853,54 +22256,180 @@ inline constexpr Field kFields_04AB[] = {
     {"HardcodedExpression", 31, 1, 0x0104, 3365},
 };
 
-inline constexpr Field kFields_04AC[] = {
+inline constexpr Field kFields_L0306_S04AC[] = {
     {"Duration", 32, 0, 0x002C, 229},
     {"CanRefresh", 72, 1, 0x0014, 2398},
     {"UseCreatureTime", 73, 1, 0x0014, 2399},
 };
 
-inline constexpr Field kFields_04AD[] = {
+inline constexpr Field kFields_L0307_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10366},
+    {"Off", 20, 4, 0x0008, 10367},
+    {"RequiredPickup", 24, 2, 0x0000, 1236},
+    {"Type", 26, 1, 0x0104, 3374},
+    {"Flags", 27, 1, 0x0204, 3375},
+    {"Visibility", 28, 1, 0x0204, 3376},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3377},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2400},
+    {"HardcodedExpression", 31, 1, 0x0104, 3378},
+};
+
+inline constexpr Field kFields_L0307_S04AD[] = {
     {"Duration", 32, 4, 0x0008, 10368},
 };
 
-inline constexpr Field kFields_04AE[] = {
+inline constexpr Field kFields_L0308_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10369},
+    {"Off", 20, 4, 0x0008, 10370},
+    {"RequiredPickup", 24, 2, 0x0000, 1237},
+    {"Type", 26, 1, 0x0104, 3379},
+    {"Flags", 27, 1, 0x0204, 3380},
+    {"Visibility", 28, 1, 0x0204, 3381},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3382},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2401},
+    {"HardcodedExpression", 31, 1, 0x0104, 3383},
+};
+
+inline constexpr Field kFields_L0308_S04AE[] = {
     {"Modifiers", 32, 12, 0x0024, 626},
 };
 
-inline constexpr Field kFields_04AF[] = {
+inline constexpr Field kFields_L0308_S04AF[] = {
     {"Attribute", 0, 8, 0x0010, 0},
     {"Value", 8, 4, 0x0008, 10371},
 };
 
-inline constexpr Field kFields_04B0[] = {
+inline constexpr Field kFields_L0309_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10372},
+    {"Off", 20, 4, 0x0008, 10373},
+    {"RequiredPickup", 24, 2, 0x0000, 1238},
+    {"Type", 26, 1, 0x0104, 3384},
+    {"Flags", 27, 1, 0x0204, 3385},
+    {"Visibility", 28, 1, 0x0204, 3386},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3387},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2402},
+    {"HardcodedExpression", 31, 1, 0x0104, 3388},
+};
+
+inline constexpr Field kFields_L0309_S04B0[] = {
     {"Attributes", 32, 12, 0x0024, 627},
 };
 
-inline constexpr Field kFields_04B1[] = {
+inline constexpr Field kFields_L030A_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10374},
+    {"Off", 20, 4, 0x0008, 10375},
+    {"RequiredPickup", 24, 2, 0x0000, 1239},
+    {"Type", 26, 1, 0x0104, 3389},
+    {"Flags", 27, 1, 0x0204, 3390},
+    {"Visibility", 28, 1, 0x0204, 3391},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3392},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2403},
+    {"HardcodedExpression", 31, 1, 0x0104, 3393},
+};
+
+inline constexpr Field kFields_L030A_S04B1[] = {
     {"Add", 32, 4, 0x0204, 3394},
     {"Remove", 36, 4, 0x0204, 3395},
 };
 
-inline constexpr Field kFields_04B2[] = {
+inline constexpr Field kFields_L030B_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10376},
+    {"Off", 20, 4, 0x0008, 10377},
+    {"RequiredPickup", 24, 2, 0x0000, 1240},
+    {"Type", 26, 1, 0x0104, 3396},
+    {"Flags", 27, 1, 0x0204, 3397},
+    {"Visibility", 28, 1, 0x0204, 3398},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3399},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2404},
+    {"HardcodedExpression", 31, 1, 0x0104, 3400},
+};
+
+inline constexpr Field kFields_L030B_S04B2[] = {
     {"Add", 32, 4, 0x0204, 3401},
 };
 
-inline constexpr Field kFields_04B3[] = {
+inline constexpr Field kFields_L030C_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10378},
+    {"Off", 20, 4, 0x0008, 10379},
+    {"RequiredPickup", 24, 2, 0x0000, 1241},
+    {"Type", 26, 1, 0x0104, 3402},
+    {"Flags", 27, 1, 0x0204, 3403},
+    {"Visibility", 28, 1, 0x0204, 3404},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3405},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2405},
+    {"HardcodedExpression", 31, 1, 0x0104, 3406},
+};
+
+inline constexpr Field kFields_L030C_S04B3[] = {
     {"Pickups", 32, 12, 0x0024, 628},
     {"AutoRemove", 44, 1, 0x0014, 2406},
     {"OverwritePickupStageIfAcquired", 45, 1, 0x0014, 2407},
 };
 
-inline constexpr Field kFields_04B4[] = {
+inline constexpr Field kFields_L030D_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10380},
+    {"Off", 20, 4, 0x0008, 10381},
+    {"RequiredPickup", 24, 2, 0x0000, 1242},
+    {"Type", 26, 1, 0x0104, 3407},
+    {"Flags", 27, 1, 0x0204, 3408},
+    {"Visibility", 28, 1, 0x0204, 3409},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3410},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2408},
+    {"HardcodedExpression", 31, 1, 0x0104, 3411},
+};
+
+inline constexpr Field kFields_L030D_S04B4[] = {
     {"OverrideMaterialFXFrom", 32, 8, 0x0010, 0},
     {"OverrideMaterialFXTo", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04B5[] = {
+inline constexpr Field kFields_L030E_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10382},
+    {"Off", 20, 4, 0x0008, 10383},
+    {"RequiredPickup", 24, 2, 0x0000, 1243},
+    {"Type", 26, 1, 0x0104, 3412},
+    {"Flags", 27, 1, 0x0204, 3413},
+    {"Visibility", 28, 1, 0x0204, 3414},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3415},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2409},
+    {"HardcodedExpression", 31, 1, 0x0104, 3416},
+};
+
+inline constexpr Field kFields_L030E_S04B5[] = {
     {"MFXSwitches", 32, 4, 0x0024, 629},
 };
 
-inline constexpr Field kFields_04B6[] = {
+inline constexpr Field kFields_L030F_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10384},
+    {"Off", 20, 4, 0x0008, 10385},
+    {"RequiredPickup", 24, 2, 0x0000, 1245},
+    {"Type", 26, 1, 0x0104, 3417},
+    {"Flags", 27, 1, 0x0204, 3418},
+    {"Visibility", 28, 1, 0x0204, 3419},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3420},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2410},
+    {"HardcodedExpression", 31, 1, 0x0104, 3421},
+};
+
+inline constexpr Field kFields_L030F_S04B6[] = {
     {"Pickups", 32, 12, 0x0024, 630},
     {"GiveRadius", 44, 4, 0x0008, 10386},
     {"IgnoreList", 48, 12, 0x0024, 631},
@@ -11908,29 +22437,99 @@ inline constexpr Field kFields_04B6[] = {
     {"Targets", 64, 1, 0x0204, 3422},
 };
 
-inline constexpr Field kFields_04B7[] = {
+inline constexpr Field kFields_L0310_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10388},
+    {"Off", 20, 4, 0x0008, 10389},
+    {"RequiredPickup", 24, 2, 0x0000, 1246},
+    {"Type", 26, 1, 0x0104, 3423},
+    {"Flags", 27, 1, 0x0204, 3424},
+    {"Visibility", 28, 1, 0x0204, 3425},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3426},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2411},
+    {"HardcodedExpression", 31, 1, 0x0104, 3427},
+};
+
+inline constexpr Field kFields_L0310_S04B7[] = {
     {"Name", 32, 12, 0x0024, 632},
     {"Priority", 44, 4, 0x0000, 1247},
     {"val_11", 48, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_04B8[] = {
+inline constexpr Field kFields_L0311_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10390},
+    {"Off", 20, 4, 0x0008, 10391},
+    {"RequiredPickup", 24, 2, 0x0000, 1248},
+    {"Type", 26, 1, 0x0104, 3428},
+    {"Flags", 27, 1, 0x0204, 3429},
+    {"Visibility", 28, 1, 0x0204, 3430},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3431},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2412},
+    {"HardcodedExpression", 31, 1, 0x0104, 3432},
+};
+
+inline constexpr Field kFields_L0311_S04B8[] = {
     {"Template", 32, 8, 0x0010, 0},
     {"Config", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04B9[] = {
+inline constexpr Field kFields_L0312_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10392},
+    {"Off", 20, 4, 0x0008, 10393},
+    {"RequiredPickup", 24, 2, 0x0000, 1249},
+    {"Type", 26, 1, 0x0104, 3433},
+    {"Flags", 27, 1, 0x0204, 3434},
+    {"Visibility", 28, 1, 0x0204, 3435},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3436},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2413},
+    {"HardcodedExpression", 31, 1, 0x0104, 3437},
+};
+
+inline constexpr Field kFields_L0312_S04B9[] = {
     {"WeaponType", 32, 4, 0x0000, 1250},
     {"RestoreState", 36, 1, 0x0104, 3438},
 };
 
-inline constexpr Field kFields_04BA[] = {
+inline constexpr Field kFields_L0313_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10394},
+    {"Off", 20, 4, 0x0008, 10395},
+    {"RequiredPickup", 24, 2, 0x0000, 1251},
+    {"Type", 26, 1, 0x0104, 3439},
+    {"Flags", 27, 1, 0x0204, 3440},
+    {"Visibility", 28, 1, 0x0204, 3441},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3442},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2414},
+    {"HardcodedExpression", 31, 1, 0x0104, 3443},
+};
+
+inline constexpr Field kFields_L0313_S04BA[] = {
     {"Scale", 32, 4, 0x0008, 10396},
     {"ApplyTween", 36, 0, 0x002C, 12},
     {"RemoveTween", 60, 0, 0x002C, 12},
 };
 
-inline constexpr Field kFields_04BB[] = {
+inline constexpr Field kFields_L0314_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10409},
+    {"Off", 20, 4, 0x0008, 10410},
+    {"RequiredPickup", 24, 2, 0x0000, 1252},
+    {"Type", 26, 1, 0x0104, 3444},
+    {"Flags", 27, 1, 0x0204, 3445},
+    {"Visibility", 28, 1, 0x0204, 3446},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3447},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2415},
+    {"HardcodedExpression", 31, 1, 0x0104, 3448},
+};
+
+inline constexpr Field kFields_L0314_S04BB[] = {
     {"Alpha", 32, 4, 0x0008, 10411},
     {"ApplyTween", 36, 0, 0x002C, 12},
     {"RemoveTween", 60, 0, 0x002C, 12},
@@ -11939,26 +22538,82 @@ inline constexpr Field kFields_04BB[] = {
     {"RemoveEffect", 96, 8, 0x001C, 294},
 };
 
-inline constexpr Field kFields_04BC[] = {
+inline constexpr Field kFields_L0315_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10424},
+    {"Off", 20, 4, 0x0008, 10425},
+    {"RequiredPickup", 24, 2, 0x0000, 1254},
+    {"Type", 26, 1, 0x0104, 3449},
+    {"Flags", 27, 1, 0x0204, 3450},
+    {"Visibility", 28, 1, 0x0204, 3451},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3452},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2416},
+    {"HardcodedExpression", 31, 1, 0x0104, 3453},
+};
+
+inline constexpr Field kFields_L0315_S04BC[] = {
     {"ExposedSideName", 32, 8, 0x0010, 0},
     {"Shield", 40, 4, 0x0008, 10426},
     {"ShieldDefaultHitModifierList", 48, 12, 0x0024, 633},
     {"KeepOn", 60, 1, 0x0014, 2417},
 };
 
-inline constexpr Field kFields_04BD[] = {
+inline constexpr Field kFields_L0316_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10427},
+    {"Off", 20, 4, 0x0008, 10428},
+    {"RequiredPickup", 24, 2, 0x0000, 1255},
+    {"Type", 26, 1, 0x0104, 3454},
+    {"Flags", 27, 1, 0x0204, 3455},
+    {"Visibility", 28, 1, 0x0204, 3456},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3457},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2418},
+    {"HardcodedExpression", 31, 1, 0x0104, 3458},
+};
+
+inline constexpr Field kFields_L0316_S04BD[] = {
     {"HitModifier", 32, 8, 0x001C, 343},
 };
 
-inline constexpr Field kFields_04BE[] = {
+inline constexpr Field kFields_L0317_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10429},
+    {"Off", 20, 4, 0x0008, 10430},
+    {"RequiredPickup", 24, 2, 0x0000, 1256},
+    {"Type", 26, 1, 0x0104, 3459},
+    {"Flags", 27, 1, 0x0204, 3460},
+    {"Visibility", 28, 1, 0x0204, 3461},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3462},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2419},
+    {"HardcodedExpression", 31, 1, 0x0104, 3463},
+};
+
+inline constexpr Field kFields_L0317_S04BE[] = {
     {"ModifierFlags", 32, 1, 0x0204, 3464},
 };
 
-inline constexpr Field kFields_04BF[] = {
+inline constexpr Field kFields_L0317_S04BF[] = {
     {"SlotIds", 0, 12, 0x0024, 634},
 };
 
-inline constexpr Field kFields_04C0[] = {
+inline constexpr Field kFields_L0318_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10431},
+    {"Off", 20, 4, 0x0008, 10432},
+    {"RequiredPickup", 24, 2, 0x0000, 1258},
+    {"Type", 26, 1, 0x0104, 3465},
+    {"Flags", 27, 1, 0x0204, 3466},
+    {"Visibility", 28, 1, 0x0204, 3467},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3468},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2420},
+    {"HardcodedExpression", 31, 1, 0x0104, 3469},
+};
+
+inline constexpr Field kFields_L0318_S04C0[] = {
     {"Name", 32, 8, 0x0010, 0},
     {"SwapMaterialName", 40, 8, 0x0010, 0},
     {"AttachmentName", 48, 8, 0x0010, 0},
@@ -11966,15 +22621,57 @@ inline constexpr Field kFields_04C0[] = {
     {"WeaponType", 64, 4, 0x0000, 1259},
 };
 
-inline constexpr Field kFields_04C2[] = {
+inline constexpr Field kFields_L0319_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10433},
+    {"Off", 20, 4, 0x0008, 10434},
+    {"RequiredPickup", 24, 2, 0x0000, 1260},
+    {"Type", 26, 1, 0x0104, 3470},
+    {"Flags", 27, 1, 0x0204, 3471},
+    {"Visibility", 28, 1, 0x0204, 3472},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3473},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2421},
+    {"HardcodedExpression", 31, 1, 0x0104, 3474},
+};
+
+inline constexpr Field kFields_L0319_S04C2[] = {
     {"Voice", 32, 1, 0x0000, 1262},
 };
 
-inline constexpr Field kFields_04C3[] = {
+inline constexpr Field kFields_L031A_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10437},
+    {"Off", 20, 4, 0x0008, 10438},
+    {"RequiredPickup", 24, 2, 0x0000, 1263},
+    {"Type", 26, 1, 0x0104, 3480},
+    {"Flags", 27, 1, 0x0204, 3481},
+    {"Visibility", 28, 1, 0x0204, 3482},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3483},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2423},
+    {"HardcodedExpression", 31, 1, 0x0104, 3484},
+};
+
+inline constexpr Field kFields_L031A_S04C3[] = {
     {"Attributes", 32, 8, 0x0204, 3485},
 };
 
-inline constexpr Field kFields_04C4[] = {
+inline constexpr Field kFields_L031B_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10439},
+    {"Off", 20, 4, 0x0008, 10440},
+    {"RequiredPickup", 24, 2, 0x0000, 1264},
+    {"Type", 26, 1, 0x0104, 3486},
+    {"Flags", 27, 1, 0x0204, 3487},
+    {"Visibility", 28, 1, 0x0204, 3488},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3489},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2424},
+    {"HardcodedExpression", 31, 1, 0x0104, 3490},
+};
+
+inline constexpr Field kFields_L031B_S04C4[] = {
     {"PrimaryJoint", 32, 8, 0x0010, 0},
     {"AttachName", 40, 8, 0x0010, 0},
     {"YPositionJoint", 48, 8, 0x0010, 0},
@@ -11984,72 +22681,287 @@ inline constexpr Field kFields_04C4[] = {
     {"Length", 72, 4, 0x0008, 10448},
 };
 
-inline constexpr Field kFields_04C5[] = {
+inline constexpr Field kFields_L031C_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10449},
+    {"Off", 20, 4, 0x0008, 10450},
+    {"RequiredPickup", 24, 2, 0x0000, 1265},
+    {"Type", 26, 1, 0x0104, 3491},
+    {"Flags", 27, 1, 0x0204, 3492},
+    {"Visibility", 28, 1, 0x0204, 3493},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3494},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2425},
+    {"HardcodedExpression", 31, 1, 0x0104, 3495},
+};
+
+inline constexpr Field kFields_L031C_S04C5[] = {
     {"Scale", 32, 4, 0x0008, 10451},
     {"ApplyTween", 36, 0, 0x002C, 12},
     {"RemoveTween", 60, 0, 0x002C, 12},
 };
 
-inline constexpr Field kFields_04C6[] = {
+inline constexpr Field kFields_L031D_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10464},
+    {"Off", 20, 4, 0x0008, 10465},
+    {"RequiredPickup", 24, 2, 0x0000, 1266},
+    {"Type", 26, 1, 0x0104, 3496},
+    {"Flags", 27, 1, 0x0204, 3497},
+    {"Visibility", 28, 1, 0x0204, 3498},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3499},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2426},
+    {"HardcodedExpression", 31, 1, 0x0104, 3500},
+};
+
+inline constexpr Field kFields_L031D_S04C6[] = {
     {"IconName", 32, 8, 0x0010, 0},
     {"JointName", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04C7[] = {
+inline constexpr Field kFields_L031E_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10466},
+    {"Off", 20, 4, 0x0008, 10467},
+    {"RequiredPickup", 24, 2, 0x0000, 1267},
+    {"Type", 26, 1, 0x0104, 3501},
+    {"Flags", 27, 1, 0x0204, 3502},
+    {"Visibility", 28, 1, 0x0204, 3503},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3504},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2427},
+    {"HardcodedExpression", 31, 1, 0x0104, 3505},
+};
+
+inline constexpr Field kFields_L031E_S04C7[] = {
     {"Meter", 32, 8, 0x001C, 292},
 };
 
-inline constexpr Field kFields_04C8[] = {
+inline constexpr Field kFields_L031F_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10468},
+    {"Off", 20, 4, 0x0008, 10469},
+    {"RequiredPickup", 24, 2, 0x0000, 1268},
+    {"Type", 26, 1, 0x0104, 3506},
+    {"Flags", 27, 1, 0x0204, 3507},
+    {"Visibility", 28, 1, 0x0204, 3508},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3509},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2428},
+    {"HardcodedExpression", 31, 1, 0x0104, 3510},
+};
+
+inline constexpr Field kFields_L031F_S04C8[] = {
     {"Timeout", 32, 0, 0x002C, 229},
     {"CanRefresh", 72, 1, 0x0014, 2429},
 };
 
-inline constexpr Field kFields_04C9[] = {
+inline constexpr Field kFields_L0320_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10476},
+    {"Off", 20, 4, 0x0008, 10477},
+    {"RequiredPickup", 24, 2, 0x0000, 1269},
+    {"Type", 26, 1, 0x0104, 3514},
+    {"Flags", 27, 1, 0x0204, 3515},
+    {"Visibility", 28, 1, 0x0204, 3516},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3517},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2430},
+    {"HardcodedExpression", 31, 1, 0x0104, 3518},
+};
+
+inline constexpr Field kFields_L0320_S04C9[] = {
     {"RefreshCooldown", 32, 8, 0x001C, 1189},
 };
 
-inline constexpr Field kFields_04CA[] = {
+inline constexpr Field kFields_L0321_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10478},
+    {"Off", 20, 4, 0x0008, 10479},
+    {"RequiredPickup", 24, 2, 0x0000, 1270},
+    {"Type", 26, 1, 0x0104, 3519},
+    {"Flags", 27, 1, 0x0204, 3520},
+    {"Visibility", 28, 1, 0x0204, 3521},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3522},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2431},
+    {"HardcodedExpression", 31, 1, 0x0104, 3523},
+};
+
+inline constexpr Field kFields_L0321_S04CA[] = {
     {"WeaponTrailData", 32, 8, 0x001C, 237},
 };
 
-inline constexpr Field kFields_04CB[] = {
+inline constexpr Field kFields_L0322_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10480},
+    {"Off", 20, 4, 0x0008, 10481},
+    {"RequiredPickup", 24, 2, 0x0000, 1271},
+    {"Type", 26, 1, 0x0104, 3524},
+    {"Flags", 27, 1, 0x0204, 3525},
+    {"Visibility", 28, 1, 0x0204, 3526},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3527},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2432},
+    {"HardcodedExpression", 31, 1, 0x0104, 3528},
+};
+
+inline constexpr Field kFields_L0322_S04CB[] = {
     {"WeaponTrailType", 32, 8, 0x0010, 0},
     {"TrailName", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04CC[] = {
+inline constexpr Field kFields_L0323_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10482},
+    {"Off", 20, 4, 0x0008, 10483},
+    {"RequiredPickup", 24, 2, 0x0000, 1272},
+    {"Type", 26, 1, 0x0104, 3529},
+    {"Flags", 27, 1, 0x0204, 3530},
+    {"Visibility", 28, 1, 0x0204, 3531},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3532},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2433},
+    {"HardcodedExpression", 31, 1, 0x0104, 3533},
+};
+
+inline constexpr Field kFields_L0323_S04CC[] = {
     {"SnapData", 32, 8, 0x001C, 766},
 };
 
-inline constexpr Field kFields_04CD[] = {
+inline constexpr Field kFields_L0324_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10484},
+    {"Off", 20, 4, 0x0008, 10485},
+    {"RequiredPickup", 24, 2, 0x0000, 1273},
+    {"Type", 26, 1, 0x0104, 3534},
+    {"Flags", 27, 1, 0x0204, 3535},
+    {"Visibility", 28, 1, 0x0204, 3536},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3537},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2434},
+    {"HardcodedExpression", 31, 1, 0x0104, 3538},
+};
+
+inline constexpr Field kFields_L0324_S04CD[] = {
     {"BlockName", 32, 8, 0x0010, 0},
     {"BlockData", 40, 8, 0x001C, 520},
 };
 
-inline constexpr Field kFields_04CE[] = {
+inline constexpr Field kFields_L0325_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10486},
+    {"Off", 20, 4, 0x0008, 10487},
+    {"RequiredPickup", 24, 2, 0x0000, 1274},
+    {"Type", 26, 1, 0x0104, 3539},
+    {"Flags", 27, 1, 0x0204, 3540},
+    {"Visibility", 28, 1, 0x0204, 3541},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3542},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2435},
+    {"HardcodedExpression", 31, 1, 0x0104, 3543},
+};
+
+inline constexpr Field kFields_L0325_S04CE[] = {
     {"Originator", 32, 1, 0x0104, 3544},
     {"Receiver", 33, 1, 0x0104, 3545},
     {"Rate", 36, 4, 0x0008, 10488},
     {"Emitter", 40, 8, 0x001C, 321},
 };
 
-inline constexpr Field kFields_04CF[] = {
+inline constexpr Field kFields_L0326_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10489},
+    {"Off", 20, 4, 0x0008, 10490},
+    {"RequiredPickup", 24, 2, 0x0000, 1275},
+    {"Type", 26, 1, 0x0104, 3546},
+    {"Flags", 27, 1, 0x0204, 3547},
+    {"Visibility", 28, 1, 0x0204, 3548},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3549},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2436},
+    {"HardcodedExpression", 31, 1, 0x0104, 3550},
+};
+
+inline constexpr Field kFields_L0326_S04CF[] = {
     {"OrbType", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04D0[] = {
+inline constexpr Field kFields_L0327_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10491},
+    {"Off", 20, 4, 0x0008, 10492},
+    {"RequiredPickup", 24, 2, 0x0000, 1276},
+    {"Type", 26, 1, 0x0104, 3551},
+    {"Flags", 27, 1, 0x0204, 3552},
+    {"Visibility", 28, 1, 0x0204, 3553},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3554},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2437},
+    {"HardcodedExpression", 31, 1, 0x0104, 3555},
+};
+
+inline constexpr Field kFields_L0327_S04D0[] = {
     {"Heap", 32, 4, 0x0000, 1277},
     {"Effects", 40, 8, 0x001C, 273},
 };
 
-inline constexpr Field kFields_04D2[] = {
+inline constexpr Field kFields_L0328_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10493},
+    {"Off", 20, 4, 0x0008, 10494},
+    {"RequiredPickup", 24, 2, 0x0000, 1278},
+    {"Type", 26, 1, 0x0104, 3556},
+    {"Flags", 27, 1, 0x0204, 3557},
+    {"Visibility", 28, 1, 0x0204, 3558},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3559},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2438},
+    {"HardcodedExpression", 31, 1, 0x0104, 3560},
+};
+
+inline constexpr Field kFields_L0328_S04D0[] = {
+    {"Heap", 32, 4, 0x0000, 1279},
+    {"Effects", 40, 8, 0x001C, 273},
+};
+
+inline constexpr Field kFields_L0329_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10495},
+    {"Off", 20, 4, 0x0008, 10496},
+    {"RequiredPickup", 24, 2, 0x0000, 1280},
+    {"Type", 26, 1, 0x0104, 3561},
+    {"Flags", 27, 1, 0x0204, 3562},
+    {"Visibility", 28, 1, 0x0204, 3563},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3564},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2439},
+    {"HardcodedExpression", 31, 1, 0x0104, 3565},
+};
+
+inline constexpr Field kFields_L0329_S04D2[] = {
     {"Heap", 32, 4, 0x0000, 1281},
     {"Name", 40, 8, 0x0018, 0},
     {"ApplyTween", 48, 0, 0x002C, 12},
     {"RemoveTween", 72, 0, 0x002C, 12},
 };
 
-inline constexpr Field kFields_04D3[] = {
+inline constexpr Field kFields_L032A_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10509},
+    {"Off", 20, 4, 0x0008, 10510},
+    {"RequiredPickup", 24, 2, 0x0000, 1282},
+    {"Type", 26, 1, 0x0104, 3566},
+    {"Flags", 27, 1, 0x0204, 3567},
+    {"Visibility", 28, 1, 0x0204, 3568},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3569},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2440},
+    {"HardcodedExpression", 31, 1, 0x0104, 3570},
+};
+
+inline constexpr Field kFields_L032A_S04D3[] = {
     {"Name", 32, 8, 0x0010, 0},
     {"EmitterName", 40, 8, 0x0018, 0},
     {"RingOut", 48, 1, 0x0014, 2441},
@@ -12058,23 +22970,79 @@ inline constexpr Field kFields_04D3[] = {
     {"Outer", 60, 4, 0x0008, 10513},
 };
 
-inline constexpr Field kFields_04D4[] = {
+inline constexpr Field kFields_L032B_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10514},
+    {"Off", 20, 4, 0x0008, 10515},
+    {"RequiredPickup", 24, 2, 0x0000, 1283},
+    {"Type", 26, 1, 0x0104, 3571},
+    {"Flags", 27, 1, 0x0204, 3572},
+    {"Visibility", 28, 1, 0x0204, 3573},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3574},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2442},
+    {"HardcodedExpression", 31, 1, 0x0104, 3575},
+};
+
+inline constexpr Field kFields_L032B_S04D4[] = {
     {"RTPCName", 32, 8, 0x0018, 0},
     {"RTPCValue", 40, 4, 0x0008, 10516},
 };
 
-inline constexpr Field kFields_04D5[] = {
+inline constexpr Field kFields_L032C_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10517},
+    {"Off", 20, 4, 0x0008, 10518},
+    {"RequiredPickup", 24, 2, 0x0000, 1284},
+    {"Type", 26, 1, 0x0104, 3576},
+    {"Flags", 27, 1, 0x0204, 3577},
+    {"Visibility", 28, 1, 0x0204, 3578},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3579},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2443},
+    {"HardcodedExpression", 31, 1, 0x0104, 3580},
+};
+
+inline constexpr Field kFields_L032C_S04D5[] = {
     {"GroupName", 32, 8, 0x0018, 0},
     {"State", 40, 8, 0x0018, 0},
     {"EmitterName", 48, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_04D6[] = {
+inline constexpr Field kFields_L032D_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10519},
+    {"Off", 20, 4, 0x0008, 10520},
+    {"RequiredPickup", 24, 2, 0x0000, 1285},
+    {"Type", 26, 1, 0x0104, 3581},
+    {"Flags", 27, 1, 0x0204, 3582},
+    {"Visibility", 28, 1, 0x0204, 3583},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3584},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2444},
+    {"HardcodedExpression", 31, 1, 0x0104, 3585},
+};
+
+inline constexpr Field kFields_L032D_S04D6[] = {
     {"GroupName", 32, 8, 0x0018, 0},
     {"State", 40, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_04D7[] = {
+inline constexpr Field kFields_L032E_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10521},
+    {"Off", 20, 4, 0x0008, 10522},
+    {"RequiredPickup", 24, 2, 0x0000, 1286},
+    {"Type", 26, 1, 0x0104, 3586},
+    {"Flags", 27, 1, 0x0204, 3587},
+    {"Visibility", 28, 1, 0x0204, 3588},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3589},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2445},
+    {"HardcodedExpression", 31, 1, 0x0104, 3590},
+};
+
+inline constexpr Field kFields_L032E_S04D7[] = {
     {"MeterName", 32, 8, 0x0010, 0},
     {"ModInitialAmount", 40, 8, 0x001C, 229},
     {"ModTickAmount", 48, 8, 0x001C, 229},
@@ -12103,7 +23071,7 @@ inline constexpr Field kFields_04D7[] = {
     {"DamageSource", 139, 1, 0x0104, 3594},
 };
 
-inline constexpr Field kFields_04D8[] = {
+inline constexpr Field kFields_L032E_S04D8[] = {
     {"MeterRedirectFrom", 0, 8, 0x0010, 0},
     {"MeterRedirectTo", 8, 8, 0x0010, 0},
     {"RedirectType", 16, 1, 0x0104, 3595},
@@ -12111,33 +23079,117 @@ inline constexpr Field kFields_04D8[] = {
     {"ScaleRedirect", 24, 4, 0x0008, 10528},
 };
 
-inline constexpr Field kFields_04D9[] = {
+inline constexpr Field kFields_L032F_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10529},
+    {"Off", 20, 4, 0x0008, 10530},
+    {"RequiredPickup", 24, 2, 0x0000, 1287},
+    {"Type", 26, 1, 0x0104, 3596},
+    {"Flags", 27, 1, 0x0204, 3597},
+    {"Visibility", 28, 1, 0x0204, 3598},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3599},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2455},
+    {"HardcodedExpression", 31, 1, 0x0104, 3600},
+};
+
+inline constexpr Field kFields_L032F_S04D9[] = {
     {"RedirectData", 32, 8, 0x001C, 1240},
 };
 
-inline constexpr Field kFields_04DA[] = {
+inline constexpr Field kFields_L0330_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10531},
+    {"Off", 20, 4, 0x0008, 10532},
+    {"RequiredPickup", 24, 2, 0x0000, 1288},
+    {"Type", 26, 1, 0x0104, 3601},
+    {"Flags", 27, 1, 0x0204, 3602},
+    {"Visibility", 28, 1, 0x0204, 3603},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3604},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2456},
+    {"HardcodedExpression", 31, 1, 0x0104, 3605},
+};
+
+inline constexpr Field kFields_L0330_S04DA[] = {
     {"Enabled", 32, 1, 0x0014, 2457},
 };
 
-inline constexpr Field kFields_04DB[] = {
+inline constexpr Field kFields_L0331_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10533},
+    {"Off", 20, 4, 0x0008, 10534},
+    {"RequiredPickup", 24, 2, 0x0000, 1289},
+    {"Type", 26, 1, 0x0104, 3606},
+    {"Flags", 27, 1, 0x0204, 3607},
+    {"Visibility", 28, 1, 0x0204, 3608},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3609},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2458},
+    {"HardcodedExpression", 31, 1, 0x0104, 3610},
+};
+
+inline constexpr Field kFields_L0331_S04DB[] = {
     {"EmissiveScale", 32, 4, 0x0008, 10535},
     {"EaseInTime", 36, 4, 0x0008, 10536},
     {"EaseOutTime", 40, 4, 0x0008, 10537},
 };
 
-inline constexpr Field kFields_04DC[] = {
+inline constexpr Field kFields_L0332_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10538},
+    {"Off", 20, 4, 0x0008, 10539},
+    {"RequiredPickup", 24, 2, 0x0000, 1290},
+    {"Type", 26, 1, 0x0104, 3611},
+    {"Flags", 27, 1, 0x0204, 3612},
+    {"Visibility", 28, 1, 0x0204, 3613},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3614},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2459},
+    {"HardcodedExpression", 31, 1, 0x0104, 3615},
+};
+
+inline constexpr Field kFields_L0332_S04DC[] = {
     {"Activate", 32, 8, 0x0010, 0},
     {"Deactivate", 40, 8, 0x0010, 0},
     {"Death", 48, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04DD[] = {
+inline constexpr Field kFields_L0333_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10540},
+    {"Off", 20, 4, 0x0008, 10541},
+    {"RequiredPickup", 24, 2, 0x0000, 1291},
+    {"Type", 26, 1, 0x0104, 3616},
+    {"Flags", 27, 1, 0x0204, 3617},
+    {"Visibility", 28, 1, 0x0204, 3618},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3619},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2460},
+    {"HardcodedExpression", 31, 1, 0x0104, 3620},
+};
+
+inline constexpr Field kFields_L0333_S04DD[] = {
     {"Concussion", 32, 8, 0x001C, 268},
     {"Heap", 40, 4, 0x0000, 1292},
     {"Rate", 44, 4, 0x0008, 10542},
 };
 
-inline constexpr Field kFields_04DE[] = {
+inline constexpr Field kFields_L0334_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10543},
+    {"Off", 20, 4, 0x0008, 10544},
+    {"RequiredPickup", 24, 2, 0x0000, 1293},
+    {"Type", 26, 1, 0x0104, 3621},
+    {"Flags", 27, 1, 0x0204, 3622},
+    {"Visibility", 28, 1, 0x0204, 3623},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3624},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2461},
+    {"HardcodedExpression", 31, 1, 0x0104, 3625},
+};
+
+inline constexpr Field kFields_L0334_S04DE[] = {
     {"RakeMode", 32, 1, 0x0104, 3626},
     {"MaxDistance", 36, 4, 0x0008, 10545},
     {"Speed", 40, 4, 0x0008, 10546},
@@ -12151,7 +23203,21 @@ inline constexpr Field kFields_04DE[] = {
     {"Concussion", 72, 8, 0x001C, 268},
 };
 
-inline constexpr Field kFields_04DF[] = {
+inline constexpr Field kFields_L0335_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10552},
+    {"Off", 20, 4, 0x0008, 10553},
+    {"RequiredPickup", 24, 2, 0x0000, 1295},
+    {"Type", 26, 1, 0x0104, 3627},
+    {"Flags", 27, 1, 0x0204, 3628},
+    {"Visibility", 28, 1, 0x0204, 3629},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3630},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2463},
+    {"HardcodedExpression", 31, 1, 0x0104, 3631},
+};
+
+inline constexpr Field kFields_L0335_S04DF[] = {
     {"ApplyAnimation", 32, 8, 0x0010, 0},
     {"RemoveAnimation", 40, 8, 0x0010, 0},
     {"TimeScaleBehavior", 48, 1, 0x0104, 3632},
@@ -12163,15 +23229,57 @@ inline constexpr Field kFields_04DF[] = {
     {"StartPos", 84, 4, 0x0008, 10555},
 };
 
-inline constexpr Field kFields_04E0[] = {
+inline constexpr Field kFields_L0336_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10556},
+    {"Off", 20, 4, 0x0008, 10557},
+    {"RequiredPickup", 24, 2, 0x0000, 1297},
+    {"Type", 26, 1, 0x0104, 3633},
+    {"Flags", 27, 1, 0x0204, 3634},
+    {"Visibility", 28, 1, 0x0204, 3635},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3636},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2464},
+    {"HardcodedExpression", 31, 1, 0x0104, 3637},
+};
+
+inline constexpr Field kFields_L0336_S04E0[] = {
     {"ReticleTargetGroup", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04E1[] = {
+inline constexpr Field kFields_L0337_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10558},
+    {"Off", 20, 4, 0x0008, 10559},
+    {"RequiredPickup", 24, 2, 0x0000, 1298},
+    {"Type", 26, 1, 0x0104, 3638},
+    {"Flags", 27, 1, 0x0204, 3639},
+    {"Visibility", 28, 1, 0x0204, 3640},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3641},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2465},
+    {"HardcodedExpression", 31, 1, 0x0104, 3642},
+};
+
+inline constexpr Field kFields_L0337_S04E1[] = {
     {"AimAssist", 32, 1, 0x0014, 2466},
 };
 
-inline constexpr Field kFields_04E2[] = {
+inline constexpr Field kFields_L0338_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10560},
+    {"Off", 20, 4, 0x0008, 10561},
+    {"RequiredPickup", 24, 2, 0x0000, 1299},
+    {"Type", 26, 1, 0x0104, 3643},
+    {"Flags", 27, 1, 0x0204, 3644},
+    {"Visibility", 28, 1, 0x0204, 3645},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3646},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2467},
+    {"HardcodedExpression", 31, 1, 0x0104, 3647},
+};
+
+inline constexpr Field kFields_L0338_S04E2[] = {
     {"Amount", 32, 4, 0x0008, 10562},
     {"Material", 36, 1, 0x0104, 3648},
     {"LayerMask", 40, 4, 0x0204, 3649},
@@ -12180,45 +23288,157 @@ inline constexpr Field kFields_04E2[] = {
     {"ImmediateRemovalOnExit", 52, 1, 0x0014, 2468},
 };
 
-inline constexpr Field kFields_04E3[] = {
+inline constexpr Field kFields_L0339_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10565},
+    {"Off", 20, 4, 0x0008, 10566},
+    {"RequiredPickup", 24, 2, 0x0000, 1300},
+    {"Type", 26, 1, 0x0104, 3650},
+    {"Flags", 27, 1, 0x0204, 3651},
+    {"Visibility", 28, 1, 0x0204, 3652},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3653},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2469},
+    {"HardcodedExpression", 31, 1, 0x0104, 3654},
+};
+
+inline constexpr Field kFields_L0339_S04E3[] = {
     {"Name", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04E4[] = {
+inline constexpr Field kFields_L033A_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10567},
+    {"Off", 20, 4, 0x0008, 10568},
+    {"RequiredPickup", 24, 2, 0x0000, 1301},
+    {"Type", 26, 1, 0x0104, 3655},
+    {"Flags", 27, 1, 0x0204, 3656},
+    {"Visibility", 28, 1, 0x0204, 3657},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3658},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2470},
+    {"HardcodedExpression", 31, 1, 0x0104, 3659},
+};
+
+inline constexpr Field kFields_L033A_S04E4[] = {
     {"Effect", 32, 8, 0x001C, 46},
     {"Duration", 40, 4, 0x0008, 10569},
     {"Weight", 44, 4, 0x0008, 10570},
 };
 
-inline constexpr Field kFields_04E5[] = {
+inline constexpr Field kFields_L033B_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10571},
+    {"Off", 20, 4, 0x0008, 10572},
+    {"RequiredPickup", 24, 2, 0x0000, 1302},
+    {"Type", 26, 1, 0x0104, 3660},
+    {"Flags", 27, 1, 0x0204, 3661},
+    {"Visibility", 28, 1, 0x0204, 3662},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3663},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2471},
+    {"HardcodedExpression", 31, 1, 0x0104, 3664},
+};
+
+inline constexpr Field kFields_L033B_S04E5[] = {
     {"HealthBarState", 32, 1, 0x0104, 3665},
     {"Global", 33, 1, 0x0014, 2472},
 };
 
-inline constexpr Field kFields_04E6[] = {
+inline constexpr Field kFields_L033C_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10573},
+    {"Off", 20, 4, 0x0008, 10574},
+    {"RequiredPickup", 24, 2, 0x0000, 1303},
+    {"Type", 26, 1, 0x0104, 3666},
+    {"Flags", 27, 1, 0x0204, 3667},
+    {"Visibility", 28, 1, 0x0204, 3668},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3669},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2473},
+    {"HardcodedExpression", 31, 1, 0x0104, 3670},
+};
+
+inline constexpr Field kFields_L033C_S04E6[] = {
     {"Flag", 32, 8, 0x0010, 0},
     {"ForceClear", 40, 1, 0x0014, 2474},
 };
 
-inline constexpr Field kFields_04E7[] = {
+inline constexpr Field kFields_L033D_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10575},
+    {"Off", 20, 4, 0x0008, 10576},
+    {"RequiredPickup", 24, 2, 0x0000, 1304},
+    {"Type", 26, 1, 0x0104, 3671},
+    {"Flags", 27, 1, 0x0204, 3672},
+    {"Visibility", 28, 1, 0x0204, 3673},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3674},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2475},
+    {"HardcodedExpression", 31, 1, 0x0104, 3675},
+};
+
+inline constexpr Field kFields_L033D_S04E7[] = {
     {"TimeBubbleFlags", 32, 1, 0x0204, 3676},
     {"Radius", 36, 4, 0x0008, 10577},
     {"TimeScale", 40, 4, 0x0008, 10578},
 };
 
-inline constexpr Field kFields_04E8[] = {
+inline constexpr Field kFields_L033E_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10579},
+    {"Off", 20, 4, 0x0008, 10580},
+    {"RequiredPickup", 24, 2, 0x0000, 1305},
+    {"Type", 26, 1, 0x0104, 3677},
+    {"Flags", 27, 1, 0x0204, 3678},
+    {"Visibility", 28, 1, 0x0204, 3679},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3680},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2476},
+    {"HardcodedExpression", 31, 1, 0x0104, 3681},
+};
+
+inline constexpr Field kFields_L033E_S04E8[] = {
     {"Name", 32, 8, 0x0018, 0},
     {"Set", 40, 8, 0x0010, 0},
     {"Suppress", 48, 1, 0x0014, 2477},
 };
 
-inline constexpr Field kFields_04E9[] = {
+inline constexpr Field kFields_L033F_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10581},
+    {"Off", 20, 4, 0x0008, 10582},
+    {"RequiredPickup", 24, 2, 0x0000, 1306},
+    {"Type", 26, 1, 0x0104, 3682},
+    {"Flags", 27, 1, 0x0204, 3683},
+    {"Visibility", 28, 1, 0x0204, 3684},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3685},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2478},
+    {"HardcodedExpression", 31, 1, 0x0104, 3686},
+};
+
+inline constexpr Field kFields_L033F_S04E9[] = {
     {"Reacquire", 32, 1, 0x0014, 2479},
     {"OffScreen", 33, 1, 0x0014, 2480},
     {"Invisible", 34, 1, 0x0014, 2481},
 };
 
-inline constexpr Field kFields_04EA[] = {
+inline constexpr Field kFields_L0340_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10583},
+    {"Off", 20, 4, 0x0008, 10584},
+    {"RequiredPickup", 24, 2, 0x0000, 1307},
+    {"Type", 26, 1, 0x0104, 3687},
+    {"Flags", 27, 1, 0x0204, 3688},
+    {"Visibility", 28, 1, 0x0204, 3689},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3690},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2482},
+    {"HardcodedExpression", 31, 1, 0x0104, 3691},
+};
+
+inline constexpr Field kFields_L0340_S04EA[] = {
     {"Label", 32, 8, 0x0010, 0},
     {"StringData", 40, 8, 0x0010, 0},
     {"NumberData", 48, 4, 0x0008, 10585},
@@ -12226,41 +23446,83 @@ inline constexpr Field kFields_04EA[] = {
     {"Increment", 53, 1, 0x0014, 2483},
 };
 
-inline constexpr Field kFields_04EB[] = {
+inline constexpr Field kFields_L0341_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10586},
+    {"Off", 20, 4, 0x0008, 10587},
+    {"RequiredPickup", 24, 2, 0x0000, 1308},
+    {"Type", 26, 1, 0x0104, 3693},
+    {"Flags", 27, 1, 0x0204, 3694},
+    {"Visibility", 28, 1, 0x0204, 3695},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3696},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2484},
+    {"HardcodedExpression", 31, 1, 0x0104, 3697},
+};
+
+inline constexpr Field kFields_L0341_S04EB[] = {
     {"FactName", 32, 8, 0x0010, 0},
     {"Value", 40, 4, 0x0008, 10588},
 };
 
-inline constexpr Field kFields_04EC[] = {
+inline constexpr Field kFields_L0342_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10589},
+    {"Off", 20, 4, 0x0008, 10590},
+    {"RequiredPickup", 24, 2, 0x0000, 1309},
+    {"Type", 26, 1, 0x0104, 3698},
+    {"Flags", 27, 1, 0x0204, 3699},
+    {"Visibility", 28, 1, 0x0204, 3700},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3701},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2485},
+    {"HardcodedExpression", 31, 1, 0x0104, 3702},
+};
+
+inline constexpr Field kFields_L0342_S04EC[] = {
     {"FactName", 32, 8, 0x0010, 0},
     {"Value", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_04ED[] = {
+inline constexpr Field kFields_L0343_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10591},
+    {"Off", 20, 4, 0x0008, 10592},
+    {"RequiredPickup", 24, 2, 0x0000, 1310},
+    {"Type", 26, 1, 0x0104, 3703},
+    {"Flags", 27, 1, 0x0204, 3704},
+    {"Visibility", 28, 1, 0x0204, 3705},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3706},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2486},
+    {"HardcodedExpression", 31, 1, 0x0104, 3707},
+};
+
+inline constexpr Field kFields_L0343_S04ED[] = {
     {"FactName", 32, 8, 0x0010, 0},
     {"Value", 40, 1, 0x0014, 2487},
 };
 
-inline constexpr Field kFields_04EE[] = {
+inline constexpr Field kFields_L0343_S04EE[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Hash", 8, 8, 0x0010, 0},
     {"Type", 16, 4, 0x0000, 1311},
 };
 
-inline constexpr Field kFields_04EF[] = {
+inline constexpr Field kFields_L0343_S04EF[] = {
     {"Id", 0, 0, 0x002C, 1262},
     {"Value", 24, 4, 0x0000, 1313},
     {"Type", 28, 1, 0x0104, 3708},
 };
 
-inline constexpr Field kFields_04F0[] = {
+inline constexpr Field kFields_L0343_S04F0[] = {
     {"Id", 0, 0, 0x002C, 1262},
     {"Value", 24, 4, 0x0000, 1315},
     {"Type", 28, 1, 0x0104, 3709},
     {"Operator", 29, 1, 0x0104, 3710},
 };
 
-inline constexpr Field kFields_04F1[] = {
+inline constexpr Field kFields_L0343_S04F1[] = {
     {"Id", 0, 0, 0x002C, 1262},
     {"Value", 24, 4, 0x0000, 1317},
     {"Probability", 28, 4, 0x0008, 10593},
@@ -12268,7 +23530,7 @@ inline constexpr Field kFields_04F1[] = {
     {"Stage", 33, 1, 0x0000, 1318},
 };
 
-inline constexpr Field kFields_04F2[] = {
+inline constexpr Field kFields_L0343_S04F2[] = {
     {"Cooldown", 0, 0, 0x002C, 229},
     {"UnlockConditions", 40, 12, 0x0024, 637},
     {"DisplayStageId", 52, 4, 0x0000, 1319},
@@ -12280,11 +23542,11 @@ inline constexpr Field kFields_04F2[] = {
     {"RequiredWad", 104, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_04F3[] = {
+inline constexpr Field kFields_L0343_S04F3[] = {
     {"Features", 0, 12, 0x0024, 641},
 };
 
-inline constexpr Field kFields_04F4[] = {
+inline constexpr Field kFields_L0343_S04F4[] = {
     {"StageList", 0, 12, 0x0024, 642},
     {"Tags", 12, 4, 0x0204, 3715},
     {"Name", 16, 8, 0x0018, 0},
@@ -12304,53 +23566,163 @@ inline constexpr Field kFields_04F4[] = {
     {"Button", 71, 1, 0x0104, 3719},
 };
 
-inline constexpr Field kFields_04F5[] = {
+inline constexpr Field kFields_L0343_S04F5[] = {
     {"ReticleAssistEnableThreshold", 72, 4, 0x0008, 10601},
     {"ReticleAssistRayLength", 76, 4, 0x0008, 10602},
     {"ReticleAssistSlowFactor", 80, 4, 0x0008, 10603},
     {"ReticleAssistRampMagnitude", 84, 4, 0x0008, 10604},
 };
 
-inline constexpr Field kFields_04F6[] = {
+inline constexpr Field kFields_L0344_S04F2[] = {
+    {"Cooldown", 0, 0, 0x002C, 229},
+    {"UnlockConditions", 40, 12, 0x0024, 645},
+    {"DisplayStageId", 52, 4, 0x0000, 1335},
+    {"ActivateConditions", 56, 12, 0x0024, 646},
+    {"DisplayStageDescId", 68, 4, 0x0000, 1336},
+    {"Triggers", 72, 12, 0x0024, 647},
+    {"DisplayStageFloatValue", 84, 4, 0x0008, 10611},
+    {"Features", 88, 12, 0x0024, 648},
+    {"RequiredWad", 104, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L0344_S04F6[] = {
     {"Modifiers", 112, 8, 0x001C, 286},
 };
 
-inline constexpr Field kFields_04F7[] = {
+inline constexpr Field kFields_L0345_S04F4[] = {
+    {"StageList", 0, 12, 0x0024, 649},
+    {"Tags", 12, 4, 0x0204, 3728},
+    {"Name", 16, 8, 0x0018, 0},
+    {"RequiredWad", 24, 8, 0x0018, 0},
+    {"CommonStage", 32, 8, 0x001C, 1267},
+    {"DroppedPickup", 40, 8, 0x0018, 0},
+    {"IconId", 48, 4, 0x0000, 1337},
+    {"DisplayNameId", 52, 4, 0x0000, 1338},
+    {"DisplayDescriptionId", 56, 4, 0x0000, 1339},
+    {"SecondDisplayDescriptionId", 60, 4, 0x0000, 1340},
+    {"Pickup", 64, 2, 0x0000, 1341},
+    {"Flags", 66, 1, 0x0204, 3729},
+    {"Type", 67, 1, 0x0204, 3730},
+    {"Lifetime", 68, 1, 0x0104, 3731},
+    {"Slot", 69, 1, 0x0000, 1342},
+    {"DLCSlot", 70, 1, 0x0000, 1343},
+    {"Button", 71, 1, 0x0104, 3732},
+};
+
+inline constexpr Field kFields_L0345_S04F7[] = {
     {"SelectButton", 72, 1, 0x0104, 3733},
     {"SelectionSlot", 73, 1, 0x0000, 1344},
 };
 
-inline constexpr Field kFields_04F8[] = {
+inline constexpr Field kFields_L0346_S04F4[] = {
+    {"StageList", 0, 12, 0x0024, 650},
+    {"Tags", 12, 4, 0x0204, 3734},
+    {"Name", 16, 8, 0x0018, 0},
+    {"RequiredWad", 24, 8, 0x0018, 0},
+    {"CommonStage", 32, 8, 0x001C, 1267},
+    {"DroppedPickup", 40, 8, 0x0018, 0},
+    {"IconId", 48, 4, 0x0000, 1345},
+    {"DisplayNameId", 52, 4, 0x0000, 1346},
+    {"DisplayDescriptionId", 56, 4, 0x0000, 1347},
+    {"SecondDisplayDescriptionId", 60, 4, 0x0000, 1348},
+    {"Pickup", 64, 2, 0x0000, 1349},
+    {"Flags", 66, 1, 0x0204, 3735},
+    {"Type", 67, 1, 0x0204, 3736},
+    {"Lifetime", 68, 1, 0x0104, 3737},
+    {"Slot", 69, 1, 0x0000, 1350},
+    {"DLCSlot", 70, 1, 0x0000, 1351},
+    {"Button", 71, 1, 0x0104, 3738},
+};
+
+inline constexpr Field kFields_L0346_S04F7[] = {
+    {"SelectButton", 72, 1, 0x0104, 3739},
+    {"SelectionSlot", 73, 1, 0x0000, 1352},
+};
+
+inline constexpr Field kFields_L0346_S04F8[] = {
     {"ShotButton", 80, 1, 0x0104, 3740},
     {"MolotovButton", 81, 1, 0x0104, 3741},
 };
 
-inline constexpr Field kFields_04FA[] = {
+inline constexpr Field kFields_L0347_S04F4[] = {
+    {"StageList", 0, 12, 0x0024, 651},
+    {"Tags", 12, 4, 0x0204, 3742},
+    {"Name", 16, 8, 0x0018, 0},
+    {"RequiredWad", 24, 8, 0x0018, 0},
+    {"CommonStage", 32, 8, 0x001C, 1267},
+    {"DroppedPickup", 40, 8, 0x0018, 0},
+    {"IconId", 48, 4, 0x0000, 1353},
+    {"DisplayNameId", 52, 4, 0x0000, 1354},
+    {"DisplayDescriptionId", 56, 4, 0x0000, 1355},
+    {"SecondDisplayDescriptionId", 60, 4, 0x0000, 1356},
+    {"Pickup", 64, 2, 0x0000, 1357},
+    {"Flags", 66, 1, 0x0204, 3743},
+    {"Type", 67, 1, 0x0204, 3744},
+    {"Lifetime", 68, 1, 0x0104, 3745},
+    {"Slot", 69, 1, 0x0000, 1358},
+    {"DLCSlot", 70, 1, 0x0000, 1359},
+    {"Button", 71, 1, 0x0104, 3746},
+};
+
+inline constexpr Field kFields_L0347_S04F7[] = {
+    {"SelectButton", 72, 1, 0x0104, 3747},
+    {"SelectionSlot", 73, 1, 0x0000, 1360},
+};
+
+inline constexpr Field kFields_L0348_S04AB[] = {
+    {"When", 0, 8, 0x0030, 65535},
+    {"RequiredWeaponMode", 8, 8, 0x0010, 0},
+    {"On", 16, 4, 0x0008, 10612},
+    {"Off", 20, 4, 0x0008, 10613},
+    {"RequiredPickup", 24, 2, 0x0000, 1361},
+    {"Type", 26, 1, 0x0104, 3748},
+    {"Flags", 27, 1, 0x0204, 3749},
+    {"Visibility", 28, 1, 0x0204, 3750},
+    {"AvailableInDifficulty", 29, 1, 0x0204, 3751},
+    {"OnWhenAcquired", 30, 1, 0x0014, 2488},
+    {"HardcodedExpression", 31, 1, 0x0104, 3752},
+};
+
+inline constexpr Field kFields_L0348_S04FA[] = {
     {"EffectName", 32, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_04FB[] = {
+inline constexpr Field kFields_L0349_S00AA[] = {
+    {"Type", 0, 1, 0x0105, 3753},
+    {"Flags", 1, 1, 0x0204, 3754},
+    {"Condition", 2, 1, 0x0104, 3755},
+    {"WeaponLevelMin", 3, 1, 0x0000, 1362},
+    {"On", 4, 2, 0x0008, 10614},
+    {"Off", 6, 2, 0x0008, 10615},
+};
+
+inline constexpr Field kFields_L0349_S00AF[] = {
+    {"CreateMode", 8, 1, 0x0104, 3756},
+    {"ScriptName", 16, 8, 0x0010, 0},
+};
+
+inline constexpr Field kFields_L0349_S04FB[] = {
     {"VehicleType", 24, 1, 0x0104, 3757},
 };
 
-inline constexpr Field kFields_04FC[] = {
+inline constexpr Field kFields_L0349_S04FC[] = {
     {"Effect", 0, 8, 0x001C, 46},
     {"Filter", 8, 1, 0x0104, 3758},
     {"Condition", 9, 1, 0x0204, 3759},
     {"Range", 12, 4, 0x0008, 10616},
 };
 
-inline constexpr Field kFields_04FD[] = {
+inline constexpr Field kFields_L0349_S04FD[] = {
     {"Immunity", 0, 8, 0x0010, 0},
     {"Duration", 8, 4, 0x0008, 10617},
 };
 
-inline constexpr Field kFields_04FE[] = {
+inline constexpr Field kFields_L0349_S04FE[] = {
     {"Required", 0, 2, 0x0204, 3760},
     {"Rejected", 2, 2, 0x0204, 3761},
 };
 
-inline constexpr Field kFields_04FF[] = {
+inline constexpr Field kFields_L0349_S04FF[] = {
     {"MyAttribute", 0, 8, 0x0010, 0},
     {"MyStat", 8, 8, 0x0010, 0},
     {"AttackerAttribute", 16, 8, 0x0010, 0},
@@ -12368,17 +23740,17 @@ inline constexpr Field kFields_04FF[] = {
     {"FloorValues", 93, 1, 0x0014, 2489},
 };
 
-inline constexpr Field kFields_0500[] = {
+inline constexpr Field kFields_L0349_S0500[] = {
     {"CheckAttribute", 0, 12, 0x0024, 652},
 };
 
-inline constexpr Field kFields_0501[] = {
+inline constexpr Field kFields_L0349_S0501[] = {
     {"PropStatus", 0, 1, 0x0204, 3763},
     {"PropType", 8, 8, 0x0010, 0},
     {"ObjectName", 16, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0502[] = {
+inline constexpr Field kFields_L0349_S0502[] = {
     {"Move", 0, 8, 0x001C, 1283},
     {"When", 8, 8, 0x0030, 65535},
     {"On", 16, 2, 0x0008, 10621},
@@ -12386,7 +23758,7 @@ inline constexpr Field kFields_0502[] = {
     {"StackFlags", 20, 1, 0x0204, 3764},
 };
 
-inline constexpr Field kFields_0503[] = {
+inline constexpr Field kFields_L0349_S0503[] = {
     {"BranchList", 0, 12, 0x0024, 653},
     {"Flags", 12, 4, 0x0204, 3765},
     {"CollisionList", 16, 12, 0x0024, 654},
@@ -12411,7 +23783,7 @@ inline constexpr Field kFields_0503[] = {
     {"MatchAllFeathers", 124, 1, 0x0014, 2490},
 };
 
-inline constexpr Field kFields_0504[] = {
+inline constexpr Field kFields_L0349_S0504[] = {
     {"MoveSystemName", 0, 8, 0x0010, 774},
     {"MoveList", 8, 12, 0x0024, 657},
     {"BranchList", 24, 12, 0x0024, 658},
@@ -12424,7 +23796,7 @@ inline constexpr Field kFields_0504[] = {
     {"DefaultMove", 112, 8, 0x001C, 1286},
 };
 
-inline constexpr Field kFields_0505[] = {
+inline constexpr Field kFields_L0349_S0505[] = {
     {"Move", 0, 8, 0x001C, 1283},
     {"When", 8, 8, 0x0030, 65535},
     {"LuaEvent", 16, 8, 0x0010, 0},
@@ -12436,7 +23808,7 @@ inline constexpr Field kFields_0505[] = {
     {"Debug", 31, 1, 0x0014, 2493},
 };
 
-inline constexpr Field kFields_0506[] = {
+inline constexpr Field kFields_L0349_S0506[] = {
     {"Flags", 32, 4, 0x0204, 3770},
     {"ControlDown", 36, 4, 0x0104, 3771},
     {"ControlUp", 40, 4, 0x0104, 3772},
@@ -12465,27 +23837,162 @@ inline constexpr Field kFields_0506[] = {
     {"MatchFeatherTweenTime", 78, 1, 0x0014, 2502},
 };
 
-inline constexpr Field kFields_0507[] = {
+inline constexpr Field kFields_L034A_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10642},
+    {"Off", 26, 2, 0x0008, 10643},
+    {"Type", 28, 1, 0x0105, 3778},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2503},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2504},
+    {"Debug", 31, 1, 0x0014, 2505},
+};
+
+inline constexpr Field kFields_L034A_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3779},
+    {"ControlDown", 36, 4, 0x0104, 3780},
+    {"ControlUp", 40, 4, 0x0104, 3781},
+    {"Priority", 44, 2, 0x0000, 1368},
+    {"MoveID", 46, 2, 0x0000, 1369},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10644},
+    {"StartPos", 50, 2, 0x0008, 10645},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10646},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10647},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10648},
+    {"Chance", 58, 2, 0x0008, 10649},
+    {"JoystickIntent", 60, 2, 0x0008, 10650},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10651},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10652},
+    {"Event", 66, 2, 0x0104, 3782},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1370},
+    {"InputFlags", 69, 1, 0x0204, 3783},
+    {"PruneFlags", 70, 1, 0x0204, 3784},
+    {"EventMod", 71, 1, 0x0104, 3785},
+    {"Joystick", 72, 1, 0x0104, 3786},
+    {"InheritTweenTime", 73, 1, 0x0014, 2506},
+    {"MatchDistance", 74, 1, 0x0014, 2507},
+    {"MatchRandomPin", 75, 1, 0x0014, 2508},
+    {"BlockRandomPin", 76, 1, 0x0014, 2509},
+    {"PreventInteraction", 77, 1, 0x0014, 2510},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2511},
+};
+
+inline constexpr Field kFields_L034A_S0507[] = {
     {"DontOverrideFlags", 80, 1, 0x0204, 3787},
     {"ControllerSetting", 88, 8, 0x0010, 0},
     {"AltSwipeControl", 96, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0508[] = {
+inline constexpr Field kFields_L034B_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10653},
+    {"Off", 26, 2, 0x0008, 10654},
+    {"Type", 28, 1, 0x0105, 3788},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2512},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2513},
+    {"Debug", 31, 1, 0x0014, 2514},
+};
+
+inline constexpr Field kFields_L034B_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3789},
+    {"ControlDown", 36, 4, 0x0104, 3790},
+    {"ControlUp", 40, 4, 0x0104, 3791},
+    {"Priority", 44, 2, 0x0000, 1371},
+    {"MoveID", 46, 2, 0x0000, 1372},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10655},
+    {"StartPos", 50, 2, 0x0008, 10656},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10657},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10658},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10659},
+    {"Chance", 58, 2, 0x0008, 10660},
+    {"JoystickIntent", 60, 2, 0x0008, 10661},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10662},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10663},
+    {"Event", 66, 2, 0x0104, 3792},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1373},
+    {"InputFlags", 69, 1, 0x0204, 3793},
+    {"PruneFlags", 70, 1, 0x0204, 3794},
+    {"EventMod", 71, 1, 0x0104, 3795},
+    {"Joystick", 72, 1, 0x0104, 3796},
+    {"InheritTweenTime", 73, 1, 0x0014, 2515},
+    {"MatchDistance", 74, 1, 0x0014, 2516},
+    {"MatchRandomPin", 75, 1, 0x0014, 2517},
+    {"BlockRandomPin", 76, 1, 0x0014, 2518},
+    {"PreventInteraction", 77, 1, 0x0014, 2519},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2520},
+};
+
+inline constexpr Field kFields_L034B_S0508[] = {
     {"ImmediateReplaceBranches", 80, 12, 0x0024, 662},
     {"LocoStartSpeed", 92, 2, 0x0008, 10664},
     {"CombineLayersToSinglePose", 94, 1, 0x0014, 2521},
 };
 
-inline constexpr Field kFields_0509[] = {
+inline constexpr Field kFields_L034B_S0509[] = {
     {"BranchList", 0, 12, 0x0024, 663},
 };
 
-inline constexpr Field kFields_050A[] = {
+inline constexpr Field kFields_L034C_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10665},
+    {"Off", 26, 2, 0x0008, 10666},
+    {"Type", 28, 1, 0x0105, 3797},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2522},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2523},
+    {"Debug", 31, 1, 0x0014, 2524},
+};
+
+inline constexpr Field kFields_L034C_S050A[] = {
     {"BlockBranchList", 32, 8, 0x001C, 1289},
 };
 
-inline constexpr Field kFields_050B[] = {
+inline constexpr Field kFields_L034D_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10667},
+    {"Off", 26, 2, 0x0008, 10668},
+    {"Type", 28, 1, 0x0105, 3798},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2525},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2526},
+    {"Debug", 31, 1, 0x0014, 2527},
+};
+
+inline constexpr Field kFields_L034D_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3799},
+    {"ControlDown", 36, 4, 0x0104, 3800},
+    {"ControlUp", 40, 4, 0x0104, 3801},
+    {"Priority", 44, 2, 0x0000, 1374},
+    {"MoveID", 46, 2, 0x0000, 1375},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10669},
+    {"StartPos", 50, 2, 0x0008, 10670},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10671},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10672},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10673},
+    {"Chance", 58, 2, 0x0008, 10674},
+    {"JoystickIntent", 60, 2, 0x0008, 10675},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10676},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10677},
+    {"Event", 66, 2, 0x0104, 3802},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1376},
+    {"InputFlags", 69, 1, 0x0204, 3803},
+    {"PruneFlags", 70, 1, 0x0204, 3804},
+    {"EventMod", 71, 1, 0x0104, 3805},
+    {"Joystick", 72, 1, 0x0104, 3806},
+    {"InheritTweenTime", 73, 1, 0x0014, 2528},
+    {"MatchDistance", 74, 1, 0x0014, 2529},
+    {"MatchRandomPin", 75, 1, 0x0014, 2530},
+    {"BlockRandomPin", 76, 1, 0x0014, 2531},
+    {"PreventInteraction", 77, 1, 0x0014, 2532},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2533},
+};
+
+inline constexpr Field kFields_L034D_S050B[] = {
     {"UsingPreviousPad", 80, 4, 0x0000, 1377},
     {"StopStartDeltaTime", 84, 2, 0x0008, 10678},
     {"LocoStartSpeed", 86, 2, 0x0008, 10679},
@@ -12494,18 +24001,141 @@ inline constexpr Field kFields_050B[] = {
     {"CheckAllowBranchFlag", 91, 1, 0x0014, 2535},
 };
 
-inline constexpr Field kFields_050C[] = {
+inline constexpr Field kFields_L034E_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10680},
+    {"Off", 26, 2, 0x0008, 10681},
+    {"Type", 28, 1, 0x0105, 3808},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2536},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2537},
+    {"Debug", 31, 1, 0x0014, 2538},
+};
+
+inline constexpr Field kFields_L034E_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3809},
+    {"ControlDown", 36, 4, 0x0104, 3810},
+    {"ControlUp", 40, 4, 0x0104, 3811},
+    {"Priority", 44, 2, 0x0000, 1378},
+    {"MoveID", 46, 2, 0x0000, 1379},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10682},
+    {"StartPos", 50, 2, 0x0008, 10683},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10684},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10685},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10686},
+    {"Chance", 58, 2, 0x0008, 10687},
+    {"JoystickIntent", 60, 2, 0x0008, 10688},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10689},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10690},
+    {"Event", 66, 2, 0x0104, 3812},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1380},
+    {"InputFlags", 69, 1, 0x0204, 3813},
+    {"PruneFlags", 70, 1, 0x0204, 3814},
+    {"EventMod", 71, 1, 0x0104, 3815},
+    {"Joystick", 72, 1, 0x0104, 3816},
+    {"InheritTweenTime", 73, 1, 0x0014, 2539},
+    {"MatchDistance", 74, 1, 0x0014, 2540},
+    {"MatchRandomPin", 75, 1, 0x0014, 2541},
+    {"BlockRandomPin", 76, 1, 0x0014, 2542},
+    {"PreventInteraction", 77, 1, 0x0014, 2543},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2544},
+};
+
+inline constexpr Field kFields_L034E_S050C[] = {
     {"TemplateSymbol", 80, 8, 0x001A, 0},
     {"TraverseLinkMove", 88, 8, 0x0010, 0},
     {"TraverseLinkMove_IsNull", 96, 1, 0x0016, 2545},
 };
 
-inline constexpr Field kFields_050D[] = {
+inline constexpr Field kFields_L034F_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10691},
+    {"Off", 26, 2, 0x0008, 10692},
+    {"Type", 28, 1, 0x0105, 3817},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2546},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2547},
+    {"Debug", 31, 1, 0x0014, 2548},
+};
+
+inline constexpr Field kFields_L034F_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3818},
+    {"ControlDown", 36, 4, 0x0104, 3819},
+    {"ControlUp", 40, 4, 0x0104, 3820},
+    {"Priority", 44, 2, 0x0000, 1381},
+    {"MoveID", 46, 2, 0x0000, 1382},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10693},
+    {"StartPos", 50, 2, 0x0008, 10694},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10695},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10696},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10697},
+    {"Chance", 58, 2, 0x0008, 10698},
+    {"JoystickIntent", 60, 2, 0x0008, 10699},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10700},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10701},
+    {"Event", 66, 2, 0x0104, 3821},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1383},
+    {"InputFlags", 69, 1, 0x0204, 3822},
+    {"PruneFlags", 70, 1, 0x0204, 3823},
+    {"EventMod", 71, 1, 0x0104, 3824},
+    {"Joystick", 72, 1, 0x0104, 3825},
+    {"InheritTweenTime", 73, 1, 0x0014, 2549},
+    {"MatchDistance", 74, 1, 0x0014, 2550},
+    {"MatchRandomPin", 75, 1, 0x0014, 2551},
+    {"BlockRandomPin", 76, 1, 0x0014, 2552},
+    {"PreventInteraction", 77, 1, 0x0014, 2553},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2554},
+};
+
+inline constexpr Field kFields_L034F_S050D[] = {
     {"EasingCurveOverride", 80, 2, 0x0104, 3826},
     {"AllowMultipleInstancesOverride", 82, 1, 0x0000, 1384},
 };
 
-inline constexpr Field kFields_050E[] = {
+inline constexpr Field kFields_L0350_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10702},
+    {"Off", 26, 2, 0x0008, 10703},
+    {"Type", 28, 1, 0x0105, 3827},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2555},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2556},
+    {"Debug", 31, 1, 0x0014, 2557},
+};
+
+inline constexpr Field kFields_L0350_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3828},
+    {"ControlDown", 36, 4, 0x0104, 3829},
+    {"ControlUp", 40, 4, 0x0104, 3830},
+    {"Priority", 44, 2, 0x0000, 1385},
+    {"MoveID", 46, 2, 0x0000, 1386},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10704},
+    {"StartPos", 50, 2, 0x0008, 10705},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10706},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10707},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10708},
+    {"Chance", 58, 2, 0x0008, 10709},
+    {"JoystickIntent", 60, 2, 0x0008, 10710},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10711},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10712},
+    {"Event", 66, 2, 0x0104, 3831},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1387},
+    {"InputFlags", 69, 1, 0x0204, 3832},
+    {"PruneFlags", 70, 1, 0x0204, 3833},
+    {"EventMod", 71, 1, 0x0104, 3834},
+    {"Joystick", 72, 1, 0x0104, 3835},
+    {"InheritTweenTime", 73, 1, 0x0014, 2558},
+    {"MatchDistance", 74, 1, 0x0014, 2559},
+    {"MatchRandomPin", 75, 1, 0x0014, 2560},
+    {"BlockRandomPin", 76, 1, 0x0014, 2561},
+    {"PreventInteraction", 77, 1, 0x0014, 2562},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2563},
+};
+
+inline constexpr Field kFields_L0350_S050E[] = {
     {"PromptOffset", 80, 0, 0x002C, 6},
     {"OnScreenRequired", 86, 1, 0x0014, 2564},
     {"OnScreenEndPosRequiredPercent", 88, 4, 0x0008, 10716},
@@ -12517,26 +24147,313 @@ inline constexpr Field kFields_050E[] = {
     {"OnScreenEndTransform", 97, 1, 0x0014, 2570},
 };
 
-inline constexpr Field kFields_0511[] = {
+inline constexpr Field kFields_L0351_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10717},
+    {"Off", 26, 2, 0x0008, 10718},
+    {"Type", 28, 1, 0x0105, 3836},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2571},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2572},
+    {"Debug", 31, 1, 0x0014, 2573},
+};
+
+inline constexpr Field kFields_L0351_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3837},
+    {"ControlDown", 36, 4, 0x0104, 3838},
+    {"ControlUp", 40, 4, 0x0104, 3839},
+    {"Priority", 44, 2, 0x0000, 1388},
+    {"MoveID", 46, 2, 0x0000, 1389},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10719},
+    {"StartPos", 50, 2, 0x0008, 10720},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10721},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10722},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10723},
+    {"Chance", 58, 2, 0x0008, 10724},
+    {"JoystickIntent", 60, 2, 0x0008, 10725},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10726},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10727},
+    {"Event", 66, 2, 0x0104, 3840},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1390},
+    {"InputFlags", 69, 1, 0x0204, 3841},
+    {"PruneFlags", 70, 1, 0x0204, 3842},
+    {"EventMod", 71, 1, 0x0104, 3843},
+    {"Joystick", 72, 1, 0x0104, 3844},
+    {"InheritTweenTime", 73, 1, 0x0014, 2574},
+    {"MatchDistance", 74, 1, 0x0014, 2575},
+    {"MatchRandomPin", 75, 1, 0x0014, 2576},
+    {"BlockRandomPin", 76, 1, 0x0014, 2577},
+    {"PreventInteraction", 77, 1, 0x0014, 2578},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2579},
+};
+
+inline constexpr Field kFields_L0352_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10728},
+    {"Off", 26, 2, 0x0008, 10729},
+    {"Type", 28, 1, 0x0105, 3845},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2580},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2581},
+    {"Debug", 31, 1, 0x0014, 2582},
+};
+
+inline constexpr Field kFields_L0352_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3846},
+    {"ControlDown", 36, 4, 0x0104, 3847},
+    {"ControlUp", 40, 4, 0x0104, 3848},
+    {"Priority", 44, 2, 0x0000, 1391},
+    {"MoveID", 46, 2, 0x0000, 1392},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10730},
+    {"StartPos", 50, 2, 0x0008, 10731},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10732},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10733},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10734},
+    {"Chance", 58, 2, 0x0008, 10735},
+    {"JoystickIntent", 60, 2, 0x0008, 10736},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10737},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10738},
+    {"Event", 66, 2, 0x0104, 3849},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1393},
+    {"InputFlags", 69, 1, 0x0204, 3850},
+    {"PruneFlags", 70, 1, 0x0204, 3851},
+    {"EventMod", 71, 1, 0x0104, 3852},
+    {"Joystick", 72, 1, 0x0104, 3853},
+    {"InheritTweenTime", 73, 1, 0x0014, 2583},
+    {"MatchDistance", 74, 1, 0x0014, 2584},
+    {"MatchRandomPin", 75, 1, 0x0014, 2585},
+    {"BlockRandomPin", 76, 1, 0x0014, 2586},
+    {"PreventInteraction", 77, 1, 0x0014, 2587},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2588},
+};
+
+inline constexpr Field kFields_L0353_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10739},
+    {"Off", 26, 2, 0x0008, 10740},
+    {"Type", 28, 1, 0x0105, 3854},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2589},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2590},
+    {"Debug", 31, 1, 0x0014, 2591},
+};
+
+inline constexpr Field kFields_L0353_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3855},
+    {"ControlDown", 36, 4, 0x0104, 3856},
+    {"ControlUp", 40, 4, 0x0104, 3857},
+    {"Priority", 44, 2, 0x0000, 1394},
+    {"MoveID", 46, 2, 0x0000, 1395},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10741},
+    {"StartPos", 50, 2, 0x0008, 10742},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10743},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10744},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10745},
+    {"Chance", 58, 2, 0x0008, 10746},
+    {"JoystickIntent", 60, 2, 0x0008, 10747},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10748},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10749},
+    {"Event", 66, 2, 0x0104, 3858},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1396},
+    {"InputFlags", 69, 1, 0x0204, 3859},
+    {"PruneFlags", 70, 1, 0x0204, 3860},
+    {"EventMod", 71, 1, 0x0104, 3861},
+    {"Joystick", 72, 1, 0x0104, 3862},
+    {"InheritTweenTime", 73, 1, 0x0014, 2592},
+    {"MatchDistance", 74, 1, 0x0014, 2593},
+    {"MatchRandomPin", 75, 1, 0x0014, 2594},
+    {"BlockRandomPin", 76, 1, 0x0014, 2595},
+    {"PreventInteraction", 77, 1, 0x0014, 2596},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2597},
+};
+
+inline constexpr Field kFields_L0353_S0511[] = {
     {"EnemyStateFilter", 80, 0, 0x002C, 152},
 };
 
-inline constexpr Field kFields_0512[] = {
+inline constexpr Field kFields_L0354_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10750},
+    {"Off", 26, 2, 0x0008, 10751},
+    {"Type", 28, 1, 0x0105, 3863},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2598},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2599},
+    {"Debug", 31, 1, 0x0014, 2600},
+};
+
+inline constexpr Field kFields_L0354_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3864},
+    {"ControlDown", 36, 4, 0x0104, 3865},
+    {"ControlUp", 40, 4, 0x0104, 3866},
+    {"Priority", 44, 2, 0x0000, 1399},
+    {"MoveID", 46, 2, 0x0000, 1400},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10752},
+    {"StartPos", 50, 2, 0x0008, 10753},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10754},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10755},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10756},
+    {"Chance", 58, 2, 0x0008, 10757},
+    {"JoystickIntent", 60, 2, 0x0008, 10758},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10759},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10760},
+    {"Event", 66, 2, 0x0104, 3867},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1401},
+    {"InputFlags", 69, 1, 0x0204, 3868},
+    {"PruneFlags", 70, 1, 0x0204, 3869},
+    {"EventMod", 71, 1, 0x0104, 3870},
+    {"Joystick", 72, 1, 0x0104, 3871},
+    {"InheritTweenTime", 73, 1, 0x0014, 2601},
+    {"MatchDistance", 74, 1, 0x0014, 2602},
+    {"MatchRandomPin", 75, 1, 0x0014, 2603},
+    {"BlockRandomPin", 76, 1, 0x0014, 2604},
+    {"PreventInteraction", 77, 1, 0x0014, 2605},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2606},
+};
+
+inline constexpr Field kFields_L0354_S0512[] = {
     {"TraversalMove", 80, 8, 0x001C, 1283},
 };
 
-inline constexpr Field kFields_0513[] = {
+inline constexpr Field kFields_L0355_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10761},
+    {"Off", 26, 2, 0x0008, 10762},
+    {"Type", 28, 1, 0x0105, 3872},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2607},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2608},
+    {"Debug", 31, 1, 0x0014, 2609},
+};
+
+inline constexpr Field kFields_L0355_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3873},
+    {"ControlDown", 36, 4, 0x0104, 3874},
+    {"ControlUp", 40, 4, 0x0104, 3875},
+    {"Priority", 44, 2, 0x0000, 1402},
+    {"MoveID", 46, 2, 0x0000, 1403},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10763},
+    {"StartPos", 50, 2, 0x0008, 10764},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10765},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10766},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10767},
+    {"Chance", 58, 2, 0x0008, 10768},
+    {"JoystickIntent", 60, 2, 0x0008, 10769},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10770},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10771},
+    {"Event", 66, 2, 0x0104, 3876},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1404},
+    {"InputFlags", 69, 1, 0x0204, 3877},
+    {"PruneFlags", 70, 1, 0x0204, 3878},
+    {"EventMod", 71, 1, 0x0104, 3879},
+    {"Joystick", 72, 1, 0x0104, 3880},
+    {"InheritTweenTime", 73, 1, 0x0014, 2610},
+    {"MatchDistance", 74, 1, 0x0014, 2611},
+    {"MatchRandomPin", 75, 1, 0x0014, 2612},
+    {"BlockRandomPin", 76, 1, 0x0014, 2613},
+    {"PreventInteraction", 77, 1, 0x0014, 2614},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2615},
+};
+
+inline constexpr Field kFields_L0355_S0513[] = {
     {"Decision", 80, 8, 0x001C, 1043},
     {"TrueBranch", 88, 8, 0x001C, 1286},
     {"FalseBranch", 96, 8, 0x001C, 1286},
 };
 
-inline constexpr Field kFields_0514[] = {
+inline constexpr Field kFields_L0356_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10772},
+    {"Off", 26, 2, 0x0008, 10773},
+    {"Type", 28, 1, 0x0105, 3881},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2616},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2617},
+    {"Debug", 31, 1, 0x0014, 2618},
+};
+
+inline constexpr Field kFields_L0356_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3882},
+    {"ControlDown", 36, 4, 0x0104, 3883},
+    {"ControlUp", 40, 4, 0x0104, 3884},
+    {"Priority", 44, 2, 0x0000, 1405},
+    {"MoveID", 46, 2, 0x0000, 1406},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10774},
+    {"StartPos", 50, 2, 0x0008, 10775},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10776},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10777},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10778},
+    {"Chance", 58, 2, 0x0008, 10779},
+    {"JoystickIntent", 60, 2, 0x0008, 10780},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10781},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10782},
+    {"Event", 66, 2, 0x0104, 3885},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1407},
+    {"InputFlags", 69, 1, 0x0204, 3886},
+    {"PruneFlags", 70, 1, 0x0204, 3887},
+    {"EventMod", 71, 1, 0x0104, 3888},
+    {"Joystick", 72, 1, 0x0104, 3889},
+    {"InheritTweenTime", 73, 1, 0x0014, 2619},
+    {"MatchDistance", 74, 1, 0x0014, 2620},
+    {"MatchRandomPin", 75, 1, 0x0014, 2621},
+    {"BlockRandomPin", 76, 1, 0x0014, 2622},
+    {"PreventInteraction", 77, 1, 0x0014, 2623},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2624},
+};
+
+inline constexpr Field kFields_L0356_S0514[] = {
     {"HookName", 80, 8, 0x0018, 0},
     {"OutcomeBranches", 88, 0, 0x0028, 42},
 };
 
-inline constexpr Field kFields_0515[] = {
+inline constexpr Field kFields_L0357_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10783},
+    {"Off", 26, 2, 0x0008, 10784},
+    {"Type", 28, 1, 0x0105, 3890},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2625},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2626},
+    {"Debug", 31, 1, 0x0014, 2627},
+};
+
+inline constexpr Field kFields_L0357_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3891},
+    {"ControlDown", 36, 4, 0x0104, 3892},
+    {"ControlUp", 40, 4, 0x0104, 3893},
+    {"Priority", 44, 2, 0x0000, 1408},
+    {"MoveID", 46, 2, 0x0000, 1409},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10785},
+    {"StartPos", 50, 2, 0x0008, 10786},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10787},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10788},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10789},
+    {"Chance", 58, 2, 0x0008, 10790},
+    {"JoystickIntent", 60, 2, 0x0008, 10791},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10792},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10793},
+    {"Event", 66, 2, 0x0104, 3894},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1410},
+    {"InputFlags", 69, 1, 0x0204, 3895},
+    {"PruneFlags", 70, 1, 0x0204, 3896},
+    {"EventMod", 71, 1, 0x0104, 3897},
+    {"Joystick", 72, 1, 0x0104, 3898},
+    {"InheritTweenTime", 73, 1, 0x0014, 2628},
+    {"MatchDistance", 74, 1, 0x0014, 2629},
+    {"MatchRandomPin", 75, 1, 0x0014, 2630},
+    {"BlockRandomPin", 76, 1, 0x0014, 2631},
+    {"PreventInteraction", 77, 1, 0x0014, 2632},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2633},
+};
+
+inline constexpr Field kFields_L0357_S0515[] = {
     {"Start", 80, 1, 0x0104, 3899},
     {"End", 81, 1, 0x0104, 3900},
     {"ResultCondition", 82, 1, 0x0104, 3901},
@@ -12545,18 +24462,100 @@ inline constexpr Field kFields_0515[] = {
     {"StartJointName", 104, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0516[] = {
+inline constexpr Field kFields_L0358_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10797},
+    {"Off", 26, 2, 0x0008, 10798},
+    {"Type", 28, 1, 0x0105, 3902},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2634},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2635},
+    {"Debug", 31, 1, 0x0014, 2636},
+};
+
+inline constexpr Field kFields_L0358_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3903},
+    {"ControlDown", 36, 4, 0x0104, 3904},
+    {"ControlUp", 40, 4, 0x0104, 3905},
+    {"Priority", 44, 2, 0x0000, 1411},
+    {"MoveID", 46, 2, 0x0000, 1412},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10799},
+    {"StartPos", 50, 2, 0x0008, 10800},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10801},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10802},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10803},
+    {"Chance", 58, 2, 0x0008, 10804},
+    {"JoystickIntent", 60, 2, 0x0008, 10805},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10806},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10807},
+    {"Event", 66, 2, 0x0104, 3906},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1413},
+    {"InputFlags", 69, 1, 0x0204, 3907},
+    {"PruneFlags", 70, 1, 0x0204, 3908},
+    {"EventMod", 71, 1, 0x0104, 3909},
+    {"Joystick", 72, 1, 0x0104, 3910},
+    {"InheritTweenTime", 73, 1, 0x0014, 2637},
+    {"MatchDistance", 74, 1, 0x0014, 2638},
+    {"MatchRandomPin", 75, 1, 0x0014, 2639},
+    {"BlockRandomPin", 76, 1, 0x0014, 2640},
+    {"PreventInteraction", 77, 1, 0x0014, 2641},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2642},
+};
+
+inline constexpr Field kFields_L0358_S0516[] = {
     {"SkuList", 80, 12, 0x0024, 664},
 };
 
-inline constexpr Field kFields_0517[] = {
+inline constexpr Field kFields_L0358_S0517[] = {
     {"CharacterID", 0, 8, 0x0010, 0},
     {"BlackboardVarName", 8, 8, 0x0010, 0},
     {"BlackboardType", 16, 1, 0x0104, 3912},
     {"MoveOverride", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0518[] = {
+inline constexpr Field kFields_L0359_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10808},
+    {"Off", 26, 2, 0x0008, 10809},
+    {"Type", 28, 1, 0x0105, 3913},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2643},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2644},
+    {"Debug", 31, 1, 0x0014, 2645},
+};
+
+inline constexpr Field kFields_L0359_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3914},
+    {"ControlDown", 36, 4, 0x0104, 3915},
+    {"ControlUp", 40, 4, 0x0104, 3916},
+    {"Priority", 44, 2, 0x0000, 1414},
+    {"MoveID", 46, 2, 0x0000, 1415},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10810},
+    {"StartPos", 50, 2, 0x0008, 10811},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10812},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10813},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10814},
+    {"Chance", 58, 2, 0x0008, 10815},
+    {"JoystickIntent", 60, 2, 0x0008, 10816},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10817},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10818},
+    {"Event", 66, 2, 0x0104, 3917},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1416},
+    {"InputFlags", 69, 1, 0x0204, 3918},
+    {"PruneFlags", 70, 1, 0x0204, 3919},
+    {"EventMod", 71, 1, 0x0104, 3920},
+    {"Joystick", 72, 1, 0x0104, 3921},
+    {"InheritTweenTime", 73, 1, 0x0014, 2646},
+    {"MatchDistance", 74, 1, 0x0014, 2647},
+    {"MatchRandomPin", 75, 1, 0x0014, 2648},
+    {"BlockRandomPin", 76, 1, 0x0014, 2649},
+    {"PreventInteraction", 77, 1, 0x0014, 2650},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2651},
+};
+
+inline constexpr Field kFields_L0359_S0518[] = {
     {"SynchCreatureMoveOverrideList", 80, 12, 0x0024, 665},
     {"SynchFlags", 92, 2, 0x0204, 3922},
     {"SynchStartPos", 94, 2, 0x0008, 10819},
@@ -12566,11 +24565,52 @@ inline constexpr Field kFields_0518[] = {
     {"BlackboardType", 120, 1, 0x0104, 3923},
 };
 
-inline constexpr Field kFields_0519[] = {
+inline constexpr Field kFields_L0359_S0519[] = {
     {"Moves", 0, 12, 0x0024, 666},
 };
 
-inline constexpr Field kFields_051A[] = {
+inline constexpr Field kFields_L035A_S0505[] = {
+    {"Move", 0, 8, 0x001C, 1283},
+    {"When", 8, 8, 0x0030, 65535},
+    {"LuaEvent", 16, 8, 0x0010, 0},
+    {"On", 24, 2, 0x0008, 10820},
+    {"Off", 26, 2, 0x0008, 10821},
+    {"Type", 28, 1, 0x0105, 3924},
+    {"CacheCurrentMovePos", 29, 1, 0x0014, 2652},
+    {"UseCachedMovePos", 30, 1, 0x0014, 2653},
+    {"Debug", 31, 1, 0x0014, 2654},
+};
+
+inline constexpr Field kFields_L035A_S0506[] = {
+    {"Flags", 32, 4, 0x0204, 3925},
+    {"ControlDown", 36, 4, 0x0104, 3926},
+    {"ControlUp", 40, 4, 0x0104, 3927},
+    {"Priority", 44, 2, 0x0000, 1417},
+    {"MoveID", 46, 2, 0x0000, 1418},
+    {"HoldDownDelayedTime", 48, 2, 0x0008, 10822},
+    {"StartPos", 50, 2, 0x0008, 10823},
+    {"PhaseMatchOverride", 52, 2, 0x0008, 10824},
+    {"TweenTimeOverride", 54, 2, 0x0008, 10825},
+    {"FeatherTweenTimeOverride", 56, 2, 0x0008, 10826},
+    {"Chance", 58, 2, 0x0008, 10827},
+    {"JoystickIntent", 60, 2, 0x0008, 10828},
+    {"JoystickDeadZone", 62, 2, 0x0008, 10829},
+    {"MultiKeyDelayBetween", 64, 2, 0x0008, 10830},
+    {"Event", 66, 2, 0x0104, 3928},
+    {"RecentUpDownWindow", 68, 1, 0x0000, 1419},
+    {"InputFlags", 69, 1, 0x0204, 3929},
+    {"PruneFlags", 70, 1, 0x0204, 3930},
+    {"EventMod", 71, 1, 0x0104, 3931},
+    {"Joystick", 72, 1, 0x0104, 3932},
+    {"InheritTweenTime", 73, 1, 0x0014, 2655},
+    {"MatchDistance", 74, 1, 0x0014, 2656},
+    {"MatchRandomPin", 75, 1, 0x0014, 2657},
+    {"BlockRandomPin", 76, 1, 0x0014, 2658},
+    {"PreventInteraction", 77, 1, 0x0014, 2659},
+    {"MatchFeatherTweenTime", 78, 1, 0x0014, 2660},
+};
+
+inline constexpr Field kFields_L035A_S051A[] = {
     {"Triggered", 80, 1, 0x0000, 1420},
     {"IsOnNavMesh", 81, 1, 0x0000, 1421},
     {"TimeAliveGreaterThan", 82, 2, 0x0008, 10831},
@@ -12579,45 +24619,65 @@ inline constexpr Field kFields_051A[] = {
     {"WildlifeEvent", 88, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_051B[] = {
+inline constexpr Field kFields_L035A_S051B[] = {
     {"Type", 0, 1, 0x0105, 3933},
 };
 
-inline constexpr Field kFields_051C[] = {
+inline constexpr Field kFields_L035A_S051C[] = {
     {"Damage", 4, 4, 0x0008, 10834},
     {"Attacker", 8, 1, 0x0104, 3935},
     {"Victim", 9, 1, 0x0104, 3936},
     {"HitFlags", 16, 8, 0x0204, 3937},
 };
 
-inline constexpr Field kFields_051D[] = {
+inline constexpr Field kFields_L035B_S051B[] = {
+    {"Type", 0, 1, 0x0105, 3938},
+};
+
+inline constexpr Field kFields_L035B_S051D[] = {
     {"SkillTree", 8, 8, 0x0010, 0},
     {"SkillNode", 16, 8, 0x0010, 0},
     {"AdditionalBonusIndex", 24, 4, 0x0000, 1422},
 };
 
-inline constexpr Field kFields_051E[] = {
+inline constexpr Field kFields_L035C_S051B[] = {
+    {"Type", 0, 1, 0x0105, 3939},
+};
+
+inline constexpr Field kFields_L035C_S051E[] = {
     {"CheckPlatinumToken", 1, 1, 0x0104, 3940},
     {"SkillTree", 8, 8, 0x0010, 0},
     {"SkillNode", 16, 8, 0x0010, 0},
     {"TokenOption", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_051F[] = {
+inline constexpr Field kFields_L035D_S051B[] = {
+    {"Type", 0, 1, 0x0105, 3941},
+};
+
+inline constexpr Field kFields_L035D_S051F[] = {
     {"EquipmentName", 8, 8, 0x0010, 0},
     {"WalletName", 16, 8, 0x0010, 0},
     {"SlotSetName", 24, 8, 0x0010, 0},
     {"SlotName", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0520[] = {
+inline constexpr Field kFields_L035E_S051B[] = {
+    {"Type", 0, 1, 0x0105, 3942},
+};
+
+inline constexpr Field kFields_L035E_S0520[] = {
     {"FlagName", 8, 8, 0x0010, 0},
     {"WalletName", 16, 8, 0x0010, 0},
     {"SlotSetName", 24, 8, 0x0010, 0},
     {"SlotName", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0521[] = {
+inline constexpr Field kFields_L035F_S051B[] = {
+    {"Type", 0, 1, 0x0105, 3943},
+};
+
+inline constexpr Field kFields_L035F_S0521[] = {
     {"Direction", 1, 1, 0x0104, 3944},
     {"ZeroJointOffset", 2, 0, 0x002C, 6},
     {"EndPosOffset", 8, 0, 0x002C, 6},
@@ -12628,13 +24688,21 @@ inline constexpr Field kFields_0521[] = {
     {"RaycastDistance", 28, 4, 0x0008, 10842},
 };
 
-inline constexpr Field kFields_0522[] = {
+inline constexpr Field kFields_L0360_S051B[] = {
+    {"Type", 0, 1, 0x0105, 3947},
+};
+
+inline constexpr Field kFields_L0360_S0522[] = {
     {"Direction", 1, 1, 0x0104, 3948},
     {"UsePlayerForCheck", 2, 1, 0x0014, 2662},
     {"FilterData", 8, 0, 0x002C, 247},
 };
 
-inline constexpr Field kFields_0523[] = {
+inline constexpr Field kFields_L0361_S051B[] = {
+    {"Type", 0, 1, 0x0105, 3952},
+};
+
+inline constexpr Field kFields_L0361_S0523[] = {
     {"UseCurrentGroundPos", 1, 1, 0x0014, 2663},
     {"UseLastGroundPos", 2, 1, 0x0014, 2664},
     {"ReturnTrueIfEitherOffNavmesh", 3, 1, 0x0014, 2665},
@@ -12642,7 +24710,7 @@ inline constexpr Field kFields_0523[] = {
     {"YTolerance", 8, 4, 0x0008, 10846},
 };
 
-inline constexpr Field kFields_0524[] = {
+inline constexpr Field kFields_L0361_S0524[] = {
     {"ObjectNearby", 0, 0, 0x002C, 1314},
     {"EquipmentQuery", 104, 0, 0x002C, 1311},
     {"EquipmentFlagQuery", 144, 0, 0x002C, 1312},
@@ -13095,35 +25163,47 @@ inline constexpr Field kFields_0524[] = {
     {"UISettingUserReducedPuzzleHints", 1509, 1, 0x0014, 2814},
 };
 
-inline constexpr Field kFields_0525[] = {
+inline constexpr Field kFields_L0361_S0525[] = {
     {"ExpressionTypes", 0, 12, 0x0024, 677},
 };
 
-inline constexpr Field kFields_0527[] = {
+inline constexpr Field kFields_L0361_S0527[] = {
     {"Type", 0, 1, 0x0105, 4009},
 };
 
-inline constexpr Field kFields_0528[] = {
+inline constexpr Field kFields_L0361_S0528[] = {
     {"Angle", 4, 4, 0x0008, 11015},
     {"Window", 8, 4, 0x0008, 11016},
     {"MinimumSpeed", 12, 4, 0x0008, 11017},
 };
 
-inline constexpr Field kFields_0529[] = {
+inline constexpr Field kFields_L0362_S0527[] = {
+    {"Type", 0, 1, 0x0105, 4011},
+};
+
+inline constexpr Field kFields_L0362_S0529[] = {
     {"MoodOn", 1, 1, 0x0014, 2815},
     {"Mood", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_052A[] = {
+inline constexpr Field kFields_L0363_S0527[] = {
+    {"Type", 0, 1, 0x0105, 4012},
+};
+
+inline constexpr Field kFields_L0363_S052A[] = {
     {"Angle", 4, 4, 0x0008, 11018},
     {"Window", 8, 4, 0x0008, 11019},
 };
 
-inline constexpr Field kFields_052C[] = {
+inline constexpr Field kFields_L0364_S0527[] = {
+    {"Type", 0, 1, 0x0105, 4013},
+};
+
+inline constexpr Field kFields_L0364_S052C[] = {
     {"InVehicle", 1, 1, 0x0014, 2816},
 };
 
-inline constexpr Field kFields_052D[] = {
+inline constexpr Field kFields_L0364_S052D[] = {
     {"uID", 0, 8, 0x0010, 0},
     {"WadName", 8, 8, 0x0018, 0},
     {"Position", 16, 0, 0x002C, 6},
@@ -13133,11 +25213,11 @@ inline constexpr Field kFields_052D[] = {
     {"InWorldMarkerDistance", 36, 4, 0x0008, 11028},
 };
 
-inline constexpr Field kFields_052E[] = {
+inline constexpr Field kFields_L0364_S052E[] = {
     {"Coordinates", 0, 12, 0x0024, 678},
 };
 
-inline constexpr Field kFields_052F[] = {
+inline constexpr Field kFields_L0364_S052F[] = {
     {"uID", 0, 8, 0x0010, 0},
     {"WadName", 8, 8, 0x0018, 0},
     {"Position", 16, 0, 0x002C, 6},
@@ -13146,20 +25226,20 @@ inline constexpr Field kFields_052F[] = {
     {"OverrideFuzzRadius", 36, 4, 0x0008, 11033},
 };
 
-inline constexpr Field kFields_0530[] = {
+inline constexpr Field kFields_L0364_S0530[] = {
     {"Helpers", 0, 12, 0x0024, 679},
 };
 
-inline constexpr Field kFields_0531[] = {
+inline constexpr Field kFields_L0364_S0531[] = {
     {"firstMarker", 0, 8, 0x0010, 0},
     {"secondMarker", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0532[] = {
+inline constexpr Field kFields_L0364_S0532[] = {
     {"Edges", 0, 12, 0x0024, 680},
 };
 
-inline constexpr Field kFields_0533[] = {
+inline constexpr Field kFields_L0364_S0533[] = {
     {"Flags", 0, 12, 0x0024, 681},
     {"LamsName", 12, 4, 0x0000, 1494},
     {"uID", 16, 8, 0x0010, 0},
@@ -13167,7 +25247,7 @@ inline constexpr Field kFields_0533[] = {
     {"InitState", 28, 1, 0x0104, 4015},
 };
 
-inline constexpr Field kFields_0534[] = {
+inline constexpr Field kFields_L0364_S0534[] = {
     {"Icon", 32, 8, 0x0018, 0},
     {"Priority", 40, 4, 0x0000, 1498},
     {"FastTravel", 48, 8, 0x0010, 0},
@@ -13177,26 +25257,42 @@ inline constexpr Field kFields_0534[] = {
     {"OffsetY", 68, 4, 0x0008, 11037},
 };
 
-inline constexpr Field kFields_0535[] = {
+inline constexpr Field kFields_L0364_S0535[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"LamsName", 8, 4, 0x0000, 1499},
     {"Discovery", 12, 1, 0x0104, 4017},
     {"Quests", 16, 12, 0x0024, 683},
 };
 
-inline constexpr Field kFields_0536[] = {
+inline constexpr Field kFields_L0364_S0536[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"LamsName", 8, 4, 0x0000, 1500},
 };
 
-inline constexpr Field kFields_0537[] = {
+inline constexpr Field kFields_L0365_S0533[] = {
+    {"Flags", 0, 12, 0x0024, 684},
+    {"LamsName", 12, 4, 0x0000, 1501},
+    {"uID", 16, 8, 0x0010, 0},
+    {"LamsDescription", 24, 4, 0x0000, 1502},
+    {"InitState", 28, 1, 0x0104, 4018},
+};
+
+inline constexpr Field kFields_L0365_S0537[] = {
     {"Markers", 32, 12, 0x0024, 685},
     {"PowerLevel", 44, 2, 0x0000, 1503},
     {"Wads", 48, 12, 0x0024, 686},
     {"Summary", 64, 12, 0x0024, 687},
 };
 
-inline constexpr Field kFields_0538[] = {
+inline constexpr Field kFields_L0366_S0533[] = {
+    {"Flags", 0, 12, 0x0024, 688},
+    {"LamsName", 12, 4, 0x0000, 1504},
+    {"uID", 16, 8, 0x0010, 0},
+    {"LamsDescription", 24, 4, 0x0000, 1505},
+    {"InitState", 28, 1, 0x0104, 4019},
+};
+
+inline constexpr Field kFields_L0366_S0538[] = {
     {"Markers", 32, 12, 0x0024, 689},
     {"LamsResourceAvailable", 44, 4, 0x0000, 1506},
     {"Wads", 48, 12, 0x0024, 690},
@@ -13205,172 +25301,361 @@ inline constexpr Field kFields_0538[] = {
     {"Areas", 80, 12, 0x0024, 692},
 };
 
-inline constexpr Field kFields_0539[] = {
+inline constexpr Field kFields_L0367_S0533[] = {
+    {"Flags", 0, 12, 0x0024, 693},
+    {"LamsName", 12, 4, 0x0000, 1508},
+    {"uID", 16, 8, 0x0010, 0},
+    {"LamsDescription", 24, 4, 0x0000, 1509},
+    {"InitState", 28, 1, 0x0104, 4020},
+};
+
+inline constexpr Field kFields_L0367_S0539[] = {
     {"Regions", 32, 12, 0x0024, 694},
 };
 
-inline constexpr Field kFields_053A[] = {
+inline constexpr Field kFields_L0367_S053A[] = {
     {"MapFlags", 0, 12, 0x0024, 695},
     {"Realms", 16, 12, 0x0024, 696},
     {"SummaryCategories", 32, 12, 0x0024, 697},
 };
 
-inline constexpr Field kFields_053B[] = {
+inline constexpr Field kFields_L0367_S053B[] = {
     {"Type", 0, 1, 0x0105, 4021},
     {"ModStat", 8, 8, 0x001C, 231},
 };
 
-inline constexpr Field kFields_053C[] = {
+inline constexpr Field kFields_L0367_S053C[] = {
     {"Fixed", 16, 4, 0x0000, 1510},
 };
 
-inline constexpr Field kFields_053D[] = {
+inline constexpr Field kFields_L0368_S053B[] = {
+    {"Type", 0, 1, 0x0105, 4023},
+    {"ModStat", 8, 8, 0x001C, 231},
+};
+
+inline constexpr Field kFields_L0368_S053D[] = {
     {"Min", 16, 4, 0x0000, 1511},
     {"Max", 20, 4, 0x0000, 1512},
 };
 
-inline constexpr Field kFields_053E[] = {
+inline constexpr Field kFields_L0368_S053E[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"Amount", 8, 8, 0x001C, 1339},
     {"Type", 16, 1, 0x0104, 4024},
 };
 
-inline constexpr Field kFields_053F[] = {
+inline constexpr Field kFields_L0368_S053F[] = {
     {"LootResults", 0, 12, 0x0024, 698},
     {"Weight", 12, 1, 0x0000, 1513},
     {"ModStat", 16, 8, 0x001C, 231},
 };
 
-inline constexpr Field kFields_0540[] = {
+inline constexpr Field kFields_L0368_S0540[] = {
     {"Criterion", 0, 0, 0x002C, 256},
     {"Rolls", 24, 12, 0x0024, 699},
     {"Type", 36, 1, 0x0105, 4026},
     {"Conditions", 40, 12, 0x0024, 700},
 };
 
-inline constexpr Field kFields_0541[] = {
+inline constexpr Field kFields_L0368_S0541[] = {
     {"Owner", 56, 1, 0x0104, 4029},
     {"MeterName", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0542[] = {
+inline constexpr Field kFields_L0369_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 703},
+    {"Type", 36, 1, 0x0105, 4031},
+    {"Conditions", 40, 12, 0x0024, 704},
+};
+
+inline constexpr Field kFields_L0369_S0542[] = {
     {"Owner", 56, 1, 0x0104, 4032},
     {"AttributeName", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0543[] = {
+inline constexpr Field kFields_L0369_S0543[] = {
     {"Pickup", 0, 8, 0x0010, 0},
     {"Stage", 8, 4, 0x0000, 1514},
 };
 
-inline constexpr Field kFields_0544[] = {
+inline constexpr Field kFields_L036A_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 705},
+    {"Type", 36, 1, 0x0105, 4034},
+    {"Conditions", 40, 12, 0x0024, 706},
+};
+
+inline constexpr Field kFields_L036A_S0544[] = {
     {"Pickups", 56, 12, 0x0024, 707},
     {"Owner", 68, 1, 0x0104, 4035},
 };
 
-inline constexpr Field kFields_0546[] = {
+inline constexpr Field kFields_L036B_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 708},
+    {"Type", 36, 1, 0x0105, 4037},
+    {"Conditions", 40, 12, 0x0024, 709},
+};
+
+inline constexpr Field kFields_L036B_S0546[] = {
     {"Wallet", 56, 8, 0x0010, 0},
     {"Recipe", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0547[] = {
+inline constexpr Field kFields_L036C_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 712},
+    {"Type", 36, 1, 0x0105, 4041},
+    {"Conditions", 40, 12, 0x0024, 713},
+};
+
+inline constexpr Field kFields_L036C_S0547[] = {
     {"Wallet", 56, 8, 0x0010, 0},
     {"Resource", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0548[] = {
+inline constexpr Field kFields_L036D_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 714},
+    {"Type", 36, 1, 0x0105, 4043},
+    {"Conditions", 40, 12, 0x0024, 715},
+};
+
+inline constexpr Field kFields_L036D_S0548[] = {
     {"QuestName", 56, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0549[] = {
+inline constexpr Field kFields_L036E_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 716},
+    {"Type", 36, 1, 0x0105, 4045},
+    {"Conditions", 40, 12, 0x0024, 717},
+};
+
+inline constexpr Field kFields_L036E_S0549[] = {
     {"QuestName", 56, 8, 0x0010, 0},
     {"State", 64, 1, 0x0104, 4046},
 };
 
-inline constexpr Field kFields_054B[] = {
+inline constexpr Field kFields_L036F_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 718},
+    {"Type", 36, 1, 0x0105, 4048},
+    {"Conditions", 40, 12, 0x0024, 719},
+};
+
+inline constexpr Field kFields_L036F_S054B[] = {
     {"EquipmentName", 56, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_054C[] = {
+inline constexpr Field kFields_L0370_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 722},
+    {"Type", 36, 1, 0x0105, 4052},
+    {"Conditions", 40, 12, 0x0024, 723},
+};
+
+inline constexpr Field kFields_L0370_S054C[] = {
     {"Wallet", 56, 8, 0x0010, 0},
     {"EquipmentName", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_054D[] = {
+inline constexpr Field kFields_L0371_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 724},
+    {"Type", 36, 1, 0x0105, 4054},
+    {"Conditions", 40, 12, 0x0024, 725},
+};
+
+inline constexpr Field kFields_L0371_S054D[] = {
     {"EquipmentName", 56, 8, 0x0010, 0},
     {"EquipmentSlotSetName", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_054E[] = {
+inline constexpr Field kFields_L0372_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 726},
+    {"Type", 36, 1, 0x0105, 4056},
+    {"Conditions", 40, 12, 0x0024, 727},
+};
+
+inline constexpr Field kFields_L0372_S054E[] = {
     {"AreaType", 56, 1, 0x0104, 4057},
 };
 
-inline constexpr Field kFields_0551[] = {
+inline constexpr Field kFields_L0373_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 728},
+    {"Type", 36, 1, 0x0105, 4059},
+    {"Conditions", 40, 12, 0x0024, 729},
+};
+
+inline constexpr Field kFields_L0373_S0551[] = {
     {"WeaponType", 56, 4, 0x0000, 1515},
 };
 
-inline constexpr Field kFields_0552[] = {
+inline constexpr Field kFields_L0374_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 734},
+    {"Type", 36, 1, 0x0105, 4065},
+    {"Conditions", 40, 12, 0x0024, 735},
+};
+
+inline constexpr Field kFields_L0374_S0552[] = {
     {"WeaponType", 56, 4, 0x0000, 1516},
 };
 
-inline constexpr Field kFields_0553[] = {
+inline constexpr Field kFields_L0375_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 736},
+    {"Type", 36, 1, 0x0105, 4067},
+    {"Conditions", 40, 12, 0x0024, 737},
+};
+
+inline constexpr Field kFields_L0375_S0553[] = {
     {"CompanionID", 56, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0555[] = {
+inline constexpr Field kFields_L0376_S0540[] = {
+    {"Criterion", 0, 0, 0x002C, 256},
+    {"Rolls", 24, 12, 0x0024, 738},
+    {"Type", 36, 1, 0x0105, 4069},
+    {"Conditions", 40, 12, 0x0024, 739},
+};
+
+inline constexpr Field kFields_L0376_S0555[] = {
     {"Type", 0, 1, 0x0105, 4070},
 };
 
-inline constexpr Field kFields_0556[] = {
+inline constexpr Field kFields_L0376_S0556[] = {
     {"True", 8, 8, 0x001C, 1365},
     {"False", 16, 8, 0x001C, 1365},
 };
 
-inline constexpr Field kFields_0557[] = {
+inline constexpr Field kFields_L0377_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4072},
+};
+
+inline constexpr Field kFields_L0377_S0556[] = {
+    {"True", 8, 8, 0x001C, 1365},
+    {"False", 16, 8, 0x001C, 1365},
+};
+
+inline constexpr Field kFields_L0377_S0557[] = {
     {"EntryType", 24, 1, 0x0104, 4073},
 };
 
-inline constexpr Field kFields_0558[] = {
+inline constexpr Field kFields_L0378_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4074},
+};
+
+inline constexpr Field kFields_L0378_S0556[] = {
+    {"True", 8, 8, 0x001C, 1365},
+    {"False", 16, 8, 0x001C, 1365},
+};
+
+inline constexpr Field kFields_L0378_S0558[] = {
     {"Name", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0559[] = {
+inline constexpr Field kFields_L0379_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4075},
+};
+
+inline constexpr Field kFields_L0379_S0556[] = {
+    {"True", 8, 8, 0x001C, 1365},
+    {"False", 16, 8, 0x001C, 1365},
+};
+
+inline constexpr Field kFields_L0379_S0559[] = {
     {"Amount", 24, 4, 0x0000, 1517},
     {"Comparison", 28, 1, 0x0104, 4076},
 };
 
-inline constexpr Field kFields_055A[] = {
+inline constexpr Field kFields_L037A_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4077},
+};
+
+inline constexpr Field kFields_L037A_S0556[] = {
+    {"True", 8, 8, 0x001C, 1365},
+    {"False", 16, 8, 0x001C, 1365},
+};
+
+inline constexpr Field kFields_L037A_S055A[] = {
     {"Flag", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_055B[] = {
+inline constexpr Field kFields_L037B_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4078},
+};
+
+inline constexpr Field kFields_L037B_S0556[] = {
+    {"True", 8, 8, 0x001C, 1365},
+    {"False", 16, 8, 0x001C, 1365},
+};
+
+inline constexpr Field kFields_L037B_S055B[] = {
     {"PlayerName", 24, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_055C[] = {
+inline constexpr Field kFields_L037C_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4079},
+};
+
+inline constexpr Field kFields_L037C_S055C[] = {
     {"CompanionID", 8, 0, 0x0028, 43},
     {"NotFound", 24, 8, 0x001C, 1365},
 };
 
-inline constexpr Field kFields_055E[] = {
+inline constexpr Field kFields_L037D_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4080},
+};
+
+inline constexpr Field kFields_L037D_S0556[] = {
+    {"True", 8, 8, 0x001C, 1365},
+    {"False", 16, 8, 0x001C, 1365},
+};
+
+inline constexpr Field kFields_L037E_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4081},
+};
+
+inline constexpr Field kFields_L037E_S055E[] = {
     {"DistributorName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_055F[] = {
+inline constexpr Field kFields_L037F_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4082},
+};
+
+inline constexpr Field kFields_L037F_S055F[] = {
     {"MinRollSize", 4, 4, 0x0000, 1518},
     {"MaxRollSize", 8, 4, 0x0000, 1519},
     {"Next", 16, 8, 0x001C, 1365},
 };
 
-inline constexpr Field kFields_0560[] = {
+inline constexpr Field kFields_L0380_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4083},
+};
+
+inline constexpr Field kFields_L0380_S0560[] = {
     {"Wallet", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0561[] = {
+inline constexpr Field kFields_L0381_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4084},
+};
+
+inline constexpr Field kFields_L0381_S0561[] = {
     {"OverrideName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0562[] = {
+inline constexpr Field kFields_L0382_S0555[] = {
+    {"Type", 0, 1, 0x0105, 4085},
+};
+
+inline constexpr Field kFields_L0382_S0562[] = {
     {"UseDropArc", 1, 1, 0x0014, 2817},
     {"ArcParamType", 2, 1, 0x0104, 4086},
     {"OverrideAutoInteractAvailability", 3, 1, 0x0014, 2818},
@@ -13387,22 +25672,22 @@ inline constexpr Field kFields_0562[] = {
     {"OverrideAlwaysUpright", 68, 1, 0x0014, 2819},
 };
 
-inline constexpr Field kFields_0563[] = {
+inline constexpr Field kFields_L0382_S0563[] = {
     {"ConditionNames", 0, 0, 0x0028, 44},
 };
 
-inline constexpr Field kFields_0564[] = {
+inline constexpr Field kFields_L0382_S0564[] = {
     {"ConditionMap", 0, 0, 0x0028, 45},
     {"ConditionSetMap", 16, 0, 0x0028, 46},
     {"DistributorMap", 32, 0, 0x0028, 47},
 };
 
-inline constexpr Field kFields_0565[] = {
+inline constexpr Field kFields_L0382_S0565[] = {
     {"PrerequisiteFacts", 0, 12, 0x0024, 740},
     {"DescriptionLAMS", 12, 4, 0x0000, 1520},
 };
 
-inline constexpr Field kFields_0566[] = {
+inline constexpr Field kFields_L0382_S0566[] = {
     {"PrerequisiteFacts", 0, 12, 0x0024, 741},
     {"DisplayNameLAMS", 12, 4, 0x0000, 1521},
     {"Weaknesses", 16, 12, 0x0024, 742},
@@ -13412,105 +25697,120 @@ inline constexpr Field kFields_0566[] = {
     {"ElementLAMS", 44, 4, 0x0000, 1524},
 };
 
-inline constexpr Field kFields_0567[] = {
+inline constexpr Field kFields_L0382_S0567[] = {
     {"DisplayNameLAMS", 0, 4, 0x0000, 1525},
     {"DescriptionLAMS", 4, 4, 0x0000, 1526},
     {"Members", 8, 12, 0x0024, 743},
 };
 
-inline constexpr Field kFields_0568[] = {
+inline constexpr Field kFields_L0382_S0568[] = {
     {"BestiaryEntries", 0, 0, 0x0028, 48},
     {"Categories", 16, 12, 0x0024, 744},
 };
 
-inline constexpr Field kFields_0569[] = {
+inline constexpr Field kFields_L0382_S0569[] = {
     {"DisplayNameLAMS", 0, 4, 0x0000, 1527},
     {"DescriptionLAMS", 4, 4, 0x0000, 1528},
     {"MaterialSwap", 8, 8, 0x0018, 0},
     {"PrerequisiteFacts", 16, 12, 0x0024, 745},
 };
 
-inline constexpr Field kFields_056A[] = {
+inline constexpr Field kFields_L0382_S056A[] = {
     {"DisplayNameLAMS", 0, 4, 0x0000, 1529},
     {"DescriptionLAMS", 4, 4, 0x0000, 1530},
     {"Members", 8, 12, 0x0024, 746},
 };
 
-inline constexpr Field kFields_056B[] = {
+inline constexpr Field kFields_L0382_S056B[] = {
     {"LoreEntries", 0, 0, 0x0028, 49},
     {"Categories", 16, 12, 0x0024, 747},
 };
 
-inline constexpr Field kFields_056C[] = {
+inline constexpr Field kFields_L0382_S056C[] = {
     {"PrerequisiteFacts", 0, 12, 0x0024, 748},
     {"HeaderLAMS", 12, 4, 0x0000, 1531},
     {"TextLAMS", 16, 4, 0x0000, 1532},
     {"MaterialSwap", 24, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_056D[] = {
+inline constexpr Field kFields_L0382_S056D[] = {
     {"PrerequisiteFacts", 0, 12, 0x0024, 749},
     {"DisplayNameLAMS", 12, 4, 0x0000, 1533},
     {"Content", 16, 12, 0x0024, 750},
 };
 
-inline constexpr Field kFields_056E[] = {
+inline constexpr Field kFields_L0382_S056E[] = {
     {"TopicNameLAMS", 0, 4, 0x0000, 1534},
     {"TopicHeaderLAMS", 4, 4, 0x0000, 1535},
     {"TopicIconMaterialSwap", 8, 8, 0x0018, 0},
     {"Entries", 16, 12, 0x0024, 751},
 };
 
-inline constexpr Field kFields_056F[] = {
+inline constexpr Field kFields_L0382_S056F[] = {
     {"Topics", 0, 12, 0x0024, 752},
 };
 
-inline constexpr Field kFields_0570[] = {
+inline constexpr Field kFields_L0382_S0570[] = {
     {"Pickup", 0, 2, 0x0000, 1536},
     {"Stage", 2, 1, 0x0000, 1537},
     {"Flags", 3, 1, 0x0204, 4087},
 };
 
-inline constexpr Field kFields_0571[] = {
+inline constexpr Field kFields_L0382_S0571[] = {
     {"PerkThreshold", 4, 4, 0x0008, 11062},
     {"PerkTraitName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0572[] = {
+inline constexpr Field kFields_L0382_S0572[] = {
     {"Attribute", 0, 8, 0x0010, 0},
     {"Mod", 8, 4, 0x0008, 11063},
     {"Flags", 12, 1, 0x0204, 4089},
 };
 
-inline constexpr Field kFields_0573[] = {
+inline constexpr Field kFields_L0382_S0573[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"FlagsHasAny", 8, 12, 0x0024, 753},
     {"FlagsHasAll", 24, 12, 0x0024, 754},
     {"FlagsHasNone", 40, 12, 0x0024, 755},
 };
 
-inline constexpr Field kFields_0574[] = {
+inline constexpr Field kFields_L0382_S0574[] = {
     {"Weight", 0, 2, 0x0000, 1540},
     {"Type", 2, 1, 0x0105, 4090},
 };
 
-inline constexpr Field kFields_0575[] = {
+inline constexpr Field kFields_L0382_S0575[] = {
     {"RollData", 0, 12, 0x0024, 756},
 };
 
-inline constexpr Field kFields_0576[] = {
+inline constexpr Field kFields_L0383_S0574[] = {
+    {"Weight", 0, 2, 0x0000, 1541},
+    {"Type", 2, 1, 0x0105, 4091},
+};
+
+inline constexpr Field kFields_L0383_S0576[] = {
     {"RolledValue", 4, 0, 0x002C, 1392},
 };
 
-inline constexpr Field kFields_0577[] = {
+inline constexpr Field kFields_L0384_S0574[] = {
+    {"Weight", 0, 2, 0x0000, 1544},
+    {"Type", 2, 1, 0x0105, 4093},
+};
+
+inline constexpr Field kFields_L0384_S0577[] = {
     {"RolledValue", 8, 0, 0x002C, 1395},
 };
 
-inline constexpr Field kFields_0579[] = {
+inline constexpr Field kFields_L0385_S0574[] = {
+    {"Weight", 0, 2, 0x0000, 1545},
+    {"Type", 2, 1, 0x0105, 4094},
+};
+
+inline constexpr Field kFields_L0385_S0579[] = {
     {"RolledValue", 8, 0, 0x002C, 1563},
 };
 
-inline constexpr Field kFields_057A[] = {
+inline constexpr Field kFields_L0385_S057A[] = {
     {"GOName", 0, 8, 0x0010, 0},
     {"UniqueName", 8, 8, 0x0010, 0},
     {"GOBehaviorTemplate", 16, 8, 0x001C, 470},
@@ -13519,7 +25819,7 @@ inline constexpr Field kFields_057A[] = {
     {"Heap", 36, 4, 0x0000, 1548},
 };
 
-inline constexpr Field kFields_057B[] = {
+inline constexpr Field kFields_L0385_S057B[] = {
     {"DesignerFlags", 0, 12, 0x0024, 760},
     {"LamsName", 12, 4, 0x0000, 1549},
     {"Traits", 16, 12, 0x0024, 761},
@@ -13541,19 +25841,26 @@ inline constexpr Field kFields_057B[] = {
     {"BuybackRecipe", 192, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_057C[] = {
+inline constexpr Field kFields_L0386_S0573[] = {
+    {"Name", 0, 8, 0x0010, 0},
+    {"FlagsHasAny", 8, 12, 0x0024, 770},
+    {"FlagsHasAll", 24, 12, 0x0024, 771},
+    {"FlagsHasNone", 40, 12, 0x0024, 772},
+};
+
+inline constexpr Field kFields_L0386_S057C[] = {
     {"DefaultEquipmentName", 56, 8, 0x0010, 0},
     {"WalletName", 64, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_057D[] = {
+inline constexpr Field kFields_L0386_S057D[] = {
     {"EquipmentSlots", 0, 12, 0x0024, 773},
     {"NumLoadouts", 12, 4, 0x0000, 1552},
     {"AdditionalStatWallets", 16, 12, 0x0024, 774},
     {"Name", 32, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_057E[] = {
+inline constexpr Field kFields_L0386_S057E[] = {
     {"EquipmentMap", 0, 0, 0x0028, 50},
     {"Equipment", 16, 12, 0x0024, 775},
     {"EquipmentCharacterSlotSets", 32, 12, 0x0024, 776},
@@ -13562,17 +25869,17 @@ inline constexpr Field kFields_057E[] = {
     {"ExtraTransmogs", 80, 0, 0x0028, 52},
 };
 
-inline constexpr Field kFields_057F[] = {
+inline constexpr Field kFields_L0386_S057F[] = {
     {"AttributeName", 0, 8, 0x0018, 0},
     {"LamsId", 8, 4, 0x0000, 1554},
     {"AttributeAmount", 12, 4, 0x0000, 1555},
 };
 
-inline constexpr Field kFields_0580[] = {
+inline constexpr Field kFields_L0386_S0580[] = {
     {"Options", 0, 12, 0x0024, 778},
 };
 
-inline constexpr Field kFields_0581[] = {
+inline constexpr Field kFields_L0386_S0581[] = {
     {"PrerequisiteFacts", 0, 12, 0x0024, 779},
     {"LamsId", 12, 4, 0x0000, 1556},
     {"AdditionalBonuses", 16, 12, 0x0024, 780},
@@ -13588,7 +25895,7 @@ inline constexpr Field kFields_0581[] = {
     {"QuestCompletionGatingTokens", 88, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0582[] = {
+inline constexpr Field kFields_L0386_S0582[] = {
     {"SkillTreeNodes", 0, 12, 0x0024, 782},
     {"LamsId", 12, 4, 0x0000, 1559},
     {"Data", 16, 0, 0x0028, 54},
@@ -13597,20 +25904,20 @@ inline constexpr Field kFields_0582[] = {
     {"TokenResource", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0583[] = {
+inline constexpr Field kFields_L0386_S0583[] = {
     {"TokenWallet", 0, 8, 0x0010, 794},
     {"SkillTrees", 8, 12, 0x0024, 783},
 };
 
-inline constexpr Field kFields_0585[] = {
+inline constexpr Field kFields_L0386_S0585[] = {
     {"ArrowEmitterList", 0, 12, 0x0024, 784},
 };
 
-inline constexpr Field kFields_0586[] = {
+inline constexpr Field kFields_L0386_S0586[] = {
     {"ConcussionList", 0, 12, 0x0024, 785},
 };
 
-inline constexpr Field kFields_0587[] = {
+inline constexpr Field kFields_L0386_S0587[] = {
     {"UIEvent_MaxEventArgs", 0, 4, 0x0001, 1561},
     {"UIEvent_EventsPool", 4, 4, 0x0001, 1562},
     {"UIEvent_ListenersPool", 8, 4, 0x0001, 1563},
@@ -13643,33 +25950,33 @@ inline constexpr Field kFields_0587[] = {
     {"UIClippingGroup_ClippingGroupsPool", 116, 4, 0x0001, 1590},
 };
 
-inline constexpr Field kFields_0588[] = {
+inline constexpr Field kFields_L0386_S0588[] = {
     {"Styles", 0, 12, 0x0024, 786},
 };
 
-inline constexpr Field kFields_0589[] = {
+inline constexpr Field kFields_L0386_S0589[] = {
     {"Unblockable", 0, 0, 0x002C, 0},
     {"Blockbreak", 8, 0, 0x002C, 0},
     {"Burstcounter", 16, 0, 0x002C, 0},
 };
 
-inline constexpr Field kFields_058A[] = {
+inline constexpr Field kFields_L0386_S058A[] = {
     {"UnblockableGOName", 0, 8, 0x0010, 0},
     {"BlockbreakGOName", 8, 8, 0x0010, 0},
     {"BurstcounterGOName", 16, 8, 0x0010, 0},
     {"ColorSets", 24, 12, 0x0024, 787},
 };
 
-inline constexpr Field kFields_058B[] = {
+inline constexpr Field kFields_L0386_S058B[] = {
     {"TargetType", 0, 8, 0x0018, 0},
     {"Priority", 8, 1, 0x0104, 4098},
 };
 
-inline constexpr Field kFields_058C[] = {
+inline constexpr Field kFields_L0386_S058C[] = {
     {"TargetPriorities", 0, 12, 0x0024, 788},
 };
 
-inline constexpr Field kFields_058D[] = {
+inline constexpr Field kFields_L0386_S058D[] = {
     {"DiffPerPriority", 0, 4, 0x0000, 1591},
     {"MaxLookAtDistance", 4, 4, 0x0000, 1592},
     {"IdleLookAtTimer", 8, 4, 0x0000, 1593},
@@ -13681,15 +25988,15 @@ inline constexpr Field kFields_058D[] = {
     {"CombatTargetName", 32, 8, 0x0018, 795},
 };
 
-inline constexpr Field kFields_058E[] = {
+inline constexpr Field kFields_L0386_S058E[] = {
     {"CategoryMap", 0, 0, 0x0028, 55},
 };
 
-inline constexpr Field kFields_058F[] = {
+inline constexpr Field kFields_L0386_S058F[] = {
     {"BudgetMap", 0, 0, 0x0028, 56},
 };
 
-inline constexpr Field kFields_0590[] = {
+inline constexpr Field kFields_L0386_S0590[] = {
     {"GPUPerformanceCategories", 0, 0, 0x002C, 1422},
     {"GPUPerformanceBudgets", 16, 0, 0x0028, 58},
     {"CPUPerformanceCategories", 32, 0, 0x002C, 1422},
@@ -13700,23 +26007,23 @@ inline constexpr Field kFields_0590[] = {
     {"WwiseStatBudgets", 112, 0, 0x002C, 1423},
 };
 
-inline constexpr Field kFields_0591[] = {
+inline constexpr Field kFields_L0386_S0591[] = {
     {"Position", 0, 4, 0x0008, 11084},
     {"FloatValue", 4, 4, 0x0008, 11085},
 };
 
-inline constexpr Field kFields_0592[] = {
+inline constexpr Field kFields_L0386_S0592[] = {
     {"Start", 0, 4, 0x0008, 11086},
     {"End", 4, 4, 0x0008, 11087},
 };
 
-inline constexpr Field kFields_0593[] = {
+inline constexpr Field kFields_L0386_S0593[] = {
     {"CyanRed", 0, 4, 0x0008, 11088},
     {"MagentaGreen", 4, 4, 0x0008, 11089},
     {"YellowBlue", 8, 4, 0x0008, 11090},
 };
 
-inline constexpr Field kFields_0594[] = {
+inline constexpr Field kFields_L0386_S0594[] = {
     {"TemplateSymbol", 0, 8, 0x001A, 0},
     {"Pitch", 8, 4, 0x0008, 11091},
     {"Yaw", 12, 4, 0x0008, 11092},
@@ -13741,7 +26048,7 @@ inline constexpr Field kFields_0594[] = {
     {"Weight_IsNull", 67, 1, 0x0016, 2833},
 };
 
-inline constexpr Field kFields_0595[] = {
+inline constexpr Field kFields_L0386_S0595[] = {
     {"FromCamera", 0, 8, 0x0018, 0},
     {"TweenTime", 8, 4, 0x0008, 11103},
     {"EaseIn", 12, 4, 0x0008, 11104},
@@ -13750,7 +26057,7 @@ inline constexpr Field kFields_0595[] = {
     {"OnlyIf", 21, 1, 0x0014, 2835},
 };
 
-inline constexpr Field kFields_0596[] = {
+inline constexpr Field kFields_L0386_S0596[] = {
     {"Type", 0, 4, 0x0000, 1597},
     {"Position", 4, 0, 0x002C, 6},
     {"ExitVector", 10, 0, 0x002C, 6},
@@ -13758,20 +26065,20 @@ inline constexpr Field kFields_0596[] = {
     {"Height", 20, 4, 0x0008, 11113},
 };
 
-inline constexpr Field kFields_0597[] = {
+inline constexpr Field kFields_L0386_S0597[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"SourceCode", 8, 8, 0x0018, 0},
     {"ByteCode", 16, 12, 0x0024, 789},
 };
 
-inline constexpr Field kFields_0598[] = {
+inline constexpr Field kFields_L0386_S0598[] = {
     {"Start", 0, 0, 0x002C, 6},
     {"InTangent", 6, 0, 0x002C, 6},
     {"OutTangent", 12, 0, 0x002C, 6},
     {"End", 18, 0, 0x002C, 6},
 };
 
-inline constexpr Field kFields_0599[] = {
+inline constexpr Field kFields_L0386_S0599[] = {
     {"PeakSlipRatio", 0, 4, 0x0008, 11126},
     {"PeakSlipAngle", 4, 4, 0x0008, 11127},
     {"LongitudinalGripAtPeak", 8, 4, 0x0008, 11128},
@@ -13781,19 +26088,19 @@ inline constexpr Field kFields_0599[] = {
     {"Inertia", 24, 4, 0x0008, 11132},
 };
 
-inline constexpr Field kFields_059A[] = {
+inline constexpr Field kFields_L0386_S059A[] = {
     {"Bump", 0, 4, 0x0008, 11133},
     {"Rebound", 4, 4, 0x0008, 11134},
 };
 
-inline constexpr Field kFields_059B[] = {
+inline constexpr Field kFields_L0386_S059B[] = {
     {"Stiffness", 0, 4, 0x0008, 11135},
     {"DamperSpeedThreshold", 4, 4, 0x0008, 11136},
     {"DamperSlow", 8, 0, 0x002C, 1434},
     {"DamperFast", 16, 0, 0x002C, 1434},
 };
 
-inline constexpr Field kFields_059C[] = {
+inline constexpr Field kFields_L0386_S059C[] = {
     {"PeakTorque", 0, 4, 0x0008, 11141},
     {"Inertia", 4, 4, 0x0008, 11142},
     {"IdleRPM", 8, 4, 0x0008, 11143},
@@ -13801,49 +26108,49 @@ inline constexpr Field kFields_059C[] = {
     {"EngineBrakePercentage", 16, 4, 0x0008, 11145},
 };
 
-inline constexpr Field kFields_059D[] = {
+inline constexpr Field kFields_L0386_S059D[] = {
     {"TorqueDistribution", 0, 4, 0x0008, 11146},
     {"MinSpeedForLock", 4, 4, 0x0008, 11147},
     {"MaxSpeedForLock", 8, 4, 0x0008, 11148},
 };
 
-inline constexpr Field kFields_059E[] = {
+inline constexpr Field kFields_L0386_S059E[] = {
     {"Ratio", 0, 4, 0x0008, 11149},
     {"ShiftDownPoint", 4, 4, 0x0008, 11150},
     {"ShiftUpPoint", 8, 4, 0x0008, 11151},
 };
 
-inline constexpr Field kFields_059F[] = {
+inline constexpr Field kFields_L0386_S059F[] = {
     {"Gears", 0, 12, 0x0024, 790},
     {"TransmissionRatio", 12, 4, 0x0008, 11152},
 };
 
-inline constexpr Field kFields_05A0[] = {
+inline constexpr Field kFields_L0386_S05A0[] = {
     {"EnginePeakTorque", 0, 4, 0x0008, 11153},
     {"MaxSpeed", 4, 4, 0x0008, 11154},
     {"LongitudinalGripRecovery", 8, 4, 0x0008, 11155},
     {"LateralGripRecovery", 12, 4, 0x0008, 11156},
 };
 
-inline constexpr Field kFields_05A1[] = {
+inline constexpr Field kFields_L0386_S05A1[] = {
     {"SpeedForNoEffect", 0, 4, 0x0008, 11157},
     {"SpeedForFullEffect", 4, 4, 0x0008, 11158},
     {"MaxDeceleration", 8, 4, 0x0008, 11159},
 };
 
-inline constexpr Field kFields_05A2[] = {
+inline constexpr Field kFields_L0386_S05A2[] = {
     {"SteeringAtZeroSpeed", 0, 4, 0x0008, 11160},
     {"SteeringAtHighSpeed", 4, 4, 0x0008, 11161},
     {"HighSpeed", 8, 4, 0x0008, 11162},
 };
 
-inline constexpr Field kFields_05A3[] = {
+inline constexpr Field kFields_L0386_S05A3[] = {
     {"SpeedForNoEffect", 0, 4, 0x0008, 11163},
     {"SpeedForFullEffect", 4, 4, 0x0008, 11164},
     {"SteerMultiplierAtFullEffect", 8, 4, 0x0008, 11165},
 };
 
-inline constexpr Field kFields_05A4[] = {
+inline constexpr Field kFields_L0386_S05A4[] = {
     {"MinIntensity", 0, 4, 0x0008, 11166},
     {"MaxIntensity", 4, 4, 0x0008, 11167},
     {"MinAngle", 8, 4, 0x0008, 11168},
@@ -13851,11 +26158,11 @@ inline constexpr Field kFields_05A4[] = {
     {"MaxSpeed", 16, 4, 0x0008, 11170},
 };
 
-inline constexpr Field kFields_05A5[] = {
+inline constexpr Field kFields_L0386_S05A5[] = {
     {"ActionList", 0, 12, 0x0024, 791},
 };
 
-inline constexpr Field kFields_05A7[] = {
+inline constexpr Field kFields_L0386_S05A7[] = {
     {"EnemyDynamicFlag", 0, 8, 0x0010, 0},
     {"Weight", 8, 4, 0x0008, 11173},
     {"FailFlags", 12, 2, 0x0204, 4100},
@@ -13863,36 +26170,36 @@ inline constexpr Field kFields_05A7[] = {
     {"CamRelativeMaxAngleOverride", 20, 4, 0x0008, 11175},
 };
 
-inline constexpr Field kFields_05A8[] = {
+inline constexpr Field kFields_L0386_S05A8[] = {
     {"Status", 0, 1, 0x0104, 4101},
     {"JointName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_05A9[] = {
+inline constexpr Field kFields_L0386_S05A9[] = {
     {"PickupId", 0, 4, 0x0000, 1598},
     {"MinStage", 4, 2, 0x0000, 1599},
     {"MaxStage", 6, 2, 0x0000, 1600},
     {"Exclude", 8, 1, 0x0014, 2836},
 };
 
-inline constexpr Field kFields_05AA[] = {
+inline constexpr Field kFields_L0386_S05AA[] = {
     {"HitModifiers", 0, 12, 0x0024, 792},
     {"HitPoints", 12, 4, 0x0008, 11176},
 };
 
-inline constexpr Field kFields_05AB[] = {
+inline constexpr Field kFields_L0386_S05AB[] = {
     {"MinCountBlastedShrapnel", 0, 2, 0x0000, 1601},
     {"Concussion", 8, 8, 0x001C, 268},
 };
 
-inline constexpr Field kFields_05AC[] = {
+inline constexpr Field kFields_L0386_S05AC[] = {
     {"Width", 0, 4, 0x0008, 11177},
     {"Height", 4, 4, 0x0008, 11178},
     {"Direction", 8, 4, 0x0008, 11179},
     {"Position", 12, 4, 0x0008, 11180},
 };
 
-inline constexpr Field kFields_05AD[] = {
+inline constexpr Field kFields_L0386_S05AD[] = {
     {"Width", 0, 4, 0x0008, 11181},
     {"Height", 4, 4, 0x0008, 11182},
     {"Depth", 8, 4, 0x0008, 11183},
@@ -13900,24 +26207,24 @@ inline constexpr Field kFields_05AD[] = {
     {"Position", 16, 4, 0x0008, 11185},
 };
 
-inline constexpr Field kFields_05AE[] = {
+inline constexpr Field kFields_L0386_S05AE[] = {
     {"ModeConfigs", 0, 0, 0x0028, 65},
 };
 
-inline constexpr Field kFields_05AF[] = {
+inline constexpr Field kFields_L0386_S05AF[] = {
     {"WadName", 0, 8, 0x0010, 0},
     {"ZoneName", 8, 8, 0x0010, 0},
     {"Load", 16, 12, 0x0024, 793},
 };
 
-inline constexpr Field kFields_05B0[] = {
+inline constexpr Field kFields_L0386_S05B0[] = {
     {"WadName", 0, 8, 0x0010, 0},
     {"LogicGroupName", 8, 8, 0x0010, 0},
     {"ConfigurationName", 16, 8, 0x0010, 0},
     {"Load", 24, 12, 0x0024, 794},
 };
 
-inline constexpr Field kFields_05B1[] = {
+inline constexpr Field kFields_L0386_S05B1[] = {
     {"StrParams", 0, 12, 0x0024, 795},
     {"ConditionType", 12, 1, 0x0104, 4103},
     {"IntParams", 16, 12, 0x0024, 796},
@@ -13925,12 +26232,12 @@ inline constexpr Field kFields_05B1[] = {
     {"ConfigurationName", 40, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_05B2[] = {
+inline constexpr Field kFields_L0386_S05B2[] = {
     {"LoadGroupConfigs", 0, 12, 0x0024, 797},
     {"WadLZCount", 12, 4, 0x0000, 1603},
 };
 
-inline constexpr Field kFields_05B3[] = {
+inline constexpr Field kFields_L0386_S05B3[] = {
     {"HintDistance", 0, 4, 0x0008, 11186},
     {"ShowDistance", 4, 4, 0x0008, 11187},
     {"MaxFacingToObjectTolerance", 8, 4, 0x0008, 11188},
@@ -13941,22 +26248,22 @@ inline constexpr Field kFields_05B3[] = {
     {"ShowPrompt", 27, 1, 0x0014, 2838},
 };
 
-inline constexpr Field kFields_05B4[] = {
+inline constexpr Field kFields_L0386_S05B4[] = {
     {"Time", 0, 4, 0x0008, 11194},
     {"Position", 4, 0, 0x002C, 6},
     {"OriginOffset", 10, 0, 0x002C, 6},
 };
 
-inline constexpr Field kFields_05B5[] = {
+inline constexpr Field kFields_L0386_S05B5[] = {
     {"GlobalBufferSize", 0, 4, 0x0000, 1604},
     {"PackBufferSize", 4, 4, 0x0000, 1605},
 };
 
-inline constexpr Field kFields_05B6[] = {
+inline constexpr Field kFields_L0386_S05B6[] = {
     {"StageList", 0, 12, 0x0024, 798},
 };
 
-inline constexpr Field kFields_05B7[] = {
+inline constexpr Field kFields_L0386_S05B7[] = {
     {"WadName", 0, 8, 0x0018, 0},
     {"CreatureName", 8, 8, 0x0018, 0},
     {"ConfigurationName", 16, 8, 0x0010, 0},
@@ -13964,34 +26271,34 @@ inline constexpr Field kFields_05B7[] = {
     {"AudioVariation", 28, 1, 0x0000, 1607},
 };
 
-inline constexpr Field kFields_05B8[] = {
+inline constexpr Field kFields_L0386_S05B8[] = {
     {"TrailName", 0, 8, 0x0010, 0},
     {"TrailModelName", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_05B9[] = {
+inline constexpr Field kFields_L0386_S05B9[] = {
     {"List", 0, 0, 0x0028, 66},
     {"PlayerTeams", 16, 12, 0x0024, 799},
 };
 
-inline constexpr Field kFields_05BA[] = {
+inline constexpr Field kFields_L0386_S05BA[] = {
     {"PickupId", 0, 2, 0x0000, 1608},
     {"Probability", 2, 1, 0x0004, 4106},
 };
 
-inline constexpr Field kFields_05BB[] = {
+inline constexpr Field kFields_L0386_S05BB[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Value", 8, 4, 0x0000, 1609},
 };
 
-inline constexpr Field kFields_05BC[] = {
+inline constexpr Field kFields_L0386_S05BC[] = {
     {"UnfreezeSpeed", 0, 4, 0x0008, 11201},
     {"UnfreezeDelay", 4, 4, 0x0008, 11202},
     {"FreezeMinTimeScale", 8, 4, 0x0008, 11203},
     {"FreezeMaxTimeScale", 12, 4, 0x0008, 11204},
 };
 
-inline constexpr Field kFields_05BD[] = {
+inline constexpr Field kFields_L0386_S05BD[] = {
     {"BaselineCameraDistance", 0, 4, 0x0008, 11205},
     {"NonScalingWorldOffset", 4, 4, 0x0008, 11206},
     {"MinimumScale", 8, 4, 0x0008, 11207},
@@ -14002,20 +26309,20 @@ inline constexpr Field kFields_05BD[] = {
     {"BaselineCameraScaleDistance", 28, 4, 0x0008, 11212},
 };
 
-inline constexpr Field kFields_05BE[] = {
+inline constexpr Field kFields_L0386_S05BE[] = {
     {"IconName", 0, 8, 0x0010, 0},
     {"MeterName", 8, 8, 0x0010, 0},
     {"ExcludePlayer", 16, 1, 0x0014, 2839},
 };
 
-inline constexpr Field kFields_05BF[] = {
+inline constexpr Field kFields_L0386_S05BF[] = {
     {"Name", 0, 8, 0x0010, 0},
     {"CounterName", 8, 8, 0x0010, 0},
     {"Value", 16, 4, 0x0000, 1610},
     {"Trophy", 20, 1, 0x0000, 1611},
 };
 
-inline constexpr Field kFields_05C0[] = {
+inline constexpr Field kFields_L0386_S05C0[] = {
     {"Children", 0, 12, 0x0024, 800},
     {"Min", 12, 4, 0x0000, 1612},
     {"Threshold", 16, 12, 0x0024, 801},
@@ -14026,13 +26333,13 @@ inline constexpr Field kFields_05C0[] = {
     {"CurrencyAdj", 52, 4, 0x0000, 1615},
 };
 
-inline constexpr Field kFields_05C1[] = {
+inline constexpr Field kFields_L0386_S05C1[] = {
     {"WadName", 0, 8, 0x0018, 0},
     {"CreatureName", 8, 8, 0x0018, 0},
     {"MarkerID", 16, 4, 0x0000, 1616},
 };
 
-inline constexpr Field kFields_05C2[] = {
+inline constexpr Field kFields_L0386_S05C2[] = {
     {"WadName", 0, 8, 0x0018, 0},
     {"CreatureName", 8, 8, 0x0018, 0},
     {"Config", 16, 8, 0x0010, 0},
@@ -14045,13 +26352,13 @@ inline constexpr Field kFields_05C2[] = {
     {"AddWadName", 72, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_05C3[] = {
+inline constexpr Field kFields_L0386_S05C3[] = {
     {"Probability", 0, 2, 0x0008, 11213},
     {"Min", 2, 1, 0x0000, 1618},
     {"Max", 3, 1, 0x0000, 1619},
 };
 
-inline constexpr Field kFields_05C4[] = {
+inline constexpr Field kFields_L0386_S05C4[] = {
     {"Loop", 0, 8, 0x0018, 0},
     {"RatchetForward", 8, 8, 0x0018, 0},
     {"RatchetBackward", 16, 8, 0x0018, 0},
@@ -14059,7 +26366,7 @@ inline constexpr Field kFields_05C4[] = {
     {"RatchetClickBCount", 26, 2, 0x0000, 1621},
 };
 
-inline constexpr Field kFields_05C5[] = {
+inline constexpr Field kFields_L0386_S05C5[] = {
     {"TargetJointList", 0, 12, 0x0024, 802},
     {"HeadTrackingJointRadius", 12, 4, 0x0008, 11214},
     {"TargetWeight", 16, 12, 0x0024, 803},
@@ -14070,7 +26377,7 @@ inline constexpr Field kFields_05C5[] = {
     {"ReticleYOffset", 56, 4, 0x0008, 11217},
 };
 
-inline constexpr Field kFields_05C6[] = {
+inline constexpr Field kFields_L0386_S05C6[] = {
     {"WadName", 0, 8, 0x0018, 0},
     {"ActivityId", 8, 8, 0x0018, 0},
     {"MarkerName", 16, 8, 0x0010, 0},
@@ -14078,14 +26385,14 @@ inline constexpr Field kFields_05C6[] = {
     {"Type", 32, 1, 0x0104, 4107},
 };
 
-inline constexpr Field kFields_05C7[] = {
+inline constexpr Field kFields_L0386_S05C7[] = {
     {"Min", 0, 4, 0x0008, 11218},
     {"Max", 4, 4, 0x0008, 11219},
     {"AlwaysUse", 8, 1, 0x0014, 2840},
     {"Flags", 16, 8, 0x0204, 4108},
 };
 
-inline constexpr Field kFields_05C8[] = {
+inline constexpr Field kFields_L0386_S05C8[] = {
     {"LocationName", 0, 8, 0x0018, 0},
     {"VisualName", 8, 8, 0x0018, 0},
     {"StartTime", 16, 4, 0x0008, 11220},
@@ -14094,14 +26401,14 @@ inline constexpr Field kFields_05C8[] = {
     {"PointFade", 28, 4, 0x0008, 11223},
 };
 
-inline constexpr Field kFields_05C9[] = {
+inline constexpr Field kFields_L0386_S05C9[] = {
     {"GOName", 0, 8, 0x0010, 0},
     {"FXName", 8, 8, 0x0010, 0},
     {"JointName", 16, 8, 0x0010, 0},
     {"PhysAttrOverride", 24, 8, 0x001C, 344},
 };
 
-inline constexpr Field kFields_05CA[] = {
+inline constexpr Field kFields_L0386_S05CA[] = {
     {"PlayFXList", 0, 0, 0x002C, 273},
     {"ShakingOutEffect", 16, 8, 0x0018, 0},
     {"BreakOutEffect", 24, 8, 0x0018, 0},
@@ -14121,7 +26428,7 @@ inline constexpr Field kFields_05CA[] = {
     {"ShaderSwapID", 108, 1, 0x0000, 1622},
 };
 
-inline constexpr Field kFields_05CB[] = {
+inline constexpr Field kFields_L0386_S05CB[] = {
     {"PieceList", 0, 12, 0x0024, 805},
     {"ShaderID", 12, 1, 0x0000, 1623},
     {"BasePhysicalAttributes", 16, 0, 0x002C, 344},
@@ -14132,19 +26439,19 @@ inline constexpr Field kFields_05CB[] = {
     {"PlayFXList", 120, 0, 0x002C, 273},
 };
 
-inline constexpr Field kFields_05CC[] = {
+inline constexpr Field kFields_L0386_S05CC[] = {
     {"PlayFXList", 0, 0, 0x002C, 273},
     {"MainDecayFX", 16, 0, 0x002C, 272},
     {"AttachmentDecayFX", 144, 0, 0x002C, 272},
     {"AttachmentEmissionScale", 272, 4, 0x0008, 11273},
 };
 
-inline constexpr Field kFields_05CD[] = {
+inline constexpr Field kFields_L0386_S05CD[] = {
     {"Freezing", 0, 0, 0x002C, 1482},
     {"ShatterSystem", 112, 8, 0x001C, 1483},
 };
 
-inline constexpr Field kFields_05CE[] = {
+inline constexpr Field kFields_L0386_S05CE[] = {
     {"StandingMultiplier", 0, 4, 0x0008, 11280},
     {"MovingMultiplier", 4, 4, 0x0008, 11281},
     {"SprintingMultiplier", 8, 4, 0x0008, 11282},
@@ -14154,36 +26461,36 @@ inline constexpr Field kFields_05CE[] = {
     {"WolfSledMultiplierWithNavAssist", 24, 4, 0x0008, 11286},
 };
 
-inline constexpr Field kFields_05CF[] = {
+inline constexpr Field kFields_L0386_S05CF[] = {
     {"Realm", 0, 8, 0x0010, 0},
     {"Direction", 8, 0, 0x002C, 6},
 };
 
-inline constexpr Field kFields_05D0[] = {
+inline constexpr Field kFields_L0386_S05D0[] = {
     {"SetName", 0, 8, 0x0010, 0},
     {"CharacterType", 8, 1, 0x0104, 4118},
     {"AutomaticTriggerControl", 9, 1, 0x0104, 4119},
 };
 
-inline constexpr Field kFields_05D1[] = {
+inline constexpr Field kFields_L0386_S05D1[] = {
     {"InterruptLayers", 0, 12, 0x0024, 813},
 };
 
-inline constexpr Field kFields_05D2[] = {
+inline constexpr Field kFields_L0386_S05D2[] = {
     {"Low32Bits", 0, 4, 0x0004, 4120},
     {"High32Bits", 4, 4, 0x0004, 4121},
 };
 
-inline constexpr Field kFields_05D3[] = {
+inline constexpr Field kFields_L0386_S05D3[] = {
     {"ContentHash", 0, 0, 0x002C, 1490},
 };
 
-inline constexpr Field kFields_05D4[] = {
+inline constexpr Field kFields_L0386_S05D4[] = {
     {"ContentHash", 0, 0, 0x002C, 1490},
     {"MipCount", 8, 1, 0x0000, 1631},
 };
 
-inline constexpr Field kFields_05D5[] = {
+inline constexpr Field kFields_L0386_S05D5[] = {
     {"AnimName", 0, 8, 0x0010, 0},
     {"AnimBhvr", 8, 1, 0x0104, 4126},
     {"AnimTime", 12, 4, 0x0008, 11290},
@@ -14200,30 +26507,30 @@ inline constexpr Field kFields_05D5[] = {
     {"AnimTimeMax", 68, 4, 0x0008, 11297},
 };
 
-inline constexpr Field kFields_05D6[] = {
+inline constexpr Field kFields_L0386_S05D6[] = {
     {"TextObjectName", 0, 8, 0x0018, 0},
     {"Driver", 8, 0, 0x002C, 1493},
     {"Values", 80, 12, 0x0024, 814},
 };
 
-inline constexpr Field kFields_05D7[] = {
+inline constexpr Field kFields_L0386_S05D7[] = {
     {"Anims", 0, 12, 0x0024, 815},
     {"StageNumber", 12, 4, 0x0000, 1632},
 };
 
-inline constexpr Field kFields_05D8[] = {
+inline constexpr Field kFields_L0386_S05D8[] = {
     {"PickupName", 0, 8, 0x0018, 0},
     {"Stages", 8, 12, 0x0024, 816},
     {"PickupLostAnims", 24, 12, 0x0024, 817},
 };
 
-inline constexpr Field kFields_05D9[] = {
+inline constexpr Field kFields_L0386_S05D9[] = {
     {"ReticleControlFlags", 0, 1, 0x0204, 4128},
     {"NonReticleScreenOffset", 4, 4, 0x0008, 11306},
     {"NonReticleMaxDistance", 8, 4, 0x0008, 11307},
 };
 
-inline constexpr Field kFields_05DA[] = {
+inline constexpr Field kFields_L0386_S05DA[] = {
     {"Arrow", 0, 8, 0x001C, 410},
     {"EmitJoint", 8, 8, 0x0018, 0},
     {"EmitFXList", 16, 8, 0x001C, 273},
@@ -14241,28 +26548,28 @@ inline constexpr Field kFields_05DA[] = {
     {"RandomizeLaunchAngleWithinConstraints", 64, 1, 0x0014, 2843},
 };
 
-inline constexpr Field kFields_05DB[] = {
+inline constexpr Field kFields_L0386_S05DB[] = {
     {"On", 0, 4, 0x0008, 11318},
     {"Concussion", 8, 8, 0x001C, 268},
 };
 
-inline constexpr Field kFields_05DC[] = {
+inline constexpr Field kFields_L0386_S05DC[] = {
     {"Behaviors", 0, 12, 0x0024, 818},
     {"QuestState", 12, 1, 0x0104, 4131},
 };
 
-inline constexpr Field kFields_05DD[] = {
+inline constexpr Field kFields_L0386_S05DD[] = {
     {"RayCastSourceJointName", 0, 8, 0x0010, 0},
     {"PositiveExtent", 8, 4, 0x0008, 11319},
     {"NegativeExtent", 12, 4, 0x0008, 11320},
 };
 
-inline constexpr Field kFields_05DE[] = {
+inline constexpr Field kFields_L0386_S05DE[] = {
     {"WeaponTrailType", 0, 8, 0x0010, 0},
     {"TrailName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_05DF[] = {
+inline constexpr Field kFields_L0386_S05DF[] = {
     {"Events", 0, 1, 0x0204, 4132},
     {"WeaponState", 1, 1, 0x0104, 4133},
     {"ThrowState", 2, 2, 0x0204, 4134},
@@ -14274,17 +26581,17 @@ inline constexpr Field kFields_05DF[] = {
     {"FromMoveBlockList", 32, 12, 0x0024, 820},
 };
 
-inline constexpr Field kFields_05E0[] = {
+inline constexpr Field kFields_L0386_S05E0[] = {
     {"When", 0, 8, 0x0030, 65535},
     {"MaxClones", 8, 1, 0x0004, 4137},
 };
 
-inline constexpr Field kFields_05E1[] = {
+inline constexpr Field kFields_L0386_S05E1[] = {
     {"Time", 0, 4, 0x0008, 11321},
     {"Value", 4, 4, 0x0008, 11322},
 };
 
-inline constexpr Field kFields_05E2[] = {
+inline constexpr Field kFields_L0386_S05E2[] = {
     {"MPIconName", 0, 8, 0x0010, 0},
     {"MPIconHintName", 8, 8, 0x0010, 0},
     {"TraversalMove", 16, 8, 0x0010, 0},
@@ -14296,12 +26603,12 @@ inline constexpr Field kFields_05E2[] = {
     {"MaxInFrontOfObjectAngleTolerance", 44, 4, 0x0008, 11329},
 };
 
-inline constexpr Field kFields_05E3[] = {
+inline constexpr Field kFields_L0386_S05E3[] = {
     {"WeaponName", 0, 8, 0x0010, 0},
     {"ModeName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_05E4[] = {
+inline constexpr Field kFields_L0386_S05E4[] = {
     {"MinForce", 0, 4, 0x0008, 11330},
     {"MaxForce", 4, 4, 0x0008, 11331},
     {"MinSpeed", 8, 4, 0x0008, 11332},
@@ -14310,44 +26617,44 @@ inline constexpr Field kFields_05E4[] = {
     {"Flags", 17, 1, 0x0204, 4139},
 };
 
-inline constexpr Field kFields_05E7[] = {
+inline constexpr Field kFields_L0386_S05E7[] = {
     {"Button", 0, 1, 0x0104, 4144},
     {"Force", 4, 4, 0x0008, 11342},
     {"Range", 8, 8, 0x001C, 1508},
 };
 
-inline constexpr Field kFields_05E8[] = {
+inline constexpr Field kFields_L0386_S05E8[] = {
     {"Chance", 0, 4, 0x0008, 11343},
     {"Value", 4, 4, 0x0008, 11344},
 };
 
-inline constexpr Field kFields_05E9[] = {
+inline constexpr Field kFields_L0386_S05E9[] = {
     {"Hash", 0, 12, 0x0024, 821},
 };
 
-inline constexpr Field kFields_05EA[] = {
+inline constexpr Field kFields_L0386_S05EA[] = {
     {"String", 0, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_05EB[] = {
+inline constexpr Field kFields_L0386_S05EB[] = {
     {"ActiveStates", 0, 4, 0x0000, 1635},
     {"FXType", 4, 1, 0x0104, 4145},
     {"Name", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_05EC[] = {
+inline constexpr Field kFields_L0386_S05EC[] = {
     {"MainAxis", 0, 1, 0x0104, 4146},
     {"SecondaryAxis", 1, 1, 0x0104, 4147},
 };
 
-inline constexpr Field kFields_05ED[] = {
+inline constexpr Field kFields_L0386_S05ED[] = {
     {"Stage", 0, 1, 0x0000, 1636},
     {"Priority", 4, 4, 0x0000, 1637},
     {"MarkerCondition", 8, 8, 0x0010, 0},
     {"Concussions", 16, 12, 0x0024, 822},
 };
 
-inline constexpr Field kFields_05EE[] = {
+inline constexpr Field kFields_L0386_S05EE[] = {
     {"DetonateDelay", 0, 4, 0x0008, 11345},
     {"DetonateDelayScale", 4, 4, 0x0008, 11346},
     {"MinDetonateDelay", 8, 4, 0x0008, 11347},
@@ -14355,35 +26662,35 @@ inline constexpr Field kFields_05EE[] = {
     {"BlendGroupFinalDelay", 16, 4, 0x0008, 11349},
 };
 
-inline constexpr Field kFields_05EF[] = {
+inline constexpr Field kFields_L0386_S05EF[] = {
     {"PercentTime", 0, 4, 0x0008, 11350},
     {"Offset", 4, 0, 0x002C, 6},
 };
 
-inline constexpr Field kFields_05F0[] = {
+inline constexpr Field kFields_L0386_S05F0[] = {
     {"PartnerMoveName", 0, 8, 0x0010, 0},
     {"MatchingMove", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_05F1[] = {
+inline constexpr Field kFields_L0386_S05F1[] = {
     {"On", 0, 4, 0x0008, 11354},
     {"Offset", 4, 0, 0x002C, 6},
     {"Concussion", 16, 8, 0x001C, 268},
 };
 
-inline constexpr Field kFields_05F2[] = {
+inline constexpr Field kFields_L0386_S05F2[] = {
     {"TimeOfEffect", 0, 2, 0x0008, 11358},
     {"AnimationWeight", 4, 4, 0x0008, 11359},
     {"SimulationStartJointName", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_05F3[] = {
+inline constexpr Field kFields_L0386_S05F3[] = {
     {"ParamName", 0, 8, 0x0010, 0},
     {"Value", 8, 4, 0x0008, 11360},
     {"ExpressionValue", 16, 8, 0x0030, 65535},
 };
 
-inline constexpr Field kFields_05F4[] = {
+inline constexpr Field kFields_L0386_S05F4[] = {
     {"ResourceName", 0, 8, 0x0010, 0},
     {"AltResourceName", 8, 8, 0x0010, 0},
     {"RequiredResource", 16, 8, 0x0010, 0},
@@ -14391,23 +26698,23 @@ inline constexpr Field kFields_05F4[] = {
     {"NGPOnly", 32, 1, 0x0014, 2845},
 };
 
-inline constexpr Field kFields_05F5[] = {
+inline constexpr Field kFields_L0386_S05F5[] = {
     {"EntitlementName", 0, 8, 0x0018, 0},
     {"ResourceInfos", 8, 12, 0x0024, 823},
 };
 
-inline constexpr Field kFields_05F6[] = {
+inline constexpr Field kFields_L0386_S05F6[] = {
     {"CombineOperator", 0, 1, 0x0104, 4148},
     {"Decision", 8, 8, 0x001C, 1043},
 };
 
-inline constexpr Field kFields_05F7[] = {
+inline constexpr Field kFields_L0386_S05F7[] = {
     {"BlockChance", 0, 4, 0x0008, 11361},
     {"HitFlags", 8, 8, 0x0204, 4149},
     {"BlockPartFlags", 16, 8, 0x0204, 4150},
 };
 
-inline constexpr Field kFields_05F8[] = {
+inline constexpr Field kFields_L0386_S05F8[] = {
     {"OnFailVsPlayer", 0, 1, 0x0104, 4151},
     {"OnFailVsFuture", 1, 1, 0x0104, 4152},
     {"OnFailVsFuturePlayer", 2, 1, 0x0104, 4153},
@@ -14415,13 +26722,13 @@ inline constexpr Field kFields_05F8[] = {
     {"OnFailVsPlayerCircle", 4, 1, 0x0104, 4155},
 };
 
-inline constexpr Field kFields_05F9[] = {
+inline constexpr Field kFields_L0386_S05F9[] = {
     {"NoCrossDistance", 0, 4, 0x0008, 11362},
     {"NoCrossTime", 4, 4, 0x0008, 11363},
     {"CircleRadius", 8, 4, 0x0008, 11364},
 };
 
-inline constexpr Field kFields_05FA[] = {
+inline constexpr Field kFields_L0386_S05FA[] = {
     {"Distance", 0, 4, 0x0008, 11365},
     {"Priority", 4, 4, 0x0008, 11366},
     {"InvalidMinTime", 8, 4, 0x0008, 11367},
@@ -14429,15 +26736,23 @@ inline constexpr Field kFields_05FA[] = {
     {"FutureTime", 16, 4, 0x0008, 11369},
 };
 
-inline constexpr Field kFields_05FB[] = {
+inline constexpr Field kFields_L0386_S05FB[] = {
     {"Angle", 20, 4, 0x0008, 11375},
 };
 
-inline constexpr Field kFields_05FC[] = {
+inline constexpr Field kFields_L0387_S05FA[] = {
+    {"Distance", 0, 4, 0x0008, 11376},
+    {"Priority", 4, 4, 0x0008, 11377},
+    {"InvalidMinTime", 8, 4, 0x0008, 11378},
+    {"FutureDistance", 12, 4, 0x0008, 11379},
+    {"FutureTime", 16, 4, 0x0008, 11380},
+};
+
+inline constexpr Field kFields_L0387_S05FC[] = {
     {"Count", 20, 4, 0x0000, 1638},
 };
 
-inline constexpr Field kFields_05FD[] = {
+inline constexpr Field kFields_L0387_S05FD[] = {
     {"CenterAngle", 0, 4, 0x0008, 11381},
     {"SweepAngle", 4, 4, 0x0008, 11382},
     {"StartDistance", 8, 4, 0x0008, 11383},
@@ -14446,53 +26761,57 @@ inline constexpr Field kFields_05FD[] = {
     {"PriorityWeight", 20, 4, 0x0008, 11386},
 };
 
-inline constexpr Field kFields_05FE[] = {
+inline constexpr Field kFields_L0387_S05FE[] = {
     {"Type", 0, 1, 0x0104, 4156},
 };
 
-inline constexpr Field kFields_05FF[] = {
+inline constexpr Field kFields_L0387_S05FF[] = {
     {"Branch", 8, 8, 0x0010, 0},
     {"Refraction", 16, 4, 0x0008, 11387},
 };
 
-inline constexpr Field kFields_0600[] = {
+inline constexpr Field kFields_L0388_S05FE[] = {
+    {"Type", 0, 1, 0x0104, 4158},
+};
+
+inline constexpr Field kFields_L0388_S0600[] = {
     {"String", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0601[] = {
+inline constexpr Field kFields_L0388_S0601[] = {
     {"PartitionID", 0, 12, 0x0024, 824},
     {"Data", 16, 12, 0x0024, 825},
 };
 
-inline constexpr Field kFields_0602[] = {
+inline constexpr Field kFields_L0388_S0602[] = {
     {"CreatureJoint", 0, 8, 0x0010, 806},
     {"Joint", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0603[] = {
+inline constexpr Field kFields_L0388_S0603[] = {
     {"Creature", 0, 8, 0x0010, 0},
     {"Joint", 8, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0604[] = {
+inline constexpr Field kFields_L0388_S0604[] = {
     {"MoveName", 0, 8, 0x0010, 0},
     {"BlockChance", 8, 4, 0x0008, 11388},
     {"MinCnt", 12, 1, 0x0000, 1640},
     {"MaxCnt", 13, 1, 0x0000, 1641},
 };
 
-inline constexpr Field kFields_0605[] = {
+inline constexpr Field kFields_L0388_S0605[] = {
     {"Context", 0, 8, 0x0010, 0},
     {"BlockChance", 8, 4, 0x0008, 11389},
     {"MinCnt", 12, 1, 0x0000, 1642},
     {"MaxCnt", 13, 1, 0x0000, 1643},
 };
 
-inline constexpr Field kFields_0606[] = {
+inline constexpr Field kFields_L0388_S0606[] = {
     {"TrailJointName", 0, 8, 0x0010, 0},
 };
 
-inline constexpr Field kFields_0607[] = {
+inline constexpr Field kFields_L0388_S0607[] = {
     {"GONameVariations", 0, 12, 0x0024, 826},
     {"ModeFlags", 12, 4, 0x0204, 4159},
     {"HideJoints", 16, 12, 0x0024, 827},
@@ -14521,7 +26840,7 @@ inline constexpr Field kFields_0607[] = {
     {"Type", 185, 1, 0x0105, 4162},
 };
 
-inline constexpr Field kFields_0608[] = {
+inline constexpr Field kFields_L0388_S0608[] = {
     {"ThrowMode", 0, 8, 0x001C, 423},
     {"MinRotationSpeedMultiplier", 8, 4, 0x0008, 11391},
     {"MaxRotationSpeedMultiplier", 12, 4, 0x0008, 11392},
@@ -14531,13 +26850,77 @@ inline constexpr Field kFields_0608[] = {
     {"MaxDeathTimePercent", 28, 4, 0x0008, 11396},
 };
 
-inline constexpr Field kFields_0609[] = {
+inline constexpr Field kFields_L0389_S0607[] = {
+    {"GONameVariations", 0, 12, 0x0024, 831},
+    {"ModeFlags", 12, 4, 0x0204, 4163},
+    {"HideJoints", 16, 12, 0x0024, 832},
+    {"Heap", 28, 4, 0x0000, 1647},
+    {"WeaponRayCastList", 32, 12, 0x0024, 833},
+    {"FadeTime", 44, 4, 0x0008, 11397},
+    {"WeaponTrailJoints", 48, 12, 0x0024, 834},
+    {"WeaponType", 60, 4, 0x0000, 1648},
+    {"AttachModes", 64, 12, 0x0024, 835},
+    {"Flags", 76, 2, 0x0204, 4164},
+    {"ParentPickupId", 78, 2, 0x0000, 1649},
+    {"GOName", 80, 8, 0x0018, 0},
+    {"AttachName", 88, 8, 0x0010, 0},
+    {"OutHandJoint", 96, 8, 0x0018, 0},
+    {"SynchDefaultAnim", 104, 8, 0x0010, 0},
+    {"HandEquippedAnim", 112, 8, 0x0010, 0},
+    {"ChildAttachJoint", 120, 8, 0x0010, 0},
+    {"CollisionFX", 128, 8, 0x001C, 272},
+    {"SnapJointRemap", 136, 8, 0x001C, 1572},
+    {"WeaponTrailJointData", 144, 8, 0x001C, 1137},
+    {"InitialMode", 152, 8, 0x0010, 0},
+    {"OnBackJoint", 160, 8, 0x0018, 0},
+    {"WeaponName", 168, 8, 0x0010, 0},
+    {"ReticleName", 176, 8, 0x0010, 0},
+    {"Side", 184, 1, 0x0104, 4165},
+    {"Type", 185, 1, 0x0105, 4166},
+};
+
+inline constexpr Field kFields_L0389_S0609[] = {
     {"ReticleRadiusCheck", 192, 4, 0x0008, 11398},
     {"MaxThrowRange", 200, 0, 0x002C, 229},
     {"OnHitClass", 240, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_060A[] = {
+inline constexpr Field kFields_L038A_S0607[] = {
+    {"GONameVariations", 0, 12, 0x0024, 837},
+    {"ModeFlags", 12, 4, 0x0204, 4170},
+    {"HideJoints", 16, 12, 0x0024, 838},
+    {"Heap", 28, 4, 0x0000, 1650},
+    {"WeaponRayCastList", 32, 12, 0x0024, 839},
+    {"FadeTime", 44, 4, 0x0008, 11405},
+    {"WeaponTrailJoints", 48, 12, 0x0024, 840},
+    {"WeaponType", 60, 4, 0x0000, 1651},
+    {"AttachModes", 64, 12, 0x0024, 841},
+    {"Flags", 76, 2, 0x0204, 4171},
+    {"ParentPickupId", 78, 2, 0x0000, 1652},
+    {"GOName", 80, 8, 0x0018, 0},
+    {"AttachName", 88, 8, 0x0010, 0},
+    {"OutHandJoint", 96, 8, 0x0018, 0},
+    {"SynchDefaultAnim", 104, 8, 0x0010, 0},
+    {"HandEquippedAnim", 112, 8, 0x0010, 0},
+    {"ChildAttachJoint", 120, 8, 0x0010, 0},
+    {"CollisionFX", 128, 8, 0x001C, 272},
+    {"SnapJointRemap", 136, 8, 0x001C, 1572},
+    {"WeaponTrailJointData", 144, 8, 0x001C, 1137},
+    {"InitialMode", 152, 8, 0x0010, 0},
+    {"OnBackJoint", 160, 8, 0x0018, 0},
+    {"WeaponName", 168, 8, 0x0010, 0},
+    {"ReticleName", 176, 8, 0x0010, 0},
+    {"Side", 184, 1, 0x0104, 4172},
+    {"Type", 185, 1, 0x0105, 4173},
+};
+
+inline constexpr Field kFields_L038A_S0609[] = {
+    {"ReticleRadiusCheck", 192, 4, 0x0008, 11406},
+    {"MaxThrowRange", 200, 0, 0x002C, 229},
+    {"OnHitClass", 240, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L038A_S060A[] = {
     {"MaxTargetLockOnDistance", 248, 0, 0x002C, 229},
     {"BoundarySurfaceNames", 288, 12, 0x0024, 844},
     {"CallbackDistance", 300, 4, 0x0008, 11419},
@@ -14572,7 +26955,7 @@ inline constexpr Field kFields_060A[] = {
     {"BoundaryResolution", 437, 1, 0x0104, 4182},
 };
 
-inline constexpr Field kFields_060B[] = {
+inline constexpr Field kFields_L038A_S060B[] = {
     {"ModeName", 0, 8, 0x0010, 0},
     {"ChainDefaultLength", 8, 4, 0x0008, 11428},
     {"ConnectJointName", 16, 8, 0x0010, 0},
@@ -14580,7 +26963,77 @@ inline constexpr Field kFields_060B[] = {
     {"IsSheathed", 30, 1, 0x0014, 2851},
 };
 
-inline constexpr Field kFields_060C[] = {
+inline constexpr Field kFields_L038B_S0607[] = {
+    {"GONameVariations", 0, 12, 0x0024, 845},
+    {"ModeFlags", 12, 4, 0x0204, 4183},
+    {"HideJoints", 16, 12, 0x0024, 846},
+    {"Heap", 28, 4, 0x0000, 1655},
+    {"WeaponRayCastList", 32, 12, 0x0024, 847},
+    {"FadeTime", 44, 4, 0x0008, 11432},
+    {"WeaponTrailJoints", 48, 12, 0x0024, 848},
+    {"WeaponType", 60, 4, 0x0000, 1656},
+    {"AttachModes", 64, 12, 0x0024, 849},
+    {"Flags", 76, 2, 0x0204, 4184},
+    {"ParentPickupId", 78, 2, 0x0000, 1657},
+    {"GOName", 80, 8, 0x0018, 0},
+    {"AttachName", 88, 8, 0x0010, 0},
+    {"OutHandJoint", 96, 8, 0x0018, 0},
+    {"SynchDefaultAnim", 104, 8, 0x0010, 0},
+    {"HandEquippedAnim", 112, 8, 0x0010, 0},
+    {"ChildAttachJoint", 120, 8, 0x0010, 0},
+    {"CollisionFX", 128, 8, 0x001C, 272},
+    {"SnapJointRemap", 136, 8, 0x001C, 1572},
+    {"WeaponTrailJointData", 144, 8, 0x001C, 1137},
+    {"InitialMode", 152, 8, 0x0010, 0},
+    {"OnBackJoint", 160, 8, 0x0018, 0},
+    {"WeaponName", 168, 8, 0x0010, 0},
+    {"ReticleName", 176, 8, 0x0010, 0},
+    {"Side", 184, 1, 0x0104, 4185},
+    {"Type", 185, 1, 0x0105, 4186},
+};
+
+inline constexpr Field kFields_L038B_S0609[] = {
+    {"ReticleRadiusCheck", 192, 4, 0x0008, 11433},
+    {"MaxThrowRange", 200, 0, 0x002C, 229},
+    {"OnHitClass", 240, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L038B_S060A[] = {
+    {"MaxTargetLockOnDistance", 248, 0, 0x002C, 229},
+    {"BoundarySurfaceNames", 288, 12, 0x0024, 852},
+    {"CallbackDistance", 300, 4, 0x0008, 11446},
+    {"ModeEquip", 304, 8, 0x0010, 812},
+    {"ModeOutOfHand", 312, 8, 0x0010, 813},
+    {"CatchHandJointName", 320, 8, 0x0010, 0},
+    {"HitSurfaceJointName", 328, 8, 0x0010, 814},
+    {"EmbedJointName", 336, 8, 0x0010, 815},
+    {"ShoulderJointName", 344, 8, 0x0010, 816},
+    {"StandardReturnMode", 352, 8, 0x001C, 423},
+    {"DeathDropMode", 360, 8, 0x001C, 1544},
+    {"DefaultBlock", 368, 8, 0x001C, 520},
+    {"DebugHideClothJointName", 376, 8, 0x0010, 0},
+    {"BoundaryConcussion", 384, 8, 0x001C, 268},
+    {"TargetScaleMaxDistance", 392, 4, 0x0008, 11447},
+    {"RespawnDelay", 396, 4, 0x0008, 11448},
+    {"ScaleUpTime", 400, 4, 0x0008, 11449},
+    {"BoundaryMaxFallDistance", 404, 4, 0x0008, 11450},
+    {"BoundaryMaxDistanceFromOwner", 408, 4, 0x0008, 11451},
+    {"BoundarySurfaceEntityTypes", 412, 4, 0x0204, 4193},
+    {"EmbedThinShapeThreshold", 416, 4, 0x0008, 11452},
+    {"MaxTimeThrownBeforeDetonationAllowed", 420, 4, 0x0008, 11453},
+    {"EmbedPositionShrinkRatio", 424, 4, 0x0008, 11454},
+    {"StatusPickup", 428, 2, 0x0000, 1658},
+    {"SubType", 430, 1, 0x0105, 4194},
+    {"IsAxe", 431, 1, 0x0014, 2852},
+    {"AllowSkipNonPrecisionTargets", 432, 1, 0x0014, 2853},
+    {"EmbedCreatureWorldPosition", 433, 1, 0x0014, 2854},
+    {"UseCreatureTime", 434, 1, 0x0014, 2855},
+    {"IsRegenWeapon", 435, 1, 0x0014, 2856},
+    {"MaxNumberRegens", 436, 1, 0x0000, 1659},
+    {"BoundaryResolution", 437, 1, 0x0104, 4195},
+};
+
+inline constexpr Field kFields_L038B_S060C[] = {
     {"ChainHitProperties", 440, 0, 0x002C, 443},
     {"ChainProperties", 480, 0, 0x002C, 442},
     {"ChainAttachModes", 512, 12, 0x0024, 853},
@@ -14628,13 +27081,13 @@ inline constexpr Field kFields_060C[] = {
     {"RenderedAsRope", 720, 1, 0x0014, 2859},
 };
 
-inline constexpr Field kFields_060D[] = {
+inline constexpr Field kFields_L038B_S060D[] = {
     {"LinearFriction", 0, 4, 0x0008, 11489},
     {"RollingFriction", 4, 4, 0x0008, 11490},
     {"Bounciness", 8, 4, 0x0008, 11491},
 };
 
-inline constexpr Field kFields_060E[] = {
+inline constexpr Field kFields_L038B_S060E[] = {
     {"OverrideType", 0, 8, 0x0010, 0},
     {"RequestWeaponMode", 8, 8, 0x0010, 0},
     {"WeaponType", 16, 4, 0x0000, 1665},
@@ -14643,12 +27096,12 @@ inline constexpr Field kFields_060E[] = {
     {"AllowCacheInteract", 22, 1, 0x0014, 2860},
 };
 
-inline constexpr Field kFields_060F[] = {
+inline constexpr Field kFields_L038B_S060F[] = {
     {"WeaponMode", 0, 8, 0x0010, 0},
     {"RequestStates", 8, 12, 0x0024, 854},
 };
 
-inline constexpr Field kFields_0610[] = {
+inline constexpr Field kFields_L038B_S0610[] = {
     {"FromWeapon", 0, 4, 0x0000, 1666},
     {"SwitchMode", 4, 1, 0x0104, 4199},
     {"Interruptable", 5, 1, 0x0014, 2861},
@@ -14656,24 +27109,24 @@ inline constexpr Field kFields_0610[] = {
     {"Move", 16, 8, 0x001C, 1283},
 };
 
-inline constexpr Field kFields_0611[] = {
+inline constexpr Field kFields_L038B_S0611[] = {
     {"ToWeapon", 0, 4, 0x0000, 1667},
     {"ToState", 4, 1, 0x0204, 4200},
     {"FromState", 5, 1, 0x0204, 4201},
     {"WeaponSwitchMoves", 8, 12, 0x0024, 855},
 };
 
-inline constexpr Field kFields_0612[] = {
+inline constexpr Field kFields_L038B_S0612[] = {
     {"Angle", 0, 4, 0x0008, 11492},
     {"Radius", 4, 4, 0x0008, 11493},
 };
 
-inline constexpr Field kFields_0613[] = {
+inline constexpr Field kFields_L038B_S0613[] = {
     {"Flags", 0, 1, 0x0204, 4202},
     {"ID", 1, 1, 0x0000, 1668},
 };
 
-inline constexpr Field kFields_0614[] = {
+inline constexpr Field kFields_L038B_S0614[] = {
     {"GOName", 0, 8, 0x0010, 0},
     {"FXHide", 8, 8, 0x0010, 0},
     {"FXShow", 16, 8, 0x0010, 0},
@@ -14695,20 +27148,40 @@ inline constexpr Field kFields_0614[] = {
     {"Flags", 84, 1, 0x0204, 4203},
 };
 
-inline constexpr Field kFields_0615[] = {
+inline constexpr Field kFields_L038B_S0615[] = {
     {"Type", 0, 1, 0x0104, 4204},
 };
 
-inline constexpr Field kFields_0616[] = {
+inline constexpr Field kFields_L038B_S0616[] = {
     {"JointName", 8, 8, 0x0010, 0},
     {"Radius", 16, 4, 0x0008, 11507},
 };
 
-inline constexpr Field kFields_0617[] = {
+inline constexpr Field kFields_L038C_S0615[] = {
+    {"Type", 0, 1, 0x0104, 4206},
+};
+
+inline constexpr Field kFields_L038C_S0617[] = {
     {"JointNames", 8, 12, 0x0024, 856},
 };
 
-inline constexpr Field kFields_0618[] = {
+inline constexpr Field kFields_L038D_S04F2[] = {
+    {"Cooldown", 0, 0, 0x002C, 229},
+    {"UnlockConditions", 40, 12, 0x0024, 858},
+    {"DisplayStageId", 52, 4, 0x0000, 1671},
+    {"ActivateConditions", 56, 12, 0x0024, 859},
+    {"DisplayStageDescId", 68, 4, 0x0000, 1672},
+    {"Triggers", 72, 12, 0x0024, 860},
+    {"DisplayStageFloatValue", 84, 4, 0x0008, 11514},
+    {"Features", 88, 12, 0x0024, 861},
+    {"RequiredWad", 104, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L038D_S04F6[] = {
+    {"Modifiers", 112, 8, 0x001C, 286},
+};
+
+inline constexpr Field kFields_L038D_S0618[] = {
     {"ShotEmitter", 120, 8, 0x001C, 411},
     {"ShotMeterAmount", 128, 4, 0x0008, 11515},
     {"MolotovEmitter", 136, 8, 0x001C, 411},
@@ -14720,7 +27193,23 @@ inline constexpr Field kFields_0618[] = {
     {"FireDamageFreq", 172, 4, 0x0008, 11519},
 };
 
-inline constexpr Field kFields_0619[] = {
+inline constexpr Field kFields_L038E_S04F2[] = {
+    {"Cooldown", 0, 0, 0x002C, 229},
+    {"UnlockConditions", 40, 12, 0x0024, 863},
+    {"DisplayStageId", 52, 4, 0x0000, 1673},
+    {"ActivateConditions", 56, 12, 0x0024, 864},
+    {"DisplayStageDescId", 68, 4, 0x0000, 1674},
+    {"Triggers", 72, 12, 0x0024, 865},
+    {"DisplayStageFloatValue", 84, 4, 0x0008, 11526},
+    {"Features", 88, 12, 0x0024, 866},
+    {"RequiredWad", 104, 8, 0x0018, 0},
+};
+
+inline constexpr Field kFields_L038E_S04F6[] = {
+    {"Modifiers", 112, 8, 0x001C, 286},
+};
+
+inline constexpr Field kFields_L038E_S0619[] = {
     {"OlympusBlast", 120, 8, 0x001C, 268},
     {"OlympusStrike", 128, 8, 0x001C, 268},
     {"OlympusTornado", 136, 8, 0x001C, 268},
@@ -14751,34 +27240,34 @@ inline constexpr Field kFields_0619[] = {
     {"RainMaxArrows", 256, 1, 0x0000, 1675},
 };
 
-inline constexpr Field kFields_061A[] = {
+inline constexpr Field kFields_L038E_S061A[] = {
     {"ExpressionType", 0, 2, 0x0104, 4214},
     {"ReturnType", 2, 1, 0x0104, 4215},
     {"ReferenceTermType", 3, 1, 0x0104, 4216},
 };
 
-inline constexpr Field kFields_061B[] = {
+inline constexpr Field kFields_L038E_S061B[] = {
     {"Attribute", 0, 8, 0x0010, 0},
     {"Min", 8, 4, 0x0008, 11547},
     {"Max", 12, 4, 0x0008, 11548},
     {"Flags", 16, 1, 0x0204, 4217},
 };
 
-inline constexpr Field kFields_061C[] = {
+inline constexpr Field kFields_L038E_S061C[] = {
     {"Size", 0, 4, 0x0000, 1676},
     {"Type", 4, 1, 0x0104, 4218},
 };
 
-inline constexpr Field kFields_061D[] = {
+inline constexpr Field kFields_L038E_S061D[] = {
     {"EquipmentNames", 0, 12, 0x0024, 867},
 };
 
-inline constexpr Field kFields_061E[] = {
+inline constexpr Field kFields_L038E_S061E[] = {
     {"Name", 0, 8, 0x0018, 0},
     {"Color", 16, 0, 0x002C, 1},
 };
 
-inline constexpr Field kFields_061F[] = {
+inline constexpr Field kFields_L038E_S061F[] = {
     {"DifficultyName", 0, 8, 0x0010, 0},
     {"ModifierSet", 8, 8, 0x001C, 286},
     {"MagicCostMult", 16, 4, 0x0008, 11553},
@@ -14790,33 +27279,33 @@ inline constexpr Field kFields_061F[] = {
     {"ForceActionTimeMult", 40, 4, 0x0008, 11559},
 };
 
-inline constexpr Field kFields_0620[] = {
+inline constexpr Field kFields_L038E_S0620[] = {
     {"List", 0, 12, 0x0024, 868},
     {"TeamPickups", 16, 12, 0x0024, 869},
 };
 
-inline constexpr Field kFields_0621[] = {
+inline constexpr Field kFields_L038E_S0621[] = {
     {"Text", 0, 8, 0x0018, 0},
     {"LamsId", 8, 4, 0x0000, 1678},
 };
 
-inline constexpr Field kFields_0622[] = {
+inline constexpr Field kFields_L038E_S0622[] = {
     {"TrailJointName", 0, 8, 0x0010, 0},
     {"TrailJointOffset", 8, 0, 0x002C, 6},
 };
 
-inline constexpr Field kFields_0623[] = {
+inline constexpr Field kFields_L038E_S0623[] = {
     {"RayCastSourceJointName", 0, 8, 0x0010, 0},
     {"PositiveExtent", 8, 4, 0x0008, 11563},
     {"NegativeExtent", 12, 4, 0x0008, 11564},
 };
 
-inline constexpr Field kFields_0624[] = {
+inline constexpr Field kFields_L038E_S0624[] = {
     {"fromJoint", 0, 8, 0x0010, 0},
     {"toJoint", 8, 8, 0x0018, 0},
 };
 
-inline constexpr Field kFields_0625[] = {
+inline constexpr Field kFields_L038E_S0625[] = {
     {"SheathTable", 0, 0, 0x0028, 67},
     {"ModeFlags", 12, 4, 0x0204, 4220},
     {"SheathRestoreTable", 16, 0, 0x0028, 68},
@@ -14830,1446 +27319,3120 @@ inline constexpr Field kFields_0625[] = {
     {"AttachModeType", 68, 1, 0x0104, 4221},
 };
 
-inline constexpr Struct kStructs[] = {
-    {0x0000, 125, kFields_0000},
-    {0x0001, 1, kFields_0001},
-    {0x000B, 8, kFields_000B},
-    {0x000C, 6, kFields_000C},
-    {0x000D, 2, kFields_000D},
-    {0x000E, 7, kFields_000E},
-    {0x000F, 11, kFields_000F},
-    {0x0010, 247, kFields_0010},
-    {0x0011, 58, kFields_0011},
-    {0x0012, 3, kFields_0012},
-    {0x0013, 168, kFields_0013},
-    {0x0014, 163, kFields_0014},
-    {0x0015, 19, kFields_0015},
-    {0x0016, 2, kFields_0016},
-    {0x0017, 5, kFields_0017},
-    {0x0018, 13, kFields_0018},
-    {0x0019, 24, kFields_0019},
-    {0x001A, 3, kFields_001A},
-    {0x001B, 3, kFields_001B},
-    {0x001C, 3, kFields_001C},
-    {0x001D, 3, kFields_001D},
-    {0x001E, 10, kFields_001E},
-    {0x001F, 1, kFields_001F},
-    {0x0020, 2, kFields_0020},
-    {0x0021, 58, kFields_0021},
-    {0x0022, 3, kFields_0022},
-    {0x0023, 8, kFields_0023},
-    {0x0024, 2, kFields_0024},
-    {0x0025, 2, kFields_0025},
-    {0x0026, 1, kFields_0026},
-    {0x0027, 6, kFields_0027},
-    {0x0028, 2, kFields_0028},
-    {0x0029, 4, kFields_0029},
-    {0x002A, 1, kFields_002A},
-    {0x002B, 2, kFields_002B},
-    {0x002C, 3, kFields_002C},
-    {0x002D, 6, kFields_002D},
-    {0x002E, 10, kFields_002E},
-    {0x002F, 33, kFields_002F},
-    {0x0030, 9, kFields_0030},
-    {0x0031, 27, kFields_0031},
-    {0x0032, 21, kFields_0032},
-    {0x0033, 9, kFields_0033},
-    {0x0034, 3, kFields_0034},
-    {0x0035, 3, kFields_0035},
-    {0x0036, 9, kFields_0036},
-    {0x0037, 31, kFields_0037},
-    {0x0038, 99, kFields_0038},
-    {0x0039, 5, kFields_0039},
-    {0x003A, 26, kFields_003A},
-    {0x003B, 17, kFields_003B},
-    {0x003C, 59, kFields_003C},
-    {0x003D, 83, kFields_003D},
-    {0x003E, 27, kFields_003E},
-    {0x003F, 35, kFields_003F},
-    {0x0040, 12, kFields_0040},
-    {0x0041, 7, kFields_0041},
-    {0x0042, 3, kFields_0042},
-    {0x0043, 3, kFields_0043},
-    {0x0044, 7, kFields_0044},
-    {0x0045, 7, kFields_0045},
-    {0x0046, 18, kFields_0046},
-    {0x0047, 2, kFields_0047},
-    {0x0048, 2, kFields_0048},
-    {0x0049, 1, kFields_0049},
-    {0x004A, 4, kFields_004A},
-    {0x004B, 1, kFields_004B},
-    {0x004C, 2, kFields_004C},
-    {0x004D, 46, kFields_004D},
-    {0x004E, 3, kFields_004E},
-    {0x004F, 35, kFields_004F},
-    {0x0050, 17, kFields_0050},
-    {0x0051, 8, kFields_0051},
-    {0x0052, 9, kFields_0052},
-    {0x0053, 6, kFields_0053},
-    {0x0055, 4, kFields_0055},
-    {0x0056, 8, kFields_0056},
-    {0x0057, 2, kFields_0057},
-    {0x0058, 6, kFields_0058},
-    {0x0059, 7, kFields_0059},
-    {0x005A, 297, kFields_005A},
-    {0x005B, 1, kFields_005B},
-    {0x005C, 7, kFields_005C},
-    {0x005D, 5, kFields_005D},
-    {0x005E, 4, kFields_005E},
-    {0x005F, 11, kFields_005F},
-    {0x0060, 1, kFields_0060},
-    {0x0061, 4, kFields_0061},
-    {0x0063, 1, kFields_0063},
-    {0x0064, 2, kFields_0064},
-    {0x0065, 4, kFields_0065},
-    {0x0066, 3, kFields_0066},
-    {0x0067, 11, kFields_0067},
-    {0x0068, 20, kFields_0068},
-    {0x0069, 3, kFields_0069},
-    {0x006A, 8, kFields_006A},
-    {0x006B, 10, kFields_006B},
-    {0x006C, 15, kFields_006C},
-    {0x006D, 1, kFields_006D},
-    {0x006E, 3, kFields_006E},
-    {0x006F, 2, kFields_006F},
-    {0x0070, 2, kFields_0070},
-    {0x0071, 2, kFields_0071},
-    {0x0072, 7, kFields_0072},
-    {0x0073, 7, kFields_0073},
-    {0x0074, 7, kFields_0074},
-    {0x0075, 4, kFields_0075},
-    {0x0076, 6, kFields_0076},
-    {0x0077, 5, kFields_0077},
-    {0x0078, 7, kFields_0078},
-    {0x007A, 4, kFields_007A},
-    {0x007B, 59, kFields_007B},
-    {0x007C, 4, kFields_007C},
-    {0x007D, 1, kFields_007D},
-    {0x007E, 6, kFields_007E},
-    {0x007F, 1, kFields_007F},
-    {0x0080, 20, kFields_0080},
-    {0x0081, 175, kFields_0081},
-    {0x0082, 7, kFields_0082},
-    {0x0083, 41, kFields_0083},
-    {0x0084, 2, kFields_0084},
-    {0x0085, 1, kFields_0085},
-    {0x0086, 54, kFields_0086},
-    {0x0087, 1, kFields_0087},
-    {0x0088, 1, kFields_0088},
-    {0x0089, 1, kFields_0089},
-    {0x008A, 1, kFields_008A},
-    {0x008B, 1, kFields_008B},
-    {0x008C, 7, kFields_008C},
-    {0x008D, 1, kFields_008D},
-    {0x008E, 7, kFields_008E},
-    {0x008F, 5, kFields_008F},
-    {0x0090, 21, kFields_0090},
-    {0x0091, 4, kFields_0091},
-    {0x0092, 7, kFields_0092},
-    {0x0093, 5, kFields_0093},
-    {0x0094, 2, kFields_0094},
-    {0x0095, 9, kFields_0095},
-    {0x0096, 5, kFields_0096},
-    {0x0098, 2, kFields_0098},
-    {0x0099, 2, kFields_0099},
-    {0x009A, 2, kFields_009A},
-    {0x009B, 2, kFields_009B},
-    {0x009C, 1, kFields_009C},
-    {0x009D, 1, kFields_009D},
-    {0x00A1, 16, kFields_00A1},
-    {0x00A2, 4, kFields_00A2},
-    {0x00A3, 3, kFields_00A3},
-    {0x00A4, 10, kFields_00A4},
-    {0x00A5, 6, kFields_00A5},
-    {0x00A6, 5, kFields_00A6},
-    {0x00A7, 21, kFields_00A7},
-    {0x00A8, 8, kFields_00A8},
-    {0x00A9, 2, kFields_00A9},
-    {0x00AA, 6, kFields_00AA},
-    {0x00AB, 3, kFields_00AB},
-    {0x00AC, 3, kFields_00AC},
-    {0x00AD, 3, kFields_00AD},
-    {0x00AE, 8, kFields_00AE},
-    {0x00AF, 2, kFields_00AF},
-    {0x00B0, 3, kFields_00B0},
-    {0x00B1, 13, kFields_00B1},
-    {0x00B2, 6, kFields_00B2},
-    {0x00B3, 3, kFields_00B3},
-    {0x00B4, 2, kFields_00B4},
-    {0x00B5, 1, kFields_00B5},
-    {0x00B6, 3, kFields_00B6},
-    {0x00B7, 7, kFields_00B7},
-    {0x00B8, 15, kFields_00B8},
-    {0x00B9, 21, kFields_00B9},
-    {0x00BA, 7, kFields_00BA},
-    {0x00BB, 9, kFields_00BB},
-    {0x00BC, 21, kFields_00BC},
-    {0x00BD, 2, kFields_00BD},
-    {0x00BE, 3, kFields_00BE},
-    {0x00BF, 2, kFields_00BF},
-    {0x00C0, 1, kFields_00C0},
-    {0x00C1, 6, kFields_00C1},
-    {0x00C2, 1, kFields_00C2},
-    {0x00C3, 3, kFields_00C3},
-    {0x00C4, 1, kFields_00C4},
-    {0x00C5, 2, kFields_00C5},
-    {0x00C6, 3, kFields_00C6},
-    {0x00C7, 1, kFields_00C7},
-    {0x00C8, 1, kFields_00C8},
-    {0x00C9, 1, kFields_00C9},
-    {0x00CA, 10, kFields_00CA},
-    {0x00CB, 2, kFields_00CB},
-    {0x00CC, 2, kFields_00CC},
-    {0x00CD, 3, kFields_00CD},
-    {0x00CE, 3, kFields_00CE},
-    {0x00CF, 1, kFields_00CF},
-    {0x00D1, 4, kFields_00D1},
-    {0x00D2, 4, kFields_00D2},
-    {0x00D3, 7, kFields_00D3},
-    {0x00D4, 11, kFields_00D4},
-    {0x00D5, 6, kFields_00D5},
-    {0x00D6, 15, kFields_00D6},
-    {0x00D7, 3, kFields_00D7},
-    {0x00D8, 5, kFields_00D8},
-    {0x00D9, 10, kFields_00D9},
-    {0x00DA, 3, kFields_00DA},
-    {0x00DB, 1, kFields_00DB},
-    {0x00DC, 1, kFields_00DC},
-    {0x00DD, 5, kFields_00DD},
-    {0x00DE, 3, kFields_00DE},
-    {0x00DF, 2, kFields_00DF},
-    {0x00E0, 1, kFields_00E0},
-    {0x00E1, 3, kFields_00E1},
-    {0x00E2, 2, kFields_00E2},
-    {0x00E3, 2, kFields_00E3},
-    {0x00E4, 5, kFields_00E4},
-    {0x00E5, 10, kFields_00E5},
-    {0x00E6, 1, kFields_00E6},
-    {0x00E7, 12, kFields_00E7},
-    {0x00E8, 3, kFields_00E8},
-    {0x00E9, 3, kFields_00E9},
-    {0x00EA, 3, kFields_00EA},
-    {0x00EB, 3, kFields_00EB},
-    {0x00ED, 10, kFields_00ED},
-    {0x00EE, 2, kFields_00EE},
-    {0x00EF, 28, kFields_00EF},
-    {0x00F0, 6, kFields_00F0},
-    {0x00F1, 2, kFields_00F1},
-    {0x00F2, 2, kFields_00F2},
-    {0x00F3, 2, kFields_00F3},
-    {0x00F4, 4, kFields_00F4},
-    {0x00F5, 3, kFields_00F5},
-    {0x00F6, 1, kFields_00F6},
-    {0x00F7, 11, kFields_00F7},
-    {0x00F8, 2, kFields_00F8},
-    {0x00F9, 2, kFields_00F9},
-    {0x00FA, 2, kFields_00FA},
-    {0x00FB, 1, kFields_00FB},
-    {0x00FC, 1, kFields_00FC},
-    {0x00FD, 3, kFields_00FD},
-    {0x00FE, 1, kFields_00FE},
-    {0x00FF, 8, kFields_00FF},
-    {0x0100, 4, kFields_0100},
-    {0x0101, 8, kFields_0101},
-    {0x0102, 5, kFields_0102},
-    {0x0103, 3, kFields_0103},
-    {0x0104, 2, kFields_0104},
-    {0x0105, 7, kFields_0105},
-    {0x0106, 18, kFields_0106},
-    {0x0107, 19, kFields_0107},
-    {0x0108, 2, kFields_0108},
-    {0x0109, 10, kFields_0109},
-    {0x010A, 6, kFields_010A},
-    {0x010B, 6, kFields_010B},
-    {0x010C, 26, kFields_010C},
-    {0x010D, 4, kFields_010D},
-    {0x010E, 1, kFields_010E},
-    {0x010F, 1, kFields_010F},
-    {0x0110, 23, kFields_0110},
-    {0x0111, 1, kFields_0111},
-    {0x0112, 18, kFields_0112},
-    {0x0113, 1, kFields_0113},
-    {0x0114, 6, kFields_0114},
-    {0x0115, 7, kFields_0115},
-    {0x0116, 4, kFields_0116},
-    {0x0117, 56, kFields_0117},
-    {0x0118, 1, kFields_0118},
-    {0x0119, 1, kFields_0119},
-    {0x011A, 1, kFields_011A},
-    {0x011B, 4, kFields_011B},
-    {0x011C, 4, kFields_011C},
-    {0x011D, 3, kFields_011D},
-    {0x011E, 6, kFields_011E},
-    {0x011F, 4, kFields_011F},
-    {0x0120, 14, kFields_0120},
-    {0x0121, 3, kFields_0121},
-    {0x0122, 15, kFields_0122},
-    {0x0123, 4, kFields_0123},
-    {0x0124, 5, kFields_0124},
-    {0x0125, 16, kFields_0125},
-    {0x0126, 3, kFields_0126},
-    {0x0127, 2, kFields_0127},
-    {0x0128, 3, kFields_0128},
-    {0x0129, 19, kFields_0129},
-    {0x012A, 5, kFields_012A},
-    {0x012B, 3, kFields_012B},
-    {0x012C, 2, kFields_012C},
-    {0x012D, 12, kFields_012D},
-    {0x012E, 3, kFields_012E},
-    {0x012F, 2, kFields_012F},
-    {0x0130, 24, kFields_0130},
-    {0x0131, 11, kFields_0131},
-    {0x0132, 2, kFields_0132},
-    {0x0133, 65, kFields_0133},
-    {0x0134, 2, kFields_0134},
-    {0x0135, 2, kFields_0135},
-    {0x0136, 2, kFields_0136},
-    {0x0137, 2, kFields_0137},
-    {0x0138, 2, kFields_0138},
-    {0x0139, 3, kFields_0139},
-    {0x013A, 8, kFields_013A},
-    {0x013B, 1, kFields_013B},
-    {0x013C, 1, kFields_013C},
-    {0x013D, 1, kFields_013D},
-    {0x013E, 125, kFields_013E},
-    {0x013F, 1, kFields_013F},
-    {0x0140, 14, kFields_0140},
-    {0x0141, 13, kFields_0141},
-    {0x0142, 16, kFields_0142},
-    {0x0143, 5, kFields_0143},
-    {0x0144, 9, kFields_0144},
-    {0x0145, 3, kFields_0145},
-    {0x0146, 5, kFields_0146},
-    {0x0147, 4, kFields_0147},
-    {0x0148, 1, kFields_0148},
-    {0x0149, 9, kFields_0149},
-    {0x014A, 3, kFields_014A},
-    {0x014B, 6, kFields_014B},
-    {0x014C, 2, kFields_014C},
-    {0x014D, 2, kFields_014D},
-    {0x014E, 3, kFields_014E},
-    {0x014F, 12, kFields_014F},
-    {0x0150, 3, kFields_0150},
-    {0x0151, 2, kFields_0151},
-    {0x0152, 6, kFields_0152},
-    {0x0153, 16, kFields_0153},
-    {0x0154, 9, kFields_0154},
-    {0x0155, 10, kFields_0155},
-    {0x0156, 3, kFields_0156},
-    {0x0157, 13, kFields_0157},
-    {0x0158, 18, kFields_0158},
-    {0x0159, 4, kFields_0159},
-    {0x015A, 6, kFields_015A},
-    {0x015B, 3, kFields_015B},
-    {0x015C, 2, kFields_015C},
-    {0x015D, 4, kFields_015D},
-    {0x015E, 2, kFields_015E},
-    {0x015F, 3, kFields_015F},
-    {0x0160, 2, kFields_0160},
-    {0x0161, 3, kFields_0161},
-    {0x0162, 4, kFields_0162},
-    {0x0163, 13, kFields_0163},
-    {0x0164, 15, kFields_0164},
-    {0x0165, 2, kFields_0165},
-    {0x0166, 3, kFields_0166},
-    {0x0167, 7, kFields_0167},
-    {0x0168, 5, kFields_0168},
-    {0x0169, 12, kFields_0169},
-    {0x016A, 2, kFields_016A},
-    {0x016B, 61, kFields_016B},
-    {0x016C, 15, kFields_016C},
-    {0x016D, 5, kFields_016D},
-    {0x016E, 1, kFields_016E},
-    {0x016F, 3, kFields_016F},
-    {0x0170, 1, kFields_0170},
-    {0x0171, 6, kFields_0171},
-    {0x0172, 5, kFields_0172},
-    {0x0173, 76, kFields_0173},
-    {0x0174, 3, kFields_0174},
-    {0x0175, 1, kFields_0175},
-    {0x0176, 3, kFields_0176},
-    {0x0177, 1, kFields_0177},
-    {0x0178, 2, kFields_0178},
-    {0x0179, 1, kFields_0179},
-    {0x017A, 2, kFields_017A},
-    {0x017B, 2, kFields_017B},
-    {0x017C, 19, kFields_017C},
-    {0x017D, 4, kFields_017D},
-    {0x017E, 1, kFields_017E},
-    {0x017F, 2, kFields_017F},
-    {0x0180, 161, kFields_0180},
-    {0x0181, 39, kFields_0181},
-    {0x0182, 1, kFields_0182},
-    {0x0183, 4, kFields_0183},
-    {0x0184, 6, kFields_0184},
-    {0x0185, 3, kFields_0185},
-    {0x0186, 2, kFields_0186},
-    {0x0187, 42, kFields_0187},
-    {0x0188, 3, kFields_0188},
-    {0x0189, 10, kFields_0189},
-    {0x018A, 4, kFields_018A},
-    {0x018B, 2, kFields_018B},
-    {0x018C, 40, kFields_018C},
-    {0x018D, 4, kFields_018D},
-    {0x018E, 2, kFields_018E},
-    {0x018F, 7, kFields_018F},
-    {0x0190, 11, kFields_0190},
-    {0x0191, 1, kFields_0191},
-    {0x0192, 7, kFields_0192},
-    {0x0193, 4, kFields_0193},
-    {0x0194, 25, kFields_0194},
-    {0x0195, 13, kFields_0195},
-    {0x0196, 2, kFields_0196},
-    {0x0197, 5, kFields_0197},
-    {0x0198, 3, kFields_0198},
-    {0x0199, 3, kFields_0199},
-    {0x019A, 53, kFields_019A},
-    {0x019B, 19, kFields_019B},
-    {0x019C, 15, kFields_019C},
-    {0x019D, 5, kFields_019D},
-    {0x019E, 3, kFields_019E},
-    {0x019F, 4, kFields_019F},
-    {0x01A0, 6, kFields_01A0},
-    {0x01A1, 5, kFields_01A1},
-    {0x01A2, 5, kFields_01A2},
-    {0x01A3, 2, kFields_01A3},
-    {0x01A4, 2, kFields_01A4},
-    {0x01A5, 7, kFields_01A5},
-    {0x01A6, 8, kFields_01A6},
-    {0x01A7, 76, kFields_01A7},
-    {0x01A8, 6, kFields_01A8},
-    {0x01A9, 11, kFields_01A9},
-    {0x01AA, 6, kFields_01AA},
-    {0x01AB, 7, kFields_01AB},
-    {0x01AC, 17, kFields_01AC},
-    {0x01AD, 23, kFields_01AD},
-    {0x01AE, 5, kFields_01AE},
-    {0x01AF, 14, kFields_01AF},
-    {0x01B0, 13, kFields_01B0},
-    {0x01B1, 6, kFields_01B1},
-    {0x01B3, 9, kFields_01B3},
-    {0x01B4, 27, kFields_01B4},
-    {0x01B6, 6, kFields_01B6},
-    {0x01B7, 6, kFields_01B7},
-    {0x01B8, 43, kFields_01B8},
-    {0x01B9, 14, kFields_01B9},
-    {0x01BA, 6, kFields_01BA},
-    {0x01BB, 9, kFields_01BB},
-    {0x01BC, 3, kFields_01BC},
-    {0x01BD, 2, kFields_01BD},
-    {0x01BE, 3, kFields_01BE},
-    {0x01BF, 5, kFields_01BF},
-    {0x01C0, 3, kFields_01C0},
-    {0x01C1, 2, kFields_01C1},
-    {0x01C2, 2, kFields_01C2},
-    {0x01C5, 1, kFields_01C5},
-    {0x01C6, 6, kFields_01C6},
-    {0x01C9, 6, kFields_01C9},
-    {0x01CA, 1, kFields_01CA},
-    {0x01CB, 4, kFields_01CB},
-    {0x01CC, 2, kFields_01CC},
-    {0x01CD, 1, kFields_01CD},
-    {0x01CF, 10, kFields_01CF},
-    {0x01D0, 2, kFields_01D0},
-    {0x01D1, 1, kFields_01D1},
-    {0x01D3, 1, kFields_01D3},
-    {0x01D4, 7, kFields_01D4},
-    {0x01D5, 5, kFields_01D5},
-    {0x01D6, 4, kFields_01D6},
-    {0x01D7, 4, kFields_01D7},
-    {0x01D8, 4, kFields_01D8},
-    {0x01D9, 2, kFields_01D9},
-    {0x01DA, 2, kFields_01DA},
-    {0x01DB, 4, kFields_01DB},
-    {0x01DC, 2, kFields_01DC},
-    {0x01DD, 1, kFields_01DD},
-    {0x01DE, 1, kFields_01DE},
-    {0x01DF, 5, kFields_01DF},
-    {0x01E0, 42, kFields_01E0},
-    {0x01E1, 3, kFields_01E1},
-    {0x01E2, 3, kFields_01E2},
-    {0x01E3, 1, kFields_01E3},
-    {0x01E4, 1, kFields_01E4},
-    {0x01E5, 1, kFields_01E5},
-    {0x01E6, 1, kFields_01E6},
-    {0x01E7, 3, kFields_01E7},
-    {0x01E8, 5, kFields_01E8},
-    {0x01E9, 1, kFields_01E9},
-    {0x01EA, 5, kFields_01EA},
-    {0x01EB, 2, kFields_01EB},
-    {0x01EC, 2, kFields_01EC},
-    {0x01ED, 3, kFields_01ED},
-    {0x01EE, 4, kFields_01EE},
-    {0x01EF, 2, kFields_01EF},
-    {0x01F0, 4, kFields_01F0},
-    {0x01F1, 1, kFields_01F1},
-    {0x01F2, 3, kFields_01F2},
-    {0x01F3, 3, kFields_01F3},
-    {0x01F4, 2, kFields_01F4},
-    {0x01F5, 8, kFields_01F5},
-    {0x01F6, 1, kFields_01F6},
-    {0x01F7, 5, kFields_01F7},
-    {0x01F9, 5, kFields_01F9},
-    {0x01FA, 5, kFields_01FA},
-    {0x01FB, 6, kFields_01FB},
-    {0x01FC, 3, kFields_01FC},
-    {0x01FD, 1, kFields_01FD},
-    {0x01FE, 1, kFields_01FE},
-    {0x01FF, 21, kFields_01FF},
-    {0x0200, 3, kFields_0200},
-    {0x0201, 1, kFields_0201},
-    {0x0202, 1, kFields_0202},
-    {0x0203, 1, kFields_0203},
-    {0x0204, 2, kFields_0204},
-    {0x0206, 1, kFields_0206},
-    {0x0207, 1, kFields_0207},
-    {0x0208, 8, kFields_0208},
-    {0x0209, 1, kFields_0209},
-    {0x020A, 2, kFields_020A},
-    {0x020B, 1, kFields_020B},
-    {0x020E, 1, kFields_020E},
-    {0x020F, 4, kFields_020F},
-    {0x0210, 2, kFields_0210},
-    {0x0211, 2, kFields_0211},
-    {0x0212, 1, kFields_0212},
-    {0x0213, 6, kFields_0213},
-    {0x0214, 1, kFields_0214},
-    {0x0215, 2, kFields_0215},
-    {0x0216, 6, kFields_0216},
-    {0x0217, 3, kFields_0217},
-    {0x0218, 2, kFields_0218},
-    {0x0219, 3, kFields_0219},
-    {0x021A, 4, kFields_021A},
-    {0x021B, 1, kFields_021B},
-    {0x021C, 1, kFields_021C},
-    {0x021D, 9, kFields_021D},
-    {0x0220, 3, kFields_0220},
-    {0x0223, 2, kFields_0223},
-    {0x0224, 2, kFields_0224},
-    {0x0225, 2, kFields_0225},
-    {0x0226, 2, kFields_0226},
-    {0x0227, 4, kFields_0227},
-    {0x0228, 8, kFields_0228},
-    {0x022A, 1, kFields_022A},
-    {0x022C, 2, kFields_022C},
-    {0x022D, 7, kFields_022D},
-    {0x022E, 5, kFields_022E},
-    {0x022F, 3, kFields_022F},
-    {0x0230, 6, kFields_0230},
-    {0x0231, 9, kFields_0231},
-    {0x0232, 1, kFields_0232},
-    {0x0233, 1, kFields_0233},
-    {0x0234, 4, kFields_0234},
-    {0x0235, 9, kFields_0235},
-    {0x0238, 2, kFields_0238},
-    {0x0239, 6, kFields_0239},
-    {0x023B, 2, kFields_023B},
-    {0x023C, 5, kFields_023C},
-    {0x0241, 1, kFields_0241},
-    {0x0242, 1, kFields_0242},
-    {0x0243, 6, kFields_0243},
-    {0x0244, 4, kFields_0244},
-    {0x0245, 2, kFields_0245},
-    {0x0247, 1, kFields_0247},
-    {0x0248, 9, kFields_0248},
-    {0x0249, 1, kFields_0249},
-    {0x024A, 1, kFields_024A},
-    {0x024B, 8, kFields_024B},
-    {0x024C, 2, kFields_024C},
-    {0x024D, 7, kFields_024D},
-    {0x024F, 7, kFields_024F},
-    {0x0250, 2, kFields_0250},
-    {0x0252, 3, kFields_0252},
-    {0x0253, 2, kFields_0253},
-    {0x0254, 3, kFields_0254},
-    {0x0256, 1, kFields_0256},
-    {0x0257, 1, kFields_0257},
-    {0x025D, 1, kFields_025D},
-    {0x025E, 1, kFields_025E},
-    {0x025F, 10, kFields_025F},
-    {0x0260, 14, kFields_0260},
-    {0x0261, 5, kFields_0261},
-    {0x0263, 1, kFields_0263},
-    {0x0264, 2, kFields_0264},
-    {0x0266, 1, kFields_0266},
-    {0x0267, 1, kFields_0267},
-    {0x0268, 1, kFields_0268},
-    {0x0269, 2, kFields_0269},
-    {0x026A, 1, kFields_026A},
-    {0x026B, 1, kFields_026B},
-    {0x026C, 1, kFields_026C},
-    {0x026D, 2, kFields_026D},
-    {0x026E, 1, kFields_026E},
-    {0x026F, 3, kFields_026F},
-    {0x0270, 3, kFields_0270},
-    {0x0271, 4, kFields_0271},
-    {0x0272, 2, kFields_0272},
-    {0x0273, 4, kFields_0273},
-    {0x0274, 3, kFields_0274},
-    {0x0275, 2, kFields_0275},
-    {0x0276, 2, kFields_0276},
-    {0x0277, 2, kFields_0277},
-    {0x027A, 1, kFields_027A},
-    {0x027B, 2, kFields_027B},
-    {0x027C, 1, kFields_027C},
-    {0x027D, 4, kFields_027D},
-    {0x027E, 6, kFields_027E},
-    {0x027F, 1, kFields_027F},
-    {0x0280, 2, kFields_0280},
-    {0x0281, 2, kFields_0281},
-    {0x0282, 1, kFields_0282},
-    {0x0284, 2, kFields_0284},
-    {0x0286, 1, kFields_0286},
-    {0x0287, 15, kFields_0287},
-    {0x0288, 4, kFields_0288},
-    {0x0289, 3, kFields_0289},
-    {0x028A, 13, kFields_028A},
-    {0x028B, 1, kFields_028B},
-    {0x028C, 2, kFields_028C},
-    {0x028D, 1, kFields_028D},
-    {0x028E, 5, kFields_028E},
-    {0x028F, 3, kFields_028F},
-    {0x0290, 3, kFields_0290},
-    {0x0291, 5, kFields_0291},
-    {0x0293, 2, kFields_0293},
-    {0x0294, 3, kFields_0294},
-    {0x0295, 1, kFields_0295},
-    {0x0297, 2, kFields_0297},
-    {0x0298, 2, kFields_0298},
-    {0x0299, 3, kFields_0299},
-    {0x029A, 1, kFields_029A},
-    {0x029C, 1, kFields_029C},
-    {0x029D, 5, kFields_029D},
-    {0x029E, 6, kFields_029E},
-    {0x029F, 6, kFields_029F},
-    {0x02A0, 17, kFields_02A0},
-    {0x02A2, 2, kFields_02A2},
-    {0x02A5, 8, kFields_02A5},
-    {0x02A6, 5, kFields_02A6},
-    {0x02A7, 10, kFields_02A7},
-    {0x02A8, 2, kFields_02A8},
-    {0x02A9, 1, kFields_02A9},
-    {0x02AA, 3, kFields_02AA},
-    {0x02AB, 6, kFields_02AB},
-    {0x02AC, 13, kFields_02AC},
-    {0x02AD, 20, kFields_02AD},
-    {0x02B0, 7, kFields_02B0},
-    {0x02B1, 5, kFields_02B1},
-    {0x02B2, 1, kFields_02B2},
-    {0x02B3, 1, kFields_02B3},
-    {0x02B4, 2, kFields_02B4},
-    {0x02B5, 4, kFields_02B5},
-    {0x02B6, 3, kFields_02B6},
-    {0x02B7, 30, kFields_02B7},
-    {0x02B8, 18, kFields_02B8},
-    {0x02B9, 2, kFields_02B9},
-    {0x02BA, 12, kFields_02BA},
-    {0x02BB, 5, kFields_02BB},
-    {0x02BD, 2, kFields_02BD},
-    {0x02BE, 19, kFields_02BE},
-    {0x02BF, 3, kFields_02BF},
-    {0x02C2, 4, kFields_02C2},
-    {0x02C3, 4, kFields_02C3},
-    {0x02C4, 2, kFields_02C4},
-    {0x02C5, 13, kFields_02C5},
-    {0x02C7, 2, kFields_02C7},
-    {0x02C9, 3, kFields_02C9},
-    {0x02CA, 4, kFields_02CA},
-    {0x02CB, 4, kFields_02CB},
-    {0x02CC, 5, kFields_02CC},
-    {0x02CD, 1, kFields_02CD},
-    {0x02CE, 3, kFields_02CE},
-    {0x02D0, 2, kFields_02D0},
-    {0x02D1, 25, kFields_02D1},
-    {0x02D2, 5, kFields_02D2},
-    {0x02D3, 4, kFields_02D3},
-    {0x02D4, 4, kFields_02D4},
-    {0x02D5, 1, kFields_02D5},
-    {0x02D6, 2, kFields_02D6},
-    {0x02D7, 1, kFields_02D7},
-    {0x02D8, 3, kFields_02D8},
-    {0x02DA, 3, kFields_02DA},
-    {0x02DC, 2, kFields_02DC},
-    {0x02DD, 7, kFields_02DD},
-    {0x02E0, 5, kFields_02E0},
-    {0x02E1, 3, kFields_02E1},
-    {0x02E2, 2, kFields_02E2},
-    {0x02E4, 4, kFields_02E4},
-    {0x02E5, 4, kFields_02E5},
-    {0x02E6, 2, kFields_02E6},
-    {0x02E7, 8, kFields_02E7},
-    {0x02E8, 7, kFields_02E8},
-    {0x02E9, 8, kFields_02E9},
-    {0x02EA, 5, kFields_02EA},
-    {0x02EB, 1, kFields_02EB},
-    {0x02EC, 1, kFields_02EC},
-    {0x02ED, 4, kFields_02ED},
-    {0x02EE, 4, kFields_02EE},
-    {0x02F0, 1, kFields_02F0},
-    {0x02F1, 2, kFields_02F1},
-    {0x02F2, 3, kFields_02F2},
-    {0x02F3, 1, kFields_02F3},
-    {0x02F4, 14, kFields_02F4},
-    {0x02F5, 6, kFields_02F5},
-    {0x02F6, 6, kFields_02F6},
-    {0x02F7, 4, kFields_02F7},
-    {0x02F8, 5, kFields_02F8},
-    {0x02F9, 7, kFields_02F9},
-    {0x02FA, 1, kFields_02FA},
-    {0x02FB, 1, kFields_02FB},
-    {0x02FC, 3, kFields_02FC},
-    {0x02FD, 2, kFields_02FD},
-    {0x02FE, 6, kFields_02FE},
-    {0x02FF, 1, kFields_02FF},
-    {0x0300, 3, kFields_0300},
-    {0x0301, 6, kFields_0301},
-    {0x0302, 2, kFields_0302},
-    {0x0303, 3, kFields_0303},
-    {0x0307, 3, kFields_0307},
-    {0x0308, 2, kFields_0308},
-    {0x0309, 9, kFields_0309},
-    {0x030A, 6, kFields_030A},
-    {0x030B, 11, kFields_030B},
-    {0x030C, 10, kFields_030C},
-    {0x030D, 6, kFields_030D},
-    {0x030E, 2, kFields_030E},
-    {0x030F, 4, kFields_030F},
-    {0x0310, 1, kFields_0310},
-    {0x0311, 2, kFields_0311},
-    {0x0312, 1, kFields_0312},
-    {0x0313, 5, kFields_0313},
-    {0x0314, 2, kFields_0314},
-    {0x0315, 4, kFields_0315},
-    {0x0316, 4, kFields_0316},
-    {0x0317, 5, kFields_0317},
-    {0x0318, 2, kFields_0318},
-    {0x0319, 8, kFields_0319},
-    {0x031A, 1, kFields_031A},
-    {0x031B, 1, kFields_031B},
-    {0x031C, 13, kFields_031C},
-    {0x031D, 2, kFields_031D},
-    {0x031E, 1, kFields_031E},
-    {0x031F, 1, kFields_031F},
-    {0x0320, 2, kFields_0320},
-    {0x0321, 1, kFields_0321},
-    {0x0322, 2, kFields_0322},
-    {0x0323, 3, kFields_0323},
-    {0x0324, 4, kFields_0324},
-    {0x0325, 2, kFields_0325},
-    {0x0327, 3, kFields_0327},
-    {0x0329, 1, kFields_0329},
-    {0x032A, 2, kFields_032A},
-    {0x032C, 6, kFields_032C},
-    {0x032D, 2, kFields_032D},
-    {0x032E, 3, kFields_032E},
-    {0x032F, 1, kFields_032F},
-    {0x0330, 1, kFields_0330},
-    {0x0331, 1, kFields_0331},
-    {0x0332, 2, kFields_0332},
-    {0x0333, 1, kFields_0333},
-    {0x0334, 2, kFields_0334},
-    {0x0337, 5, kFields_0337},
-    {0x0338, 2, kFields_0338},
-    {0x0339, 3, kFields_0339},
-    {0x033A, 6, kFields_033A},
-    {0x033D, 1, kFields_033D},
-    {0x033E, 1, kFields_033E},
-    {0x0341, 2, kFields_0341},
-    {0x0342, 2, kFields_0342},
-    {0x0343, 8, kFields_0343},
-    {0x0344, 2, kFields_0344},
-    {0x0345, 2, kFields_0345},
-    {0x0346, 1, kFields_0346},
-    {0x0347, 1, kFields_0347},
-    {0x0348, 2, kFields_0348},
-    {0x034A, 2, kFields_034A},
-    {0x034B, 3, kFields_034B},
-    {0x034C, 4, kFields_034C},
-    {0x0350, 2, kFields_0350},
-    {0x0351, 2, kFields_0351},
-    {0x0352, 4, kFields_0352},
-    {0x0353, 1, kFields_0353},
-    {0x0354, 2, kFields_0354},
-    {0x0356, 1, kFields_0356},
-    {0x0357, 4, kFields_0357},
-    {0x0358, 1, kFields_0358},
-    {0x0359, 3, kFields_0359},
-    {0x035A, 1, kFields_035A},
-    {0x035B, 1, kFields_035B},
-    {0x035D, 22, kFields_035D},
-    {0x035E, 27, kFields_035E},
-    {0x035F, 14, kFields_035F},
-    {0x0360, 4, kFields_0360},
-    {0x0363, 5, kFields_0363},
-    {0x0364, 1, kFields_0364},
-    {0x0366, 1, kFields_0366},
-    {0x0367, 6, kFields_0367},
-    {0x0368, 6, kFields_0368},
-    {0x0369, 9, kFields_0369},
-    {0x036A, 2, kFields_036A},
-    {0x036C, 7, kFields_036C},
-    {0x036E, 6, kFields_036E},
-    {0x036F, 9, kFields_036F},
-    {0x0370, 1, kFields_0370},
-    {0x0372, 1, kFields_0372},
-    {0x0374, 10, kFields_0374},
-    {0x0375, 4, kFields_0375},
-    {0x0376, 38, kFields_0376},
-    {0x0377, 4, kFields_0377},
-    {0x0378, 15, kFields_0378},
-    {0x0379, 25, kFields_0379},
-    {0x037B, 8, kFields_037B},
-    {0x037C, 2, kFields_037C},
-    {0x037D, 1, kFields_037D},
-    {0x037E, 1, kFields_037E},
-    {0x037F, 1, kFields_037F},
-    {0x0380, 5, kFields_0380},
-    {0x0381, 14, kFields_0381},
-    {0x0383, 29, kFields_0383},
-    {0x0384, 1, kFields_0384},
-    {0x0385, 20, kFields_0385},
-    {0x0386, 1, kFields_0386},
-    {0x0387, 2, kFields_0387},
-    {0x0389, 3, kFields_0389},
-    {0x038A, 3, kFields_038A},
-    {0x038B, 13, kFields_038B},
-    {0x038C, 6, kFields_038C},
-    {0x038D, 10, kFields_038D},
-    {0x038E, 8, kFields_038E},
-    {0x038F, 8, kFields_038F},
-    {0x0390, 8, kFields_0390},
-    {0x0391, 8, kFields_0391},
-    {0x0392, 10, kFields_0392},
-    {0x0393, 8, kFields_0393},
-    {0x0394, 8, kFields_0394},
-    {0x0395, 13, kFields_0395},
-    {0x0396, 1, kFields_0396},
-    {0x0397, 1, kFields_0397},
-    {0x0398, 3, kFields_0398},
-    {0x0399, 1, kFields_0399},
-    {0x039A, 1, kFields_039A},
-    {0x039B, 3, kFields_039B},
-    {0x039C, 3, kFields_039C},
-    {0x039D, 1, kFields_039D},
-    {0x039E, 3, kFields_039E},
-    {0x039F, 3, kFields_039F},
-    {0x03A0, 3, kFields_03A0},
-    {0x03A1, 1, kFields_03A1},
-    {0x03A2, 1, kFields_03A2},
-    {0x03A3, 1, kFields_03A3},
-    {0x03A4, 1, kFields_03A4},
-    {0x03A5, 7, kFields_03A5},
-    {0x03A6, 1, kFields_03A6},
-    {0x03A7, 1, kFields_03A7},
-    {0x03A8, 4, kFields_03A8},
-    {0x03A9, 1, kFields_03A9},
-    {0x03AA, 3, kFields_03AA},
-    {0x03AB, 1, kFields_03AB},
-    {0x03AC, 2, kFields_03AC},
-    {0x03AD, 1, kFields_03AD},
-    {0x03AE, 2, kFields_03AE},
-    {0x03AF, 3, kFields_03AF},
-    {0x03B1, 1, kFields_03B1},
-    {0x03B2, 3, kFields_03B2},
-    {0x03B3, 2, kFields_03B3},
-    {0x03B4, 2, kFields_03B4},
-    {0x03B6, 5, kFields_03B6},
-    {0x03B7, 1, kFields_03B7},
-    {0x03B9, 1, kFields_03B9},
-    {0x03BA, 1, kFields_03BA},
-    {0x03BC, 2, kFields_03BC},
-    {0x03BD, 5, kFields_03BD},
-    {0x03BF, 1, kFields_03BF},
-    {0x03C0, 3, kFields_03C0},
-    {0x03C1, 3, kFields_03C1},
-    {0x03C2, 3, kFields_03C2},
-    {0x03C3, 1, kFields_03C3},
-    {0x03C4, 14, kFields_03C4},
-    {0x03C5, 7, kFields_03C5},
-    {0x03C6, 26, kFields_03C6},
-    {0x03C7, 2, kFields_03C7},
-    {0x03C8, 11, kFields_03C8},
-    {0x03C9, 1, kFields_03C9},
-    {0x03CA, 1, kFields_03CA},
-    {0x03CE, 2, kFields_03CE},
-    {0x03CF, 2, kFields_03CF},
-    {0x03D0, 1, kFields_03D0},
-    {0x03D1, 1, kFields_03D1},
-    {0x03D2, 3, kFields_03D2},
-    {0x03D5, 1, kFields_03D5},
-    {0x03D6, 2, kFields_03D6},
-    {0x03D7, 1, kFields_03D7},
-    {0x03D8, 3, kFields_03D8},
-    {0x03D9, 2, kFields_03D9},
-    {0x03DA, 4, kFields_03DA},
-    {0x03DB, 3, kFields_03DB},
-    {0x03DC, 1, kFields_03DC},
-    {0x03DD, 1, kFields_03DD},
-    {0x03DE, 1, kFields_03DE},
-    {0x03DF, 4, kFields_03DF},
-    {0x03E0, 6, kFields_03E0},
-    {0x03E1, 4, kFields_03E1},
-    {0x03E2, 42, kFields_03E2},
-    {0x03E3, 108, kFields_03E3},
-    {0x03E4, 4, kFields_03E4},
-    {0x03E5, 24, kFields_03E5},
-    {0x03E6, 4, kFields_03E6},
-    {0x03E7, 4, kFields_03E7},
-    {0x03E8, 13, kFields_03E8},
-    {0x03E9, 6, kFields_03E9},
-    {0x03EA, 9, kFields_03EA},
-    {0x03EB, 2, kFields_03EB},
-    {0x03ED, 13, kFields_03ED},
-    {0x03EE, 9, kFields_03EE},
-    {0x03EF, 1, kFields_03EF},
-    {0x03F3, 1, kFields_03F3},
-    {0x03F5, 2, kFields_03F5},
-    {0x03F6, 4, kFields_03F6},
-    {0x03F7, 1, kFields_03F7},
-    {0x03F8, 42, kFields_03F8},
-    {0x03F9, 3, kFields_03F9},
-    {0x03FA, 148, kFields_03FA},
-    {0x03FB, 148, kFields_03FB},
-    {0x03FC, 6, kFields_03FC},
-    {0x03FD, 1, kFields_03FD},
-    {0x03FE, 17, kFields_03FE},
-    {0x03FF, 7, kFields_03FF},
-    {0x0400, 2, kFields_0400},
-    {0x0401, 21, kFields_0401},
-    {0x0402, 1, kFields_0402},
-    {0x0403, 1, kFields_0403},
-    {0x0404, 4, kFields_0404},
-    {0x0405, 1, kFields_0405},
-    {0x0406, 2, kFields_0406},
-    {0x0407, 11, kFields_0407},
-    {0x0408, 5, kFields_0408},
-    {0x0409, 5, kFields_0409},
-    {0x040A, 5, kFields_040A},
-    {0x040B, 3, kFields_040B},
-    {0x040C, 5, kFields_040C},
-    {0x040D, 7, kFields_040D},
-    {0x040E, 2, kFields_040E},
-    {0x040F, 2, kFields_040F},
-    {0x0410, 3, kFields_0410},
-    {0x0411, 2, kFields_0411},
-    {0x0413, 3, kFields_0413},
-    {0x0414, 3, kFields_0414},
-    {0x0415, 10, kFields_0415},
-    {0x0416, 3, kFields_0416},
-    {0x0417, 1, kFields_0417},
-    {0x0418, 1, kFields_0418},
-    {0x0419, 2, kFields_0419},
-    {0x041A, 1, kFields_041A},
-    {0x041B, 10, kFields_041B},
-    {0x041C, 1, kFields_041C},
-    {0x041D, 1, kFields_041D},
-    {0x041E, 1, kFields_041E},
-    {0x041F, 2, kFields_041F},
-    {0x0420, 8, kFields_0420},
-    {0x0421, 1, kFields_0421},
-    {0x0422, 4, kFields_0422},
-    {0x0423, 1, kFields_0423},
-    {0x0424, 1, kFields_0424},
-    {0x0425, 1, kFields_0425},
-    {0x0426, 1, kFields_0426},
-    {0x0427, 1, kFields_0427},
-    {0x0428, 1, kFields_0428},
-    {0x042A, 2, kFields_042A},
-    {0x042B, 2, kFields_042B},
-    {0x042C, 2, kFields_042C},
-    {0x042D, 2, kFields_042D},
-    {0x042E, 1, kFields_042E},
-    {0x042F, 1, kFields_042F},
-    {0x0430, 1, kFields_0430},
-    {0x0431, 1, kFields_0431},
-    {0x0432, 1, kFields_0432},
-    {0x0433, 1, kFields_0433},
-    {0x0434, 1, kFields_0434},
-    {0x0435, 1, kFields_0435},
-    {0x0436, 1, kFields_0436},
-    {0x0437, 4, kFields_0437},
-    {0x0438, 3, kFields_0438},
-    {0x043A, 7, kFields_043A},
-    {0x043C, 2, kFields_043C},
-    {0x043D, 1, kFields_043D},
-    {0x043E, 1, kFields_043E},
-    {0x043F, 1, kFields_043F},
-    {0x0440, 1, kFields_0440},
-    {0x0441, 1, kFields_0441},
-    {0x0442, 3, kFields_0442},
-    {0x0443, 1, kFields_0443},
-    {0x0444, 2, kFields_0444},
-    {0x0445, 3, kFields_0445},
-    {0x0446, 1, kFields_0446},
-    {0x0448, 1, kFields_0448},
-    {0x0449, 1, kFields_0449},
-    {0x044A, 1, kFields_044A},
-    {0x044B, 3, kFields_044B},
-    {0x044E, 3, kFields_044E},
-    {0x044F, 3, kFields_044F},
-    {0x0450, 4, kFields_0450},
-    {0x0451, 4, kFields_0451},
-    {0x0452, 4, kFields_0452},
-    {0x0453, 8, kFields_0453},
-    {0x0454, 16, kFields_0454},
-    {0x0455, 71, kFields_0455},
-    {0x0456, 6, kFields_0456},
-    {0x0457, 1, kFields_0457},
-    {0x0458, 2, kFields_0458},
-    {0x0459, 2, kFields_0459},
-    {0x045A, 6, kFields_045A},
-    {0x045B, 4, kFields_045B},
-    {0x045C, 9, kFields_045C},
-    {0x045D, 3, kFields_045D},
-    {0x045E, 3, kFields_045E},
-    {0x0460, 4, kFields_0460},
-    {0x0461, 5, kFields_0461},
-    {0x0462, 13, kFields_0462},
-    {0x0463, 2, kFields_0463},
-    {0x0464, 22, kFields_0464},
-    {0x0465, 5, kFields_0465},
-    {0x0466, 7, kFields_0466},
-    {0x0467, 44, kFields_0467},
-    {0x0468, 7, kFields_0468},
-    {0x0469, 6, kFields_0469},
-    {0x046A, 8, kFields_046A},
-    {0x046B, 7, kFields_046B},
-    {0x046C, 11, kFields_046C},
-    {0x046D, 17, kFields_046D},
-    {0x046E, 25, kFields_046E},
-    {0x046F, 2, kFields_046F},
-    {0x0470, 12, kFields_0470},
-    {0x0471, 2, kFields_0471},
-    {0x0472, 1, kFields_0472},
-    {0x0473, 2, kFields_0473},
-    {0x0474, 2, kFields_0474},
-    {0x0475, 2, kFields_0475},
-    {0x0476, 9, kFields_0476},
-    {0x0477, 1, kFields_0477},
-    {0x0478, 2, kFields_0478},
-    {0x0479, 1, kFields_0479},
-    {0x047A, 5, kFields_047A},
-    {0x047B, 12, kFields_047B},
-    {0x047C, 9, kFields_047C},
-    {0x047D, 11, kFields_047D},
-    {0x047E, 2, kFields_047E},
-    {0x047F, 10, kFields_047F},
-    {0x0480, 2, kFields_0480},
-    {0x0481, 4, kFields_0481},
-    {0x0482, 3, kFields_0482},
-    {0x0483, 2, kFields_0483},
-    {0x0484, 2, kFields_0484},
-    {0x0485, 2, kFields_0485},
-    {0x0486, 1, kFields_0486},
-    {0x0487, 4, kFields_0487},
-    {0x0488, 1, kFields_0488},
-    {0x0489, 3, kFields_0489},
-    {0x048A, 2, kFields_048A},
-    {0x048B, 7, kFields_048B},
-    {0x048C, 2, kFields_048C},
-    {0x048D, 138, kFields_048D},
-    {0x048E, 3, kFields_048E},
-    {0x048F, 7, kFields_048F},
-    {0x0490, 1, kFields_0490},
-    {0x0491, 5, kFields_0491},
-    {0x0492, 3, kFields_0492},
-    {0x0493, 39, kFields_0493},
-    {0x0494, 20, kFields_0494},
-    {0x0495, 2, kFields_0495},
-    {0x0496, 3, kFields_0496},
-    {0x0497, 1, kFields_0497},
-    {0x0498, 7, kFields_0498},
-    {0x0499, 2, kFields_0499},
-    {0x049A, 19, kFields_049A},
-    {0x049B, 1, kFields_049B},
-    {0x049C, 3, kFields_049C},
-    {0x049D, 38, kFields_049D},
-    {0x049E, 6, kFields_049E},
-    {0x049F, 3, kFields_049F},
-    {0x04A0, 2, kFields_04A0},
-    {0x04A1, 5, kFields_04A1},
-    {0x04A2, 5, kFields_04A2},
-    {0x04A3, 2, kFields_04A3},
-    {0x04A4, 4, kFields_04A4},
-    {0x04A5, 5, kFields_04A5},
-    {0x04A6, 1, kFields_04A6},
-    {0x04A7, 1, kFields_04A7},
-    {0x04A8, 3, kFields_04A8},
-    {0x04A9, 2, kFields_04A9},
-    {0x04AA, 3, kFields_04AA},
-    {0x04AB, 11, kFields_04AB},
-    {0x04AC, 3, kFields_04AC},
-    {0x04AD, 1, kFields_04AD},
-    {0x04AE, 1, kFields_04AE},
-    {0x04AF, 2, kFields_04AF},
-    {0x04B0, 1, kFields_04B0},
-    {0x04B1, 2, kFields_04B1},
-    {0x04B2, 1, kFields_04B2},
-    {0x04B3, 3, kFields_04B3},
-    {0x04B4, 2, kFields_04B4},
-    {0x04B5, 1, kFields_04B5},
-    {0x04B6, 5, kFields_04B6},
-    {0x04B7, 3, kFields_04B7},
-    {0x04B8, 2, kFields_04B8},
-    {0x04B9, 2, kFields_04B9},
-    {0x04BA, 3, kFields_04BA},
-    {0x04BB, 6, kFields_04BB},
-    {0x04BC, 4, kFields_04BC},
-    {0x04BD, 1, kFields_04BD},
-    {0x04BE, 1, kFields_04BE},
-    {0x04BF, 1, kFields_04BF},
-    {0x04C0, 5, kFields_04C0},
-    {0x04C2, 1, kFields_04C2},
-    {0x04C3, 1, kFields_04C3},
-    {0x04C4, 7, kFields_04C4},
-    {0x04C5, 3, kFields_04C5},
-    {0x04C6, 2, kFields_04C6},
-    {0x04C7, 1, kFields_04C7},
-    {0x04C8, 2, kFields_04C8},
-    {0x04C9, 1, kFields_04C9},
-    {0x04CA, 1, kFields_04CA},
-    {0x04CB, 2, kFields_04CB},
-    {0x04CC, 1, kFields_04CC},
-    {0x04CD, 2, kFields_04CD},
-    {0x04CE, 4, kFields_04CE},
-    {0x04CF, 1, kFields_04CF},
-    {0x04D0, 2, kFields_04D0},
-    {0x04D2, 4, kFields_04D2},
-    {0x04D3, 6, kFields_04D3},
-    {0x04D4, 2, kFields_04D4},
-    {0x04D5, 3, kFields_04D5},
-    {0x04D6, 2, kFields_04D6},
-    {0x04D7, 26, kFields_04D7},
-    {0x04D8, 5, kFields_04D8},
-    {0x04D9, 1, kFields_04D9},
-    {0x04DA, 1, kFields_04DA},
-    {0x04DB, 3, kFields_04DB},
-    {0x04DC, 3, kFields_04DC},
-    {0x04DD, 3, kFields_04DD},
-    {0x04DE, 11, kFields_04DE},
-    {0x04DF, 9, kFields_04DF},
-    {0x04E0, 1, kFields_04E0},
-    {0x04E1, 1, kFields_04E1},
-    {0x04E2, 6, kFields_04E2},
-    {0x04E3, 1, kFields_04E3},
-    {0x04E4, 3, kFields_04E4},
-    {0x04E5, 2, kFields_04E5},
-    {0x04E6, 2, kFields_04E6},
-    {0x04E7, 3, kFields_04E7},
-    {0x04E8, 3, kFields_04E8},
-    {0x04E9, 3, kFields_04E9},
-    {0x04EA, 5, kFields_04EA},
-    {0x04EB, 2, kFields_04EB},
-    {0x04EC, 2, kFields_04EC},
-    {0x04ED, 2, kFields_04ED},
-    {0x04EE, 3, kFields_04EE},
-    {0x04EF, 3, kFields_04EF},
-    {0x04F0, 4, kFields_04F0},
-    {0x04F1, 5, kFields_04F1},
-    {0x04F2, 9, kFields_04F2},
-    {0x04F3, 1, kFields_04F3},
-    {0x04F4, 17, kFields_04F4},
-    {0x04F5, 4, kFields_04F5},
-    {0x04F6, 1, kFields_04F6},
-    {0x04F7, 2, kFields_04F7},
-    {0x04F8, 2, kFields_04F8},
-    {0x04FA, 1, kFields_04FA},
-    {0x04FB, 1, kFields_04FB},
-    {0x04FC, 4, kFields_04FC},
-    {0x04FD, 2, kFields_04FD},
-    {0x04FE, 2, kFields_04FE},
-    {0x04FF, 15, kFields_04FF},
-    {0x0500, 1, kFields_0500},
-    {0x0501, 3, kFields_0501},
-    {0x0502, 5, kFields_0502},
-    {0x0503, 22, kFields_0503},
-    {0x0504, 10, kFields_0504},
-    {0x0505, 9, kFields_0505},
-    {0x0506, 26, kFields_0506},
-    {0x0507, 3, kFields_0507},
-    {0x0508, 3, kFields_0508},
-    {0x0509, 1, kFields_0509},
-    {0x050A, 1, kFields_050A},
-    {0x050B, 6, kFields_050B},
-    {0x050C, 3, kFields_050C},
-    {0x050D, 2, kFields_050D},
-    {0x050E, 9, kFields_050E},
-    {0x0511, 1, kFields_0511},
-    {0x0512, 1, kFields_0512},
-    {0x0513, 3, kFields_0513},
-    {0x0514, 2, kFields_0514},
-    {0x0515, 6, kFields_0515},
-    {0x0516, 1, kFields_0516},
-    {0x0517, 4, kFields_0517},
-    {0x0518, 7, kFields_0518},
-    {0x0519, 1, kFields_0519},
-    {0x051A, 6, kFields_051A},
-    {0x051B, 1, kFields_051B},
-    {0x051C, 4, kFields_051C},
-    {0x051D, 3, kFields_051D},
-    {0x051E, 4, kFields_051E},
-    {0x051F, 4, kFields_051F},
-    {0x0520, 4, kFields_0520},
-    {0x0521, 8, kFields_0521},
-    {0x0522, 3, kFields_0522},
-    {0x0523, 5, kFields_0523},
-    {0x0524, 450, kFields_0524},
-    {0x0525, 1, kFields_0525},
-    {0x0527, 1, kFields_0527},
-    {0x0528, 3, kFields_0528},
-    {0x0529, 2, kFields_0529},
-    {0x052A, 2, kFields_052A},
-    {0x052C, 1, kFields_052C},
-    {0x052D, 7, kFields_052D},
-    {0x052E, 1, kFields_052E},
-    {0x052F, 6, kFields_052F},
-    {0x0530, 1, kFields_0530},
-    {0x0531, 2, kFields_0531},
-    {0x0532, 1, kFields_0532},
-    {0x0533, 5, kFields_0533},
-    {0x0534, 7, kFields_0534},
-    {0x0535, 4, kFields_0535},
-    {0x0536, 2, kFields_0536},
-    {0x0537, 4, kFields_0537},
-    {0x0538, 6, kFields_0538},
-    {0x0539, 1, kFields_0539},
-    {0x053A, 3, kFields_053A},
-    {0x053B, 2, kFields_053B},
-    {0x053C, 1, kFields_053C},
-    {0x053D, 2, kFields_053D},
-    {0x053E, 3, kFields_053E},
-    {0x053F, 3, kFields_053F},
-    {0x0540, 4, kFields_0540},
-    {0x0541, 2, kFields_0541},
-    {0x0542, 2, kFields_0542},
-    {0x0543, 2, kFields_0543},
-    {0x0544, 2, kFields_0544},
-    {0x0546, 2, kFields_0546},
-    {0x0547, 2, kFields_0547},
-    {0x0548, 1, kFields_0548},
-    {0x0549, 2, kFields_0549},
-    {0x054B, 1, kFields_054B},
-    {0x054C, 2, kFields_054C},
-    {0x054D, 2, kFields_054D},
-    {0x054E, 1, kFields_054E},
-    {0x0551, 1, kFields_0551},
-    {0x0552, 1, kFields_0552},
-    {0x0553, 1, kFields_0553},
-    {0x0555, 1, kFields_0555},
-    {0x0556, 2, kFields_0556},
-    {0x0557, 1, kFields_0557},
-    {0x0558, 1, kFields_0558},
-    {0x0559, 2, kFields_0559},
-    {0x055A, 1, kFields_055A},
-    {0x055B, 1, kFields_055B},
-    {0x055C, 2, kFields_055C},
-    {0x055E, 1, kFields_055E},
-    {0x055F, 3, kFields_055F},
-    {0x0560, 1, kFields_0560},
-    {0x0561, 1, kFields_0561},
-    {0x0562, 14, kFields_0562},
-    {0x0563, 1, kFields_0563},
-    {0x0564, 3, kFields_0564},
-    {0x0565, 2, kFields_0565},
-    {0x0566, 7, kFields_0566},
-    {0x0567, 3, kFields_0567},
-    {0x0568, 2, kFields_0568},
-    {0x0569, 4, kFields_0569},
-    {0x056A, 3, kFields_056A},
-    {0x056B, 2, kFields_056B},
-    {0x056C, 4, kFields_056C},
-    {0x056D, 3, kFields_056D},
-    {0x056E, 4, kFields_056E},
-    {0x056F, 1, kFields_056F},
-    {0x0570, 3, kFields_0570},
-    {0x0571, 2, kFields_0571},
-    {0x0572, 3, kFields_0572},
-    {0x0573, 4, kFields_0573},
-    {0x0574, 2, kFields_0574},
-    {0x0575, 1, kFields_0575},
-    {0x0576, 1, kFields_0576},
-    {0x0577, 1, kFields_0577},
-    {0x0579, 1, kFields_0579},
-    {0x057A, 6, kFields_057A},
-    {0x057B, 19, kFields_057B},
-    {0x057C, 2, kFields_057C},
-    {0x057D, 4, kFields_057D},
-    {0x057E, 6, kFields_057E},
-    {0x057F, 3, kFields_057F},
-    {0x0580, 1, kFields_0580},
-    {0x0581, 13, kFields_0581},
-    {0x0582, 6, kFields_0582},
-    {0x0583, 2, kFields_0583},
-    {0x0585, 1, kFields_0585},
-    {0x0586, 1, kFields_0586},
-    {0x0587, 30, kFields_0587},
-    {0x0588, 1, kFields_0588},
-    {0x0589, 3, kFields_0589},
-    {0x058A, 4, kFields_058A},
-    {0x058B, 2, kFields_058B},
-    {0x058C, 1, kFields_058C},
-    {0x058D, 9, kFields_058D},
-    {0x058E, 1, kFields_058E},
-    {0x058F, 1, kFields_058F},
-    {0x0590, 8, kFields_0590},
-    {0x0591, 2, kFields_0591},
-    {0x0592, 2, kFields_0592},
-    {0x0593, 3, kFields_0593},
-    {0x0594, 22, kFields_0594},
-    {0x0595, 6, kFields_0595},
-    {0x0596, 5, kFields_0596},
-    {0x0597, 3, kFields_0597},
-    {0x0598, 4, kFields_0598},
-    {0x0599, 7, kFields_0599},
-    {0x059A, 2, kFields_059A},
-    {0x059B, 4, kFields_059B},
-    {0x059C, 5, kFields_059C},
-    {0x059D, 3, kFields_059D},
-    {0x059E, 3, kFields_059E},
-    {0x059F, 2, kFields_059F},
-    {0x05A0, 4, kFields_05A0},
-    {0x05A1, 3, kFields_05A1},
-    {0x05A2, 3, kFields_05A2},
-    {0x05A3, 3, kFields_05A3},
-    {0x05A4, 5, kFields_05A4},
-    {0x05A5, 1, kFields_05A5},
-    {0x05A7, 5, kFields_05A7},
-    {0x05A8, 2, kFields_05A8},
-    {0x05A9, 4, kFields_05A9},
-    {0x05AA, 2, kFields_05AA},
-    {0x05AB, 2, kFields_05AB},
-    {0x05AC, 4, kFields_05AC},
-    {0x05AD, 5, kFields_05AD},
-    {0x05AE, 1, kFields_05AE},
-    {0x05AF, 3, kFields_05AF},
-    {0x05B0, 4, kFields_05B0},
-    {0x05B1, 5, kFields_05B1},
-    {0x05B2, 2, kFields_05B2},
-    {0x05B3, 8, kFields_05B3},
-    {0x05B4, 3, kFields_05B4},
-    {0x05B5, 2, kFields_05B5},
-    {0x05B6, 1, kFields_05B6},
-    {0x05B7, 5, kFields_05B7},
-    {0x05B8, 2, kFields_05B8},
-    {0x05B9, 2, kFields_05B9},
-    {0x05BA, 2, kFields_05BA},
-    {0x05BB, 2, kFields_05BB},
-    {0x05BC, 4, kFields_05BC},
-    {0x05BD, 8, kFields_05BD},
-    {0x05BE, 3, kFields_05BE},
-    {0x05BF, 4, kFields_05BF},
-    {0x05C0, 8, kFields_05C0},
-    {0x05C1, 3, kFields_05C1},
-    {0x05C2, 10, kFields_05C2},
-    {0x05C3, 3, kFields_05C3},
-    {0x05C4, 5, kFields_05C4},
-    {0x05C5, 8, kFields_05C5},
-    {0x05C6, 5, kFields_05C6},
-    {0x05C7, 4, kFields_05C7},
-    {0x05C8, 6, kFields_05C8},
-    {0x05C9, 4, kFields_05C9},
-    {0x05CA, 17, kFields_05CA},
-    {0x05CB, 8, kFields_05CB},
-    {0x05CC, 4, kFields_05CC},
-    {0x05CD, 2, kFields_05CD},
-    {0x05CE, 7, kFields_05CE},
-    {0x05CF, 2, kFields_05CF},
-    {0x05D0, 3, kFields_05D0},
-    {0x05D1, 1, kFields_05D1},
-    {0x05D2, 2, kFields_05D2},
-    {0x05D3, 1, kFields_05D3},
-    {0x05D4, 2, kFields_05D4},
-    {0x05D5, 14, kFields_05D5},
-    {0x05D6, 3, kFields_05D6},
-    {0x05D7, 2, kFields_05D7},
-    {0x05D8, 3, kFields_05D8},
-    {0x05D9, 3, kFields_05D9},
-    {0x05DA, 15, kFields_05DA},
-    {0x05DB, 2, kFields_05DB},
-    {0x05DC, 2, kFields_05DC},
-    {0x05DD, 3, kFields_05DD},
-    {0x05DE, 2, kFields_05DE},
-    {0x05DF, 9, kFields_05DF},
-    {0x05E0, 2, kFields_05E0},
-    {0x05E1, 2, kFields_05E1},
-    {0x05E2, 9, kFields_05E2},
-    {0x05E3, 2, kFields_05E3},
-    {0x05E4, 6, kFields_05E4},
-    {0x05E7, 3, kFields_05E7},
-    {0x05E8, 2, kFields_05E8},
-    {0x05E9, 1, kFields_05E9},
-    {0x05EA, 1, kFields_05EA},
-    {0x05EB, 3, kFields_05EB},
-    {0x05EC, 2, kFields_05EC},
-    {0x05ED, 4, kFields_05ED},
-    {0x05EE, 5, kFields_05EE},
-    {0x05EF, 2, kFields_05EF},
-    {0x05F0, 2, kFields_05F0},
-    {0x05F1, 3, kFields_05F1},
-    {0x05F2, 3, kFields_05F2},
-    {0x05F3, 3, kFields_05F3},
-    {0x05F4, 5, kFields_05F4},
-    {0x05F5, 2, kFields_05F5},
-    {0x05F6, 2, kFields_05F6},
-    {0x05F7, 3, kFields_05F7},
-    {0x05F8, 5, kFields_05F8},
-    {0x05F9, 3, kFields_05F9},
-    {0x05FA, 5, kFields_05FA},
-    {0x05FB, 1, kFields_05FB},
-    {0x05FC, 1, kFields_05FC},
-    {0x05FD, 6, kFields_05FD},
-    {0x05FE, 1, kFields_05FE},
-    {0x05FF, 2, kFields_05FF},
-    {0x0600, 1, kFields_0600},
-    {0x0601, 2, kFields_0601},
-    {0x0602, 2, kFields_0602},
-    {0x0603, 2, kFields_0603},
-    {0x0604, 4, kFields_0604},
-    {0x0605, 4, kFields_0605},
-    {0x0606, 1, kFields_0606},
-    {0x0607, 26, kFields_0607},
-    {0x0608, 7, kFields_0608},
-    {0x0609, 3, kFields_0609},
-    {0x060A, 32, kFields_060A},
-    {0x060B, 5, kFields_060B},
-    {0x060C, 45, kFields_060C},
-    {0x060D, 3, kFields_060D},
-    {0x060E, 6, kFields_060E},
-    {0x060F, 2, kFields_060F},
-    {0x0610, 5, kFields_0610},
-    {0x0611, 4, kFields_0611},
-    {0x0612, 2, kFields_0612},
-    {0x0613, 2, kFields_0613},
-    {0x0614, 19, kFields_0614},
-    {0x0615, 1, kFields_0615},
-    {0x0616, 2, kFields_0616},
-    {0x0617, 1, kFields_0617},
-    {0x0618, 9, kFields_0618},
-    {0x0619, 28, kFields_0619},
-    {0x061A, 3, kFields_061A},
-    {0x061B, 4, kFields_061B},
-    {0x061C, 2, kFields_061C},
-    {0x061D, 1, kFields_061D},
-    {0x061E, 2, kFields_061E},
-    {0x061F, 9, kFields_061F},
-    {0x0620, 2, kFields_0620},
-    {0x0621, 2, kFields_0621},
-    {0x0622, 2, kFields_0622},
-    {0x0623, 3, kFields_0623},
-    {0x0624, 2, kFields_0624},
-    {0x0625, 11, kFields_0625},
+inline constexpr Field kFields_L038F_S0000[] = {
+    {"Gaussian", 0, 0, 0x0000, 16886},
+    {"k900P", 0, 0, 0x0000, 16889},
+    {"k30FPS", 0, 0, 0x0000, 16889},
+    {"eCMT_Invalid", 0, 0, 0x0000, 16889},
+    {"XAxis", 0, 0, 0x0000, 16890},
+    {"Linear", 0, 0, 0x0000, 16890},
+    {"drawConeOff", 0, 0, 0x0000, 16890},
+    {"drawTextOff", 0, 0, 0x0000, 16890},
+    {"Min", 0, 0, 0x0000, 16863},
+    {"Local", 0, 0, 0x0000, 16861},
+    {"Off", 0, 0, 0x0000, 16890},
+    {"Shape_Box", 0, 0, 0x0000, 16890},
+    {"selected", 0, 0, 0x0000, 16872},
+    {"DefaultFlags", 0, 0, 0x0000, 16890},
+    {"ColorUnselected", 0, 238, 0x0000, 16890},
+    {"CurveType_Hermite", 0, 0, 0x0000, 16890},
+    {"LeftStick", 0, 0, 0x0000, 16890},
+    {"eDocked", 0, 0, 0x0000, 16891},
+    {"eDPForever", 0, 0, 0x0000, 16892},
+    {"None", 0, 0, 0x0000, 16892},
+    {"HIKSolvingStepRollExtraction", 0, 1, 0x0000, 16892},
+    {"HIKSolvingStepLeftArmSnS", 0, 2, 0x0000, 16892},
+    {"HIKSolvingStepRightArmSnS", 0, 4, 0x0000, 16892},
+    {"HIKSolvingStepLeftLegSnS", 0, 8, 0x0000, 16892},
+    {"HIKSolvingStepRightLegSnS", 0, 16, 0x0000, 16892},
+    {"HIKSolvingStepModifiers", 0, 32, 0x0000, 16892},
+    {"GuassianSqrt", 1, 0, 0x0000, 16865},
+    {"k1080P", 1, 0, 0x0000, 16889},
+    {"k60FPS", 1, 0, 0x0000, 16889},
+    {"eCMT_Block", 1, 0, 0x0000, 16889},
+    {"YAxis", 1, 0, 0x0000, 16890},
+    {"SmoothStep", 1, 0, 0x0000, 16886},
+    {"drawConeOn", 1, 0, 0x0000, 16890},
+    {"drawTextOn", 1, 0, 0x0000, 16871},
+    {"Max", 1, 0, 0x0000, 16890},
+    {"World", 1, 0, 0x0000, 16890},
+    {"LPF", 1, 0, 0x0000, 16890},
+    {"Shape_Sphere", 1, 0, 0x0000, 16854},
+    {"first", 1, 0, 0x0000, 16872},
+    {"CurveType_Bezier", 1, 0, 0x0000, 16890},
+    {"RightStick", 1, 0, 0x0000, 16890},
+    {"eEnteringBoatFromDock", 1, 0, 0x0000, 16891},
+    {"eDPActionDuration", 1, 0, 0x0000, 16890},
+    {"KPAUnpin", 1, 0, 0x0000, 16892},
+    {"HIKSolvingStepBodyPull", 1, 0, 0x0000, 16892},
+    {"Active", 1, 0, 0x0000, 16854},
+    {"Linear", 2, 0, 0x0000, 16886},
+    {"k4K", 2, 0, 0x0000, 16889},
+    {"k40FPS", 2, 0, 0x0000, 16889},
+    {"eCMT_Evade", 2, 0, 0x0000, 16889},
+    {"ZAxis", 2, 0, 0x0000, 16865},
+    {"Gaussian", 2, 0, 0x0000, 16890},
+    {"Average", 2, 0, 0x0000, 16890},
+    {"HPF", 2, 0, 0x0000, 16890},
+    {"second", 2, 0, 0x0000, 16890},
+    {"eInBoat", 2, 0, 0x0000, 16891},
+    {"HIKSolvingStepContact", 2, 0, 0x0000, 16892},
+    {"All", 2, 0, 0x0000, 16880},
+    {"Quadratic", 3, 0, 0x0000, 16886},
+    {"k720P", 3, 0, 0x0000, 16889},
+    {"k120FPS", 3, 0, 0x0000, 16889},
+    {"eCMT_Parry", 3, 0, 0x0000, 16889},
+    {"_kStateCount", 3, 0, 0x0000, 16890},
+    {"AnimCurve", 3, 0, 0x0000, 16890},
+    {"Multiply", 3, 0, 0x0000, 16890},
+    {"APF", 3, 0, 0x0000, 16890},
+    {"third", 3, 0, 0x0000, 16890},
+    {"CurveType_Bezier_Interactive", 3, 0, 0x0000, 16870},
+    {"eDockingOnDock", 3, 0, 0x0000, 16891},
+    {"_kDiscoveryTypCount", 3, 0, 0x0000, 16869},
+    {"MaxSplitPositions", 4, 0, 0x0000, 16886},
+    {"k1440P", 4, 0, 0x0000, 16889},
+    {"eCMT_SonGrab_Success", 4, 0, 0x0000, 16889},
+    {"GeoAvg", 4, 0, 0x0000, 16871},
+    {"BPF", 4, 0, 0x0000, 16884},
+    {"last", 4, 0, 0x0000, 16890},
+    {"k180UpCW", 4, 0, 0x0000, 16891},
+    {"k180Min", 4, 0, 0x0000, 16891},
+    {"eEnteringBoatFromBeach", 4, 0, 0x0000, 16891},
+    {"HIKSolvingStepContactApprox", 4, 0, 0x0000, 16892},
+    {"eCMT_SonGrab_Fail", 5, 0, 0x0000, 16889},
+    {"Notch", 5, 0, 0x0000, 16890},
+    {"k180UpCCW", 5, 0, 0x0000, 16891},
+    {"eDockingOnBeach", 5, 0, 0x0000, 16891},
+    {"eCMT_SonFollowUp", 6, 0, 0x0000, 16868},
+    {"PEQ", 6, 0, 0x0000, 16890},
+    {"k180DownCW", 6, 0, 0x0000, 16891},
+    {"eBeached", 6, 0, 0x0000, 16891},
+    {"LSH", 7, 0, 0x0000, 16890},
+    {"k180DownCCW", 7, 0, 0x0000, 16891},
+    {"k180Max", 7, 0, 0x0000, 16891},
+    {"HSH", 8, 0, 0x0000, 16890},
+    {"k360CW", 8, 0, 0x0000, 16891},
+    {"k360Min", 8, 0, 0x0000, 16891},
+    {"HIKSolvingStepLeftShoulder", 8, 0, 0x0000, 16892},
+    {"Rendering", 9, 0, 0x0000, 16871},
+    {"k360CCW", 9, 0, 0x0000, 16868},
+    {"k360Max", 9, 0, 0x0000, 16891},
+    {"EmitterZoneCount", 16, 0, 0x0000, 16886},
+    {"MaxEmitterPriority", 16, 0, 0x0000, 16886},
+    {"HIKSolvingStepRightShoulder", 16, 0, 0x0000, 16892},
+    {"HIKSolvingStepLeftArm", 32, 0, 0x0000, 16892},
+    {"KRNoEvent", 36, 0, 0x0000, 16892},
+    {"KREventMismatch", 37, 0, 0x0000, 16892},
+    {"HIKSolvingStepRightArm", 64, 0, 0x0000, 16892},
+    {"k128", 128, 0, 0x0000, 16890},
+    {"HIKSolvingStepLeftLeg", 128, 0, 0x0000, 16892},
+    {"ColorHULL", 255, 255, 0x0000, 16890},
+    {"k256", 256, 0, 0x0000, 16890},
+    {"HIKSolvingStepRightLeg", 256, 0, 0x0000, 16892},
+    {"k512", 512, 0, 0x0000, 16890},
+    {"HIKSolvingStepLeftHand", 512, 0, 0x0000, 16892},
+    {"HIKSolvingStepRightHand", 1024, 0, 0x0000, 16892},
+    {"HIKSolvingStepLeftFoot", 2048, 0, 0x0000, 16892},
+    {"HIKSolvingStepRightFoot", 4096, 0, 0x0000, 16892},
+    {"HIKSolvingStepHead", 8192, 0, 0x0000, 16892},
+    {"HIKSolvingStepSpine", 16384, 0, 0x0000, 16892},
+    {"HIKSolvingStepAllParts", 32760, 0, 0x0000, 16892},
+    {"HIKSolvingStepHipsTranslation", 32768, 0, 0x0000, 16892},
 };
 
-inline constexpr int kStructCount = 1427;
+inline constexpr Struct kStructs[] = {
+    {0, 0x0000, 5, 0, nullptr, kFields_L0000_S0000},
+    {0, 0x0001, 1, 0, nullptr, kFields_L0000_S0001},
+    {1, 0x0000, 1, 0, nullptr, kFields_L0001_S0000},
+    {1, 0x000B, 8, 14, "dctools.Impulse", kFields_L0001_S000B},
+    {1, 0x000C, 6, 24, "dctools.Tween", kFields_L0001_S000C},
+    {1, 0x000D, 2, 24, "dctools.JointRef", kFields_L0001_S000D},
+    {1, 0x000E, 7, 40, "dctools.InputPlug", kFields_L0001_S000E},
+    {1, 0x000F, 11, 336, "dctools.AnimNode", kFields_L0001_S000F},
+    {1, 0x0010, 247, 5648, "dctools.DriverBank", kFields_L0001_S0010},
+    {2, 0x000F, 11, 336, "dctools.AnimNode", kFields_L0002_S000F},
+    {2, 0x0011, 58, 1456, "dctools.MaterialDriver", kFields_L0002_S0011},
+    {2, 0x0012, 3, 24, "dctools.InSample", kFields_L0002_S0012},
+    {3, 0x000F, 11, 336, "dctools.AnimNode", kFields_L0003_S000F},
+    {3, 0x0013, 168, 2064, "dctools.RbfNode", kFields_L0003_S0013},
+    {4, 0x000F, 11, 336, "dctools.AnimNode", kFields_L0004_S000F},
+    {4, 0x0014, 163, 984, "dctools.BlendSample", kFields_L0004_S0014},
+    {5, 0x000F, 11, 336, "dctools.AnimNode", kFields_L0005_S000F},
+    {5, 0x0015, 19, 424, "dctools.PoseReader", kFields_L0005_S0015},
+    {6, 0x000F, 11, 336, "dctools.AnimNode", kFields_L0006_S000F},
+    {6, 0x0016, 2, 344, "dctools.MultiTrigger", kFields_L0006_S0016},
+    {7, 0x000F, 11, 336, "dctools.AnimNode", kFields_L0007_S000F},
+    {7, 0x0017, 5, 400, "dctools.DistanceNode", kFields_L0007_S0017},
+    {8, 0x000F, 11, 336, "dctools.AnimNode", kFields_L0008_S000F},
+    {8, 0x0018, 13, 400, "dctools.TransformAttrNode", kFields_L0008_S0018},
+    {9, 0x000F, 11, 336, "dctools.AnimNode", kFields_L0009_S000F},
+    {9, 0x0019, 24, 1136, "dctools.TransformDriver", kFields_L0009_S0019},
+    {9, 0x001A, 3, 40, "dctools.SoundPortalReference", kFields_L0009_S001A},
+    {9, 0x001B, 3, 40, "dctools.SoundEmitterReference", kFields_L0009_S001B},
+    {9, 0x001C, 3, 40, "dctools.SoundZoneReference", kFields_L0009_S001C},
+    {9, 0x001D, 3, 40, "dctools.SoundLinkReference", kFields_L0009_S001D},
+    {9, 0x001E, 10, 128, "dctools.SoundGraph", kFields_L0009_S001E},
+    {9, 0x001F, 1, 1, "dctools.SoundPosition", kFields_L0009_S001F},
+    {9, 0x0020, 2, 32, "dctools.RtpcPair", kFields_L0009_S0020},
+    {9, 0x0021, 58, 888, "dctools.SoundEmitter", kFields_L0009_S0021},
+    {9, 0x0022, 3, 0, nullptr, kFields_L0009_S0022},
+    {9, 0x0023, 8, 256, "dctools.SoundRegion", kFields_L0009_S0023},
+    {9, 0x0024, 2, 24, "dctools.SoundPortal", kFields_L0009_S0024},
+    {9, 0x0025, 2, 24, "dctools.SoundPortalGroup", kFields_L0009_S0025},
+    {9, 0x0026, 1, 4, "dctools.SoundThreatLevel", kFields_L0009_S0026},
+    {9, 0x0027, 6, 40, "dctools.SoundProximityTrigger", kFields_L0009_S0027},
+    {9, 0x0028, 2, 24, "dctools.SoundAnimEventPair", kFields_L0009_S0028},
+    {9, 0x0029, 4, 48, "dctools.SoundAnimatedEvents", kFields_L0009_S0029},
+    {9, 0x002A, 1, 20, "dctools.RVector3", kFields_L0009_S002A},
+    {9, 0x002B, 2, 0, nullptr, kFields_L0009_S002B},
+    {9, 0x002C, 3, 6, "dctools.Window", kFields_L0009_S002C},
+    {9, 0x002D, 6, 12, "dctools.AxisLimits", kFields_L0009_S002D},
+    {9, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0009_S002E},
+    {9, 0x002F, 33, 152, "dctools.Shadows", kFields_L0009_S002F},
+    {10, 0x002E, 10, 88, "dctools.EffectParm", kFields_L000A_S002E},
+    {10, 0x0030, 9, 104, "dctools.SsAndCapsuleAo", kFields_L000A_S0030},
+    {11, 0x002E, 10, 88, "dctools.EffectParm", kFields_L000B_S002E},
+    {11, 0x0031, 27, 152, "dctools.Exposure", kFields_L000B_S0031},
+    {12, 0x002E, 10, 88, "dctools.EffectParm", kFields_L000C_S002E},
+    {12, 0x0032, 21, 176, "dctools.ColorCorrection", kFields_L000C_S0032},
+    {13, 0x002E, 10, 88, "dctools.EffectParm", kFields_L000D_S002E},
+    {13, 0x0033, 9, 128, "dctools.Vignette", kFields_L000D_S0033},
+    {14, 0x002E, 10, 88, "dctools.EffectParm", kFields_L000E_S002E},
+    {14, 0x0034, 3, 96, "dctools.MotionBlur", kFields_L000E_S0034},
+    {15, 0x002E, 10, 88, "dctools.EffectParm", kFields_L000F_S002E},
+    {15, 0x0035, 3, 96, "dctools.FilmGrain", kFields_L000F_S0035},
+    {16, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0010_S002E},
+    {16, 0x0036, 9, 104, "dctools.Bloom", kFields_L0010_S0036},
+    {17, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0011_S002E},
+    {17, 0x0037, 31, 176, "dctools.Fog", kFields_L0011_S0037},
+    {18, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0012_S002E},
+    {18, 0x0038, 99, 352, "dctools.VolumetricFog", kFields_L0012_S0038},
+    {19, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0013_S002E},
+    {19, 0x0039, 5, 96, "dctools.ScreenspaceReflections", kFields_L0013_S0039},
+    {19, 0x003A, 26, 96, "dctools.SpriteLensFlareInstance", kFields_L0013_S003A},
+    {19, 0x003B, 17, 3152, "dctools.SpriteLensFlare", kFields_L0013_S003B},
+    {19, 0x003C, 59, 192, "dctools.SmLight", kFields_L0013_S003C},
+    {20, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0014_S002E},
+    {20, 0x003D, 83, 0, nullptr, kFields_L0014_S003D},
+    {21, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0015_S002E},
+    {21, 0x003E, 27, 208, "dctools.LightingEnvironment", kFields_L0015_S003E},
+    {22, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0016_S002E},
+    {22, 0x003F, 35, 192, "dctools.OutdoorLightingEnvironment", kFields_L0016_S003F},
+    {22, 0x0040, 12, 112, "dctools.CubemapRegion", kFields_L0016_S0040},
+    {22, 0x0041, 7, 64, "dctools.GiVolume", kFields_L0016_S0041},
+    {22, 0x0042, 3, 8, "dctools.GiImportanceVolume", kFields_L0016_S0042},
+    {22, 0x0043, 3, 12, "dctools.AoVolume", kFields_L0016_S0043},
+    {22, 0x0044, 7, 40, "dctools.MirrorShadowRegion", kFields_L0016_S0044},
+    {22, 0x0045, 7, 40, "dctools.VistaShadowRegion", kFields_L0016_S0045},
+    {22, 0x0046, 18, 96, "dctools.VolumetricFogDensityMap", kFields_L0016_S0046},
+    {22, 0x0047, 2, 0, nullptr, kFields_L0016_S0047},
+    {23, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0017_S002E},
+    {23, 0x0048, 2, 96, "dctools.CameraNearFar", kFields_L0017_S0048},
+    {23, 0x0049, 1, 4, "dctools.WeaponAttach", kFields_L0017_S0049},
+    {23, 0x004A, 4, 16, "dctools.AssistRange", kFields_L0017_S004A},
+    {23, 0x004B, 1, 20, "dctools.ZoomSnapRange", kFields_L0017_S004B},
+    {23, 0x004C, 2, 8, "dctools.LockOnRange", kFields_L0017_S004C},
+    {23, 0x004D, 46, 272, "dctools.CameraTarget", kFields_L0017_S004D},
+    {23, 0x004E, 3, 12, "dctools.SoftConstraint", kFields_L0017_S004E},
+    {23, 0x004F, 35, 152, "dctools.CameraRecenter", kFields_L0017_S004F},
+    {24, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0018_S002E},
+    {24, 0x0050, 17, 160, "dctools.CameraControl", kFields_L0018_S0050},
+    {24, 0x0051, 8, 32, "dctools.CameraFollow", kFields_L0018_S0051},
+    {24, 0x0052, 9, 52, "dctools.CameraControlConstraints", kFields_L0018_S0052},
+    {24, 0x0053, 6, 80, "dctools.CameraTransition", kFields_L0018_S0053},
+    {24, 0x0055, 4, 16, "dctools.ScreenBounds", kFields_L0018_S0055},
+    {24, 0x0056, 8, 32, "dctools.StrafeAssistFrame", kFields_L0018_S0056},
+    {24, 0x0057, 2, 24, "dctools.PitchAdjust", kFields_L0018_S0057},
+    {24, 0x0058, 6, 32, "dctools.CameraRail", kFields_L0018_S0058},
+    {25, 0x004D, 46, 272, "dctools.CameraTarget", kFields_L0019_S004D},
+    {25, 0x0059, 7, 344, "dctools.SplineTarget", kFields_L0019_S0059},
+    {26, 0x002E, 10, 88, "dctools.EffectParm", kFields_L001A_S002E},
+    {26, 0x005A, 297, 976, "dctools.Camera", kFields_L001A_S005A},
+    {26, 0x005B, 1, 0, nullptr, kFields_L001A_S005B},
+    {26, 0x005C, 7, 28, "dctools.IkFeetProperties", kFields_L001A_S005C},
+    {26, 0x005D, 5, 20, "dctools.IkHandsProperties", kFields_L001A_S005D},
+    {26, 0x005E, 4, 80, "dctools.ProceduralCreatureAnimation", kFields_L001A_S005E},
+    {26, 0x005F, 11, 112, "dctools.TraverseNodeData", kFields_L001A_S005F},
+    {26, 0x0060, 1, 16, "dctools.TraversePath", kFields_L001A_S0060},
+    {26, 0x0061, 4, 64, "dctools.TraverseGraphLinkConnection", kFields_L001A_S0061},
+    {26, 0x0063, 1, 1, "dctools.TraverseGraph", kFields_L001A_S0063},
+    {26, 0x0064, 2, 16, "dctools.SplineAnchor", kFields_L001A_S0064},
+    {26, 0x0065, 4, 48, "dctools.SplineCurve", kFields_L001A_S0065},
+    {26, 0x0066, 3, 3, "dctools.NavObstacle", kFields_L001A_S0066},
+    {26, 0x0067, 11, 44, "dctools.ShapeData", kFields_L001A_S0067},
+    {26, 0x0068, 20, 192, "dctools.TraverseLink", kFields_L001A_S0068},
+    {26, 0x0069, 3, 24, "dctools.Annotation", kFields_L001A_S0069},
+    {26, 0x006A, 8, 48, "dctools.AutomaticWetnessFromHeight", kFields_L001A_S006A},
+    {26, 0x006B, 10, 40, "dctools.Decal", kFields_L001A_S006B},
+    {26, 0x006C, 15, 68, "dctools.PhysicsRigidBody", kFields_L001A_S006C},
+    {26, 0x006D, 1, 2, "dctools.PhysicsCollisionShape", kFields_L001A_S006D},
+    {26, 0x006E, 3, 16, "dctools.PhysicsCollisionBox", kFields_L001A_S006E},
+    {27, 0x006D, 1, 2, "dctools.PhysicsCollisionShape", kFields_L001B_S006D},
+    {27, 0x006F, 2, 8, "dctools.PhysicsCollisionSphere", kFields_L001B_S006F},
+    {28, 0x006D, 1, 2, "dctools.PhysicsCollisionShape", kFields_L001C_S006D},
+    {28, 0x0070, 2, 0, nullptr, kFields_L001C_S0070},
+    {29, 0x006D, 1, 2, "dctools.PhysicsCollisionShape", kFields_L001D_S006D},
+    {29, 0x0071, 2, 0, nullptr, kFields_L001D_S0071},
+    {29, 0x0072, 7, 0, nullptr, kFields_L001D_S0072},
+    {29, 0x0073, 7, 20, "dctools.WindMotor", kFields_L001D_S0073},
+    {29, 0x0074, 7, 0, nullptr, kFields_L001D_S0074},
+    {29, 0x0075, 4, 32, "dctools.FlightVolume", kFields_L001D_S0075},
+    {29, 0x0076, 6, 48, "dctools.Entity", kFields_L001D_S0076},
+    {29, 0x0077, 5, 48, "dctools.CollisionSharedProperties", kFields_L001D_S0077},
+    {29, 0x0078, 7, 48, "dctools.CollisionAttributes", kFields_L001D_S0078},
+    {29, 0x007A, 4, 16, "dctools.WindLeaves", kFields_L001D_S007A},
+    {29, 0x007B, 59, 232, "dctools.ParticleEmitter", kFields_L001D_S007B},
+    {29, 0x007C, 4, 16, "dctools.ParticleCurveRampEntry", kFields_L001D_S007C},
+    {29, 0x007D, 1, 0, nullptr, kFields_L001D_S007D},
+    {29, 0x007E, 6, 24, "dctools.ParticleColourRampEntry", kFields_L001D_S007E},
+    {29, 0x007F, 1, 0, nullptr, kFields_L001D_S007F},
+    {29, 0x0080, 20, 88, "dctools.ParticleField", kFields_L001D_S0080},
+    {29, 0x0081, 175, 840, "dctools.ParticleSystem", kFields_L001D_S0081},
+    {29, 0x0082, 7, 80, "dctools.MfxDrag", kFields_L001D_S0082},
+    {29, 0x0083, 41, 224, "dctools.CustomRt", kFields_L001D_S0083},
+    {29, 0x0084, 2, 8, "dctools.PreStream", kFields_L001D_S0084},
+    {29, 0x0085, 1, 16, "dctools.InteractZoneReference", kFields_L001D_S0085},
+    {29, 0x0086, 54, 440, "dctools.InteractZone", kFields_L001D_S0086},
+    {29, 0x0087, 1, 16, "dctools.VisualScriptInstanceReference", kFields_L001D_S0087},
+    {29, 0x0088, 1, 0, nullptr, kFields_L001D_S0088},
+    {29, 0x0089, 1, 0, nullptr, kFields_L001D_S0089},
+    {29, 0x008A, 1, 1, "dctools.GameModuleLootPot", kFields_L001D_S008A},
+    {29, 0x008B, 1, 0, nullptr, kFields_L001D_S008B},
+    {29, 0x008C, 7, 88, "dctools.ContextAction", kFields_L001D_S008C},
+    {29, 0x008D, 1, 16, "dctools.ProjectileSpline", kFields_L001D_S008D},
+    {30, 0x002E, 10, 88, "dctools.EffectParm", kFields_L001E_S002E},
+    {30, 0x008E, 7, 104, "dctools.AmbientWind", kFields_L001E_S008E},
+    {31, 0x002E, 10, 88, "dctools.EffectParm", kFields_L001F_S002E},
+    {31, 0x008F, 5, 96, "dctools.ParticleSettings", kFields_L001F_S008F},
+    {32, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0020_S002E},
+    {32, 0x0090, 21, 120, "dctools.HeightFieldSettings", kFields_L0020_S0090},
+    {32, 0x0091, 4, 16, "dctools.CreatureLodScale", kFields_L0020_S0091},
+    {33, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0021_S002E},
+    {33, 0x0092, 7, 352, "dctools.CreatureLodSettings", kFields_L0021_S0092},
+    {33, 0x0093, 5, 72, "dctools.WeatherState", kFields_L0021_S0093},
+    {33, 0x0094, 2, 304, "dctools.WeatherSettings", kFields_L0021_S0094},
+    {33, 0x0095, 9, 64, "dctools.TextObject", kFields_L0021_S0095},
+    {33, 0x0096, 5, 56, "dctools.TextBox", kFields_L0021_S0096},
+    {33, 0x0098, 2, 0, nullptr, kFields_L0021_S0098},
+    {33, 0x0099, 2, 0, nullptr, kFields_L0021_S0099},
+    {33, 0x009A, 2, 0, nullptr, kFields_L0021_S009A},
+    {33, 0x009B, 2, 0, nullptr, kFields_L0021_S009B},
+    {33, 0x009C, 1, 0, nullptr, kFields_L0021_S009C},
+    {33, 0x009D, 1, 0, nullptr, kFields_L0021_S009D},
+    {34, 0x009C, 1, 0, nullptr, kFields_L0022_S009C},
+    {34, 0x009D, 1, 0, nullptr, kFields_L0022_S009D},
+    {34, 0x00A1, 16, 0, nullptr, kFields_L0022_S00A1},
+    {34, 0x00A2, 4, 0, nullptr, kFields_L0022_S00A2},
+    {34, 0x00A3, 3, 0, nullptr, kFields_L0022_S00A3},
+    {34, 0x00A4, 10, 0, nullptr, kFields_L0022_S00A4},
+    {34, 0x00A5, 6, 0, nullptr, kFields_L0022_S00A5},
+    {34, 0x00A6, 5, 0, nullptr, kFields_L0022_S00A6},
+    {34, 0x00A7, 21, 0, nullptr, kFields_L0022_S00A7},
+    {34, 0x00A8, 8, 0, nullptr, kFields_L0022_S00A8},
+    {34, 0x00A9, 2, 0, nullptr, kFields_L0022_S00A9},
+    {34, 0x00AA, 6, 0, nullptr, kFields_L0022_S00AA},
+    {34, 0x00AB, 3, 128, "level_scripting.OnWalletResourceUpdatedNode", kFields_L0022_S00AB},
+    {35, 0x00AA, 6, 0, nullptr, kFields_L0023_S00AA},
+    {35, 0x00AC, 3, 0, nullptr, kFields_L0023_S00AC},
+    {36, 0x00AA, 6, 0, nullptr, kFields_L0024_S00AA},
+    {36, 0x00AD, 3, 0, nullptr, kFields_L0024_S00AD},
+    {37, 0x00AA, 6, 0, nullptr, kFields_L0025_S00AA},
+    {37, 0x00AE, 8, 0, nullptr, kFields_L0025_S00AE},
+    {38, 0x00AA, 6, 0, nullptr, kFields_L0026_S00AA},
+    {38, 0x00AF, 2, 0, nullptr, kFields_L0026_S00AF},
+    {39, 0x00AA, 6, 0, nullptr, kFields_L0027_S00AA},
+    {39, 0x00AF, 2, 0, nullptr, kFields_L0027_S00AF},
+    {39, 0x00B0, 3, 0, nullptr, kFields_L0027_S00B0},
+    {40, 0x00AA, 6, 0, nullptr, kFields_L0028_S00AA},
+    {40, 0x00B1, 13, 0, nullptr, kFields_L0028_S00B1},
+    {41, 0x00AA, 6, 0, nullptr, kFields_L0029_S00AA},
+    {41, 0x00B2, 6, 0, nullptr, kFields_L0029_S00B2},
+    {41, 0x00B3, 3, 0, nullptr, kFields_L0029_S00B3},
+    {41, 0x00B4, 2, 0, nullptr, kFields_L0029_S00B4},
+    {41, 0x00B5, 1, 0, nullptr, kFields_L0029_S00B5},
+    {41, 0x00B6, 3, 0, nullptr, kFields_L0029_S00B6},
+    {41, 0x00B7, 7, 0, nullptr, kFields_L0029_S00B7},
+    {41, 0x00B8, 1, 0, nullptr, kFields_L0029_S00B8},
+    {42, 0x00B7, 1, 0, nullptr, kFields_L002A_S00B7},
+    {42, 0x00B8, 1, 0, nullptr, kFields_L002A_S00B8},
+    {43, 0x00B7, 1, 0, nullptr, kFields_L002B_S00B7},
+    {43, 0x00B8, 13, 0, nullptr, kFields_L002B_S00B8},
+    {44, 0x00B7, 2, 0, nullptr, kFields_L002C_S00B7},
+    {44, 0x00B9, 1, 0, nullptr, kFields_L002C_S00B9},
+    {45, 0x00B7, 1, 0, nullptr, kFields_L002D_S00B7},
+    {45, 0x00B9, 1, 0, nullptr, kFields_L002D_S00B9},
+    {46, 0x00B7, 1, 0, nullptr, kFields_L002E_S00B7},
+    {46, 0x00B9, 19, 0, nullptr, kFields_L002E_S00B9},
+    {47, 0x00B7, 2, 0, nullptr, kFields_L002F_S00B7},
+    {47, 0x00BA, 1, 0, nullptr, kFields_L002F_S00BA},
+    {48, 0x00B7, 1, 0, nullptr, kFields_L0030_S00B7},
+    {48, 0x00BA, 1, 0, nullptr, kFields_L0030_S00BA},
+    {49, 0x00B7, 1, 0, nullptr, kFields_L0031_S00B7},
+    {49, 0x00BA, 5, 0, nullptr, kFields_L0031_S00BA},
+    {50, 0x00B7, 2, 0, nullptr, kFields_L0032_S00B7},
+    {50, 0x00BB, 1, 0, nullptr, kFields_L0032_S00BB},
+    {51, 0x00B7, 1, 0, nullptr, kFields_L0033_S00B7},
+    {51, 0x00BB, 1, 0, nullptr, kFields_L0033_S00BB},
+    {52, 0x00B7, 1, 0, nullptr, kFields_L0034_S00B7},
+    {52, 0x00BB, 7, 0, nullptr, kFields_L0034_S00BB},
+    {53, 0x00B7, 2, 0, nullptr, kFields_L0035_S00B7},
+    {53, 0x00BC, 1, 0, nullptr, kFields_L0035_S00BC},
+    {54, 0x00B7, 1, 0, nullptr, kFields_L0036_S00B7},
+    {54, 0x00BC, 1, 0, nullptr, kFields_L0036_S00BC},
+    {55, 0x00B7, 1, 0, nullptr, kFields_L0037_S00B7},
+    {55, 0x00BC, 19, 32, "creatureeditor.CharacterFxTagData", kFields_L0037_S00BC},
+    {55, 0x00BD, 2, 0, nullptr, kFields_L0037_S00BD},
+    {55, 0x00BE, 3, 0, nullptr, kFields_L0037_S00BE},
+    {55, 0x00BF, 2, 0, nullptr, kFields_L0037_S00BF},
+    {55, 0x00C0, 1, 0, nullptr, kFields_L0037_S00C0},
+    {55, 0x00C1, 6, 0, nullptr, kFields_L0037_S00C1},
+    {55, 0x00C2, 1, 0, nullptr, kFields_L0037_S00C2},
+    {55, 0x00C3, 3, 0, nullptr, kFields_L0037_S00C3},
+    {55, 0x00C4, 1, 0, nullptr, kFields_L0037_S00C4},
+    {55, 0x00C5, 2, 0, nullptr, kFields_L0037_S00C5},
+    {55, 0x00C6, 3, 0, nullptr, kFields_L0037_S00C6},
+    {55, 0x00C7, 1, 0, nullptr, kFields_L0037_S00C7},
+    {55, 0x00C8, 1, 0, nullptr, kFields_L0037_S00C8},
+    {55, 0x00C9, 1, 0, nullptr, kFields_L0037_S00C9},
+    {55, 0x00CA, 10, 0, nullptr, kFields_L0037_S00CA},
+    {55, 0x00CB, 2, 0, nullptr, kFields_L0037_S00CB},
+    {55, 0x00CC, 2, 0, nullptr, kFields_L0037_S00CC},
+    {55, 0x00CD, 3, 0, nullptr, kFields_L0037_S00CD},
+    {55, 0x00CE, 3, 0, nullptr, kFields_L0037_S00CE},
+    {55, 0x00CF, 1, 0, nullptr, kFields_L0037_S00CF},
+    {56, 0x00AA, 6, 0, nullptr, kFields_L0038_S00AA},
+    {56, 0x00AF, 2, 0, nullptr, kFields_L0038_S00AF},
+    {57, 0x00AA, 6, 0, nullptr, kFields_L0039_S00AA},
+    {57, 0x00AF, 2, 0, nullptr, kFields_L0039_S00AF},
+    {57, 0x00D1, 4, 0, nullptr, kFields_L0039_S00D1},
+    {58, 0x00AA, 6, 0, nullptr, kFields_L003A_S00AA},
+    {58, 0x00AF, 2, 0, nullptr, kFields_L003A_S00AF},
+    {58, 0x00D2, 4, 0, nullptr, kFields_L003A_S00D2},
+    {59, 0x00AA, 6, 0, nullptr, kFields_L003B_S00AA},
+    {59, 0x00AF, 2, 0, nullptr, kFields_L003B_S00AF},
+    {59, 0x00D3, 7, 0, nullptr, kFields_L003B_S00D3},
+    {60, 0x00AA, 6, 0, nullptr, kFields_L003C_S00AA},
+    {60, 0x00AF, 2, 0, nullptr, kFields_L003C_S00AF},
+    {60, 0x00D4, 11, 0, nullptr, kFields_L003C_S00D4},
+    {61, 0x00AA, 6, 0, nullptr, kFields_L003D_S00AA},
+    {61, 0x00AF, 2, 0, nullptr, kFields_L003D_S00AF},
+    {61, 0x00D5, 6, 0, nullptr, kFields_L003D_S00D5},
+    {62, 0x00AA, 6, 0, nullptr, kFields_L003E_S00AA},
+    {62, 0x00AF, 2, 0, nullptr, kFields_L003E_S00AF},
+    {62, 0x00D6, 15, 0, nullptr, kFields_L003E_S00D6},
+    {63, 0x00AA, 6, 0, nullptr, kFields_L003F_S00AA},
+    {63, 0x00AF, 2, 0, nullptr, kFields_L003F_S00AF},
+    {63, 0x00D7, 3, 0, nullptr, kFields_L003F_S00D7},
+    {63, 0x00D8, 5, 0, nullptr, kFields_L003F_S00D8},
+    {63, 0x00D9, 10, 0, nullptr, kFields_L003F_S00D9},
+    {63, 0x00DA, 3, 0, nullptr, kFields_L003F_S00DA},
+    {63, 0x00DB, 1, 0, nullptr, kFields_L003F_S00DB},
+    {64, 0x00D8, 5, 0, nullptr, kFields_L0040_S00D8},
+    {64, 0x00DC, 1, 0, nullptr, kFields_L0040_S00DC},
+    {65, 0x00D8, 5, 0, nullptr, kFields_L0041_S00D8},
+    {65, 0x00DD, 5, 0, nullptr, kFields_L0041_S00DD},
+    {66, 0x00D8, 5, 0, nullptr, kFields_L0042_S00D8},
+    {66, 0x00DE, 3, 0, nullptr, kFields_L0042_S00DE},
+    {67, 0x00D8, 5, 0, nullptr, kFields_L0043_S00D8},
+    {67, 0x00DF, 2, 0, nullptr, kFields_L0043_S00DF},
+    {68, 0x00D8, 5, 0, nullptr, kFields_L0044_S00D8},
+    {68, 0x00E0, 1, 0, nullptr, kFields_L0044_S00E0},
+    {69, 0x00D8, 5, 0, nullptr, kFields_L0045_S00D8},
+    {69, 0x00E1, 3, 0, nullptr, kFields_L0045_S00E1},
+    {69, 0x00E2, 2, 0, nullptr, kFields_L0045_S00E2},
+    {69, 0x00E3, 2, 0, nullptr, kFields_L0045_S00E3},
+    {69, 0x00E4, 5, 0, nullptr, kFields_L0045_S00E4},
+    {69, 0x00E5, 10, 0, nullptr, kFields_L0045_S00E5},
+    {69, 0x00E6, 1, 0, nullptr, kFields_L0045_S00E6},
+    {69, 0x00E7, 12, 0, nullptr, kFields_L0045_S00E7},
+    {69, 0x00E8, 3, 0, nullptr, kFields_L0045_S00E8},
+    {69, 0x00E9, 3, 0, nullptr, kFields_L0045_S00E9},
+    {69, 0x00EA, 3, 0, nullptr, kFields_L0045_S00EA},
+    {69, 0x00EB, 3, 0, nullptr, kFields_L0045_S00EB},
+    {69, 0x00ED, 10, 0, nullptr, kFields_L0045_S00ED},
+    {69, 0x00EE, 2, 0, nullptr, kFields_L0045_S00EE},
+    {69, 0x00EF, 28, 0, nullptr, kFields_L0045_S00EF},
+    {69, 0x00F0, 6, 0, nullptr, kFields_L0045_S00F0},
+    {69, 0x00F1, 2, 0, nullptr, kFields_L0045_S00F1},
+    {69, 0x00F2, 2, 0, nullptr, kFields_L0045_S00F2},
+    {69, 0x00F3, 2, 0, nullptr, kFields_L0045_S00F3},
+    {69, 0x00F4, 4, 0, nullptr, kFields_L0045_S00F4},
+    {69, 0x00F5, 3, 0, nullptr, kFields_L0045_S00F5},
+    {69, 0x00F6, 1, 0, nullptr, kFields_L0045_S00F6},
+    {69, 0x00F7, 11, 0, nullptr, kFields_L0045_S00F7},
+    {69, 0x00F8, 2, 0, nullptr, kFields_L0045_S00F8},
+    {69, 0x00F9, 2, 0, nullptr, kFields_L0045_S00F9},
+    {69, 0x00FA, 2, 0, nullptr, kFields_L0045_S00FA},
+    {69, 0x00FB, 1, 0, nullptr, kFields_L0045_S00FB},
+    {70, 0x00FA, 2, 0, nullptr, kFields_L0046_S00FA},
+    {70, 0x00FB, 1, 0, nullptr, kFields_L0046_S00FB},
+    {70, 0x00FC, 1, 0, nullptr, kFields_L0046_S00FC},
+    {71, 0x00FA, 2, 0, nullptr, kFields_L0047_S00FA},
+    {71, 0x00FD, 3, 0, nullptr, kFields_L0047_S00FD},
+    {72, 0x00FA, 2, 0, nullptr, kFields_L0048_S00FA},
+    {72, 0x00FD, 3, 0, nullptr, kFields_L0048_S00FD},
+    {72, 0x00FE, 1, 0, nullptr, kFields_L0048_S00FE},
+    {72, 0x00FF, 8, 0, nullptr, kFields_L0048_S00FF},
+    {72, 0x0100, 4, 0, nullptr, kFields_L0048_S0100},
+    {72, 0x0101, 8, 0, nullptr, kFields_L0048_S0101},
+    {72, 0x0102, 5, 0, nullptr, kFields_L0048_S0102},
+    {72, 0x0103, 3, 0, nullptr, kFields_L0048_S0103},
+    {72, 0x0104, 2, 0, nullptr, kFields_L0048_S0104},
+    {72, 0x0105, 7, 0, nullptr, kFields_L0048_S0105},
+    {72, 0x0106, 18, 0, nullptr, kFields_L0048_S0106},
+    {72, 0x0107, 19, 0, nullptr, kFields_L0048_S0107},
+    {72, 0x0108, 2, 0, nullptr, kFields_L0048_S0108},
+    {72, 0x0109, 10, 0, nullptr, kFields_L0048_S0109},
+    {72, 0x010A, 6, 0, nullptr, kFields_L0048_S010A},
+    {72, 0x010B, 6, 0, nullptr, kFields_L0048_S010B},
+    {72, 0x010C, 26, 0, nullptr, kFields_L0048_S010C},
+    {72, 0x010D, 4, 0, nullptr, kFields_L0048_S010D},
+    {73, 0x010C, 26, 0, nullptr, kFields_L0049_S010C},
+    {73, 0x010E, 1, 0, nullptr, kFields_L0049_S010E},
+    {74, 0x010C, 26, 0, nullptr, kFields_L004A_S010C},
+    {74, 0x010F, 1, 0, nullptr, kFields_L004A_S010F},
+    {74, 0x0110, 23, 0, nullptr, kFields_L004A_S0110},
+    {74, 0x0111, 1, 0, nullptr, kFields_L004A_S0111},
+    {75, 0x002E, 10, 88, "dctools.EffectParm", kFields_L004B_S002E},
+    {75, 0x0112, 18, 0, nullptr, kFields_L004B_S0112},
+    {75, 0x0113, 1, 0, nullptr, kFields_L004B_S0113},
+    {75, 0x0114, 6, 0, nullptr, kFields_L004B_S0114},
+    {75, 0x0115, 7, 0, nullptr, kFields_L004B_S0115},
+    {75, 0x0116, 4, 16, "dctools.CreatureLodScale", kFields_L004B_S0116},
+    {75, 0x0117, 56, 0, nullptr, kFields_L004B_S0117},
+    {75, 0x0118, 1, 0, nullptr, kFields_L004B_S0118},
+    {75, 0x0119, 1, 0, nullptr, kFields_L004B_S0119},
+    {75, 0x011A, 1, 0, nullptr, kFields_L004B_S011A},
+    {75, 0x011B, 4, 0, nullptr, kFields_L004B_S011B},
+    {75, 0x011C, 4, 0, nullptr, kFields_L004B_S011C},
+    {75, 0x011D, 3, 0, nullptr, kFields_L004B_S011D},
+    {75, 0x011E, 6, 0, nullptr, kFields_L004B_S011E},
+    {75, 0x011F, 4, 0, nullptr, kFields_L004B_S011F},
+    {75, 0x0120, 14, 0, nullptr, kFields_L004B_S0120},
+    {75, 0x0121, 3, 0, nullptr, kFields_L004B_S0121},
+    {75, 0x0122, 15, 0, nullptr, kFields_L004B_S0122},
+    {75, 0x0123, 4, 0, nullptr, kFields_L004B_S0123},
+    {76, 0x0121, 3, 0, nullptr, kFields_L004C_S0121},
+    {76, 0x0124, 5, 0, nullptr, kFields_L004C_S0124},
+    {76, 0x0125, 16, 0, nullptr, kFields_L004C_S0125},
+    {76, 0x0126, 3, 0, nullptr, kFields_L004C_S0126},
+    {76, 0x0127, 2, 0, nullptr, kFields_L004C_S0127},
+    {76, 0x0128, 3, 0, nullptr, kFields_L004C_S0128},
+    {76, 0x0129, 19, 0, nullptr, kFields_L004C_S0129},
+    {76, 0x012A, 5, 0, nullptr, kFields_L004C_S012A},
+    {76, 0x012B, 3, 0, nullptr, kFields_L004C_S012B},
+    {76, 0x012C, 2, 0, nullptr, kFields_L004C_S012C},
+    {76, 0x012D, 12, 0, nullptr, kFields_L004C_S012D},
+    {76, 0x012E, 3, 0, nullptr, kFields_L004C_S012E},
+    {76, 0x012F, 2, 0, nullptr, kFields_L004C_S012F},
+    {76, 0x0130, 24, 0, nullptr, kFields_L004C_S0130},
+    {76, 0x0131, 11, 0, nullptr, kFields_L004C_S0131},
+    {76, 0x0132, 2, 0, nullptr, kFields_L004C_S0132},
+    {76, 0x0133, 65, 0, nullptr, kFields_L004C_S0133},
+    {76, 0x0134, 2, 0, nullptr, kFields_L004C_S0134},
+    {76, 0x0135, 2, 0, nullptr, kFields_L004C_S0135},
+    {76, 0x0136, 2, 0, nullptr, kFields_L004C_S0136},
+    {76, 0x0137, 2, 0, nullptr, kFields_L004C_S0137},
+    {76, 0x0138, 2, 0, nullptr, kFields_L004C_S0138},
+    {76, 0x0139, 3, 0, nullptr, kFields_L004C_S0139},
+    {76, 0x013A, 8, 0, nullptr, kFields_L004C_S013A},
+    {76, 0x013B, 1, 0, nullptr, kFields_L004C_S013B},
+    {76, 0x013C, 1, 0, nullptr, kFields_L004C_S013C},
+    {76, 0x013D, 1, 0, nullptr, kFields_L004C_S013D},
+    {76, 0x013E, 125, 0, nullptr, kFields_L004C_S013E},
+    {76, 0x013F, 1, 0, nullptr, kFields_L004C_S013F},
+    {76, 0x0140, 14, 0, nullptr, kFields_L004C_S0140},
+    {76, 0x0141, 13, 0, nullptr, kFields_L004C_S0141},
+    {76, 0x0142, 16, 0, nullptr, kFields_L004C_S0142},
+    {76, 0x0143, 5, 0, nullptr, kFields_L004C_S0143},
+    {76, 0x0144, 9, 0, nullptr, kFields_L004C_S0144},
+    {77, 0x0143, 5, 0, nullptr, kFields_L004D_S0143},
+    {77, 0x0145, 3, 0, nullptr, kFields_L004D_S0145},
+    {77, 0x0146, 5, 0, nullptr, kFields_L004D_S0146},
+    {77, 0x0147, 4, 0, nullptr, kFields_L004D_S0147},
+    {77, 0x0148, 1, 0, nullptr, kFields_L004D_S0148},
+    {77, 0x0149, 9, 0, nullptr, kFields_L004D_S0149},
+    {77, 0x014A, 3, 0, nullptr, kFields_L004D_S014A},
+    {77, 0x014B, 6, 0, nullptr, kFields_L004D_S014B},
+    {77, 0x014C, 2, 0, nullptr, kFields_L004D_S014C},
+    {77, 0x014D, 2, 0, nullptr, kFields_L004D_S014D},
+    {77, 0x014E, 3, 0, nullptr, kFields_L004D_S014E},
+    {77, 0x014F, 12, 0, nullptr, kFields_L004D_S014F},
+    {77, 0x0150, 3, 0, nullptr, kFields_L004D_S0150},
+    {77, 0x0151, 2, 0, nullptr, kFields_L004D_S0151},
+    {77, 0x0152, 6, 0, nullptr, kFields_L004D_S0152},
+    {78, 0x0148, 1, 0, nullptr, kFields_L004E_S0148},
+    {78, 0x0153, 16, 0, nullptr, kFields_L004E_S0153},
+    {78, 0x0154, 9, 0, nullptr, kFields_L004E_S0154},
+    {78, 0x0155, 10, 0, nullptr, kFields_L004E_S0155},
+    {78, 0x0156, 3, 0, nullptr, kFields_L004E_S0156},
+    {78, 0x0157, 13, 0, nullptr, kFields_L004E_S0157},
+    {78, 0x0158, 18, 0, nullptr, kFields_L004E_S0158},
+    {78, 0x0159, 4, 0, nullptr, kFields_L004E_S0159},
+    {78, 0x015A, 6, 0, nullptr, kFields_L004E_S015A},
+    {78, 0x015B, 3, 0, nullptr, kFields_L004E_S015B},
+    {78, 0x015C, 2, 0, nullptr, kFields_L004E_S015C},
+    {78, 0x015D, 4, 0, nullptr, kFields_L004E_S015D},
+    {78, 0x015E, 2, 0, nullptr, kFields_L004E_S015E},
+    {78, 0x015F, 3, 0, nullptr, kFields_L004E_S015F},
+    {78, 0x0160, 2, 0, nullptr, kFields_L004E_S0160},
+    {78, 0x0161, 3, 0, nullptr, kFields_L004E_S0161},
+    {78, 0x0162, 4, 0, nullptr, kFields_L004E_S0162},
+    {78, 0x0163, 13, 0, nullptr, kFields_L004E_S0163},
+    {78, 0x0164, 15, 0, nullptr, kFields_L004E_S0164},
+    {78, 0x0165, 2, 0, nullptr, kFields_L004E_S0165},
+    {78, 0x0166, 3, 0, nullptr, kFields_L004E_S0166},
+    {78, 0x0167, 7, 0, nullptr, kFields_L004E_S0167},
+    {78, 0x0168, 5, 0, nullptr, kFields_L004E_S0168},
+    {78, 0x0169, 12, 0, nullptr, kFields_L004E_S0169},
+    {78, 0x016A, 2, 0, nullptr, kFields_L004E_S016A},
+    {78, 0x016B, 61, 0, nullptr, kFields_L004E_S016B},
+    {78, 0x016C, 15, 0, nullptr, kFields_L004E_S016C},
+    {78, 0x016D, 5, 0, nullptr, kFields_L004E_S016D},
+    {78, 0x016E, 1, 0, nullptr, kFields_L004E_S016E},
+    {78, 0x016F, 3, 0, nullptr, kFields_L004E_S016F},
+    {78, 0x0170, 1, 0, nullptr, kFields_L004E_S0170},
+    {78, 0x0171, 6, 16, "dctools.PhysicsCollisionBox", kFields_L004E_S0171},
+    {78, 0x0172, 5, 0, nullptr, kFields_L004E_S0172},
+    {78, 0x0173, 76, 0, nullptr, kFields_L004E_S0173},
+    {78, 0x0174, 3, 0, nullptr, kFields_L004E_S0174},
+    {78, 0x0175, 1, 0, nullptr, kFields_L004E_S0175},
+    {78, 0x0176, 3, 0, nullptr, kFields_L004E_S0176},
+    {78, 0x0177, 1, 0, nullptr, kFields_L004E_S0177},
+    {78, 0x0178, 2, 0, nullptr, kFields_L004E_S0178},
+    {78, 0x0179, 1, 0, nullptr, kFields_L004E_S0179},
+    {79, 0x0178, 2, 0, nullptr, kFields_L004F_S0178},
+    {79, 0x017A, 2, 0, nullptr, kFields_L004F_S017A},
+    {79, 0x017B, 2, 0, nullptr, kFields_L004F_S017B},
+    {79, 0x017C, 19, 0, nullptr, kFields_L004F_S017C},
+    {79, 0x017D, 4, 0, nullptr, kFields_L004F_S017D},
+    {79, 0x017E, 1, 0, nullptr, kFields_L004F_S017E},
+    {79, 0x017F, 2, 0, nullptr, kFields_L004F_S017F},
+    {79, 0x0180, 161, 0, nullptr, kFields_L004F_S0180},
+    {79, 0x0181, 39, 0, nullptr, kFields_L004F_S0181},
+    {79, 0x0182, 1, 0, nullptr, kFields_L004F_S0182},
+    {79, 0x0183, 4, 0, nullptr, kFields_L004F_S0183},
+    {79, 0x0184, 6, 0, nullptr, kFields_L004F_S0184},
+    {80, 0x00AA, 6, 0, nullptr, kFields_L0050_S00AA},
+    {80, 0x00AF, 2, 0, nullptr, kFields_L0050_S00AF},
+    {80, 0x0185, 3, 0, nullptr, kFields_L0050_S0185},
+    {81, 0x00AA, 6, 0, nullptr, kFields_L0051_S00AA},
+    {81, 0x00AF, 2, 0, nullptr, kFields_L0051_S00AF},
+    {81, 0x0186, 2, 0, nullptr, kFields_L0051_S0186},
+    {81, 0x0187, 42, 0, nullptr, kFields_L0051_S0187},
+    {81, 0x0188, 3, 0, nullptr, kFields_L0051_S0188},
+    {81, 0x0189, 10, 0, nullptr, kFields_L0051_S0189},
+    {81, 0x018A, 4, 0, nullptr, kFields_L0051_S018A},
+    {81, 0x018B, 2, 0, nullptr, kFields_L0051_S018B},
+    {81, 0x018C, 40, 0, nullptr, kFields_L0051_S018C},
+    {81, 0x018D, 4, 0, nullptr, kFields_L0051_S018D},
+    {82, 0x018C, 40, 0, nullptr, kFields_L0052_S018C},
+    {82, 0x018E, 2, 0, nullptr, kFields_L0052_S018E},
+    {82, 0x018F, 7, 0, nullptr, kFields_L0052_S018F},
+    {82, 0x0190, 11, 0, nullptr, kFields_L0052_S0190},
+    {83, 0x018F, 7, 0, nullptr, kFields_L0053_S018F},
+    {83, 0x0191, 1, 0, nullptr, kFields_L0053_S0191},
+    {84, 0x018F, 7, 0, nullptr, kFields_L0054_S018F},
+    {84, 0x0192, 7, 0, nullptr, kFields_L0054_S0192},
+    {85, 0x018F, 7, 0, nullptr, kFields_L0055_S018F},
+    {85, 0x0193, 4, 0, nullptr, kFields_L0055_S0193},
+    {86, 0x018F, 7, 0, nullptr, kFields_L0056_S018F},
+    {86, 0x0193, 4, 0, nullptr, kFields_L0056_S0193},
+    {86, 0x0194, 25, 0, nullptr, kFields_L0056_S0194},
+    {87, 0x018F, 7, 0, nullptr, kFields_L0057_S018F},
+    {87, 0x0193, 4, 0, nullptr, kFields_L0057_S0193},
+    {87, 0x0195, 13, 0, nullptr, kFields_L0057_S0195},
+    {87, 0x0196, 2, 0, nullptr, kFields_L0057_S0196},
+    {87, 0x0197, 5, 0, nullptr, kFields_L0057_S0197},
+    {88, 0x0196, 2, 0, nullptr, kFields_L0058_S0196},
+    {88, 0x0198, 3, 0, nullptr, kFields_L0058_S0198},
+    {88, 0x0199, 3, 0, nullptr, kFields_L0058_S0199},
+    {88, 0x019A, 53, 0, nullptr, kFields_L0058_S019A},
+    {88, 0x019B, 19, 0, nullptr, kFields_L0058_S019B},
+    {88, 0x019C, 15, 0, nullptr, kFields_L0058_S019C},
+    {88, 0x019D, 5, 0, nullptr, kFields_L0058_S019D},
+    {88, 0x019E, 3, 0, nullptr, kFields_L0058_S019E},
+    {88, 0x019F, 4, 0, nullptr, kFields_L0058_S019F},
+    {88, 0x01A0, 6, 0, nullptr, kFields_L0058_S01A0},
+    {88, 0x01A1, 5, 0, nullptr, kFields_L0058_S01A1},
+    {88, 0x01A2, 5, 0, nullptr, kFields_L0058_S01A2},
+    {88, 0x01A3, 2, 0, nullptr, kFields_L0058_S01A3},
+    {88, 0x01A4, 2, 0, nullptr, kFields_L0058_S01A4},
+    {88, 0x01A5, 7, 0, nullptr, kFields_L0058_S01A5},
+    {88, 0x01A6, 8, 0, nullptr, kFields_L0058_S01A6},
+    {88, 0x01A7, 76, 0, nullptr, kFields_L0058_S01A7},
+    {88, 0x01A8, 6, 0, nullptr, kFields_L0058_S01A8},
+    {89, 0x01A7, 76, 0, nullptr, kFields_L0059_S01A7},
+    {89, 0x01A9, 11, 0, nullptr, kFields_L0059_S01A9},
+    {90, 0x01A7, 76, 0, nullptr, kFields_L005A_S01A7},
+    {90, 0x01AA, 6, 0, nullptr, kFields_L005A_S01AA},
+    {91, 0x01A7, 76, 0, nullptr, kFields_L005B_S01A7},
+    {91, 0x01AB, 7, 0, nullptr, kFields_L005B_S01AB},
+    {92, 0x01A7, 76, 0, nullptr, kFields_L005C_S01A7},
+    {92, 0x01AC, 17, 0, nullptr, kFields_L005C_S01AC},
+    {93, 0x01A7, 76, 0, nullptr, kFields_L005D_S01A7},
+    {93, 0x01AD, 23, 0, nullptr, kFields_L005D_S01AD},
+    {94, 0x01A7, 76, 0, nullptr, kFields_L005E_S01A7},
+    {94, 0x01AE, 5, 0, nullptr, kFields_L005E_S01AE},
+    {95, 0x01A7, 76, 0, nullptr, kFields_L005F_S01A7},
+    {95, 0x01AF, 14, 0, nullptr, kFields_L005F_S01AF},
+    {96, 0x01A7, 76, 0, nullptr, kFields_L0060_S01A7},
+    {96, 0x01B0, 13, 0, nullptr, kFields_L0060_S01B0},
+    {97, 0x01A7, 76, 0, nullptr, kFields_L0061_S01A7},
+    {97, 0x01B1, 6, 0, nullptr, kFields_L0061_S01B1},
+    {98, 0x01A7, 76, 0, nullptr, kFields_L0062_S01A7},
+    {98, 0x01B3, 9, 0, nullptr, kFields_L0062_S01B3},
+    {99, 0x01A7, 76, 0, nullptr, kFields_L0063_S01A7},
+    {99, 0x01B4, 27, 0, nullptr, kFields_L0063_S01B4},
+    {100, 0x01A7, 76, 0, nullptr, kFields_L0064_S01A7},
+    {100, 0x01B6, 6, 0, nullptr, kFields_L0064_S01B6},
+    {101, 0x01A7, 76, 0, nullptr, kFields_L0065_S01A7},
+    {101, 0x01B7, 6, 0, nullptr, kFields_L0065_S01B7},
+    {101, 0x01B8, 43, 0, nullptr, kFields_L0065_S01B8},
+    {101, 0x01B9, 14, 0, nullptr, kFields_L0065_S01B9},
+    {101, 0x01BA, 6, 0, nullptr, kFields_L0065_S01BA},
+    {101, 0x01BB, 9, 0, nullptr, kFields_L0065_S01BB},
+    {101, 0x01BC, 3, 0, nullptr, kFields_L0065_S01BC},
+    {101, 0x01BD, 2, 0, nullptr, kFields_L0065_S01BD},
+    {102, 0x01BC, 3, 0, nullptr, kFields_L0066_S01BC},
+    {102, 0x01BE, 3, 128, "level_scripting.OnWalletResourceUpdatedNode", kFields_L0066_S01BE},
+    {103, 0x01BC, 3, 0, nullptr, kFields_L0067_S01BC},
+    {103, 0x01BF, 5, 0, nullptr, kFields_L0067_S01BF},
+    {104, 0x01BC, 3, 0, nullptr, kFields_L0068_S01BC},
+    {104, 0x01C0, 3, 0, nullptr, kFields_L0068_S01C0},
+    {105, 0x01BC, 3, 0, nullptr, kFields_L0069_S01BC},
+    {105, 0x01C1, 2, 0, nullptr, kFields_L0069_S01C1},
+    {106, 0x01BC, 3, 0, nullptr, kFields_L006A_S01BC},
+    {106, 0x01C2, 2, 0, nullptr, kFields_L006A_S01C2},
+    {107, 0x01BC, 3, 0, nullptr, kFields_L006B_S01BC},
+    {107, 0x01C5, 1, 0, nullptr, kFields_L006B_S01C5},
+    {107, 0x01C6, 6, 0, nullptr, kFields_L006B_S01C6},
+    {108, 0x01C5, 1, 0, nullptr, kFields_L006C_S01C5},
+    {108, 0x01C6, 6, 0, nullptr, kFields_L006C_S01C6},
+    {109, 0x01C5, 1, 0, nullptr, kFields_L006D_S01C5},
+    {109, 0x01C6, 6, 0, nullptr, kFields_L006D_S01C6},
+    {110, 0x01C5, 1, 0, nullptr, kFields_L006E_S01C5},
+    {110, 0x01C9, 6, 0, nullptr, kFields_L006E_S01C9},
+    {111, 0x01C5, 1, 0, nullptr, kFields_L006F_S01C5},
+    {111, 0x01CA, 1, 0, nullptr, kFields_L006F_S01CA},
+    {112, 0x01C5, 1, 0, nullptr, kFields_L0070_S01C5},
+    {112, 0x01CB, 4, 0, nullptr, kFields_L0070_S01CB},
+    {113, 0x01C5, 1, 0, nullptr, kFields_L0071_S01C5},
+    {113, 0x01CC, 2, 0, nullptr, kFields_L0071_S01CC},
+    {114, 0x01C5, 1, 0, nullptr, kFields_L0072_S01C5},
+    {114, 0x01CD, 1, 0, nullptr, kFields_L0072_S01CD},
+    {115, 0x01C5, 1, 0, nullptr, kFields_L0073_S01C5},
+    {115, 0x01CF, 10, 0, nullptr, kFields_L0073_S01CF},
+    {115, 0x01D0, 2, 0, nullptr, kFields_L0073_S01D0},
+    {116, 0x01CF, 10, 0, nullptr, kFields_L0074_S01CF},
+    {116, 0x01D0, 2, 0, nullptr, kFields_L0074_S01D0},
+    {116, 0x01D1, 1, 0, nullptr, kFields_L0074_S01D1},
+    {117, 0x01CF, 10, 0, nullptr, kFields_L0075_S01CF},
+    {117, 0x01D0, 2, 0, nullptr, kFields_L0075_S01D0},
+    {118, 0x01CF, 10, 0, nullptr, kFields_L0076_S01CF},
+    {118, 0x01D3, 1, 0, nullptr, kFields_L0076_S01D3},
+    {118, 0x01D4, 7, 0, nullptr, kFields_L0076_S01D4},
+    {118, 0x01D5, 5, 0, nullptr, kFields_L0076_S01D5},
+    {118, 0x01D6, 4, 0, nullptr, kFields_L0076_S01D6},
+    {118, 0x01D7, 4, 0, nullptr, kFields_L0076_S01D7},
+    {118, 0x01D8, 4, 0, nullptr, kFields_L0076_S01D8},
+    {119, 0x01D7, 4, 0, nullptr, kFields_L0077_S01D7},
+    {119, 0x01D9, 2, 0, nullptr, kFields_L0077_S01D9},
+    {120, 0x01D7, 4, 0, nullptr, kFields_L0078_S01D7},
+    {120, 0x01DA, 2, 0, nullptr, kFields_L0078_S01DA},
+    {121, 0x01D7, 4, 0, nullptr, kFields_L0079_S01D7},
+    {121, 0x01DB, 4, 0, nullptr, kFields_L0079_S01DB},
+    {122, 0x01D7, 4, 0, nullptr, kFields_L007A_S01D7},
+    {122, 0x01DC, 2, 0, nullptr, kFields_L007A_S01DC},
+    {123, 0x01D7, 4, 0, nullptr, kFields_L007B_S01D7},
+    {123, 0x01DD, 1, 0, nullptr, kFields_L007B_S01DD},
+    {124, 0x01D7, 4, 0, nullptr, kFields_L007C_S01D7},
+    {124, 0x01DE, 1, 0, nullptr, kFields_L007C_S01DE},
+    {124, 0x01DF, 5, 0, nullptr, kFields_L007C_S01DF},
+    {125, 0x01D7, 4, 0, nullptr, kFields_L007D_S01D7},
+    {125, 0x01E0, 42, 0, nullptr, kFields_L007D_S01E0},
+    {125, 0x01E1, 3, 0, nullptr, kFields_L007D_S01E1},
+    {125, 0x01E2, 3, 0, nullptr, kFields_L007D_S01E2},
+    {126, 0x01E1, 3, 0, nullptr, kFields_L007E_S01E1},
+    {126, 0x01E2, 3, 0, nullptr, kFields_L007E_S01E2},
+    {126, 0x01E3, 1, 0, nullptr, kFields_L007E_S01E3},
+    {127, 0x01E1, 3, 0, nullptr, kFields_L007F_S01E1},
+    {127, 0x01E2, 3, 0, nullptr, kFields_L007F_S01E2},
+    {127, 0x01E3, 1, 0, nullptr, kFields_L007F_S01E3},
+    {127, 0x01E4, 1, 0, nullptr, kFields_L007F_S01E4},
+    {128, 0x01E1, 3, 0, nullptr, kFields_L0080_S01E1},
+    {128, 0x01E2, 3, 0, nullptr, kFields_L0080_S01E2},
+    {128, 0x01E3, 1, 0, nullptr, kFields_L0080_S01E3},
+    {128, 0x01E5, 1, 56, "behavior_tree.Runtime.Sleep", kFields_L0080_S01E5},
+    {129, 0x01E1, 3, 0, nullptr, kFields_L0081_S01E1},
+    {129, 0x01E2, 3, 0, nullptr, kFields_L0081_S01E2},
+    {129, 0x01E6, 1, 56, "behavior_tree.Runtime.Sleep", kFields_L0081_S01E6},
+    {130, 0x01E1, 3, 0, nullptr, kFields_L0082_S01E1},
+    {130, 0x01E7, 3, 0, nullptr, kFields_L0082_S01E7},
+    {131, 0x01E1, 3, 0, nullptr, kFields_L0083_S01E1},
+    {131, 0x01E8, 5, 0, nullptr, kFields_L0083_S01E8},
+    {131, 0x01E9, 1, 0, nullptr, kFields_L0083_S01E9},
+    {131, 0x01EA, 5, 0, nullptr, kFields_L0083_S01EA},
+    {132, 0x01E9, 1, 0, nullptr, kFields_L0084_S01E9},
+    {132, 0x01EB, 2, 0, nullptr, kFields_L0084_S01EB},
+    {133, 0x01E9, 1, 0, nullptr, kFields_L0085_S01E9},
+    {133, 0x01EC, 2, 0, nullptr, kFields_L0085_S01EC},
+    {134, 0x01E1, 3, 0, nullptr, kFields_L0086_S01E1},
+    {134, 0x01ED, 3, 0, nullptr, kFields_L0086_S01ED},
+    {134, 0x01EE, 4, 0, nullptr, kFields_L0086_S01EE},
+    {134, 0x01EF, 2, 0, nullptr, kFields_L0086_S01EF},
+    {135, 0x01EE, 4, 0, nullptr, kFields_L0087_S01EE},
+    {135, 0x01F0, 4, 0, nullptr, kFields_L0087_S01F0},
+    {136, 0x01EE, 4, 0, nullptr, kFields_L0088_S01EE},
+    {136, 0x01F1, 1, 0, nullptr, kFields_L0088_S01F1},
+    {137, 0x01EE, 4, 0, nullptr, kFields_L0089_S01EE},
+    {137, 0x01F2, 3, 0, nullptr, kFields_L0089_S01F2},
+    {138, 0x01EE, 4, 0, nullptr, kFields_L008A_S01EE},
+    {138, 0x01F3, 3, 0, nullptr, kFields_L008A_S01F3},
+    {139, 0x01EE, 4, 0, nullptr, kFields_L008B_S01EE},
+    {139, 0x01F4, 2, 0, nullptr, kFields_L008B_S01F4},
+    {140, 0x00AA, 6, 0, nullptr, kFields_L008C_S00AA},
+    {140, 0x01F5, 8, 0, nullptr, kFields_L008C_S01F5},
+    {141, 0x00AA, 6, 0, nullptr, kFields_L008D_S00AA},
+    {141, 0x01F6, 1, 0, nullptr, kFields_L008D_S01F6},
+    {142, 0x00AA, 6, 0, nullptr, kFields_L008E_S00AA},
+    {142, 0x01F7, 5, 0, nullptr, kFields_L008E_S01F7},
+    {143, 0x00AA, 6, 0, nullptr, kFields_L008F_S00AA},
+    {143, 0x01F9, 5, 0, nullptr, kFields_L008F_S01F9},
+    {144, 0x00AA, 6, 0, nullptr, kFields_L0090_S00AA},
+    {144, 0x01FA, 5, 0, nullptr, kFields_L0090_S01FA},
+    {145, 0x00AA, 6, 0, nullptr, kFields_L0091_S00AA},
+    {145, 0x01FB, 6, 0, nullptr, kFields_L0091_S01FB},
+    {146, 0x00AA, 6, 0, nullptr, kFields_L0092_S00AA},
+    {146, 0x01FC, 3, 0, nullptr, kFields_L0092_S01FC},
+    {147, 0x00AA, 6, 0, nullptr, kFields_L0093_S00AA},
+    {147, 0x01FD, 1, 0, nullptr, kFields_L0093_S01FD},
+    {148, 0x00AA, 6, 0, nullptr, kFields_L0094_S00AA},
+    {148, 0x01FE, 1, 0, nullptr, kFields_L0094_S01FE},
+    {148, 0x01FF, 21, 0, nullptr, kFields_L0094_S01FF},
+    {149, 0x00AA, 6, 0, nullptr, kFields_L0095_S00AA},
+    {149, 0x0200, 3, 0, nullptr, kFields_L0095_S0200},
+    {150, 0x00AA, 6, 0, nullptr, kFields_L0096_S00AA},
+    {150, 0x0201, 1, 56, "behavior_tree.Runtime.Sleep", kFields_L0096_S0201},
+    {151, 0x00AA, 6, 0, nullptr, kFields_L0097_S00AA},
+    {151, 0x0202, 1, 56, "behavior_tree.Runtime.Sleep", kFields_L0097_S0202},
+    {152, 0x00AA, 6, 0, nullptr, kFields_L0098_S00AA},
+    {152, 0x0203, 1, 0, nullptr, kFields_L0098_S0203},
+    {153, 0x00AA, 6, 0, nullptr, kFields_L0099_S00AA},
+    {153, 0x0204, 2, 0, nullptr, kFields_L0099_S0204},
+    {154, 0x00AA, 6, 0, nullptr, kFields_L009A_S00AA},
+    {154, 0x0204, 2, 0, nullptr, kFields_L009A_S0204},
+    {155, 0x00AA, 6, 0, nullptr, kFields_L009B_S00AA},
+    {155, 0x00AF, 2, 0, nullptr, kFields_L009B_S00AF},
+    {155, 0x0206, 1, 0, nullptr, kFields_L009B_S0206},
+    {156, 0x00AA, 6, 0, nullptr, kFields_L009C_S00AA},
+    {156, 0x0207, 1, 0, nullptr, kFields_L009C_S0207},
+    {157, 0x00AA, 6, 0, nullptr, kFields_L009D_S00AA},
+    {157, 0x0208, 8, 0, nullptr, kFields_L009D_S0208},
+    {158, 0x00AA, 6, 0, nullptr, kFields_L009E_S00AA},
+    {158, 0x0209, 1, 0, nullptr, kFields_L009E_S0209},
+    {159, 0x00AA, 6, 0, nullptr, kFields_L009F_S00AA},
+    {159, 0x020A, 2, 0, nullptr, kFields_L009F_S020A},
+    {160, 0x00AA, 6, 0, nullptr, kFields_L00A0_S00AA},
+    {160, 0x020B, 1, 0, nullptr, kFields_L00A0_S020B},
+    {161, 0x00AA, 6, 0, nullptr, kFields_L00A1_S00AA},
+    {161, 0x00AF, 2, 0, nullptr, kFields_L00A1_S00AF},
+    {161, 0x020E, 1, 0, nullptr, kFields_L00A1_S020E},
+    {162, 0x00AA, 6, 0, nullptr, kFields_L00A2_S00AA},
+    {162, 0x020F, 4, 0, nullptr, kFields_L00A2_S020F},
+    {163, 0x00AA, 6, 0, nullptr, kFields_L00A3_S00AA},
+    {163, 0x0210, 2, 0, nullptr, kFields_L00A3_S0210},
+    {164, 0x00AA, 6, 0, nullptr, kFields_L00A4_S00AA},
+    {164, 0x0211, 2, 0, nullptr, kFields_L00A4_S0211},
+    {165, 0x00AA, 6, 0, nullptr, kFields_L00A5_S00AA},
+    {165, 0x0212, 1, 0, nullptr, kFields_L00A5_S0212},
+    {166, 0x00AA, 6, 0, nullptr, kFields_L00A6_S00AA},
+    {166, 0x0213, 6, 0, nullptr, kFields_L00A6_S0213},
+    {167, 0x00AA, 6, 0, nullptr, kFields_L00A7_S00AA},
+    {167, 0x0214, 1, 0, nullptr, kFields_L00A7_S0214},
+    {168, 0x00AA, 6, 0, nullptr, kFields_L00A8_S00AA},
+    {168, 0x0215, 2, 0, nullptr, kFields_L00A8_S0215},
+    {169, 0x00AA, 6, 0, nullptr, kFields_L00A9_S00AA},
+    {169, 0x0216, 6, 0, nullptr, kFields_L00A9_S0216},
+    {170, 0x00AA, 6, 0, nullptr, kFields_L00AA_S00AA},
+    {170, 0x00AF, 2, 0, nullptr, kFields_L00AA_S00AF},
+    {170, 0x0217, 3, 0, nullptr, kFields_L00AA_S0217},
+    {171, 0x00AA, 6, 0, nullptr, kFields_L00AB_S00AA},
+    {171, 0x0218, 2, 0, nullptr, kFields_L00AB_S0218},
+    {172, 0x00AA, 6, 0, nullptr, kFields_L00AC_S00AA},
+    {172, 0x0219, 3, 0, nullptr, kFields_L00AC_S0219},
+    {173, 0x00AA, 6, 0, nullptr, kFields_L00AD_S00AA},
+    {173, 0x021A, 4, 0, nullptr, kFields_L00AD_S021A},
+    {174, 0x00AA, 6, 0, nullptr, kFields_L00AE_S00AA},
+    {174, 0x021B, 1, 0, nullptr, kFields_L00AE_S021B},
+    {175, 0x00AA, 6, 0, nullptr, kFields_L00AF_S00AA},
+    {175, 0x021C, 1, 0, nullptr, kFields_L00AF_S021C},
+    {176, 0x00AA, 6, 0, nullptr, kFields_L00B0_S00AA},
+    {176, 0x00AF, 2, 0, nullptr, kFields_L00B0_S00AF},
+    {176, 0x021D, 9, 0, nullptr, kFields_L00B0_S021D},
+    {177, 0x00AA, 6, 0, nullptr, kFields_L00B1_S00AA},
+    {177, 0x00AF, 2, 0, nullptr, kFields_L00B1_S00AF},
+    {177, 0x021D, 9, 0, nullptr, kFields_L00B1_S021D},
+    {178, 0x00AA, 6, 0, nullptr, kFields_L00B2_S00AA},
+    {178, 0x00AF, 2, 0, nullptr, kFields_L00B2_S00AF},
+    {178, 0x021D, 9, 0, nullptr, kFields_L00B2_S021D},
+    {179, 0x00AA, 6, 0, nullptr, kFields_L00B3_S00AA},
+    {179, 0x0220, 3, 0, nullptr, kFields_L00B3_S0220},
+    {180, 0x00AA, 6, 0, nullptr, kFields_L00B4_S00AA},
+    {180, 0x00AF, 2, 0, nullptr, kFields_L00B4_S00AF},
+    {180, 0x021D, 9, 0, nullptr, kFields_L00B4_S021D},
+    {181, 0x00AA, 6, 0, nullptr, kFields_L00B5_S00AA},
+    {181, 0x00AF, 2, 0, nullptr, kFields_L00B5_S00AF},
+    {181, 0x021D, 9, 0, nullptr, kFields_L00B5_S021D},
+    {182, 0x00AA, 6, 0, nullptr, kFields_L00B6_S00AA},
+    {182, 0x0223, 2, 0, nullptr, kFields_L00B6_S0223},
+    {183, 0x00AA, 6, 0, nullptr, kFields_L00B7_S00AA},
+    {183, 0x0224, 2, 0, nullptr, kFields_L00B7_S0224},
+    {184, 0x00AA, 6, 0, nullptr, kFields_L00B8_S00AA},
+    {184, 0x0225, 2, 0, nullptr, kFields_L00B8_S0225},
+    {185, 0x00AA, 6, 0, nullptr, kFields_L00B9_S00AA},
+    {185, 0x0226, 2, 0, nullptr, kFields_L00B9_S0226},
+    {186, 0x00AA, 6, 0, nullptr, kFields_L00BA_S00AA},
+    {186, 0x0227, 4, 0, nullptr, kFields_L00BA_S0227},
+    {187, 0x00AA, 6, 0, nullptr, kFields_L00BB_S00AA},
+    {187, 0x0228, 8, 0, nullptr, kFields_L00BB_S0228},
+    {188, 0x00AA, 6, 0, nullptr, kFields_L00BC_S00AA},
+    {188, 0x022A, 1, 64, "behavior_tree.Runtime.ReceivedBehaviorTreeEvent", kFields_L00BC_S022A},
+    {189, 0x00AA, 6, 0, nullptr, kFields_L00BD_S00AA},
+    {189, 0x00AF, 2, 0, nullptr, kFields_L00BD_S00AF},
+    {189, 0x022C, 2, 0, nullptr, kFields_L00BD_S022C},
+    {190, 0x00AA, 6, 0, nullptr, kFields_L00BE_S00AA},
+    {190, 0x00AF, 2, 0, nullptr, kFields_L00BE_S00AF},
+    {190, 0x022D, 7, 0, nullptr, kFields_L00BE_S022D},
+    {191, 0x00AA, 6, 0, nullptr, kFields_L00BF_S00AA},
+    {191, 0x00AF, 2, 0, nullptr, kFields_L00BF_S00AF},
+    {191, 0x022E, 5, 0, nullptr, kFields_L00BF_S022E},
+    {192, 0x002E, 10, 88, "dctools.EffectParm", kFields_L00C0_S002E},
+    {192, 0x022F, 3, 0, nullptr, kFields_L00C0_S022F},
+    {193, 0x00AA, 6, 0, nullptr, kFields_L00C1_S00AA},
+    {193, 0x00AF, 2, 0, nullptr, kFields_L00C1_S00AF},
+    {193, 0x0230, 6, 0, nullptr, kFields_L00C1_S0230},
+    {194, 0x00AA, 6, 0, nullptr, kFields_L00C2_S00AA},
+    {194, 0x00AF, 2, 0, nullptr, kFields_L00C2_S00AF},
+    {194, 0x0231, 9, 0, nullptr, kFields_L00C2_S0231},
+    {195, 0x00AA, 6, 0, nullptr, kFields_L00C3_S00AA},
+    {195, 0x00AF, 2, 0, nullptr, kFields_L00C3_S00AF},
+    {195, 0x0232, 1, 0, nullptr, kFields_L00C3_S0232},
+    {196, 0x00AA, 6, 0, nullptr, kFields_L00C4_S00AA},
+    {196, 0x00AF, 2, 0, nullptr, kFields_L00C4_S00AF},
+    {196, 0x0233, 1, 56, "level_scripting.SendAwarenessStimWithParams", kFields_L00C4_S0233},
+    {197, 0x00AA, 6, 0, nullptr, kFields_L00C5_S00AA},
+    {197, 0x00AF, 2, 0, nullptr, kFields_L00C5_S00AF},
+    {197, 0x0234, 4, 0, nullptr, kFields_L00C5_S0234},
+    {198, 0x00AA, 6, 0, nullptr, kFields_L00C6_S00AA},
+    {198, 0x00AF, 2, 0, nullptr, kFields_L00C6_S00AF},
+    {198, 0x0235, 9, 0, nullptr, kFields_L00C6_S0235},
+    {199, 0x00AA, 6, 0, nullptr, kFields_L00C7_S00AA},
+    {199, 0x00AF, 2, 0, nullptr, kFields_L00C7_S00AF},
+    {200, 0x00AA, 6, 0, nullptr, kFields_L00C8_S00AA},
+    {200, 0x00AF, 2, 0, nullptr, kFields_L00C8_S00AF},
+    {201, 0x00AA, 6, 0, nullptr, kFields_L00C9_S00AA},
+    {201, 0x00AF, 2, 0, nullptr, kFields_L00C9_S00AF},
+    {201, 0x0238, 2, 8, "creatureeditor.RestrictedZones", kFields_L00C9_S0238},
+    {202, 0x00AA, 6, 0, nullptr, kFields_L00CA_S00AA},
+    {202, 0x00AF, 2, 0, nullptr, kFields_L00CA_S00AF},
+    {202, 0x0239, 6, 0, nullptr, kFields_L00CA_S0239},
+    {203, 0x00AA, 6, 0, nullptr, kFields_L00CB_S00AA},
+    {203, 0x00AF, 2, 0, nullptr, kFields_L00CB_S00AF},
+    {204, 0x00AA, 6, 0, nullptr, kFields_L00CC_S00AA},
+    {204, 0x00AF, 2, 0, nullptr, kFields_L00CC_S00AF},
+    {204, 0x023B, 2, 0, nullptr, kFields_L00CC_S023B},
+    {205, 0x00AA, 6, 0, nullptr, kFields_L00CD_S00AA},
+    {205, 0x00AF, 2, 0, nullptr, kFields_L00CD_S00AF},
+    {205, 0x023C, 5, 0, nullptr, kFields_L00CD_S023C},
+    {206, 0x00AA, 6, 0, nullptr, kFields_L00CE_S00AA},
+    {206, 0x00AF, 2, 0, nullptr, kFields_L00CE_S00AF},
+    {207, 0x00AA, 6, 0, nullptr, kFields_L00CF_S00AA},
+    {207, 0x00AF, 2, 0, nullptr, kFields_L00CF_S00AF},
+    {208, 0x00AA, 6, 0, nullptr, kFields_L00D0_S00AA},
+    {208, 0x00AF, 2, 0, nullptr, kFields_L00D0_S00AF},
+    {209, 0x00AA, 6, 0, nullptr, kFields_L00D1_S00AA},
+    {209, 0x00AF, 2, 0, nullptr, kFields_L00D1_S00AF},
+    {210, 0x00AA, 6, 0, nullptr, kFields_L00D2_S00AA},
+    {210, 0x00AF, 2, 0, nullptr, kFields_L00D2_S00AF},
+    {210, 0x0241, 1, 0, nullptr, kFields_L00D2_S0241},
+    {211, 0x00AA, 6, 0, nullptr, kFields_L00D3_S00AA},
+    {211, 0x00AF, 2, 0, nullptr, kFields_L00D3_S00AF},
+    {211, 0x0242, 1, 0, nullptr, kFields_L00D3_S0242},
+    {212, 0x00AA, 6, 0, nullptr, kFields_L00D4_S00AA},
+    {212, 0x00AF, 2, 0, nullptr, kFields_L00D4_S00AF},
+    {212, 0x0243, 6, 0, nullptr, kFields_L00D4_S0243},
+    {213, 0x00AA, 6, 0, nullptr, kFields_L00D5_S00AA},
+    {213, 0x00AF, 2, 0, nullptr, kFields_L00D5_S00AF},
+    {213, 0x0244, 4, 0, nullptr, kFields_L00D5_S0244},
+    {214, 0x00AA, 6, 0, nullptr, kFields_L00D6_S00AA},
+    {214, 0x00AF, 2, 0, nullptr, kFields_L00D6_S00AF},
+    {214, 0x0245, 2, 0, nullptr, kFields_L00D6_S0245},
+    {215, 0x00AA, 6, 0, nullptr, kFields_L00D7_S00AA},
+    {215, 0x00AF, 2, 0, nullptr, kFields_L00D7_S00AF},
+    {216, 0x00AA, 6, 0, nullptr, kFields_L00D8_S00AA},
+    {216, 0x00AF, 2, 0, nullptr, kFields_L00D8_S00AF},
+    {216, 0x0247, 1, 0, nullptr, kFields_L00D8_S0247},
+    {217, 0x00AA, 6, 0, nullptr, kFields_L00D9_S00AA},
+    {217, 0x00AF, 2, 0, nullptr, kFields_L00D9_S00AF},
+    {217, 0x0248, 9, 0, nullptr, kFields_L00D9_S0248},
+    {218, 0x00AA, 6, 0, nullptr, kFields_L00DA_S00AA},
+    {218, 0x00AF, 2, 0, nullptr, kFields_L00DA_S00AF},
+    {218, 0x0249, 1, 0, nullptr, kFields_L00DA_S0249},
+    {219, 0x00AA, 6, 0, nullptr, kFields_L00DB_S00AA},
+    {219, 0x00AF, 2, 0, nullptr, kFields_L00DB_S00AF},
+    {219, 0x024A, 1, 0, nullptr, kFields_L00DB_S024A},
+    {220, 0x00AA, 6, 0, nullptr, kFields_L00DC_S00AA},
+    {220, 0x00AF, 2, 0, nullptr, kFields_L00DC_S00AF},
+    {220, 0x024B, 8, 0, nullptr, kFields_L00DC_S024B},
+    {221, 0x00AA, 6, 0, nullptr, kFields_L00DD_S00AA},
+    {221, 0x00AF, 2, 0, nullptr, kFields_L00DD_S00AF},
+    {221, 0x024C, 2, 0, nullptr, kFields_L00DD_S024C},
+    {222, 0x00AA, 6, 0, nullptr, kFields_L00DE_S00AA},
+    {222, 0x00AF, 2, 0, nullptr, kFields_L00DE_S00AF},
+    {222, 0x024D, 7, 0, nullptr, kFields_L00DE_S024D},
+    {223, 0x00AA, 6, 0, nullptr, kFields_L00DF_S00AA},
+    {223, 0x00AF, 2, 0, nullptr, kFields_L00DF_S00AF},
+    {224, 0x00AA, 6, 0, nullptr, kFields_L00E0_S00AA},
+    {224, 0x00AF, 2, 0, nullptr, kFields_L00E0_S00AF},
+    {224, 0x024F, 7, 0, nullptr, kFields_L00E0_S024F},
+    {225, 0x00AA, 6, 0, nullptr, kFields_L00E1_S00AA},
+    {225, 0x00AF, 2, 0, nullptr, kFields_L00E1_S00AF},
+    {225, 0x0250, 2, 0, nullptr, kFields_L00E1_S0250},
+    {226, 0x00AA, 6, 0, nullptr, kFields_L00E2_S00AA},
+    {226, 0x00AF, 2, 0, nullptr, kFields_L00E2_S00AF},
+    {227, 0x00AA, 6, 0, nullptr, kFields_L00E3_S00AA},
+    {227, 0x00AF, 2, 0, nullptr, kFields_L00E3_S00AF},
+    {227, 0x0252, 3, 0, nullptr, kFields_L00E3_S0252},
+    {228, 0x00AA, 6, 0, nullptr, kFields_L00E4_S00AA},
+    {228, 0x00AF, 2, 0, nullptr, kFields_L00E4_S00AF},
+    {228, 0x0253, 2, 0, nullptr, kFields_L00E4_S0253},
+    {229, 0x00AA, 6, 0, nullptr, kFields_L00E5_S00AA},
+    {229, 0x00AF, 2, 0, nullptr, kFields_L00E5_S00AF},
+    {229, 0x0254, 3, 0, nullptr, kFields_L00E5_S0254},
+    {230, 0x00AA, 6, 0, nullptr, kFields_L00E6_S00AA},
+    {230, 0x00AF, 2, 0, nullptr, kFields_L00E6_S00AF},
+    {231, 0x00AA, 6, 0, nullptr, kFields_L00E7_S00AA},
+    {231, 0x00AF, 2, 0, nullptr, kFields_L00E7_S00AF},
+    {231, 0x0256, 1, 0, nullptr, kFields_L00E7_S0256},
+    {232, 0x00AA, 6, 0, nullptr, kFields_L00E8_S00AA},
+    {232, 0x00AF, 2, 0, nullptr, kFields_L00E8_S00AF},
+    {232, 0x0257, 1, 0, nullptr, kFields_L00E8_S0257},
+    {233, 0x00AA, 6, 0, nullptr, kFields_L00E9_S00AA},
+    {233, 0x00AF, 2, 0, nullptr, kFields_L00E9_S00AF},
+    {234, 0x00AA, 6, 0, nullptr, kFields_L00EA_S00AA},
+    {234, 0x00AF, 2, 0, nullptr, kFields_L00EA_S00AF},
+    {235, 0x00AA, 6, 0, nullptr, kFields_L00EB_S00AA},
+    {235, 0x00AF, 2, 0, nullptr, kFields_L00EB_S00AF},
+    {236, 0x00AA, 6, 0, nullptr, kFields_L00EC_S00AA},
+    {236, 0x00AF, 2, 0, nullptr, kFields_L00EC_S00AF},
+    {237, 0x00AA, 6, 0, nullptr, kFields_L00ED_S00AA},
+    {237, 0x00AF, 2, 0, nullptr, kFields_L00ED_S00AF},
+    {238, 0x00AA, 6, 0, nullptr, kFields_L00EE_S00AA},
+    {238, 0x00AF, 2, 0, nullptr, kFields_L00EE_S00AF},
+    {238, 0x025D, 1, 0, nullptr, kFields_L00EE_S025D},
+    {239, 0x00AA, 6, 0, nullptr, kFields_L00EF_S00AA},
+    {239, 0x00AF, 2, 0, nullptr, kFields_L00EF_S00AF},
+    {239, 0x025E, 1, 0, nullptr, kFields_L00EF_S025E},
+    {240, 0x00AA, 6, 0, nullptr, kFields_L00F0_S00AA},
+    {240, 0x00AF, 2, 0, nullptr, kFields_L00F0_S00AF},
+    {240, 0x025F, 10, 0, nullptr, kFields_L00F0_S025F},
+    {241, 0x00AA, 6, 0, nullptr, kFields_L00F1_S00AA},
+    {241, 0x00AF, 2, 0, nullptr, kFields_L00F1_S00AF},
+    {241, 0x0260, 14, 0, nullptr, kFields_L00F1_S0260},
+    {242, 0x00AA, 6, 0, nullptr, kFields_L00F2_S00AA},
+    {242, 0x00AF, 2, 0, nullptr, kFields_L00F2_S00AF},
+    {242, 0x0261, 5, 0, nullptr, kFields_L00F2_S0261},
+    {243, 0x00AA, 6, 0, nullptr, kFields_L00F3_S00AA},
+    {243, 0x00AF, 2, 0, nullptr, kFields_L00F3_S00AF},
+    {244, 0x00AA, 6, 0, nullptr, kFields_L00F4_S00AA},
+    {244, 0x00AF, 2, 0, nullptr, kFields_L00F4_S00AF},
+    {244, 0x0263, 1, 0, nullptr, kFields_L00F4_S0263},
+    {245, 0x00AA, 6, 0, nullptr, kFields_L00F5_S00AA},
+    {245, 0x00AF, 2, 0, nullptr, kFields_L00F5_S00AF},
+    {245, 0x0264, 2, 0, nullptr, kFields_L00F5_S0264},
+    {246, 0x00AA, 6, 0, nullptr, kFields_L00F6_S00AA},
+    {246, 0x00AF, 2, 0, nullptr, kFields_L00F6_S00AF},
+    {247, 0x00AA, 6, 0, nullptr, kFields_L00F7_S00AA},
+    {247, 0x00AF, 2, 0, nullptr, kFields_L00F7_S00AF},
+    {247, 0x0266, 1, 96, "dctools.FilmGrain", kFields_L00F7_S0266},
+    {248, 0x00AA, 6, 0, nullptr, kFields_L00F8_S00AA},
+    {248, 0x00AF, 2, 0, nullptr, kFields_L00F8_S00AF},
+    {248, 0x0267, 1, 0, nullptr, kFields_L00F8_S0267},
+    {249, 0x00AA, 6, 0, nullptr, kFields_L00F9_S00AA},
+    {249, 0x00AF, 2, 0, nullptr, kFields_L00F9_S00AF},
+    {249, 0x0268, 1, 0, nullptr, kFields_L00F9_S0268},
+    {250, 0x00AA, 6, 0, nullptr, kFields_L00FA_S00AA},
+    {250, 0x00AF, 2, 0, nullptr, kFields_L00FA_S00AF},
+    {250, 0x0269, 2, 0, nullptr, kFields_L00FA_S0269},
+    {251, 0x00AA, 6, 0, nullptr, kFields_L00FB_S00AA},
+    {251, 0x00AF, 2, 0, nullptr, kFields_L00FB_S00AF},
+    {251, 0x026A, 1, 0, nullptr, kFields_L00FB_S026A},
+    {252, 0x00AA, 6, 0, nullptr, kFields_L00FC_S00AA},
+    {252, 0x00AF, 2, 0, nullptr, kFields_L00FC_S00AF},
+    {252, 0x026B, 1, 0, nullptr, kFields_L00FC_S026B},
+    {253, 0x00AA, 6, 0, nullptr, kFields_L00FD_S00AA},
+    {253, 0x00AF, 2, 0, nullptr, kFields_L00FD_S00AF},
+    {253, 0x026C, 1, 0, nullptr, kFields_L00FD_S026C},
+    {254, 0x00AA, 6, 0, nullptr, kFields_L00FE_S00AA},
+    {254, 0x00AF, 2, 0, nullptr, kFields_L00FE_S00AF},
+    {254, 0x026D, 2, 0, nullptr, kFields_L00FE_S026D},
+    {255, 0x00AA, 6, 0, nullptr, kFields_L00FF_S00AA},
+    {255, 0x00AF, 2, 0, nullptr, kFields_L00FF_S00AF},
+    {255, 0x026E, 1, 56, "behavior_tree.Runtime.SendCAEvent", kFields_L00FF_S026E},
+    {256, 0x00AA, 6, 0, nullptr, kFields_L0100_S00AA},
+    {256, 0x00AF, 2, 0, nullptr, kFields_L0100_S00AF},
+    {256, 0x026E, 1, 56, "behavior_tree.Runtime.SendCAEvent", kFields_L0100_S026E},
+    {256, 0x026F, 3, 0, nullptr, kFields_L0100_S026F},
+    {257, 0x00AA, 6, 0, nullptr, kFields_L0101_S00AA},
+    {257, 0x00AF, 2, 0, nullptr, kFields_L0101_S00AF},
+    {257, 0x0270, 3, 0, nullptr, kFields_L0101_S0270},
+    {258, 0x00AA, 6, 0, nullptr, kFields_L0102_S00AA},
+    {258, 0x00AF, 2, 0, nullptr, kFields_L0102_S00AF},
+    {258, 0x0271, 4, 0, nullptr, kFields_L0102_S0271},
+    {259, 0x00AA, 6, 0, nullptr, kFields_L0103_S00AA},
+    {259, 0x00AF, 2, 0, nullptr, kFields_L0103_S00AF},
+    {259, 0x0272, 2, 0, nullptr, kFields_L0103_S0272},
+    {260, 0x00AA, 6, 0, nullptr, kFields_L0104_S00AA},
+    {260, 0x00AF, 2, 0, nullptr, kFields_L0104_S00AF},
+    {260, 0x0273, 4, 0, nullptr, kFields_L0104_S0273},
+    {261, 0x00AA, 6, 0, nullptr, kFields_L0105_S00AA},
+    {261, 0x00AF, 2, 0, nullptr, kFields_L0105_S00AF},
+    {261, 0x0274, 3, 0, nullptr, kFields_L0105_S0274},
+    {262, 0x00AA, 6, 0, nullptr, kFields_L0106_S00AA},
+    {262, 0x00AF, 2, 0, nullptr, kFields_L0106_S00AF},
+    {262, 0x0275, 2, 0, nullptr, kFields_L0106_S0275},
+    {263, 0x00AA, 6, 0, nullptr, kFields_L0107_S00AA},
+    {263, 0x00AF, 2, 0, nullptr, kFields_L0107_S00AF},
+    {263, 0x0276, 2, 0, nullptr, kFields_L0107_S0276},
+    {264, 0x00AA, 6, 0, nullptr, kFields_L0108_S00AA},
+    {264, 0x00AF, 2, 0, nullptr, kFields_L0108_S00AF},
+    {264, 0x0277, 2, 0, nullptr, kFields_L0108_S0277},
+    {265, 0x00AA, 6, 0, nullptr, kFields_L0109_S00AA},
+    {265, 0x00AF, 2, 0, nullptr, kFields_L0109_S00AF},
+    {266, 0x00AA, 6, 0, nullptr, kFields_L010A_S00AA},
+    {266, 0x00AF, 2, 0, nullptr, kFields_L010A_S00AF},
+    {267, 0x00AA, 6, 0, nullptr, kFields_L010B_S00AA},
+    {267, 0x00AF, 2, 0, nullptr, kFields_L010B_S00AF},
+    {267, 0x027A, 1, 0, nullptr, kFields_L010B_S027A},
+    {268, 0x00AA, 6, 0, nullptr, kFields_L010C_S00AA},
+    {268, 0x00AF, 2, 0, nullptr, kFields_L010C_S00AF},
+    {268, 0x027B, 2, 0, nullptr, kFields_L010C_S027B},
+    {269, 0x00AA, 6, 0, nullptr, kFields_L010D_S00AA},
+    {269, 0x00AF, 2, 0, nullptr, kFields_L010D_S00AF},
+    {269, 0x027C, 1, 0, nullptr, kFields_L010D_S027C},
+    {270, 0x00AA, 6, 0, nullptr, kFields_L010E_S00AA},
+    {270, 0x00AF, 2, 0, nullptr, kFields_L010E_S00AF},
+    {270, 0x027D, 4, 0, nullptr, kFields_L010E_S027D},
+    {271, 0x00AA, 6, 0, nullptr, kFields_L010F_S00AA},
+    {271, 0x00AF, 2, 0, nullptr, kFields_L010F_S00AF},
+    {271, 0x027E, 6, 0, nullptr, kFields_L010F_S027E},
+    {272, 0x00AA, 6, 0, nullptr, kFields_L0110_S00AA},
+    {272, 0x00AF, 2, 0, nullptr, kFields_L0110_S00AF},
+    {272, 0x027F, 1, 0, nullptr, kFields_L0110_S027F},
+    {273, 0x00AA, 6, 0, nullptr, kFields_L0111_S00AA},
+    {273, 0x00AF, 2, 0, nullptr, kFields_L0111_S00AF},
+    {273, 0x0280, 2, 0, nullptr, kFields_L0111_S0280},
+    {274, 0x00AA, 6, 0, nullptr, kFields_L0112_S00AA},
+    {274, 0x00AF, 2, 0, nullptr, kFields_L0112_S00AF},
+    {274, 0x0281, 2, 0, nullptr, kFields_L0112_S0281},
+    {275, 0x00AA, 6, 0, nullptr, kFields_L0113_S00AA},
+    {275, 0x00AF, 2, 0, nullptr, kFields_L0113_S00AF},
+    {275, 0x0282, 1, 0, nullptr, kFields_L0113_S0282},
+    {276, 0x00AA, 6, 0, nullptr, kFields_L0114_S00AA},
+    {276, 0x00AF, 2, 0, nullptr, kFields_L0114_S00AF},
+    {277, 0x00AA, 6, 0, nullptr, kFields_L0115_S00AA},
+    {277, 0x00AF, 2, 0, nullptr, kFields_L0115_S00AF},
+    {277, 0x0284, 2, 0, nullptr, kFields_L0115_S0284},
+    {278, 0x00AA, 6, 0, nullptr, kFields_L0116_S00AA},
+    {278, 0x00AF, 2, 0, nullptr, kFields_L0116_S00AF},
+    {279, 0x00AA, 6, 0, nullptr, kFields_L0117_S00AA},
+    {279, 0x00AF, 2, 0, nullptr, kFields_L0117_S00AF},
+    {279, 0x0286, 1, 0, nullptr, kFields_L0117_S0286},
+    {280, 0x00AA, 6, 0, nullptr, kFields_L0118_S00AA},
+    {280, 0x00AF, 2, 0, nullptr, kFields_L0118_S00AF},
+    {280, 0x0287, 15, 0, nullptr, kFields_L0118_S0287},
+    {281, 0x00AA, 6, 0, nullptr, kFields_L0119_S00AA},
+    {281, 0x00AF, 2, 0, nullptr, kFields_L0119_S00AF},
+    {281, 0x0288, 4, 0, nullptr, kFields_L0119_S0288},
+    {282, 0x00AA, 6, 0, nullptr, kFields_L011A_S00AA},
+    {282, 0x00AF, 2, 0, nullptr, kFields_L011A_S00AF},
+    {282, 0x0289, 3, 0, nullptr, kFields_L011A_S0289},
+    {283, 0x00AA, 6, 0, nullptr, kFields_L011B_S00AA},
+    {283, 0x00AF, 2, 0, nullptr, kFields_L011B_S00AF},
+    {283, 0x028A, 13, 0, nullptr, kFields_L011B_S028A},
+    {284, 0x00AA, 6, 0, nullptr, kFields_L011C_S00AA},
+    {284, 0x00AF, 2, 0, nullptr, kFields_L011C_S00AF},
+    {284, 0x028B, 1, 0, nullptr, kFields_L011C_S028B},
+    {285, 0x00AA, 6, 0, nullptr, kFields_L011D_S00AA},
+    {285, 0x00AF, 2, 0, nullptr, kFields_L011D_S00AF},
+    {285, 0x028C, 2, 0, nullptr, kFields_L011D_S028C},
+    {286, 0x00AA, 6, 0, nullptr, kFields_L011E_S00AA},
+    {286, 0x00AF, 2, 0, nullptr, kFields_L011E_S00AF},
+    {286, 0x028D, 1, 0, nullptr, kFields_L011E_S028D},
+    {287, 0x00AA, 6, 0, nullptr, kFields_L011F_S00AA},
+    {287, 0x00AF, 2, 0, nullptr, kFields_L011F_S00AF},
+    {287, 0x028E, 5, 0, nullptr, kFields_L011F_S028E},
+    {288, 0x00AA, 6, 0, nullptr, kFields_L0120_S00AA},
+    {288, 0x00AF, 2, 0, nullptr, kFields_L0120_S00AF},
+    {288, 0x028F, 3, 0, nullptr, kFields_L0120_S028F},
+    {289, 0x00AA, 6, 0, nullptr, kFields_L0121_S00AA},
+    {289, 0x00AF, 2, 0, nullptr, kFields_L0121_S00AF},
+    {289, 0x0290, 3, 0, nullptr, kFields_L0121_S0290},
+    {290, 0x00AA, 6, 0, nullptr, kFields_L0122_S00AA},
+    {290, 0x00AF, 2, 0, nullptr, kFields_L0122_S00AF},
+    {290, 0x0291, 5, 0, nullptr, kFields_L0122_S0291},
+    {291, 0x00AA, 6, 0, nullptr, kFields_L0123_S00AA},
+    {291, 0x00AF, 2, 0, nullptr, kFields_L0123_S00AF},
+    {292, 0x00AA, 6, 0, nullptr, kFields_L0124_S00AA},
+    {292, 0x00AF, 2, 0, nullptr, kFields_L0124_S00AF},
+    {292, 0x0293, 2, 0, nullptr, kFields_L0124_S0293},
+    {293, 0x00AA, 6, 0, nullptr, kFields_L0125_S00AA},
+    {293, 0x00AF, 2, 0, nullptr, kFields_L0125_S00AF},
+    {293, 0x0294, 3, 0, nullptr, kFields_L0125_S0294},
+    {294, 0x00AA, 6, 0, nullptr, kFields_L0126_S00AA},
+    {294, 0x00AF, 2, 0, nullptr, kFields_L0126_S00AF},
+    {294, 0x0295, 1, 0, nullptr, kFields_L0126_S0295},
+    {295, 0x00AA, 6, 0, nullptr, kFields_L0127_S00AA},
+    {295, 0x00AF, 2, 0, nullptr, kFields_L0127_S00AF},
+    {296, 0x00AA, 6, 0, nullptr, kFields_L0128_S00AA},
+    {296, 0x00AF, 2, 0, nullptr, kFields_L0128_S00AF},
+    {296, 0x0297, 2, 0, nullptr, kFields_L0128_S0297},
+    {297, 0x00AA, 6, 0, nullptr, kFields_L0129_S00AA},
+    {297, 0x00AF, 2, 0, nullptr, kFields_L0129_S00AF},
+    {297, 0x0298, 2, 0, nullptr, kFields_L0129_S0298},
+    {298, 0x00AA, 6, 0, nullptr, kFields_L012A_S00AA},
+    {298, 0x00AF, 2, 0, nullptr, kFields_L012A_S00AF},
+    {298, 0x0299, 3, 0, nullptr, kFields_L012A_S0299},
+    {299, 0x00AA, 6, 0, nullptr, kFields_L012B_S00AA},
+    {299, 0x00AF, 2, 0, nullptr, kFields_L012B_S00AF},
+    {299, 0x029A, 1, 0, nullptr, kFields_L012B_S029A},
+    {300, 0x00AA, 6, 0, nullptr, kFields_L012C_S00AA},
+    {300, 0x00AF, 2, 0, nullptr, kFields_L012C_S00AF},
+    {301, 0x00AA, 6, 0, nullptr, kFields_L012D_S00AA},
+    {301, 0x00AF, 2, 0, nullptr, kFields_L012D_S00AF},
+    {301, 0x029C, 1, 0, nullptr, kFields_L012D_S029C},
+    {302, 0x00AA, 6, 0, nullptr, kFields_L012E_S00AA},
+    {302, 0x00AF, 2, 0, nullptr, kFields_L012E_S00AF},
+    {302, 0x029D, 5, 0, nullptr, kFields_L012E_S029D},
+    {303, 0x00AA, 6, 0, nullptr, kFields_L012F_S00AA},
+    {303, 0x00AF, 2, 0, nullptr, kFields_L012F_S00AF},
+    {303, 0x029E, 6, 0, nullptr, kFields_L012F_S029E},
+    {304, 0x00AA, 6, 0, nullptr, kFields_L0130_S00AA},
+    {304, 0x00AF, 2, 0, nullptr, kFields_L0130_S00AF},
+    {304, 0x029F, 6, 0, nullptr, kFields_L0130_S029F},
+    {305, 0x00AA, 6, 0, nullptr, kFields_L0131_S00AA},
+    {305, 0x00AF, 2, 0, nullptr, kFields_L0131_S00AF},
+    {305, 0x02A0, 17, 0, nullptr, kFields_L0131_S02A0},
+    {306, 0x00AA, 6, 0, nullptr, kFields_L0132_S00AA},
+    {306, 0x00AF, 2, 0, nullptr, kFields_L0132_S00AF},
+    {307, 0x00AA, 6, 0, nullptr, kFields_L0133_S00AA},
+    {307, 0x00AF, 2, 0, nullptr, kFields_L0133_S00AF},
+    {307, 0x02A2, 2, 0, nullptr, kFields_L0133_S02A2},
+    {308, 0x00AA, 6, 0, nullptr, kFields_L0134_S00AA},
+    {308, 0x00AF, 2, 0, nullptr, kFields_L0134_S00AF},
+    {309, 0x00AA, 6, 0, nullptr, kFields_L0135_S00AA},
+    {309, 0x00AF, 2, 0, nullptr, kFields_L0135_S00AF},
+    {310, 0x00AA, 6, 0, nullptr, kFields_L0136_S00AA},
+    {310, 0x00AF, 2, 0, nullptr, kFields_L0136_S00AF},
+    {310, 0x02A5, 8, 0, nullptr, kFields_L0136_S02A5},
+    {311, 0x00AA, 6, 0, nullptr, kFields_L0137_S00AA},
+    {311, 0x00AF, 2, 0, nullptr, kFields_L0137_S00AF},
+    {311, 0x02A6, 5, 0, nullptr, kFields_L0137_S02A6},
+    {312, 0x00AA, 6, 0, nullptr, kFields_L0138_S00AA},
+    {312, 0x00AF, 2, 0, nullptr, kFields_L0138_S00AF},
+    {312, 0x02A7, 10, 0, nullptr, kFields_L0138_S02A7},
+    {313, 0x00AA, 6, 0, nullptr, kFields_L0139_S00AA},
+    {313, 0x00AF, 2, 0, nullptr, kFields_L0139_S00AF},
+    {313, 0x02A8, 2, 0, nullptr, kFields_L0139_S02A8},
+    {314, 0x00AA, 6, 0, nullptr, kFields_L013A_S00AA},
+    {314, 0x00AF, 2, 0, nullptr, kFields_L013A_S00AF},
+    {314, 0x00B0, 3, 0, nullptr, kFields_L013A_S00B0},
+    {314, 0x02A9, 1, 0, nullptr, kFields_L013A_S02A9},
+    {315, 0x00AA, 6, 0, nullptr, kFields_L013B_S00AA},
+    {315, 0x00AF, 2, 0, nullptr, kFields_L013B_S00AF},
+    {315, 0x02AA, 3, 0, nullptr, kFields_L013B_S02AA},
+    {316, 0x00AA, 6, 0, nullptr, kFields_L013C_S00AA},
+    {316, 0x00AF, 2, 0, nullptr, kFields_L013C_S00AF},
+    {316, 0x02AB, 6, 0, nullptr, kFields_L013C_S02AB},
+    {317, 0x00AA, 6, 0, nullptr, kFields_L013D_S00AA},
+    {317, 0x00AF, 2, 0, nullptr, kFields_L013D_S00AF},
+    {317, 0x02AC, 13, 0, nullptr, kFields_L013D_S02AC},
+    {318, 0x00AA, 6, 0, nullptr, kFields_L013E_S00AA},
+    {318, 0x00AF, 2, 0, nullptr, kFields_L013E_S00AF},
+    {318, 0x02AD, 20, 0, nullptr, kFields_L013E_S02AD},
+    {319, 0x00AA, 6, 0, nullptr, kFields_L013F_S00AA},
+    {319, 0x00AF, 2, 0, nullptr, kFields_L013F_S00AF},
+    {319, 0x02AD, 20, 0, nullptr, kFields_L013F_S02AD},
+    {320, 0x00AA, 6, 0, nullptr, kFields_L0140_S00AA},
+    {320, 0x00AF, 2, 0, nullptr, kFields_L0140_S00AF},
+    {321, 0x00AA, 6, 0, nullptr, kFields_L0141_S00AA},
+    {321, 0x00AF, 2, 0, nullptr, kFields_L0141_S00AF},
+    {321, 0x02B0, 7, 0, nullptr, kFields_L0141_S02B0},
+    {322, 0x00AA, 6, 0, nullptr, kFields_L0142_S00AA},
+    {322, 0x00AF, 2, 0, nullptr, kFields_L0142_S00AF},
+    {322, 0x02B1, 5, 0, nullptr, kFields_L0142_S02B1},
+    {323, 0x00AA, 6, 0, nullptr, kFields_L0143_S00AA},
+    {323, 0x00AF, 2, 0, nullptr, kFields_L0143_S00AF},
+    {323, 0x02B2, 1, 0, nullptr, kFields_L0143_S02B2},
+    {324, 0x00AA, 6, 0, nullptr, kFields_L0144_S00AA},
+    {324, 0x00AF, 2, 0, nullptr, kFields_L0144_S00AF},
+    {324, 0x02B3, 1, 0, nullptr, kFields_L0144_S02B3},
+    {325, 0x00AA, 6, 0, nullptr, kFields_L0145_S00AA},
+    {325, 0x00AF, 2, 0, nullptr, kFields_L0145_S00AF},
+    {325, 0x02B4, 2, 0, nullptr, kFields_L0145_S02B4},
+    {326, 0x00AA, 6, 0, nullptr, kFields_L0146_S00AA},
+    {326, 0x00AF, 2, 0, nullptr, kFields_L0146_S00AF},
+    {326, 0x02B5, 4, 0, nullptr, kFields_L0146_S02B5},
+    {327, 0x00AA, 6, 0, nullptr, kFields_L0147_S00AA},
+    {327, 0x00AF, 2, 0, nullptr, kFields_L0147_S00AF},
+    {327, 0x02B6, 3, 0, nullptr, kFields_L0147_S02B6},
+    {328, 0x00AA, 6, 0, nullptr, kFields_L0148_S00AA},
+    {328, 0x00AF, 2, 0, nullptr, kFields_L0148_S00AF},
+    {328, 0x02B7, 30, 0, nullptr, kFields_L0148_S02B7},
+    {329, 0x00AA, 6, 0, nullptr, kFields_L0149_S00AA},
+    {329, 0x00AF, 2, 0, nullptr, kFields_L0149_S00AF},
+    {329, 0x02B8, 18, 0, nullptr, kFields_L0149_S02B8},
+    {330, 0x00AA, 6, 0, nullptr, kFields_L014A_S00AA},
+    {330, 0x00AF, 2, 0, nullptr, kFields_L014A_S00AF},
+    {330, 0x02B9, 2, 0, nullptr, kFields_L014A_S02B9},
+    {330, 0x02BA, 12, 0, nullptr, kFields_L014A_S02BA},
+    {330, 0x02BB, 5, 0, nullptr, kFields_L014A_S02BB},
+    {331, 0x00AA, 6, 0, nullptr, kFields_L014B_S00AA},
+    {331, 0x00AF, 2, 0, nullptr, kFields_L014B_S00AF},
+    {332, 0x00AA, 6, 0, nullptr, kFields_L014C_S00AA},
+    {332, 0x00AF, 2, 0, nullptr, kFields_L014C_S00AF},
+    {332, 0x02BD, 2, 0, nullptr, kFields_L014C_S02BD},
+    {333, 0x00AA, 6, 0, nullptr, kFields_L014D_S00AA},
+    {333, 0x00AF, 2, 0, nullptr, kFields_L014D_S00AF},
+    {333, 0x02BE, 19, 0, nullptr, kFields_L014D_S02BE},
+    {334, 0x00AA, 6, 0, nullptr, kFields_L014E_S00AA},
+    {334, 0x00AF, 2, 0, nullptr, kFields_L014E_S00AF},
+    {334, 0x02BF, 3, 0, nullptr, kFields_L014E_S02BF},
+    {335, 0x00AA, 6, 0, nullptr, kFields_L014F_S00AA},
+    {335, 0x00AF, 2, 0, nullptr, kFields_L014F_S00AF},
+    {336, 0x00AA, 6, 0, nullptr, kFields_L0150_S00AA},
+    {336, 0x00AF, 2, 0, nullptr, kFields_L0150_S00AF},
+    {336, 0x02C2, 4, 0, nullptr, kFields_L0150_S02C2},
+    {336, 0x02C3, 4, 0, nullptr, kFields_L0150_S02C3},
+    {336, 0x02C4, 2, 0, nullptr, kFields_L0150_S02C4},
+    {337, 0x00AA, 6, 0, nullptr, kFields_L0151_S00AA},
+    {337, 0x00AF, 2, 0, nullptr, kFields_L0151_S00AF},
+    {337, 0x02C5, 13, 0, nullptr, kFields_L0151_S02C5},
+    {338, 0x00AA, 6, 0, nullptr, kFields_L0152_S00AA},
+    {338, 0x00AF, 2, 0, nullptr, kFields_L0152_S00AF},
+    {339, 0x00AA, 6, 0, nullptr, kFields_L0153_S00AA},
+    {339, 0x00AF, 2, 0, nullptr, kFields_L0153_S00AF},
+    {339, 0x02C7, 2, 0, nullptr, kFields_L0153_S02C7},
+    {340, 0x00AA, 6, 0, nullptr, kFields_L0154_S00AA},
+    {340, 0x00AF, 2, 0, nullptr, kFields_L0154_S00AF},
+    {340, 0x02C7, 2, 0, nullptr, kFields_L0154_S02C7},
+    {341, 0x00AA, 6, 0, nullptr, kFields_L0155_S00AA},
+    {341, 0x00AF, 2, 0, nullptr, kFields_L0155_S00AF},
+    {341, 0x02C9, 3, 0, nullptr, kFields_L0155_S02C9},
+    {342, 0x00AA, 6, 0, nullptr, kFields_L0156_S00AA},
+    {342, 0x00AF, 2, 0, nullptr, kFields_L0156_S00AF},
+    {342, 0x02CA, 4, 0, nullptr, kFields_L0156_S02CA},
+    {343, 0x00AA, 6, 0, nullptr, kFields_L0157_S00AA},
+    {343, 0x00AF, 2, 0, nullptr, kFields_L0157_S00AF},
+    {343, 0x02CB, 4, 0, nullptr, kFields_L0157_S02CB},
+    {344, 0x00AA, 6, 0, nullptr, kFields_L0158_S00AA},
+    {344, 0x00AF, 2, 0, nullptr, kFields_L0158_S00AF},
+    {344, 0x02CC, 5, 0, nullptr, kFields_L0158_S02CC},
+    {345, 0x00AA, 6, 0, nullptr, kFields_L0159_S00AA},
+    {345, 0x00AF, 2, 0, nullptr, kFields_L0159_S00AF},
+    {345, 0x02CD, 1, 0, nullptr, kFields_L0159_S02CD},
+    {346, 0x00AA, 6, 0, nullptr, kFields_L015A_S00AA},
+    {346, 0x00AF, 2, 0, nullptr, kFields_L015A_S00AF},
+    {346, 0x02CE, 3, 0, nullptr, kFields_L015A_S02CE},
+    {347, 0x00AA, 6, 0, nullptr, kFields_L015B_S00AA},
+    {347, 0x00AF, 2, 0, nullptr, kFields_L015B_S00AF},
+    {348, 0x00AA, 6, 0, nullptr, kFields_L015C_S00AA},
+    {348, 0x00AF, 2, 0, nullptr, kFields_L015C_S00AF},
+    {348, 0x02D0, 2, 0, nullptr, kFields_L015C_S02D0},
+    {349, 0x00AA, 6, 0, nullptr, kFields_L015D_S00AA},
+    {349, 0x00AF, 2, 0, nullptr, kFields_L015D_S00AF},
+    {349, 0x02D1, 25, 0, nullptr, kFields_L015D_S02D1},
+    {350, 0x00AA, 6, 0, nullptr, kFields_L015E_S00AA},
+    {350, 0x00AF, 2, 0, nullptr, kFields_L015E_S00AF},
+    {350, 0x02D2, 5, 0, nullptr, kFields_L015E_S02D2},
+    {351, 0x00AA, 6, 0, nullptr, kFields_L015F_S00AA},
+    {351, 0x00AF, 2, 0, nullptr, kFields_L015F_S00AF},
+    {351, 0x02D3, 4, 0, nullptr, kFields_L015F_S02D3},
+    {352, 0x00AA, 6, 0, nullptr, kFields_L0160_S00AA},
+    {352, 0x00AF, 2, 0, nullptr, kFields_L0160_S00AF},
+    {352, 0x02D4, 4, 0, nullptr, kFields_L0160_S02D4},
+    {353, 0x00AA, 6, 0, nullptr, kFields_L0161_S00AA},
+    {353, 0x00AF, 2, 0, nullptr, kFields_L0161_S00AF},
+    {353, 0x02D5, 1, 0, nullptr, kFields_L0161_S02D5},
+    {354, 0x00AA, 6, 0, nullptr, kFields_L0162_S00AA},
+    {354, 0x00AF, 2, 0, nullptr, kFields_L0162_S00AF},
+    {354, 0x02D6, 2, 0, nullptr, kFields_L0162_S02D6},
+    {355, 0x00AA, 6, 0, nullptr, kFields_L0163_S00AA},
+    {355, 0x00AF, 2, 0, nullptr, kFields_L0163_S00AF},
+    {355, 0x02D7, 1, 0, nullptr, kFields_L0163_S02D7},
+    {356, 0x00AA, 6, 0, nullptr, kFields_L0164_S00AA},
+    {356, 0x00AF, 2, 0, nullptr, kFields_L0164_S00AF},
+    {356, 0x02D8, 3, 0, nullptr, kFields_L0164_S02D8},
+    {357, 0x00AA, 6, 0, nullptr, kFields_L0165_S00AA},
+    {357, 0x00AF, 2, 0, nullptr, kFields_L0165_S00AF},
+    {358, 0x00AA, 6, 0, nullptr, kFields_L0166_S00AA},
+    {358, 0x00AF, 2, 0, nullptr, kFields_L0166_S00AF},
+    {358, 0x02DA, 3, 0, nullptr, kFields_L0166_S02DA},
+    {359, 0x00AA, 6, 0, nullptr, kFields_L0167_S00AA},
+    {359, 0x00AF, 2, 0, nullptr, kFields_L0167_S00AF},
+    {359, 0x02DA, 3, 0, nullptr, kFields_L0167_S02DA},
+    {360, 0x00AA, 6, 0, nullptr, kFields_L0168_S00AA},
+    {360, 0x00AF, 2, 0, nullptr, kFields_L0168_S00AF},
+    {360, 0x02DA, 3, 0, nullptr, kFields_L0168_S02DA},
+    {360, 0x02DC, 2, 0, nullptr, kFields_L0168_S02DC},
+    {361, 0x00AA, 6, 0, nullptr, kFields_L0169_S00AA},
+    {361, 0x00AF, 2, 0, nullptr, kFields_L0169_S00AF},
+    {361, 0x02DD, 7, 0, nullptr, kFields_L0169_S02DD},
+    {362, 0x00AA, 6, 0, nullptr, kFields_L016A_S00AA},
+    {362, 0x00AF, 2, 0, nullptr, kFields_L016A_S00AF},
+    {363, 0x00AA, 6, 0, nullptr, kFields_L016B_S00AA},
+    {363, 0x00AF, 2, 0, nullptr, kFields_L016B_S00AF},
+    {364, 0x00AA, 6, 0, nullptr, kFields_L016C_S00AA},
+    {364, 0x00AF, 2, 0, nullptr, kFields_L016C_S00AF},
+    {364, 0x02E0, 5, 0, nullptr, kFields_L016C_S02E0},
+    {365, 0x00AA, 6, 0, nullptr, kFields_L016D_S00AA},
+    {365, 0x00AF, 2, 0, nullptr, kFields_L016D_S00AF},
+    {365, 0x02E1, 3, 0, nullptr, kFields_L016D_S02E1},
+    {366, 0x00AA, 6, 0, nullptr, kFields_L016E_S00AA},
+    {366, 0x00AF, 2, 0, nullptr, kFields_L016E_S00AF},
+    {366, 0x02E2, 2, 0, nullptr, kFields_L016E_S02E2},
+    {367, 0x00AA, 6, 0, nullptr, kFields_L016F_S00AA},
+    {367, 0x00AF, 2, 0, nullptr, kFields_L016F_S00AF},
+    {368, 0x00AA, 6, 0, nullptr, kFields_L0170_S00AA},
+    {368, 0x00AF, 2, 0, nullptr, kFields_L0170_S00AF},
+    {368, 0x02E4, 4, 0, nullptr, kFields_L0170_S02E4},
+    {369, 0x00AA, 6, 0, nullptr, kFields_L0171_S00AA},
+    {369, 0x00AF, 2, 0, nullptr, kFields_L0171_S00AF},
+    {369, 0x02E5, 4, 0, nullptr, kFields_L0171_S02E5},
+    {370, 0x00AA, 6, 0, nullptr, kFields_L0172_S00AA},
+    {370, 0x00AF, 2, 0, nullptr, kFields_L0172_S00AF},
+    {370, 0x02E6, 2, 0, nullptr, kFields_L0172_S02E6},
+    {371, 0x00AA, 6, 0, nullptr, kFields_L0173_S00AA},
+    {371, 0x00AF, 2, 0, nullptr, kFields_L0173_S00AF},
+    {371, 0x02E7, 8, 0, nullptr, kFields_L0173_S02E7},
+    {372, 0x00AA, 6, 0, nullptr, kFields_L0174_S00AA},
+    {372, 0x00AF, 2, 0, nullptr, kFields_L0174_S00AF},
+    {372, 0x02E8, 7, 0, nullptr, kFields_L0174_S02E8},
+    {373, 0x00AA, 6, 0, nullptr, kFields_L0175_S00AA},
+    {373, 0x00AF, 2, 0, nullptr, kFields_L0175_S00AF},
+    {373, 0x02E9, 8, 0, nullptr, kFields_L0175_S02E9},
+    {373, 0x02EA, 5, 0, nullptr, kFields_L0175_S02EA},
+    {374, 0x00AA, 6, 0, nullptr, kFields_L0176_S00AA},
+    {374, 0x00AF, 2, 0, nullptr, kFields_L0176_S00AF},
+    {374, 0x02EB, 1, 0, nullptr, kFields_L0176_S02EB},
+    {375, 0x00AA, 6, 0, nullptr, kFields_L0177_S00AA},
+    {375, 0x00AF, 2, 0, nullptr, kFields_L0177_S00AF},
+    {375, 0x02EC, 1, 0, nullptr, kFields_L0177_S02EC},
+    {376, 0x00AA, 6, 0, nullptr, kFields_L0178_S00AA},
+    {376, 0x00AF, 2, 0, nullptr, kFields_L0178_S00AF},
+    {376, 0x02ED, 4, 0, nullptr, kFields_L0178_S02ED},
+    {377, 0x00AA, 6, 0, nullptr, kFields_L0179_S00AA},
+    {377, 0x00AF, 2, 0, nullptr, kFields_L0179_S00AF},
+    {377, 0x02EE, 4, 0, nullptr, kFields_L0179_S02EE},
+    {378, 0x00AA, 6, 0, nullptr, kFields_L017A_S00AA},
+    {378, 0x00AF, 2, 0, nullptr, kFields_L017A_S00AF},
+    {379, 0x00AA, 6, 0, nullptr, kFields_L017B_S00AA},
+    {379, 0x00AF, 2, 0, nullptr, kFields_L017B_S00AF},
+    {379, 0x02F0, 1, 0, nullptr, kFields_L017B_S02F0},
+    {380, 0x00AA, 6, 0, nullptr, kFields_L017C_S00AA},
+    {380, 0x00AF, 2, 0, nullptr, kFields_L017C_S00AF},
+    {380, 0x02F1, 2, 0, nullptr, kFields_L017C_S02F1},
+    {381, 0x00AA, 6, 0, nullptr, kFields_L017D_S00AA},
+    {381, 0x00AF, 2, 0, nullptr, kFields_L017D_S00AF},
+    {381, 0x02F2, 3, 0, nullptr, kFields_L017D_S02F2},
+    {382, 0x00AA, 6, 0, nullptr, kFields_L017E_S00AA},
+    {382, 0x00AF, 2, 0, nullptr, kFields_L017E_S00AF},
+    {382, 0x02F3, 1, 0, nullptr, kFields_L017E_S02F3},
+    {383, 0x00AA, 6, 0, nullptr, kFields_L017F_S00AA},
+    {383, 0x00AF, 2, 0, nullptr, kFields_L017F_S00AF},
+    {383, 0x02F4, 14, 0, nullptr, kFields_L017F_S02F4},
+    {384, 0x00AA, 6, 0, nullptr, kFields_L0180_S00AA},
+    {384, 0x00AF, 2, 0, nullptr, kFields_L0180_S00AF},
+    {384, 0x02F5, 6, 0, nullptr, kFields_L0180_S02F5},
+    {385, 0x00AA, 6, 0, nullptr, kFields_L0181_S00AA},
+    {385, 0x00AF, 2, 0, nullptr, kFields_L0181_S00AF},
+    {385, 0x02F6, 6, 0, nullptr, kFields_L0181_S02F6},
+    {386, 0x00AA, 6, 0, nullptr, kFields_L0182_S00AA},
+    {386, 0x00AF, 2, 0, nullptr, kFields_L0182_S00AF},
+    {386, 0x02F7, 4, 0, nullptr, kFields_L0182_S02F7},
+    {387, 0x00AA, 6, 0, nullptr, kFields_L0183_S00AA},
+    {387, 0x00AF, 2, 0, nullptr, kFields_L0183_S00AF},
+    {387, 0x02F8, 5, 0, nullptr, kFields_L0183_S02F8},
+    {388, 0x00AA, 6, 0, nullptr, kFields_L0184_S00AA},
+    {388, 0x00AF, 2, 0, nullptr, kFields_L0184_S00AF},
+    {388, 0x02F9, 7, 0, nullptr, kFields_L0184_S02F9},
+    {389, 0x00AA, 6, 0, nullptr, kFields_L0185_S00AA},
+    {389, 0x00AF, 2, 0, nullptr, kFields_L0185_S00AF},
+    {389, 0x02FA, 1, 0, nullptr, kFields_L0185_S02FA},
+    {390, 0x00AA, 6, 0, nullptr, kFields_L0186_S00AA},
+    {390, 0x00AF, 2, 0, nullptr, kFields_L0186_S00AF},
+    {390, 0x02FB, 1, 0, nullptr, kFields_L0186_S02FB},
+    {390, 0x02FC, 3, 0, nullptr, kFields_L0186_S02FC},
+    {390, 0x02FD, 2, 0, nullptr, kFields_L0186_S02FD},
+    {390, 0x02FE, 6, 0, nullptr, kFields_L0186_S02FE},
+    {391, 0x00AA, 6, 0, nullptr, kFields_L0187_S00AA},
+    {391, 0x00AF, 2, 0, nullptr, kFields_L0187_S00AF},
+    {391, 0x02FF, 1, 0, nullptr, kFields_L0187_S02FF},
+    {392, 0x00AA, 6, 0, nullptr, kFields_L0188_S00AA},
+    {392, 0x00AF, 2, 0, nullptr, kFields_L0188_S00AF},
+    {392, 0x0300, 3, 0, nullptr, kFields_L0188_S0300},
+    {393, 0x00AA, 6, 0, nullptr, kFields_L0189_S00AA},
+    {393, 0x00AF, 2, 0, nullptr, kFields_L0189_S00AF},
+    {393, 0x0301, 6, 0, nullptr, kFields_L0189_S0301},
+    {394, 0x00AA, 6, 0, nullptr, kFields_L018A_S00AA},
+    {394, 0x00AF, 2, 0, nullptr, kFields_L018A_S00AF},
+    {394, 0x0302, 2, 0, nullptr, kFields_L018A_S0302},
+    {395, 0x00AA, 6, 0, nullptr, kFields_L018B_S00AA},
+    {395, 0x00AF, 2, 0, nullptr, kFields_L018B_S00AF},
+    {395, 0x0303, 3, 0, nullptr, kFields_L018B_S0303},
+    {396, 0x00AA, 6, 0, nullptr, kFields_L018C_S00AA},
+    {396, 0x00AF, 2, 0, nullptr, kFields_L018C_S00AF},
+    {397, 0x00AA, 6, 0, nullptr, kFields_L018D_S00AA},
+    {397, 0x00AF, 2, 0, nullptr, kFields_L018D_S00AF},
+    {398, 0x00AA, 6, 0, nullptr, kFields_L018E_S00AA},
+    {398, 0x00AF, 2, 0, nullptr, kFields_L018E_S00AF},
+    {399, 0x00AA, 6, 0, nullptr, kFields_L018F_S00AA},
+    {399, 0x00AF, 2, 0, nullptr, kFields_L018F_S00AF},
+    {399, 0x0307, 3, 0, nullptr, kFields_L018F_S0307},
+    {400, 0x00AA, 6, 0, nullptr, kFields_L0190_S00AA},
+    {400, 0x00AF, 2, 0, nullptr, kFields_L0190_S00AF},
+    {400, 0x0308, 2, 0, nullptr, kFields_L0190_S0308},
+    {401, 0x00AA, 6, 0, nullptr, kFields_L0191_S00AA},
+    {401, 0x00AF, 2, 0, nullptr, kFields_L0191_S00AF},
+    {401, 0x0309, 9, 0, nullptr, kFields_L0191_S0309},
+    {402, 0x00AA, 6, 0, nullptr, kFields_L0192_S00AA},
+    {402, 0x00AF, 2, 0, nullptr, kFields_L0192_S00AF},
+    {402, 0x030A, 6, 0, nullptr, kFields_L0192_S030A},
+    {403, 0x00AA, 6, 0, nullptr, kFields_L0193_S00AA},
+    {403, 0x00AF, 2, 0, nullptr, kFields_L0193_S00AF},
+    {403, 0x030B, 11, 0, nullptr, kFields_L0193_S030B},
+    {404, 0x00AA, 6, 0, nullptr, kFields_L0194_S00AA},
+    {404, 0x00AF, 2, 0, nullptr, kFields_L0194_S00AF},
+    {404, 0x030C, 10, 0, nullptr, kFields_L0194_S030C},
+    {405, 0x00AA, 6, 0, nullptr, kFields_L0195_S00AA},
+    {405, 0x00AF, 2, 0, nullptr, kFields_L0195_S00AF},
+    {405, 0x030D, 6, 0, nullptr, kFields_L0195_S030D},
+    {406, 0x00AA, 6, 0, nullptr, kFields_L0196_S00AA},
+    {406, 0x00AF, 2, 0, nullptr, kFields_L0196_S00AF},
+    {406, 0x030E, 2, 0, nullptr, kFields_L0196_S030E},
+    {407, 0x00AA, 6, 0, nullptr, kFields_L0197_S00AA},
+    {407, 0x00AF, 2, 0, nullptr, kFields_L0197_S00AF},
+    {407, 0x030F, 4, 0, nullptr, kFields_L0197_S030F},
+    {408, 0x00AA, 6, 0, nullptr, kFields_L0198_S00AA},
+    {408, 0x00AF, 2, 0, nullptr, kFields_L0198_S00AF},
+    {408, 0x0310, 1, 0, nullptr, kFields_L0198_S0310},
+    {409, 0x00AA, 6, 0, nullptr, kFields_L0199_S00AA},
+    {409, 0x00AF, 2, 0, nullptr, kFields_L0199_S00AF},
+    {409, 0x0311, 2, 0, nullptr, kFields_L0199_S0311},
+    {410, 0x00AA, 6, 0, nullptr, kFields_L019A_S00AA},
+    {410, 0x00AF, 2, 0, nullptr, kFields_L019A_S00AF},
+    {410, 0x0310, 1, 0, nullptr, kFields_L019A_S0310},
+    {410, 0x0312, 1, 0, nullptr, kFields_L019A_S0312},
+    {411, 0x00AA, 6, 0, nullptr, kFields_L019B_S00AA},
+    {411, 0x00AF, 2, 0, nullptr, kFields_L019B_S00AF},
+    {411, 0x0313, 5, 0, nullptr, kFields_L019B_S0313},
+    {412, 0x00AA, 6, 0, nullptr, kFields_L019C_S00AA},
+    {412, 0x00AF, 2, 0, nullptr, kFields_L019C_S00AF},
+    {412, 0x0314, 2, 0, nullptr, kFields_L019C_S0314},
+    {413, 0x00AA, 6, 0, nullptr, kFields_L019D_S00AA},
+    {413, 0x00AF, 2, 0, nullptr, kFields_L019D_S00AF},
+    {413, 0x0315, 4, 0, nullptr, kFields_L019D_S0315},
+    {414, 0x00AA, 6, 0, nullptr, kFields_L019E_S00AA},
+    {414, 0x00AF, 2, 0, nullptr, kFields_L019E_S00AF},
+    {414, 0x0316, 4, 0, nullptr, kFields_L019E_S0316},
+    {415, 0x00AA, 6, 0, nullptr, kFields_L019F_S00AA},
+    {415, 0x00AF, 2, 0, nullptr, kFields_L019F_S00AF},
+    {415, 0x0317, 5, 0, nullptr, kFields_L019F_S0317},
+    {416, 0x00AA, 6, 0, nullptr, kFields_L01A0_S00AA},
+    {416, 0x00AF, 2, 0, nullptr, kFields_L01A0_S00AF},
+    {416, 0x0318, 2, 0, nullptr, kFields_L01A0_S0318},
+    {417, 0x00AA, 6, 0, nullptr, kFields_L01A1_S00AA},
+    {417, 0x00AF, 2, 0, nullptr, kFields_L01A1_S00AF},
+    {417, 0x0319, 8, 0, nullptr, kFields_L01A1_S0319},
+    {418, 0x00AA, 6, 0, nullptr, kFields_L01A2_S00AA},
+    {418, 0x00AF, 2, 0, nullptr, kFields_L01A2_S00AF},
+    {418, 0x031A, 1, 0, nullptr, kFields_L01A2_S031A},
+    {419, 0x00AA, 6, 0, nullptr, kFields_L01A3_S00AA},
+    {419, 0x00AF, 2, 0, nullptr, kFields_L01A3_S00AF},
+    {419, 0x031B, 1, 0, nullptr, kFields_L01A3_S031B},
+    {420, 0x00AA, 6, 0, nullptr, kFields_L01A4_S00AA},
+    {420, 0x00AF, 2, 0, nullptr, kFields_L01A4_S00AF},
+    {420, 0x031C, 13, 0, nullptr, kFields_L01A4_S031C},
+    {421, 0x00AA, 6, 0, nullptr, kFields_L01A5_S00AA},
+    {421, 0x00AF, 2, 0, nullptr, kFields_L01A5_S00AF},
+    {421, 0x031D, 2, 0, nullptr, kFields_L01A5_S031D},
+    {422, 0x00AA, 6, 0, nullptr, kFields_L01A6_S00AA},
+    {422, 0x00AF, 2, 0, nullptr, kFields_L01A6_S00AF},
+    {422, 0x031E, 1, 0, nullptr, kFields_L01A6_S031E},
+    {423, 0x00AA, 6, 0, nullptr, kFields_L01A7_S00AA},
+    {423, 0x00AF, 2, 0, nullptr, kFields_L01A7_S00AF},
+    {423, 0x031F, 1, 0, nullptr, kFields_L01A7_S031F},
+    {424, 0x00AA, 6, 0, nullptr, kFields_L01A8_S00AA},
+    {424, 0x00AF, 2, 0, nullptr, kFields_L01A8_S00AF},
+    {424, 0x0320, 2, 0, nullptr, kFields_L01A8_S0320},
+    {425, 0x00AA, 6, 0, nullptr, kFields_L01A9_S00AA},
+    {425, 0x00AF, 2, 0, nullptr, kFields_L01A9_S00AF},
+    {425, 0x0321, 1, 0, nullptr, kFields_L01A9_S0321},
+    {426, 0x00AA, 6, 0, nullptr, kFields_L01AA_S00AA},
+    {426, 0x00AF, 2, 0, nullptr, kFields_L01AA_S00AF},
+    {426, 0x0322, 2, 0, nullptr, kFields_L01AA_S0322},
+    {427, 0x00AA, 6, 0, nullptr, kFields_L01AB_S00AA},
+    {427, 0x00AF, 2, 0, nullptr, kFields_L01AB_S00AF},
+    {427, 0x0323, 3, 0, nullptr, kFields_L01AB_S0323},
+    {428, 0x00AA, 6, 0, nullptr, kFields_L01AC_S00AA},
+    {428, 0x00AF, 2, 0, nullptr, kFields_L01AC_S00AF},
+    {428, 0x0324, 4, 0, nullptr, kFields_L01AC_S0324},
+    {429, 0x00AA, 6, 0, nullptr, kFields_L01AD_S00AA},
+    {429, 0x00AF, 2, 0, nullptr, kFields_L01AD_S00AF},
+    {429, 0x0325, 2, 0, nullptr, kFields_L01AD_S0325},
+    {430, 0x00AA, 6, 0, nullptr, kFields_L01AE_S00AA},
+    {430, 0x00AF, 2, 0, nullptr, kFields_L01AE_S00AF},
+    {431, 0x00AA, 6, 0, nullptr, kFields_L01AF_S00AA},
+    {431, 0x00AF, 2, 0, nullptr, kFields_L01AF_S00AF},
+    {431, 0x0327, 3, 0, nullptr, kFields_L01AF_S0327},
+    {432, 0x00AA, 6, 0, nullptr, kFields_L01B0_S00AA},
+    {432, 0x00AF, 2, 0, nullptr, kFields_L01B0_S00AF},
+    {433, 0x00AA, 6, 0, nullptr, kFields_L01B1_S00AA},
+    {433, 0x00AF, 2, 0, nullptr, kFields_L01B1_S00AF},
+    {433, 0x0329, 1, 0, nullptr, kFields_L01B1_S0329},
+    {434, 0x00AA, 6, 0, nullptr, kFields_L01B2_S00AA},
+    {434, 0x00AF, 2, 0, nullptr, kFields_L01B2_S00AF},
+    {434, 0x032A, 2, 0, nullptr, kFields_L01B2_S032A},
+    {435, 0x00AA, 6, 0, nullptr, kFields_L01B3_S00AA},
+    {435, 0x00AF, 2, 0, nullptr, kFields_L01B3_S00AF},
+    {436, 0x00AA, 6, 0, nullptr, kFields_L01B4_S00AA},
+    {436, 0x00AF, 2, 0, nullptr, kFields_L01B4_S00AF},
+    {436, 0x032C, 6, 0, nullptr, kFields_L01B4_S032C},
+    {437, 0x00AA, 6, 0, nullptr, kFields_L01B5_S00AA},
+    {437, 0x00AF, 2, 0, nullptr, kFields_L01B5_S00AF},
+    {437, 0x032D, 2, 0, nullptr, kFields_L01B5_S032D},
+    {438, 0x00AA, 6, 0, nullptr, kFields_L01B6_S00AA},
+    {438, 0x00AF, 2, 0, nullptr, kFields_L01B6_S00AF},
+    {438, 0x032E, 3, 0, nullptr, kFields_L01B6_S032E},
+    {439, 0x00AA, 6, 0, nullptr, kFields_L01B7_S00AA},
+    {439, 0x00AF, 2, 0, nullptr, kFields_L01B7_S00AF},
+    {439, 0x032F, 1, 0, nullptr, kFields_L01B7_S032F},
+    {440, 0x00AA, 6, 0, nullptr, kFields_L01B8_S00AA},
+    {440, 0x00AF, 2, 0, nullptr, kFields_L01B8_S00AF},
+    {440, 0x0330, 1, 0, nullptr, kFields_L01B8_S0330},
+    {441, 0x00AA, 6, 0, nullptr, kFields_L01B9_S00AA},
+    {441, 0x00AF, 2, 0, nullptr, kFields_L01B9_S00AF},
+    {441, 0x0331, 1, 0, nullptr, kFields_L01B9_S0331},
+    {442, 0x00AA, 6, 0, nullptr, kFields_L01BA_S00AA},
+    {442, 0x00AF, 2, 0, nullptr, kFields_L01BA_S00AF},
+    {442, 0x0332, 2, 0, nullptr, kFields_L01BA_S0332},
+    {443, 0x00AA, 6, 0, nullptr, kFields_L01BB_S00AA},
+    {443, 0x00AF, 2, 0, nullptr, kFields_L01BB_S00AF},
+    {443, 0x0333, 1, 0, nullptr, kFields_L01BB_S0333},
+    {444, 0x00AA, 6, 0, nullptr, kFields_L01BC_S00AA},
+    {444, 0x00AF, 2, 0, nullptr, kFields_L01BC_S00AF},
+    {444, 0x0334, 2, 0, nullptr, kFields_L01BC_S0334},
+    {445, 0x00AA, 6, 0, nullptr, kFields_L01BD_S00AA},
+    {445, 0x00AF, 2, 0, nullptr, kFields_L01BD_S00AF},
+    {446, 0x00AA, 6, 0, nullptr, kFields_L01BE_S00AA},
+    {446, 0x00AF, 2, 0, nullptr, kFields_L01BE_S00AF},
+    {447, 0x00AA, 6, 0, nullptr, kFields_L01BF_S00AA},
+    {447, 0x00AF, 2, 0, nullptr, kFields_L01BF_S00AF},
+    {447, 0x0337, 5, 0, nullptr, kFields_L01BF_S0337},
+    {448, 0x00AA, 6, 0, nullptr, kFields_L01C0_S00AA},
+    {448, 0x00AF, 2, 0, nullptr, kFields_L01C0_S00AF},
+    {448, 0x0338, 2, 0, nullptr, kFields_L01C0_S0338},
+    {449, 0x00AA, 6, 0, nullptr, kFields_L01C1_S00AA},
+    {449, 0x00AF, 2, 0, nullptr, kFields_L01C1_S00AF},
+    {449, 0x0339, 3, 0, nullptr, kFields_L01C1_S0339},
+    {450, 0x00AA, 6, 0, nullptr, kFields_L01C2_S00AA},
+    {450, 0x00AF, 2, 0, nullptr, kFields_L01C2_S00AF},
+    {450, 0x033A, 6, 0, nullptr, kFields_L01C2_S033A},
+    {451, 0x00AA, 6, 0, nullptr, kFields_L01C3_S00AA},
+    {451, 0x00AF, 2, 0, nullptr, kFields_L01C3_S00AF},
+    {452, 0x00AA, 6, 0, nullptr, kFields_L01C4_S00AA},
+    {452, 0x00AF, 2, 0, nullptr, kFields_L01C4_S00AF},
+    {453, 0x00AA, 6, 0, nullptr, kFields_L01C5_S00AA},
+    {453, 0x00AF, 2, 0, nullptr, kFields_L01C5_S00AF},
+    {453, 0x033D, 1, 0, nullptr, kFields_L01C5_S033D},
+    {454, 0x00AA, 6, 0, nullptr, kFields_L01C6_S00AA},
+    {454, 0x00AF, 2, 0, nullptr, kFields_L01C6_S00AF},
+    {454, 0x033E, 1, 0, nullptr, kFields_L01C6_S033E},
+    {455, 0x00AA, 6, 0, nullptr, kFields_L01C7_S00AA},
+    {455, 0x00AF, 2, 0, nullptr, kFields_L01C7_S00AF},
+    {456, 0x00AA, 6, 0, nullptr, kFields_L01C8_S00AA},
+    {456, 0x00AF, 2, 0, nullptr, kFields_L01C8_S00AF},
+    {457, 0x00AA, 6, 0, nullptr, kFields_L01C9_S00AA},
+    {457, 0x00AF, 2, 0, nullptr, kFields_L01C9_S00AF},
+    {457, 0x0341, 2, 0, nullptr, kFields_L01C9_S0341},
+    {458, 0x00AA, 6, 0, nullptr, kFields_L01CA_S00AA},
+    {458, 0x00AF, 2, 0, nullptr, kFields_L01CA_S00AF},
+    {458, 0x0342, 2, 0, nullptr, kFields_L01CA_S0342},
+    {459, 0x00AA, 6, 0, nullptr, kFields_L01CB_S00AA},
+    {459, 0x00AF, 2, 0, nullptr, kFields_L01CB_S00AF},
+    {459, 0x0343, 8, 0, nullptr, kFields_L01CB_S0343},
+    {460, 0x00AA, 6, 0, nullptr, kFields_L01CC_S00AA},
+    {460, 0x00AF, 2, 0, nullptr, kFields_L01CC_S00AF},
+    {460, 0x0344, 2, 0, nullptr, kFields_L01CC_S0344},
+    {461, 0x00AA, 6, 0, nullptr, kFields_L01CD_S00AA},
+    {461, 0x00AF, 2, 0, nullptr, kFields_L01CD_S00AF},
+    {461, 0x0345, 2, 0, nullptr, kFields_L01CD_S0345},
+    {462, 0x00AA, 6, 0, nullptr, kFields_L01CE_S00AA},
+    {462, 0x00AF, 2, 0, nullptr, kFields_L01CE_S00AF},
+    {462, 0x0346, 1, 0, nullptr, kFields_L01CE_S0346},
+    {463, 0x00AA, 6, 0, nullptr, kFields_L01CF_S00AA},
+    {463, 0x00AF, 2, 0, nullptr, kFields_L01CF_S00AF},
+    {463, 0x0347, 1, 0, nullptr, kFields_L01CF_S0347},
+    {464, 0x00AA, 6, 0, nullptr, kFields_L01D0_S00AA},
+    {464, 0x00AF, 2, 0, nullptr, kFields_L01D0_S00AF},
+    {464, 0x0348, 2, 0, nullptr, kFields_L01D0_S0348},
+    {465, 0x00AA, 6, 0, nullptr, kFields_L01D1_S00AA},
+    {465, 0x00AF, 2, 0, nullptr, kFields_L01D1_S00AF},
+    {466, 0x00AA, 6, 0, nullptr, kFields_L01D2_S00AA},
+    {466, 0x00AF, 2, 0, nullptr, kFields_L01D2_S00AF},
+    {466, 0x034A, 2, 0, nullptr, kFields_L01D2_S034A},
+    {467, 0x00AA, 6, 0, nullptr, kFields_L01D3_S00AA},
+    {467, 0x00AF, 2, 0, nullptr, kFields_L01D3_S00AF},
+    {467, 0x034B, 3, 0, nullptr, kFields_L01D3_S034B},
+    {468, 0x00AA, 6, 0, nullptr, kFields_L01D4_S00AA},
+    {468, 0x00AF, 2, 0, nullptr, kFields_L01D4_S00AF},
+    {468, 0x034C, 4, 0, nullptr, kFields_L01D4_S034C},
+    {469, 0x00AA, 6, 0, nullptr, kFields_L01D5_S00AA},
+    {469, 0x00AF, 2, 0, nullptr, kFields_L01D5_S00AF},
+    {470, 0x00AA, 6, 0, nullptr, kFields_L01D6_S00AA},
+    {470, 0x00AF, 2, 0, nullptr, kFields_L01D6_S00AF},
+    {471, 0x00AA, 6, 0, nullptr, kFields_L01D7_S00AA},
+    {471, 0x00AF, 2, 0, nullptr, kFields_L01D7_S00AF},
+    {472, 0x00AA, 6, 0, nullptr, kFields_L01D8_S00AA},
+    {472, 0x00AF, 2, 0, nullptr, kFields_L01D8_S00AF},
+    {472, 0x0350, 2, 0, nullptr, kFields_L01D8_S0350},
+    {472, 0x0351, 2, 0, nullptr, kFields_L01D8_S0351},
+    {472, 0x0352, 4, 0, nullptr, kFields_L01D8_S0352},
+    {473, 0x00AA, 6, 0, nullptr, kFields_L01D9_S00AA},
+    {473, 0x00AF, 2, 0, nullptr, kFields_L01D9_S00AF},
+    {473, 0x0353, 1, 0, nullptr, kFields_L01D9_S0353},
+    {474, 0x00AA, 6, 0, nullptr, kFields_L01DA_S00AA},
+    {474, 0x00AF, 2, 0, nullptr, kFields_L01DA_S00AF},
+    {474, 0x0354, 2, 0, nullptr, kFields_L01DA_S0354},
+    {475, 0x00AA, 6, 0, nullptr, kFields_L01DB_S00AA},
+    {475, 0x00AF, 2, 0, nullptr, kFields_L01DB_S00AF},
+    {476, 0x00AA, 6, 0, nullptr, kFields_L01DC_S00AA},
+    {476, 0x00AF, 2, 0, nullptr, kFields_L01DC_S00AF},
+    {476, 0x0356, 1, 0, nullptr, kFields_L01DC_S0356},
+    {477, 0x00AA, 6, 0, nullptr, kFields_L01DD_S00AA},
+    {477, 0x00AF, 2, 0, nullptr, kFields_L01DD_S00AF},
+    {477, 0x0357, 4, 0, nullptr, kFields_L01DD_S0357},
+    {478, 0x00AA, 6, 0, nullptr, kFields_L01DE_S00AA},
+    {478, 0x00AF, 2, 0, nullptr, kFields_L01DE_S00AF},
+    {478, 0x0358, 1, 0, nullptr, kFields_L01DE_S0358},
+    {479, 0x00AA, 6, 0, nullptr, kFields_L01DF_S00AA},
+    {479, 0x00AF, 2, 0, nullptr, kFields_L01DF_S00AF},
+    {479, 0x0359, 3, 0, nullptr, kFields_L01DF_S0359},
+    {480, 0x00AA, 6, 0, nullptr, kFields_L01E0_S00AA},
+    {480, 0x00AF, 2, 0, nullptr, kFields_L01E0_S00AF},
+    {480, 0x035A, 1, 56, "behavior_tree.Runtime.Sleep", kFields_L01E0_S035A},
+    {481, 0x00AA, 6, 0, nullptr, kFields_L01E1_S00AA},
+    {481, 0x00AF, 2, 0, nullptr, kFields_L01E1_S00AF},
+    {481, 0x035B, 1, 0, nullptr, kFields_L01E1_S035B},
+    {482, 0x00AA, 6, 0, nullptr, kFields_L01E2_S00AA},
+    {482, 0x00AF, 2, 0, nullptr, kFields_L01E2_S00AF},
+    {483, 0x00AA, 6, 0, nullptr, kFields_L01E3_S00AA},
+    {483, 0x00AF, 2, 0, nullptr, kFields_L01E3_S00AF},
+    {483, 0x035D, 22, 0, nullptr, kFields_L01E3_S035D},
+    {484, 0x00AA, 6, 0, nullptr, kFields_L01E4_S00AA},
+    {484, 0x00AF, 2, 0, nullptr, kFields_L01E4_S00AF},
+    {484, 0x035E, 27, 0, nullptr, kFields_L01E4_S035E},
+    {485, 0x00AA, 6, 0, nullptr, kFields_L01E5_S00AA},
+    {485, 0x00AF, 2, 0, nullptr, kFields_L01E5_S00AF},
+    {485, 0x035F, 14, 0, nullptr, kFields_L01E5_S035F},
+    {486, 0x00AA, 6, 0, nullptr, kFields_L01E6_S00AA},
+    {486, 0x00AF, 2, 0, nullptr, kFields_L01E6_S00AF},
+    {486, 0x0360, 4, 0, nullptr, kFields_L01E6_S0360},
+    {487, 0x00AA, 6, 0, nullptr, kFields_L01E7_S00AA},
+    {487, 0x00AF, 2, 0, nullptr, kFields_L01E7_S00AF},
+    {488, 0x00AA, 6, 0, nullptr, kFields_L01E8_S00AA},
+    {488, 0x00AF, 2, 0, nullptr, kFields_L01E8_S00AF},
+    {489, 0x00AA, 6, 0, nullptr, kFields_L01E9_S00AA},
+    {489, 0x00AF, 2, 0, nullptr, kFields_L01E9_S00AF},
+    {489, 0x0363, 5, 0, nullptr, kFields_L01E9_S0363},
+    {490, 0x00AA, 6, 0, nullptr, kFields_L01EA_S00AA},
+    {490, 0x00AF, 2, 0, nullptr, kFields_L01EA_S00AF},
+    {490, 0x0364, 1, 0, nullptr, kFields_L01EA_S0364},
+    {491, 0x00AA, 6, 0, nullptr, kFields_L01EB_S00AA},
+    {491, 0x00AF, 2, 0, nullptr, kFields_L01EB_S00AF},
+    {492, 0x00AA, 6, 0, nullptr, kFields_L01EC_S00AA},
+    {492, 0x00AF, 2, 0, nullptr, kFields_L01EC_S00AF},
+    {492, 0x0366, 1, 0, nullptr, kFields_L01EC_S0366},
+    {493, 0x00AA, 6, 0, nullptr, kFields_L01ED_S00AA},
+    {493, 0x00AF, 2, 0, nullptr, kFields_L01ED_S00AF},
+    {493, 0x0367, 6, 0, nullptr, kFields_L01ED_S0367},
+    {494, 0x00AA, 6, 0, nullptr, kFields_L01EE_S00AA},
+    {494, 0x00AF, 2, 0, nullptr, kFields_L01EE_S00AF},
+    {494, 0x0368, 6, 0, nullptr, kFields_L01EE_S0368},
+    {495, 0x00AA, 6, 0, nullptr, kFields_L01EF_S00AA},
+    {495, 0x00AF, 2, 0, nullptr, kFields_L01EF_S00AF},
+    {495, 0x0369, 9, 0, nullptr, kFields_L01EF_S0369},
+    {496, 0x00AA, 6, 0, nullptr, kFields_L01F0_S00AA},
+    {496, 0x00AF, 2, 0, nullptr, kFields_L01F0_S00AF},
+    {496, 0x036A, 2, 0, nullptr, kFields_L01F0_S036A},
+    {497, 0x00AA, 6, 0, nullptr, kFields_L01F1_S00AA},
+    {497, 0x00AF, 2, 0, nullptr, kFields_L01F1_S00AF},
+    {498, 0x00AA, 6, 0, nullptr, kFields_L01F2_S00AA},
+    {498, 0x00AF, 2, 0, nullptr, kFields_L01F2_S00AF},
+    {498, 0x036C, 7, 0, nullptr, kFields_L01F2_S036C},
+    {499, 0x00AA, 6, 0, nullptr, kFields_L01F3_S00AA},
+    {499, 0x00AF, 2, 0, nullptr, kFields_L01F3_S00AF},
+    {500, 0x00AA, 6, 0, nullptr, kFields_L01F4_S00AA},
+    {500, 0x00AF, 2, 0, nullptr, kFields_L01F4_S00AF},
+    {500, 0x036E, 6, 0, nullptr, kFields_L01F4_S036E},
+    {501, 0x00AA, 6, 0, nullptr, kFields_L01F5_S00AA},
+    {501, 0x00AF, 2, 0, nullptr, kFields_L01F5_S00AF},
+    {501, 0x036F, 9, 0, nullptr, kFields_L01F5_S036F},
+    {502, 0x00AA, 6, 0, nullptr, kFields_L01F6_S00AA},
+    {502, 0x00AF, 2, 0, nullptr, kFields_L01F6_S00AF},
+    {502, 0x0370, 1, 0, nullptr, kFields_L01F6_S0370},
+    {503, 0x00AA, 6, 0, nullptr, kFields_L01F7_S00AA},
+    {503, 0x00AF, 2, 0, nullptr, kFields_L01F7_S00AF},
+    {504, 0x00AA, 6, 0, nullptr, kFields_L01F8_S00AA},
+    {504, 0x00AF, 2, 0, nullptr, kFields_L01F8_S00AF},
+    {504, 0x0372, 1, 0, nullptr, kFields_L01F8_S0372},
+    {505, 0x00AA, 6, 0, nullptr, kFields_L01F9_S00AA},
+    {505, 0x00AF, 2, 0, nullptr, kFields_L01F9_S00AF},
+    {506, 0x00AA, 6, 0, nullptr, kFields_L01FA_S00AA},
+    {506, 0x00AF, 2, 0, nullptr, kFields_L01FA_S00AF},
+    {506, 0x0374, 10, 0, nullptr, kFields_L01FA_S0374},
+    {507, 0x00AA, 6, 0, nullptr, kFields_L01FB_S00AA},
+    {507, 0x00AF, 2, 0, nullptr, kFields_L01FB_S00AF},
+    {507, 0x0375, 4, 0, nullptr, kFields_L01FB_S0375},
+    {508, 0x00AA, 6, 0, nullptr, kFields_L01FC_S00AA},
+    {508, 0x00AF, 2, 0, nullptr, kFields_L01FC_S00AF},
+    {508, 0x0376, 38, 0, nullptr, kFields_L01FC_S0376},
+    {509, 0x00AA, 6, 0, nullptr, kFields_L01FD_S00AA},
+    {509, 0x00AF, 2, 0, nullptr, kFields_L01FD_S00AF},
+    {509, 0x0377, 4, 0, nullptr, kFields_L01FD_S0377},
+    {509, 0x0378, 15, 0, nullptr, kFields_L01FD_S0378},
+    {510, 0x00AA, 6, 0, nullptr, kFields_L01FE_S00AA},
+    {510, 0x00AF, 2, 0, nullptr, kFields_L01FE_S00AF},
+    {510, 0x0379, 25, 0, nullptr, kFields_L01FE_S0379},
+    {511, 0x00AA, 6, 0, nullptr, kFields_L01FF_S00AA},
+    {511, 0x00AF, 2, 0, nullptr, kFields_L01FF_S00AF},
+    {512, 0x00AA, 6, 0, nullptr, kFields_L0200_S00AA},
+    {512, 0x00AF, 2, 0, nullptr, kFields_L0200_S00AF},
+    {512, 0x037B, 8, 0, nullptr, kFields_L0200_S037B},
+    {513, 0x00AA, 6, 0, nullptr, kFields_L0201_S00AA},
+    {513, 0x00AF, 2, 0, nullptr, kFields_L0201_S00AF},
+    {513, 0x037C, 2, 0, nullptr, kFields_L0201_S037C},
+    {514, 0x00AA, 6, 0, nullptr, kFields_L0202_S00AA},
+    {514, 0x00AF, 2, 0, nullptr, kFields_L0202_S00AF},
+    {514, 0x037D, 1, 0, nullptr, kFields_L0202_S037D},
+    {515, 0x00AA, 6, 0, nullptr, kFields_L0203_S00AA},
+    {515, 0x00AF, 2, 0, nullptr, kFields_L0203_S00AF},
+    {515, 0x037E, 1, 0, nullptr, kFields_L0203_S037E},
+    {516, 0x00AA, 6, 0, nullptr, kFields_L0204_S00AA},
+    {516, 0x00AF, 2, 0, nullptr, kFields_L0204_S00AF},
+    {516, 0x037F, 1, 0, nullptr, kFields_L0204_S037F},
+    {517, 0x00AA, 6, 0, nullptr, kFields_L0205_S00AA},
+    {517, 0x00AF, 2, 0, nullptr, kFields_L0205_S00AF},
+    {517, 0x0380, 5, 0, nullptr, kFields_L0205_S0380},
+    {518, 0x00AA, 6, 0, nullptr, kFields_L0206_S00AA},
+    {518, 0x00AF, 2, 0, nullptr, kFields_L0206_S00AF},
+    {518, 0x0381, 14, 0, nullptr, kFields_L0206_S0381},
+    {519, 0x00AA, 6, 0, nullptr, kFields_L0207_S00AA},
+    {519, 0x00AF, 2, 0, nullptr, kFields_L0207_S00AF},
+    {519, 0x0381, 14, 0, nullptr, kFields_L0207_S0381},
+    {520, 0x00AA, 6, 0, nullptr, kFields_L0208_S00AA},
+    {520, 0x00AF, 2, 0, nullptr, kFields_L0208_S00AF},
+    {520, 0x0383, 29, 0, nullptr, kFields_L0208_S0383},
+    {521, 0x00AA, 6, 0, nullptr, kFields_L0209_S00AA},
+    {521, 0x00AF, 2, 0, nullptr, kFields_L0209_S00AF},
+    {521, 0x0384, 1, 0, nullptr, kFields_L0209_S0384},
+    {522, 0x00AA, 6, 0, nullptr, kFields_L020A_S00AA},
+    {522, 0x00AF, 2, 0, nullptr, kFields_L020A_S00AF},
+    {522, 0x0385, 20, 0, nullptr, kFields_L020A_S0385},
+    {523, 0x00AA, 6, 0, nullptr, kFields_L020B_S00AA},
+    {523, 0x00AF, 2, 0, nullptr, kFields_L020B_S00AF},
+    {523, 0x0386, 1, 0, nullptr, kFields_L020B_S0386},
+    {524, 0x00AA, 6, 0, nullptr, kFields_L020C_S00AA},
+    {524, 0x00AF, 2, 0, nullptr, kFields_L020C_S00AF},
+    {524, 0x0387, 2, 0, nullptr, kFields_L020C_S0387},
+    {525, 0x00AA, 6, 0, nullptr, kFields_L020D_S00AA},
+    {525, 0x00AF, 2, 0, nullptr, kFields_L020D_S00AF},
+    {526, 0x00AA, 6, 0, nullptr, kFields_L020E_S00AA},
+    {526, 0x00AF, 2, 0, nullptr, kFields_L020E_S00AF},
+    {526, 0x0389, 3, 0, nullptr, kFields_L020E_S0389},
+    {527, 0x00AA, 6, 0, nullptr, kFields_L020F_S00AA},
+    {527, 0x00AF, 2, 0, nullptr, kFields_L020F_S00AF},
+    {527, 0x038A, 3, 0, nullptr, kFields_L020F_S038A},
+    {528, 0x00AA, 6, 0, nullptr, kFields_L0210_S00AA},
+    {528, 0x00AF, 2, 0, nullptr, kFields_L0210_S00AF},
+    {528, 0x038B, 13, 0, nullptr, kFields_L0210_S038B},
+    {529, 0x00AA, 6, 0, nullptr, kFields_L0211_S00AA},
+    {529, 0x00AF, 2, 0, nullptr, kFields_L0211_S00AF},
+    {529, 0x038B, 5, 0, nullptr, kFields_L0211_S038B},
+    {529, 0x038C, 1, 0, nullptr, kFields_L0211_S038C},
+    {530, 0x038B, 1, 0, nullptr, kFields_L0212_S038B},
+    {530, 0x038C, 4, 0, nullptr, kFields_L0212_S038C},
+    {531, 0x038B, 1, 0, nullptr, kFields_L0213_S038B},
+    {531, 0x038C, 1, 0, nullptr, kFields_L0213_S038C},
+    {532, 0x00AA, 6, 0, nullptr, kFields_L0214_S00AA},
+    {532, 0x00AF, 2, 0, nullptr, kFields_L0214_S00AF},
+    {532, 0x038B, 5, 0, nullptr, kFields_L0214_S038B},
+    {532, 0x038D, 1, 0, nullptr, kFields_L0214_S038D},
+    {533, 0x038B, 1, 0, nullptr, kFields_L0215_S038B},
+    {533, 0x038D, 4, 0, nullptr, kFields_L0215_S038D},
+    {534, 0x038B, 1, 0, nullptr, kFields_L0216_S038B},
+    {534, 0x038D, 5, 0, nullptr, kFields_L0216_S038D},
+    {535, 0x00AA, 6, 0, nullptr, kFields_L0217_S00AA},
+    {535, 0x00AF, 2, 0, nullptr, kFields_L0217_S00AF},
+    {535, 0x038B, 5, 0, nullptr, kFields_L0217_S038B},
+    {535, 0x038E, 1, 0, nullptr, kFields_L0217_S038E},
+    {536, 0x038B, 1, 0, nullptr, kFields_L0218_S038B},
+    {536, 0x038E, 4, 0, nullptr, kFields_L0218_S038E},
+    {537, 0x038B, 1, 0, nullptr, kFields_L0219_S038B},
+    {537, 0x038E, 3, 0, nullptr, kFields_L0219_S038E},
+    {538, 0x00AA, 6, 0, nullptr, kFields_L021A_S00AA},
+    {538, 0x00AF, 2, 0, nullptr, kFields_L021A_S00AF},
+    {538, 0x038B, 5, 0, nullptr, kFields_L021A_S038B},
+    {538, 0x038F, 1, 0, nullptr, kFields_L021A_S038F},
+    {539, 0x038B, 1, 0, nullptr, kFields_L021B_S038B},
+    {539, 0x038F, 4, 0, nullptr, kFields_L021B_S038F},
+    {540, 0x038B, 1, 0, nullptr, kFields_L021C_S038B},
+    {540, 0x038F, 3, 0, nullptr, kFields_L021C_S038F},
+    {541, 0x00AA, 6, 0, nullptr, kFields_L021D_S00AA},
+    {541, 0x00AF, 2, 0, nullptr, kFields_L021D_S00AF},
+    {541, 0x038B, 5, 0, nullptr, kFields_L021D_S038B},
+    {541, 0x0390, 1, 0, nullptr, kFields_L021D_S0390},
+    {542, 0x038B, 1, 0, nullptr, kFields_L021E_S038B},
+    {542, 0x0390, 4, 0, nullptr, kFields_L021E_S0390},
+    {543, 0x038B, 1, 0, nullptr, kFields_L021F_S038B},
+    {543, 0x0390, 3, 0, nullptr, kFields_L021F_S0390},
+    {544, 0x00AA, 6, 0, nullptr, kFields_L0220_S00AA},
+    {544, 0x00AF, 2, 0, nullptr, kFields_L0220_S00AF},
+    {544, 0x038B, 5, 0, nullptr, kFields_L0220_S038B},
+    {544, 0x0391, 1, 0, nullptr, kFields_L0220_S0391},
+    {545, 0x038B, 1, 0, nullptr, kFields_L0221_S038B},
+    {545, 0x0391, 4, 0, nullptr, kFields_L0221_S0391},
+    {546, 0x038B, 1, 0, nullptr, kFields_L0222_S038B},
+    {546, 0x0391, 3, 0, nullptr, kFields_L0222_S0391},
+    {547, 0x00AA, 6, 0, nullptr, kFields_L0223_S00AA},
+    {547, 0x00AF, 2, 0, nullptr, kFields_L0223_S00AF},
+    {547, 0x038B, 5, 0, nullptr, kFields_L0223_S038B},
+    {547, 0x0392, 1, 0, nullptr, kFields_L0223_S0392},
+    {548, 0x038B, 1, 0, nullptr, kFields_L0224_S038B},
+    {548, 0x0392, 4, 0, nullptr, kFields_L0224_S0392},
+    {549, 0x038B, 1, 0, nullptr, kFields_L0225_S038B},
+    {549, 0x0392, 5, 0, nullptr, kFields_L0225_S0392},
+    {550, 0x00AA, 6, 0, nullptr, kFields_L0226_S00AA},
+    {550, 0x00AF, 2, 0, nullptr, kFields_L0226_S00AF},
+    {550, 0x038B, 5, 0, nullptr, kFields_L0226_S038B},
+    {550, 0x0393, 1, 0, nullptr, kFields_L0226_S0393},
+    {551, 0x038B, 1, 0, nullptr, kFields_L0227_S038B},
+    {551, 0x0393, 4, 0, nullptr, kFields_L0227_S0393},
+    {552, 0x038B, 1, 0, nullptr, kFields_L0228_S038B},
+    {552, 0x0393, 3, 0, nullptr, kFields_L0228_S0393},
+    {553, 0x00AA, 6, 0, nullptr, kFields_L0229_S00AA},
+    {553, 0x00AF, 2, 0, nullptr, kFields_L0229_S00AF},
+    {553, 0x038B, 5, 0, nullptr, kFields_L0229_S038B},
+    {553, 0x0394, 1, 0, nullptr, kFields_L0229_S0394},
+    {554, 0x038B, 1, 0, nullptr, kFields_L022A_S038B},
+    {554, 0x0394, 4, 0, nullptr, kFields_L022A_S0394},
+    {555, 0x038B, 1, 0, nullptr, kFields_L022B_S038B},
+    {555, 0x0394, 3, 0, nullptr, kFields_L022B_S0394},
+    {556, 0x00AA, 6, 0, nullptr, kFields_L022C_S00AA},
+    {556, 0x00AF, 2, 0, nullptr, kFields_L022C_S00AF},
+    {556, 0x0395, 13, 0, nullptr, kFields_L022C_S0395},
+    {557, 0x00AA, 6, 0, nullptr, kFields_L022D_S00AA},
+    {557, 0x00AF, 2, 0, nullptr, kFields_L022D_S00AF},
+    {557, 0x0396, 1, 0, nullptr, kFields_L022D_S0396},
+    {558, 0x00AA, 6, 0, nullptr, kFields_L022E_S00AA},
+    {558, 0x00AF, 2, 0, nullptr, kFields_L022E_S00AF},
+    {558, 0x0397, 1, 0, nullptr, kFields_L022E_S0397},
+    {559, 0x00AA, 6, 0, nullptr, kFields_L022F_S00AA},
+    {559, 0x00AF, 2, 0, nullptr, kFields_L022F_S00AF},
+    {559, 0x0398, 3, 0, nullptr, kFields_L022F_S0398},
+    {560, 0x00AA, 6, 0, nullptr, kFields_L0230_S00AA},
+    {560, 0x00AF, 2, 0, nullptr, kFields_L0230_S00AF},
+    {560, 0x0399, 1, 0, nullptr, kFields_L0230_S0399},
+    {561, 0x00AA, 6, 0, nullptr, kFields_L0231_S00AA},
+    {561, 0x00AF, 2, 0, nullptr, kFields_L0231_S00AF},
+    {561, 0x039A, 1, 0, nullptr, kFields_L0231_S039A},
+    {562, 0x00AA, 6, 0, nullptr, kFields_L0232_S00AA},
+    {562, 0x00AF, 2, 0, nullptr, kFields_L0232_S00AF},
+    {562, 0x039B, 3, 0, nullptr, kFields_L0232_S039B},
+    {563, 0x00AA, 6, 0, nullptr, kFields_L0233_S00AA},
+    {563, 0x00AF, 2, 0, nullptr, kFields_L0233_S00AF},
+    {563, 0x039C, 3, 0, nullptr, kFields_L0233_S039C},
+    {564, 0x00AA, 6, 0, nullptr, kFields_L0234_S00AA},
+    {564, 0x00AF, 2, 0, nullptr, kFields_L0234_S00AF},
+    {564, 0x039D, 1, 0, nullptr, kFields_L0234_S039D},
+    {565, 0x00AA, 6, 0, nullptr, kFields_L0235_S00AA},
+    {565, 0x00AF, 2, 0, nullptr, kFields_L0235_S00AF},
+    {565, 0x039E, 3, 0, nullptr, kFields_L0235_S039E},
+    {566, 0x00AA, 6, 0, nullptr, kFields_L0236_S00AA},
+    {566, 0x00AF, 2, 0, nullptr, kFields_L0236_S00AF},
+    {566, 0x039F, 3, 0, nullptr, kFields_L0236_S039F},
+    {567, 0x00AA, 6, 0, nullptr, kFields_L0237_S00AA},
+    {567, 0x00AF, 2, 0, nullptr, kFields_L0237_S00AF},
+    {567, 0x03A0, 3, 0, nullptr, kFields_L0237_S03A0},
+    {568, 0x00AA, 6, 0, nullptr, kFields_L0238_S00AA},
+    {568, 0x00AF, 2, 0, nullptr, kFields_L0238_S00AF},
+    {568, 0x03A1, 1, 0, nullptr, kFields_L0238_S03A1},
+    {569, 0x00AA, 6, 0, nullptr, kFields_L0239_S00AA},
+    {569, 0x00AF, 2, 0, nullptr, kFields_L0239_S00AF},
+    {569, 0x03A2, 1, 0, nullptr, kFields_L0239_S03A2},
+    {570, 0x00AA, 6, 0, nullptr, kFields_L023A_S00AA},
+    {570, 0x00AF, 2, 0, nullptr, kFields_L023A_S00AF},
+    {570, 0x03A3, 1, 0, nullptr, kFields_L023A_S03A3},
+    {571, 0x00AA, 6, 0, nullptr, kFields_L023B_S00AA},
+    {571, 0x00AF, 2, 0, nullptr, kFields_L023B_S00AF},
+    {571, 0x03A4, 1, 0, nullptr, kFields_L023B_S03A4},
+    {572, 0x00AA, 6, 0, nullptr, kFields_L023C_S00AA},
+    {572, 0x00AF, 2, 0, nullptr, kFields_L023C_S00AF},
+    {572, 0x03A5, 7, 0, nullptr, kFields_L023C_S03A5},
+    {573, 0x00AA, 6, 0, nullptr, kFields_L023D_S00AA},
+    {573, 0x00AF, 2, 0, nullptr, kFields_L023D_S00AF},
+    {573, 0x03A6, 1, 0, nullptr, kFields_L023D_S03A6},
+    {574, 0x00AA, 6, 0, nullptr, kFields_L023E_S00AA},
+    {574, 0x00AF, 2, 0, nullptr, kFields_L023E_S00AF},
+    {574, 0x03A7, 1, 0, nullptr, kFields_L023E_S03A7},
+    {575, 0x00AA, 6, 0, nullptr, kFields_L023F_S00AA},
+    {575, 0x00AF, 2, 0, nullptr, kFields_L023F_S00AF},
+    {575, 0x03A8, 4, 0, nullptr, kFields_L023F_S03A8},
+    {576, 0x00AA, 6, 0, nullptr, kFields_L0240_S00AA},
+    {576, 0x00AF, 2, 0, nullptr, kFields_L0240_S00AF},
+    {576, 0x03A9, 1, 0, nullptr, kFields_L0240_S03A9},
+    {576, 0x03AA, 3, 0, nullptr, kFields_L0240_S03AA},
+    {577, 0x00AA, 6, 0, nullptr, kFields_L0241_S00AA},
+    {577, 0x00AF, 2, 0, nullptr, kFields_L0241_S00AF},
+    {577, 0x03AB, 1, 0, nullptr, kFields_L0241_S03AB},
+    {578, 0x00AA, 6, 0, nullptr, kFields_L0242_S00AA},
+    {578, 0x00AF, 2, 0, nullptr, kFields_L0242_S00AF},
+    {578, 0x03AC, 2, 0, nullptr, kFields_L0242_S03AC},
+    {579, 0x00AA, 6, 0, nullptr, kFields_L0243_S00AA},
+    {579, 0x00AF, 2, 0, nullptr, kFields_L0243_S00AF},
+    {579, 0x03AD, 1, 0, nullptr, kFields_L0243_S03AD},
+    {580, 0x00AA, 6, 0, nullptr, kFields_L0244_S00AA},
+    {580, 0x00AF, 2, 0, nullptr, kFields_L0244_S00AF},
+    {580, 0x03AE, 2, 0, nullptr, kFields_L0244_S03AE},
+    {581, 0x00AA, 6, 0, nullptr, kFields_L0245_S00AA},
+    {581, 0x00AF, 2, 0, nullptr, kFields_L0245_S00AF},
+    {581, 0x03AF, 3, 0, nullptr, kFields_L0245_S03AF},
+    {582, 0x00AA, 6, 0, nullptr, kFields_L0246_S00AA},
+    {582, 0x00AF, 2, 0, nullptr, kFields_L0246_S00AF},
+    {583, 0x00AA, 6, 0, nullptr, kFields_L0247_S00AA},
+    {583, 0x00AF, 2, 0, nullptr, kFields_L0247_S00AF},
+    {583, 0x03B1, 1, 0, nullptr, kFields_L0247_S03B1},
+    {584, 0x00AA, 6, 0, nullptr, kFields_L0248_S00AA},
+    {584, 0x00AF, 2, 0, nullptr, kFields_L0248_S00AF},
+    {584, 0x03B2, 3, 0, nullptr, kFields_L0248_S03B2},
+    {585, 0x00AA, 6, 0, nullptr, kFields_L0249_S00AA},
+    {585, 0x00AF, 2, 0, nullptr, kFields_L0249_S00AF},
+    {585, 0x03B3, 2, 0, nullptr, kFields_L0249_S03B3},
+    {586, 0x00AA, 6, 0, nullptr, kFields_L024A_S00AA},
+    {586, 0x00AF, 2, 0, nullptr, kFields_L024A_S00AF},
+    {586, 0x03B4, 2, 0, nullptr, kFields_L024A_S03B4},
+    {587, 0x00AA, 6, 0, nullptr, kFields_L024B_S00AA},
+    {587, 0x00AF, 2, 0, nullptr, kFields_L024B_S00AF},
+    {588, 0x00AA, 6, 0, nullptr, kFields_L024C_S00AA},
+    {588, 0x00AF, 2, 0, nullptr, kFields_L024C_S00AF},
+    {588, 0x03B6, 5, 0, nullptr, kFields_L024C_S03B6},
+    {589, 0x00AA, 6, 0, nullptr, kFields_L024D_S00AA},
+    {589, 0x00AF, 2, 0, nullptr, kFields_L024D_S00AF},
+    {589, 0x03B7, 1, 0, nullptr, kFields_L024D_S03B7},
+    {590, 0x00AA, 6, 0, nullptr, kFields_L024E_S00AA},
+    {590, 0x00AF, 2, 0, nullptr, kFields_L024E_S00AF},
+    {591, 0x00AA, 6, 0, nullptr, kFields_L024F_S00AA},
+    {591, 0x00AF, 2, 0, nullptr, kFields_L024F_S00AF},
+    {591, 0x03B9, 1, 0, nullptr, kFields_L024F_S03B9},
+    {592, 0x00AA, 6, 0, nullptr, kFields_L0250_S00AA},
+    {592, 0x00AF, 2, 0, nullptr, kFields_L0250_S00AF},
+    {592, 0x03BA, 1, 0, nullptr, kFields_L0250_S03BA},
+    {593, 0x00AA, 6, 0, nullptr, kFields_L0251_S00AA},
+    {593, 0x00AF, 2, 0, nullptr, kFields_L0251_S00AF},
+    {594, 0x00AA, 6, 0, nullptr, kFields_L0252_S00AA},
+    {594, 0x00AF, 2, 0, nullptr, kFields_L0252_S00AF},
+    {594, 0x03BC, 2, 0, nullptr, kFields_L0252_S03BC},
+    {595, 0x00AA, 6, 0, nullptr, kFields_L0253_S00AA},
+    {595, 0x00AF, 2, 0, nullptr, kFields_L0253_S00AF},
+    {595, 0x03BD, 5, 0, nullptr, kFields_L0253_S03BD},
+    {596, 0x00AA, 6, 0, nullptr, kFields_L0254_S00AA},
+    {596, 0x00AF, 2, 0, nullptr, kFields_L0254_S00AF},
+    {596, 0x03BF, 1, 0, nullptr, kFields_L0254_S03BF},
+    {596, 0x03C0, 3, 0, nullptr, kFields_L0254_S03C0},
+    {596, 0x03C1, 3, 0, nullptr, kFields_L0254_S03C1},
+    {596, 0x03C2, 3, 0, nullptr, kFields_L0254_S03C2},
+    {596, 0x03C3, 1, 0, nullptr, kFields_L0254_S03C3},
+    {596, 0x03C4, 14, 0, nullptr, kFields_L0254_S03C4},
+    {596, 0x03C5, 7, 0, nullptr, kFields_L0254_S03C5},
+    {596, 0x03C6, 26, 0, nullptr, kFields_L0254_S03C6},
+    {596, 0x03C7, 2, 0, nullptr, kFields_L0254_S03C7},
+    {596, 0x03C8, 11, 0, nullptr, kFields_L0254_S03C8},
+    {596, 0x03C9, 1, 0, nullptr, kFields_L0254_S03C9},
+    {597, 0x00AA, 6, 0, nullptr, kFields_L0255_S00AA},
+    {597, 0x00AF, 2, 0, nullptr, kFields_L0255_S00AF},
+    {597, 0x03CA, 1, 56, "behavior_tree.Runtime.SendCAEvent", kFields_L0255_S03CA},
+    {598, 0x00AA, 6, 0, nullptr, kFields_L0256_S00AA},
+    {598, 0x00B1, 13, 0, nullptr, kFields_L0256_S00B1},
+    {599, 0x00AA, 6, 0, nullptr, kFields_L0257_S00AA},
+    {599, 0x00B1, 13, 0, nullptr, kFields_L0257_S00B1},
+    {600, 0x00AA, 6, 0, nullptr, kFields_L0258_S00AA},
+    {600, 0x00B1, 13, 0, nullptr, kFields_L0258_S00B1},
+    {601, 0x00AA, 6, 0, nullptr, kFields_L0259_S00AA},
+    {601, 0x00B1, 13, 0, nullptr, kFields_L0259_S00B1},
+    {601, 0x03CE, 2, 0, nullptr, kFields_L0259_S03CE},
+    {602, 0x00AA, 6, 0, nullptr, kFields_L025A_S00AA},
+    {602, 0x00B1, 13, 0, nullptr, kFields_L025A_S00B1},
+    {602, 0x03CF, 2, 0, nullptr, kFields_L025A_S03CF},
+    {603, 0x00AA, 6, 0, nullptr, kFields_L025B_S00AA},
+    {603, 0x00B1, 13, 0, nullptr, kFields_L025B_S00B1},
+    {603, 0x03D0, 1, 0, nullptr, kFields_L025B_S03D0},
+    {604, 0x00AA, 6, 0, nullptr, kFields_L025C_S00AA},
+    {604, 0x00B1, 13, 0, nullptr, kFields_L025C_S00B1},
+    {604, 0x03D1, 1, 0, nullptr, kFields_L025C_S03D1},
+    {605, 0x00AA, 6, 0, nullptr, kFields_L025D_S00AA},
+    {605, 0x03D2, 3, 0, nullptr, kFields_L025D_S03D2},
+    {606, 0x00AA, 6, 0, nullptr, kFields_L025E_S00AA},
+    {606, 0x03D2, 3, 0, nullptr, kFields_L025E_S03D2},
+    {607, 0x00AA, 6, 0, nullptr, kFields_L025F_S00AA},
+    {607, 0x03D2, 3, 0, nullptr, kFields_L025F_S03D2},
+    {608, 0x00AA, 6, 0, nullptr, kFields_L0260_S00AA},
+    {608, 0x03D5, 1, 0, nullptr, kFields_L0260_S03D5},
+    {608, 0x03D6, 2, 0, nullptr, kFields_L0260_S03D6},
+    {609, 0x00AA, 6, 0, nullptr, kFields_L0261_S00AA},
+    {609, 0x00AF, 2, 0, nullptr, kFields_L0261_S00AF},
+    {609, 0x03D7, 1, 16, "behavior_tree.debug.ExecEvents", kFields_L0261_S03D7},
+    {610, 0x00AA, 6, 0, nullptr, kFields_L0262_S00AA},
+    {610, 0x03D8, 3, 0, nullptr, kFields_L0262_S03D8},
+    {611, 0x00AA, 6, 0, nullptr, kFields_L0263_S00AA},
+    {611, 0x03D9, 2, 0, nullptr, kFields_L0263_S03D9},
+    {612, 0x00AA, 6, 0, nullptr, kFields_L0264_S00AA},
+    {612, 0x03DA, 4, 0, nullptr, kFields_L0264_S03DA},
+    {613, 0x00AA, 6, 0, nullptr, kFields_L0265_S00AA},
+    {613, 0x03DB, 3, 0, nullptr, kFields_L0265_S03DB},
+    {614, 0x00AA, 6, 0, nullptr, kFields_L0266_S00AA},
+    {614, 0x03DC, 1, 0, nullptr, kFields_L0266_S03DC},
+    {614, 0x03DD, 1, 0, nullptr, kFields_L0266_S03DD},
+    {615, 0x004A, 4, 16, "dctools.AssistRange", kFields_L0267_S004A},
+    {615, 0x03DE, 1, 0, nullptr, kFields_L0267_S03DE},
+    {615, 0x03DF, 4, 0, nullptr, kFields_L0267_S03DF},
+    {615, 0x03E0, 6, 0, nullptr, kFields_L0267_S03E0},
+    {615, 0x03E1, 4, 0, nullptr, kFields_L0267_S03E1},
+    {615, 0x03E2, 42, 0, nullptr, kFields_L0267_S03E2},
+    {615, 0x03E3, 108, 0, nullptr, kFields_L0267_S03E3},
+    {615, 0x03E4, 4, 0, nullptr, kFields_L0267_S03E4},
+    {616, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0268_S002E},
+    {616, 0x03E5, 24, 0, nullptr, kFields_L0268_S03E5},
+    {617, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0269_S002E},
+    {617, 0x03E6, 4, 0, nullptr, kFields_L0269_S03E6},
+    {618, 0x00AA, 6, 0, nullptr, kFields_L026A_S00AA},
+    {618, 0x00AF, 2, 0, nullptr, kFields_L026A_S00AF},
+    {618, 0x03E7, 4, 0, nullptr, kFields_L026A_S03E7},
+    {619, 0x00AA, 6, 0, nullptr, kFields_L026B_S00AA},
+    {619, 0x00AF, 2, 0, nullptr, kFields_L026B_S00AF},
+    {619, 0x03E8, 13, 0, nullptr, kFields_L026B_S03E8},
+    {620, 0x00AA, 6, 0, nullptr, kFields_L026C_S00AA},
+    {620, 0x00AF, 2, 0, nullptr, kFields_L026C_S00AF},
+    {620, 0x03E8, 13, 0, nullptr, kFields_L026C_S03E8},
+    {620, 0x03E9, 6, 0, nullptr, kFields_L026C_S03E9},
+    {621, 0x00AA, 6, 0, nullptr, kFields_L026D_S00AA},
+    {621, 0x00AF, 2, 0, nullptr, kFields_L026D_S00AF},
+    {621, 0x03E8, 13, 0, nullptr, kFields_L026D_S03E8},
+    {621, 0x03E9, 6, 0, nullptr, kFields_L026D_S03E9},
+    {621, 0x03EA, 9, 0, nullptr, kFields_L026D_S03EA},
+    {622, 0x00AA, 6, 0, nullptr, kFields_L026E_S00AA},
+    {622, 0x03EB, 2, 0, nullptr, kFields_L026E_S03EB},
+    {623, 0x00AA, 6, 0, nullptr, kFields_L026F_S00AA},
+    {623, 0x03EB, 2, 0, nullptr, kFields_L026F_S03EB},
+    {624, 0x00AA, 6, 0, nullptr, kFields_L0270_S00AA},
+    {624, 0x03ED, 13, 0, nullptr, kFields_L0270_S03ED},
+    {625, 0x00AA, 6, 0, nullptr, kFields_L0271_S00AA},
+    {625, 0x03EE, 9, 0, nullptr, kFields_L0271_S03EE},
+    {626, 0x00AA, 6, 0, nullptr, kFields_L0272_S00AA},
+    {626, 0x03EE, 9, 0, nullptr, kFields_L0272_S03EE},
+    {626, 0x03EF, 1, 0, nullptr, kFields_L0272_S03EF},
+    {627, 0x00AA, 6, 0, nullptr, kFields_L0273_S00AA},
+    {627, 0x03EE, 9, 0, nullptr, kFields_L0273_S03EE},
+    {628, 0x00AA, 6, 0, nullptr, kFields_L0274_S00AA},
+    {628, 0x03F3, 1, 0, nullptr, kFields_L0274_S03F3},
+    {629, 0x00AA, 6, 0, nullptr, kFields_L0275_S00AA},
+    {629, 0x03F3, 1, 0, nullptr, kFields_L0275_S03F3},
+    {629, 0x03F5, 2, 0, nullptr, kFields_L0275_S03F5},
+    {629, 0x03F6, 4, 16, "dctools.ScreenBounds", kFields_L0275_S03F6},
+    {629, 0x03F7, 1, 0, nullptr, kFields_L0275_S03F7},
+    {629, 0x03F8, 42, 0, nullptr, kFields_L0275_S03F8},
+    {630, 0x00AA, 6, 0, nullptr, kFields_L0276_S00AA},
+    {630, 0x00AF, 2, 0, nullptr, kFields_L0276_S00AF},
+    {630, 0x03F9, 3, 0, nullptr, kFields_L0276_S03F9},
+    {631, 0x002E, 10, 88, "dctools.EffectParm", kFields_L0277_S002E},
+    {631, 0x005A, 108, 0, nullptr, kFields_L0277_S005A},
+    {631, 0x03FA, 1, 0, nullptr, kFields_L0277_S03FA},
+    {632, 0x005A, 1, 0, nullptr, kFields_L0278_S005A},
+    {632, 0x03FA, 1, 0, nullptr, kFields_L0278_S03FA},
+    {633, 0x005A, 1, 0, nullptr, kFields_L0279_S005A},
+    {633, 0x03FA, 1, 0, nullptr, kFields_L0279_S03FA},
+    {634, 0x005A, 1, 0, nullptr, kFields_L027A_S005A},
+    {634, 0x03FA, 1, 0, nullptr, kFields_L027A_S03FA},
+    {635, 0x005A, 1, 0, nullptr, kFields_L027B_S005A},
+    {635, 0x03FA, 1, 0, nullptr, kFields_L027B_S03FA},
+    {636, 0x005A, 1, 0, nullptr, kFields_L027C_S005A},
+    {636, 0x03FA, 1, 0, nullptr, kFields_L027C_S03FA},
+    {637, 0x005A, 1, 0, nullptr, kFields_L027D_S005A},
+    {637, 0x03FA, 1, 0, nullptr, kFields_L027D_S03FA},
+    {638, 0x005A, 1, 0, nullptr, kFields_L027E_S005A},
+    {638, 0x03FA, 1, 0, nullptr, kFields_L027E_S03FA},
+    {639, 0x005A, 1, 0, nullptr, kFields_L027F_S005A},
+    {639, 0x03FA, 1, 0, nullptr, kFields_L027F_S03FA},
+    {640, 0x005A, 1, 0, nullptr, kFields_L0280_S005A},
+    {640, 0x03FA, 1, 0, nullptr, kFields_L0280_S03FA},
+    {641, 0x005A, 1, 0, nullptr, kFields_L0281_S005A},
+    {641, 0x03FA, 10, 0, nullptr, kFields_L0281_S03FA},
+    {642, 0x005A, 1, 0, nullptr, kFields_L0282_S005A},
+    {642, 0x03FA, 1, 0, nullptr, kFields_L0282_S03FA},
+    {643, 0x005A, 1, 0, nullptr, kFields_L0283_S005A},
+    {643, 0x03FA, 22, 0, nullptr, kFields_L0283_S03FA},
+    {644, 0x005A, 1, 0, nullptr, kFields_L0284_S005A},
+    {644, 0x03FA, 25, 0, nullptr, kFields_L0284_S03FA},
+    {645, 0x005A, 1, 0, nullptr, kFields_L0285_S005A},
+    {645, 0x03FA, 1, 0, nullptr, kFields_L0285_S03FA},
+    {646, 0x005A, 1, 0, nullptr, kFields_L0286_S005A},
+    {646, 0x03FA, 11, 0, nullptr, kFields_L0286_S03FA},
+    {647, 0x005A, 1, 0, nullptr, kFields_L0287_S005A},
+    {647, 0x03FA, 1, 0, nullptr, kFields_L0287_S03FA},
+    {648, 0x005A, 1, 0, nullptr, kFields_L0288_S005A},
+    {648, 0x03FA, 1, 0, nullptr, kFields_L0288_S03FA},
+    {649, 0x005A, 1, 0, nullptr, kFields_L0289_S005A},
+    {649, 0x03FA, 1, 0, nullptr, kFields_L0289_S03FA},
+    {650, 0x005A, 1, 0, nullptr, kFields_L028A_S005A},
+    {650, 0x03FA, 1, 0, nullptr, kFields_L028A_S03FA},
+    {651, 0x005A, 1, 0, nullptr, kFields_L028B_S005A},
+    {651, 0x03FA, 1, 0, nullptr, kFields_L028B_S03FA},
+    {652, 0x005A, 1, 0, nullptr, kFields_L028C_S005A},
+    {652, 0x03FA, 1, 0, nullptr, kFields_L028C_S03FA},
+    {653, 0x005A, 1, 0, nullptr, kFields_L028D_S005A},
+    {653, 0x03FA, 1, 0, nullptr, kFields_L028D_S03FA},
+    {654, 0x005A, 1, 0, nullptr, kFields_L028E_S005A},
+    {654, 0x03FA, 1, 0, nullptr, kFields_L028E_S03FA},
+    {655, 0x005A, 1, 0, nullptr, kFields_L028F_S005A},
+    {655, 0x03FA, 1, 0, nullptr, kFields_L028F_S03FA},
+    {656, 0x005A, 1, 0, nullptr, kFields_L0290_S005A},
+    {656, 0x03FA, 1, 0, nullptr, kFields_L0290_S03FA},
+    {657, 0x005A, 1, 0, nullptr, kFields_L0291_S005A},
+    {657, 0x03FA, 1, 0, nullptr, kFields_L0291_S03FA},
+    {658, 0x005A, 1, 0, nullptr, kFields_L0292_S005A},
+    {658, 0x03FA, 1, 0, nullptr, kFields_L0292_S03FA},
+    {659, 0x005A, 1, 0, nullptr, kFields_L0293_S005A},
+    {659, 0x03FA, 1, 0, nullptr, kFields_L0293_S03FA},
+    {660, 0x005A, 1, 0, nullptr, kFields_L0294_S005A},
+    {660, 0x03FA, 1, 0, nullptr, kFields_L0294_S03FA},
+    {661, 0x005A, 1, 0, nullptr, kFields_L0295_S005A},
+    {661, 0x03FA, 1, 0, nullptr, kFields_L0295_S03FA},
+    {662, 0x005A, 1, 0, nullptr, kFields_L0296_S005A},
+    {662, 0x03FA, 1, 0, nullptr, kFields_L0296_S03FA},
+    {663, 0x005A, 1, 0, nullptr, kFields_L0297_S005A},
+    {663, 0x03FA, 1, 0, nullptr, kFields_L0297_S03FA},
+    {664, 0x005A, 1, 0, nullptr, kFields_L0298_S005A},
+    {664, 0x03FA, 1, 0, nullptr, kFields_L0298_S03FA},
+    {665, 0x005A, 1, 0, nullptr, kFields_L0299_S005A},
+    {665, 0x03FA, 11, 0, nullptr, kFields_L0299_S03FA},
+    {666, 0x005A, 1, 0, nullptr, kFields_L029A_S005A},
+    {666, 0x03FA, 7, 0, nullptr, kFields_L029A_S03FA},
+    {667, 0x005A, 1, 0, nullptr, kFields_L029B_S005A},
+    {667, 0x03FA, 1, 0, nullptr, kFields_L029B_S03FA},
+    {668, 0x005A, 1, 0, nullptr, kFields_L029C_S005A},
+    {668, 0x03FA, 1, 0, nullptr, kFields_L029C_S03FA},
+    {669, 0x005A, 1, 0, nullptr, kFields_L029D_S005A},
+    {669, 0x03FA, 18, 0, nullptr, kFields_L029D_S03FA},
+    {670, 0x005A, 1, 0, nullptr, kFields_L029E_S005A},
+    {670, 0x03FA, 1, 0, nullptr, kFields_L029E_S03FA},
+    {671, 0x005A, 1, 0, nullptr, kFields_L029F_S005A},
+    {671, 0x03FA, 2, 0, nullptr, kFields_L029F_S03FA},
+    {672, 0x005A, 1, 0, nullptr, kFields_L02A0_S005A},
+    {672, 0x03FA, 9, 0, nullptr, kFields_L02A0_S03FA},
+    {673, 0x002E, 10, 88, "dctools.EffectParm", kFields_L02A1_S002E},
+    {673, 0x005A, 108, 0, nullptr, kFields_L02A1_S005A},
+    {673, 0x03FB, 1, 0, nullptr, kFields_L02A1_S03FB},
+    {674, 0x005A, 1, 0, nullptr, kFields_L02A2_S005A},
+    {674, 0x03FB, 1, 0, nullptr, kFields_L02A2_S03FB},
+    {675, 0x005A, 1, 0, nullptr, kFields_L02A3_S005A},
+    {675, 0x03FB, 1, 0, nullptr, kFields_L02A3_S03FB},
+    {676, 0x005A, 1, 0, nullptr, kFields_L02A4_S005A},
+    {676, 0x03FB, 1, 0, nullptr, kFields_L02A4_S03FB},
+    {677, 0x005A, 1, 0, nullptr, kFields_L02A5_S005A},
+    {677, 0x03FB, 1, 0, nullptr, kFields_L02A5_S03FB},
+    {678, 0x005A, 1, 0, nullptr, kFields_L02A6_S005A},
+    {678, 0x03FB, 1, 0, nullptr, kFields_L02A6_S03FB},
+    {679, 0x005A, 1, 0, nullptr, kFields_L02A7_S005A},
+    {679, 0x03FB, 1, 0, nullptr, kFields_L02A7_S03FB},
+    {680, 0x005A, 1, 0, nullptr, kFields_L02A8_S005A},
+    {680, 0x03FB, 1, 0, nullptr, kFields_L02A8_S03FB},
+    {681, 0x005A, 1, 0, nullptr, kFields_L02A9_S005A},
+    {681, 0x03FB, 1, 0, nullptr, kFields_L02A9_S03FB},
+    {682, 0x005A, 1, 0, nullptr, kFields_L02AA_S005A},
+    {682, 0x03FB, 1, 0, nullptr, kFields_L02AA_S03FB},
+    {683, 0x005A, 1, 0, nullptr, kFields_L02AB_S005A},
+    {683, 0x03FB, 10, 0, nullptr, kFields_L02AB_S03FB},
+    {684, 0x005A, 1, 0, nullptr, kFields_L02AC_S005A},
+    {684, 0x03FB, 1, 0, nullptr, kFields_L02AC_S03FB},
+    {685, 0x005A, 1, 0, nullptr, kFields_L02AD_S005A},
+    {685, 0x03FB, 22, 0, nullptr, kFields_L02AD_S03FB},
+    {686, 0x005A, 1, 0, nullptr, kFields_L02AE_S005A},
+    {686, 0x03FB, 25, 0, nullptr, kFields_L02AE_S03FB},
+    {687, 0x005A, 1, 0, nullptr, kFields_L02AF_S005A},
+    {687, 0x03FB, 1, 0, nullptr, kFields_L02AF_S03FB},
+    {688, 0x005A, 1, 0, nullptr, kFields_L02B0_S005A},
+    {688, 0x03FB, 11, 0, nullptr, kFields_L02B0_S03FB},
+    {689, 0x005A, 1, 0, nullptr, kFields_L02B1_S005A},
+    {689, 0x03FB, 1, 0, nullptr, kFields_L02B1_S03FB},
+    {690, 0x005A, 1, 0, nullptr, kFields_L02B2_S005A},
+    {690, 0x03FB, 1, 0, nullptr, kFields_L02B2_S03FB},
+    {691, 0x005A, 1, 0, nullptr, kFields_L02B3_S005A},
+    {691, 0x03FB, 1, 0, nullptr, kFields_L02B3_S03FB},
+    {692, 0x005A, 1, 0, nullptr, kFields_L02B4_S005A},
+    {692, 0x03FB, 1, 0, nullptr, kFields_L02B4_S03FB},
+    {693, 0x005A, 1, 0, nullptr, kFields_L02B5_S005A},
+    {693, 0x03FB, 1, 0, nullptr, kFields_L02B5_S03FB},
+    {694, 0x005A, 1, 0, nullptr, kFields_L02B6_S005A},
+    {694, 0x03FB, 1, 0, nullptr, kFields_L02B6_S03FB},
+    {695, 0x005A, 1, 0, nullptr, kFields_L02B7_S005A},
+    {695, 0x03FB, 1, 0, nullptr, kFields_L02B7_S03FB},
+    {696, 0x005A, 1, 0, nullptr, kFields_L02B8_S005A},
+    {696, 0x03FB, 1, 0, nullptr, kFields_L02B8_S03FB},
+    {697, 0x005A, 1, 0, nullptr, kFields_L02B9_S005A},
+    {697, 0x03FB, 1, 0, nullptr, kFields_L02B9_S03FB},
+    {698, 0x005A, 1, 0, nullptr, kFields_L02BA_S005A},
+    {698, 0x03FB, 1, 0, nullptr, kFields_L02BA_S03FB},
+    {699, 0x005A, 1, 0, nullptr, kFields_L02BB_S005A},
+    {699, 0x03FB, 1, 0, nullptr, kFields_L02BB_S03FB},
+    {700, 0x005A, 1, 0, nullptr, kFields_L02BC_S005A},
+    {700, 0x03FB, 1, 0, nullptr, kFields_L02BC_S03FB},
+    {701, 0x005A, 1, 0, nullptr, kFields_L02BD_S005A},
+    {701, 0x03FB, 1, 0, nullptr, kFields_L02BD_S03FB},
+    {702, 0x005A, 1, 0, nullptr, kFields_L02BE_S005A},
+    {702, 0x03FB, 1, 0, nullptr, kFields_L02BE_S03FB},
+    {703, 0x005A, 1, 0, nullptr, kFields_L02BF_S005A},
+    {703, 0x03FB, 1, 0, nullptr, kFields_L02BF_S03FB},
+    {704, 0x005A, 1, 0, nullptr, kFields_L02C0_S005A},
+    {704, 0x03FB, 1, 0, nullptr, kFields_L02C0_S03FB},
+    {705, 0x005A, 1, 0, nullptr, kFields_L02C1_S005A},
+    {705, 0x03FB, 1, 0, nullptr, kFields_L02C1_S03FB},
+    {706, 0x005A, 1, 0, nullptr, kFields_L02C2_S005A},
+    {706, 0x03FB, 1, 0, nullptr, kFields_L02C2_S03FB},
+    {707, 0x005A, 1, 0, nullptr, kFields_L02C3_S005A},
+    {707, 0x03FB, 11, 0, nullptr, kFields_L02C3_S03FB},
+    {708, 0x005A, 1, 0, nullptr, kFields_L02C4_S005A},
+    {708, 0x03FB, 7, 0, nullptr, kFields_L02C4_S03FB},
+    {709, 0x005A, 1, 0, nullptr, kFields_L02C5_S005A},
+    {709, 0x03FB, 1, 0, nullptr, kFields_L02C5_S03FB},
+    {710, 0x005A, 1, 0, nullptr, kFields_L02C6_S005A},
+    {710, 0x03FB, 1, 0, nullptr, kFields_L02C6_S03FB},
+    {711, 0x005A, 1, 0, nullptr, kFields_L02C7_S005A},
+    {711, 0x03FB, 18, 0, nullptr, kFields_L02C7_S03FB},
+    {712, 0x005A, 1, 0, nullptr, kFields_L02C8_S005A},
+    {712, 0x03FB, 1, 0, nullptr, kFields_L02C8_S03FB},
+    {713, 0x005A, 1, 0, nullptr, kFields_L02C9_S005A},
+    {713, 0x03FB, 2, 0, nullptr, kFields_L02C9_S03FB},
+    {714, 0x005A, 1, 0, nullptr, kFields_L02CA_S005A},
+    {714, 0x03FB, 9, 0, nullptr, kFields_L02CA_S03FB},
+    {714, 0x03FC, 6, 0, nullptr, kFields_L02CA_S03FC},
+    {714, 0x03FD, 1, 0, nullptr, kFields_L02CA_S03FD},
+    {714, 0x03FE, 17, 0, nullptr, kFields_L02CA_S03FE},
+    {714, 0x03FF, 7, 0, nullptr, kFields_L02CA_S03FF},
+    {714, 0x0400, 2, 0, nullptr, kFields_L02CA_S0400},
+    {714, 0x0401, 21, 0, nullptr, kFields_L02CA_S0401},
+    {714, 0x0402, 1, 0, nullptr, kFields_L02CA_S0402},
+    {714, 0x0403, 1, 0, nullptr, kFields_L02CA_S0403},
+    {714, 0x0404, 4, 0, nullptr, kFields_L02CA_S0404},
+    {714, 0x0405, 1, 0, nullptr, kFields_L02CA_S0405},
+    {714, 0x0406, 2, 0, nullptr, kFields_L02CA_S0406},
+    {714, 0x0407, 11, 0, nullptr, kFields_L02CA_S0407},
+    {714, 0x0408, 5, 0, nullptr, kFields_L02CA_S0408},
+    {714, 0x0409, 5, 0, nullptr, kFields_L02CA_S0409},
+    {714, 0x040A, 5, 0, nullptr, kFields_L02CA_S040A},
+    {714, 0x040B, 3, 0, nullptr, kFields_L02CA_S040B},
+    {714, 0x040C, 5, 0, nullptr, kFields_L02CA_S040C},
+    {714, 0x040D, 7, 0, nullptr, kFields_L02CA_S040D},
+    {714, 0x040E, 2, 0, nullptr, kFields_L02CA_S040E},
+    {715, 0x0406, 2, 0, nullptr, kFields_L02CB_S0406},
+    {715, 0x040F, 2, 0, nullptr, kFields_L02CB_S040F},
+    {716, 0x0406, 2, 0, nullptr, kFields_L02CC_S0406},
+    {716, 0x0410, 3, 0, nullptr, kFields_L02CC_S0410},
+    {717, 0x0406, 2, 0, nullptr, kFields_L02CD_S0406},
+    {717, 0x0411, 2, 0, nullptr, kFields_L02CD_S0411},
+    {717, 0x0413, 3, 0, nullptr, kFields_L02CD_S0413},
+    {717, 0x0414, 3, 0, nullptr, kFields_L02CD_S0414},
+    {717, 0x0415, 10, 0, nullptr, kFields_L02CD_S0415},
+    {718, 0x0414, 3, 0, nullptr, kFields_L02CE_S0414},
+    {718, 0x0415, 10, 0, nullptr, kFields_L02CE_S0415},
+    {718, 0x0416, 3, 0, nullptr, kFields_L02CE_S0416},
+    {719, 0x0414, 3, 0, nullptr, kFields_L02CF_S0414},
+    {719, 0x0417, 1, 0, nullptr, kFields_L02CF_S0417},
+    {719, 0x0418, 1, 0, nullptr, kFields_L02CF_S0418},
+    {719, 0x0419, 2, 0, nullptr, kFields_L02CF_S0419},
+    {720, 0x0413, 3, 0, nullptr, kFields_L02D0_S0413},
+    {720, 0x041A, 1, 0, nullptr, kFields_L02D0_S041A},
+    {721, 0x0413, 3, 0, nullptr, kFields_L02D1_S0413},
+    {721, 0x041B, 10, 0, nullptr, kFields_L02D1_S041B},
+    {722, 0x0413, 3, 0, nullptr, kFields_L02D2_S0413},
+    {722, 0x041C, 1, 0, nullptr, kFields_L02D2_S041C},
+    {723, 0x0413, 3, 0, nullptr, kFields_L02D3_S0413},
+    {723, 0x041D, 1, 0, nullptr, kFields_L02D3_S041D},
+    {724, 0x0413, 3, 0, nullptr, kFields_L02D4_S0413},
+    {724, 0x041E, 1, 0, nullptr, kFields_L02D4_S041E},
+    {725, 0x0413, 3, 0, nullptr, kFields_L02D5_S0413},
+    {725, 0x041F, 2, 0, nullptr, kFields_L02D5_S041F},
+    {726, 0x0413, 3, 0, nullptr, kFields_L02D6_S0413},
+    {726, 0x0420, 8, 0, nullptr, kFields_L02D6_S0420},
+    {727, 0x0413, 3, 0, nullptr, kFields_L02D7_S0413},
+    {727, 0x0421, 1, 0, nullptr, kFields_L02D7_S0421},
+    {728, 0x0413, 3, 0, nullptr, kFields_L02D8_S0413},
+    {728, 0x0422, 4, 0, nullptr, kFields_L02D8_S0422},
+    {729, 0x0413, 3, 0, nullptr, kFields_L02D9_S0413},
+    {729, 0x0421, 1, 0, nullptr, kFields_L02D9_S0421},
+    {729, 0x0423, 1, 0, nullptr, kFields_L02D9_S0423},
+    {730, 0x0413, 3, 0, nullptr, kFields_L02DA_S0413},
+    {730, 0x0424, 1, 24, "level_scripting.GetClosestFastTravelMarkerNode", kFields_L02DA_S0424},
+    {731, 0x0413, 3, 0, nullptr, kFields_L02DB_S0413},
+    {731, 0x0421, 1, 0, nullptr, kFields_L02DB_S0421},
+    {731, 0x0425, 1, 24, "level_scripting.GetClosestFastTravelMarkerNode", kFields_L02DB_S0425},
+    {732, 0x0413, 3, 0, nullptr, kFields_L02DC_S0413},
+    {732, 0x0426, 1, 0, nullptr, kFields_L02DC_S0426},
+    {733, 0x0413, 3, 0, nullptr, kFields_L02DD_S0413},
+    {733, 0x0421, 1, 0, nullptr, kFields_L02DD_S0421},
+    {733, 0x0427, 1, 0, nullptr, kFields_L02DD_S0427},
+    {734, 0x0413, 3, 0, nullptr, kFields_L02DE_S0413},
+    {734, 0x0421, 1, 0, nullptr, kFields_L02DE_S0421},
+    {734, 0x0428, 1, 0, nullptr, kFields_L02DE_S0428},
+    {735, 0x0413, 3, 0, nullptr, kFields_L02DF_S0413},
+    {735, 0x0421, 1, 0, nullptr, kFields_L02DF_S0421},
+    {736, 0x0413, 3, 0, nullptr, kFields_L02E0_S0413},
+    {736, 0x0421, 1, 0, nullptr, kFields_L02E0_S0421},
+    {736, 0x042A, 2, 0, nullptr, kFields_L02E0_S042A},
+    {737, 0x0413, 3, 0, nullptr, kFields_L02E1_S0413},
+    {737, 0x0421, 1, 0, nullptr, kFields_L02E1_S0421},
+    {737, 0x042B, 2, 0, nullptr, kFields_L02E1_S042B},
+    {738, 0x0413, 3, 0, nullptr, kFields_L02E2_S0413},
+    {738, 0x0421, 1, 0, nullptr, kFields_L02E2_S0421},
+    {738, 0x042C, 2, 0, nullptr, kFields_L02E2_S042C},
+    {739, 0x0413, 3, 0, nullptr, kFields_L02E3_S0413},
+    {739, 0x0421, 1, 0, nullptr, kFields_L02E3_S0421},
+    {739, 0x042D, 2, 0, nullptr, kFields_L02E3_S042D},
+    {740, 0x0413, 3, 0, nullptr, kFields_L02E4_S0413},
+    {740, 0x042E, 1, 0, nullptr, kFields_L02E4_S042E},
+    {741, 0x0413, 3, 0, nullptr, kFields_L02E5_S0413},
+    {741, 0x042F, 1, 0, nullptr, kFields_L02E5_S042F},
+    {742, 0x0413, 3, 0, nullptr, kFields_L02E6_S0413},
+    {742, 0x0421, 1, 0, nullptr, kFields_L02E6_S0421},
+    {742, 0x0430, 1, 0, nullptr, kFields_L02E6_S0430},
+    {743, 0x0413, 3, 0, nullptr, kFields_L02E7_S0413},
+    {743, 0x0421, 1, 0, nullptr, kFields_L02E7_S0421},
+    {743, 0x0431, 1, 56, "behavior_tree.Runtime.DoSync", kFields_L02E7_S0431},
+    {744, 0x0413, 3, 0, nullptr, kFields_L02E8_S0413},
+    {744, 0x0421, 1, 0, nullptr, kFields_L02E8_S0421},
+    {744, 0x0432, 1, 0, nullptr, kFields_L02E8_S0432},
+    {745, 0x0413, 3, 0, nullptr, kFields_L02E9_S0413},
+    {745, 0x0433, 1, 0, nullptr, kFields_L02E9_S0433},
+    {746, 0x0413, 3, 0, nullptr, kFields_L02EA_S0413},
+    {746, 0x0434, 1, 0, nullptr, kFields_L02EA_S0434},
+    {747, 0x0413, 3, 0, nullptr, kFields_L02EB_S0413},
+    {747, 0x0435, 1, 56, "behavior_tree.Runtime.AddAnimDriver", kFields_L02EB_S0435},
+    {748, 0x0413, 3, 0, nullptr, kFields_L02EC_S0413},
+    {748, 0x0436, 1, 0, nullptr, kFields_L02EC_S0436},
+    {749, 0x0413, 3, 0, nullptr, kFields_L02ED_S0413},
+    {749, 0x0437, 4, 0, nullptr, kFields_L02ED_S0437},
+    {750, 0x0413, 3, 0, nullptr, kFields_L02EE_S0413},
+    {750, 0x0438, 3, 0, nullptr, kFields_L02EE_S0438},
+    {751, 0x0413, 3, 0, nullptr, kFields_L02EF_S0413},
+    {751, 0x0438, 3, 0, nullptr, kFields_L02EF_S0438},
+    {752, 0x0413, 3, 0, nullptr, kFields_L02F0_S0413},
+    {752, 0x0438, 3, 0, nullptr, kFields_L02F0_S0438},
+    {752, 0x043A, 7, 0, nullptr, kFields_L02F0_S043A},
+    {753, 0x0413, 3, 0, nullptr, kFields_L02F1_S0413},
+    {753, 0x043C, 2, 0, nullptr, kFields_L02F1_S043C},
+    {754, 0x0413, 3, 0, nullptr, kFields_L02F2_S0413},
+    {754, 0x043D, 1, 0, nullptr, kFields_L02F2_S043D},
+    {755, 0x0413, 3, 0, nullptr, kFields_L02F3_S0413},
+    {755, 0x043E, 1, 0, nullptr, kFields_L02F3_S043E},
+    {756, 0x0413, 3, 0, nullptr, kFields_L02F4_S0413},
+    {756, 0x043F, 1, 0, nullptr, kFields_L02F4_S043F},
+    {757, 0x0413, 3, 0, nullptr, kFields_L02F5_S0413},
+    {757, 0x0440, 1, 0, nullptr, kFields_L02F5_S0440},
+    {758, 0x0413, 3, 0, nullptr, kFields_L02F6_S0413},
+    {758, 0x0421, 1, 0, nullptr, kFields_L02F6_S0421},
+    {758, 0x0441, 1, 0, nullptr, kFields_L02F6_S0441},
+    {759, 0x0418, 1, 0, nullptr, kFields_L02F7_S0418},
+    {759, 0x0442, 3, 0, nullptr, kFields_L02F7_S0442},
+    {760, 0x0418, 1, 0, nullptr, kFields_L02F8_S0418},
+    {760, 0x0443, 1, 0, nullptr, kFields_L02F8_S0443},
+    {760, 0x0444, 2, 0, nullptr, kFields_L02F8_S0444},
+    {760, 0x0445, 3, 0, nullptr, kFields_L02F8_S0445},
+    {761, 0x0413, 3, 0, nullptr, kFields_L02F9_S0413},
+    {761, 0x0446, 1, 0, nullptr, kFields_L02F9_S0446},
+    {762, 0x0413, 3, 0, nullptr, kFields_L02FA_S0413},
+    {762, 0x0446, 1, 0, nullptr, kFields_L02FA_S0446},
+    {763, 0x0413, 3, 0, nullptr, kFields_L02FB_S0413},
+    {763, 0x0448, 1, 0, nullptr, kFields_L02FB_S0448},
+    {763, 0x0449, 1, 0, nullptr, kFields_L02FB_S0449},
+    {764, 0x0148, 1, 0, nullptr, kFields_L02FC_S0148},
+    {764, 0x044A, 1, 0, nullptr, kFields_L02FC_S044A},
+    {765, 0x0148, 1, 0, nullptr, kFields_L02FD_S0148},
+    {765, 0x044A, 1, 0, nullptr, kFields_L02FD_S044A},
+    {765, 0x044B, 3, 0, nullptr, kFields_L02FD_S044B},
+    {765, 0x044E, 3, 0, nullptr, kFields_L02FD_S044E},
+    {765, 0x044F, 3, 0, nullptr, kFields_L02FD_S044F},
+    {765, 0x0450, 4, 0, nullptr, kFields_L02FD_S0450},
+    {765, 0x0451, 4, 0, nullptr, kFields_L02FD_S0451},
+    {765, 0x0452, 4, 0, nullptr, kFields_L02FD_S0452},
+    {765, 0x0453, 8, 0, nullptr, kFields_L02FD_S0453},
+    {765, 0x0454, 16, 0, nullptr, kFields_L02FD_S0454},
+    {765, 0x0455, 71, 0, nullptr, kFields_L02FD_S0455},
+    {765, 0x0456, 6, 0, nullptr, kFields_L02FD_S0456},
+    {765, 0x0457, 1, 0, nullptr, kFields_L02FD_S0457},
+    {765, 0x0458, 2, 0, nullptr, kFields_L02FD_S0458},
+    {765, 0x0459, 2, 0, nullptr, kFields_L02FD_S0459},
+    {766, 0x0458, 2, 0, nullptr, kFields_L02FE_S0458},
+    {766, 0x045A, 6, 0, nullptr, kFields_L02FE_S045A},
+    {766, 0x045B, 4, 0, nullptr, kFields_L02FE_S045B},
+    {766, 0x045C, 9, 0, nullptr, kFields_L02FE_S045C},
+    {766, 0x045D, 3, 0, nullptr, kFields_L02FE_S045D},
+    {767, 0x045C, 9, 0, nullptr, kFields_L02FF_S045C},
+    {767, 0x045D, 3, 0, nullptr, kFields_L02FF_S045D},
+    {767, 0x045E, 3, 0, nullptr, kFields_L02FF_S045E},
+    {768, 0x045C, 9, 0, nullptr, kFields_L0300_S045C},
+    {768, 0x045D, 3, 0, nullptr, kFields_L0300_S045D},
+    {768, 0x045E, 3, 0, nullptr, kFields_L0300_S045E},
+    {769, 0x045C, 9, 0, nullptr, kFields_L0301_S045C},
+    {769, 0x0460, 4, 0, nullptr, kFields_L0301_S0460},
+    {769, 0x0461, 5, 0, nullptr, kFields_L0301_S0461},
+    {770, 0x045C, 9, 0, nullptr, kFields_L0302_S045C},
+    {770, 0x0462, 13, 0, nullptr, kFields_L0302_S0462},
+    {770, 0x0463, 2, 0, nullptr, kFields_L0302_S0463},
+    {770, 0x0464, 22, 0, nullptr, kFields_L0302_S0464},
+    {770, 0x0465, 5, 0, nullptr, kFields_L0302_S0465},
+    {770, 0x0466, 7, 0, nullptr, kFields_L0302_S0466},
+    {770, 0x0467, 44, 0, nullptr, kFields_L0302_S0467},
+    {770, 0x0468, 7, 0, nullptr, kFields_L0302_S0468},
+    {770, 0x0469, 6, 0, nullptr, kFields_L0302_S0469},
+    {770, 0x046A, 8, 0, nullptr, kFields_L0302_S046A},
+    {770, 0x046B, 7, 0, nullptr, kFields_L0302_S046B},
+    {770, 0x046C, 11, 0, nullptr, kFields_L0302_S046C},
+    {770, 0x046D, 17, 0, nullptr, kFields_L0302_S046D},
+    {770, 0x046E, 25, 0, nullptr, kFields_L0302_S046E},
+    {770, 0x046F, 2, 0, nullptr, kFields_L0302_S046F},
+    {770, 0x0470, 12, 0, nullptr, kFields_L0302_S0470},
+    {770, 0x0471, 2, 0, nullptr, kFields_L0302_S0471},
+    {770, 0x0472, 1, 0, nullptr, kFields_L0302_S0472},
+    {770, 0x0473, 2, 0, nullptr, kFields_L0302_S0473},
+    {770, 0x0474, 2, 0, nullptr, kFields_L0302_S0474},
+    {770, 0x0475, 2, 0, nullptr, kFields_L0302_S0475},
+    {770, 0x0476, 9, 0, nullptr, kFields_L0302_S0476},
+    {770, 0x0477, 1, 0, nullptr, kFields_L0302_S0477},
+    {770, 0x0478, 2, 0, nullptr, kFields_L0302_S0478},
+    {770, 0x0479, 1, 0, nullptr, kFields_L0302_S0479},
+    {770, 0x047A, 5, 0, nullptr, kFields_L0302_S047A},
+    {770, 0x047B, 12, 0, nullptr, kFields_L0302_S047B},
+    {770, 0x047C, 9, 0, nullptr, kFields_L0302_S047C},
+    {770, 0x047D, 11, 0, nullptr, kFields_L0302_S047D},
+    {770, 0x047E, 2, 0, nullptr, kFields_L0302_S047E},
+    {770, 0x047F, 10, 0, nullptr, kFields_L0302_S047F},
+    {770, 0x0480, 2, 0, nullptr, kFields_L0302_S0480},
+    {770, 0x0481, 4, 0, nullptr, kFields_L0302_S0481},
+    {770, 0x0482, 3, 0, nullptr, kFields_L0302_S0482},
+    {770, 0x0483, 2, 0, nullptr, kFields_L0302_S0483},
+    {770, 0x0484, 2, 0, nullptr, kFields_L0302_S0484},
+    {770, 0x0485, 2, 0, nullptr, kFields_L0302_S0485},
+    {770, 0x0486, 1, 0, nullptr, kFields_L0302_S0486},
+    {770, 0x0487, 4, 0, nullptr, kFields_L0302_S0487},
+    {770, 0x0488, 1, 0, nullptr, kFields_L0302_S0488},
+    {770, 0x0489, 3, 0, nullptr, kFields_L0302_S0489},
+    {770, 0x048A, 2, 0, nullptr, kFields_L0302_S048A},
+    {770, 0x048B, 7, 0, nullptr, kFields_L0302_S048B},
+    {770, 0x048C, 2, 0, nullptr, kFields_L0302_S048C},
+    {770, 0x048D, 138, 0, nullptr, kFields_L0302_S048D},
+    {770, 0x048E, 3, 0, nullptr, kFields_L0302_S048E},
+    {770, 0x048F, 7, 0, nullptr, kFields_L0302_S048F},
+    {770, 0x0490, 1, 0, nullptr, kFields_L0302_S0490},
+    {770, 0x0491, 5, 0, nullptr, kFields_L0302_S0491},
+    {770, 0x0492, 3, 0, nullptr, kFields_L0302_S0492},
+    {770, 0x0493, 39, 0, nullptr, kFields_L0302_S0493},
+    {770, 0x0494, 20, 0, nullptr, kFields_L0302_S0494},
+    {770, 0x0495, 2, 0, nullptr, kFields_L0302_S0495},
+    {770, 0x0496, 3, 0, nullptr, kFields_L0302_S0496},
+    {770, 0x0497, 1, 0, nullptr, kFields_L0302_S0497},
+    {770, 0x0498, 7, 0, nullptr, kFields_L0302_S0498},
+    {770, 0x0499, 2, 0, nullptr, kFields_L0302_S0499},
+    {770, 0x049A, 19, 80, "behavior_tree.Runtime.GetCurrentContextIdleData", kFields_L0302_S049A},
+    {770, 0x049B, 1, 0, nullptr, kFields_L0302_S049B},
+    {770, 0x049C, 3, 0, nullptr, kFields_L0302_S049C},
+    {770, 0x049D, 38, 0, nullptr, kFields_L0302_S049D},
+    {770, 0x049E, 6, 0, nullptr, kFields_L0302_S049E},
+    {770, 0x049F, 3, 0, nullptr, kFields_L0302_S049F},
+    {770, 0x04A0, 2, 0, nullptr, kFields_L0302_S04A0},
+    {770, 0x04A1, 5, 0, nullptr, kFields_L0302_S04A1},
+    {770, 0x04A2, 5, 0, nullptr, kFields_L0302_S04A2},
+    {771, 0x00AA, 6, 0, nullptr, kFields_L0303_S00AA},
+    {771, 0x00AF, 2, 0, nullptr, kFields_L0303_S00AF},
+    {771, 0x00B0, 3, 0, nullptr, kFields_L0303_S00B0},
+    {771, 0x04A3, 2, 0, nullptr, kFields_L0303_S04A3},
+    {772, 0x00AA, 6, 0, nullptr, kFields_L0304_S00AA},
+    {772, 0x00AF, 2, 0, nullptr, kFields_L0304_S00AF},
+    {772, 0x04A4, 4, 0, nullptr, kFields_L0304_S04A4},
+    {772, 0x04A5, 5, 0, nullptr, kFields_L0304_S04A5},
+    {773, 0x00AA, 6, 0, nullptr, kFields_L0305_S00AA},
+    {773, 0x00AF, 2, 0, nullptr, kFields_L0305_S00AF},
+    {773, 0x04A6, 1, 0, nullptr, kFields_L0305_S04A6},
+    {774, 0x00AA, 6, 0, nullptr, kFields_L0306_S00AA},
+    {774, 0x00AF, 2, 0, nullptr, kFields_L0306_S00AF},
+    {774, 0x04A7, 1, 0, nullptr, kFields_L0306_S04A7},
+    {774, 0x04A8, 3, 0, nullptr, kFields_L0306_S04A8},
+    {774, 0x04A9, 2, 0, nullptr, kFields_L0306_S04A9},
+    {774, 0x04AA, 3, 0, nullptr, kFields_L0306_S04AA},
+    {774, 0x04AB, 11, 0, nullptr, kFields_L0306_S04AB},
+    {774, 0x04AC, 3, 0, nullptr, kFields_L0306_S04AC},
+    {775, 0x04AB, 11, 0, nullptr, kFields_L0307_S04AB},
+    {775, 0x04AD, 1, 56, "behavior_tree.Runtime.Sleep", kFields_L0307_S04AD},
+    {776, 0x04AB, 11, 0, nullptr, kFields_L0308_S04AB},
+    {776, 0x04AE, 1, 0, nullptr, kFields_L0308_S04AE},
+    {776, 0x04AF, 2, 0, nullptr, kFields_L0308_S04AF},
+    {777, 0x04AB, 11, 0, nullptr, kFields_L0309_S04AB},
+    {777, 0x04B0, 1, 0, nullptr, kFields_L0309_S04B0},
+    {778, 0x04AB, 11, 0, nullptr, kFields_L030A_S04AB},
+    {778, 0x04B1, 2, 0, nullptr, kFields_L030A_S04B1},
+    {779, 0x04AB, 11, 0, nullptr, kFields_L030B_S04AB},
+    {779, 0x04B2, 1, 0, nullptr, kFields_L030B_S04B2},
+    {780, 0x04AB, 11, 0, nullptr, kFields_L030C_S04AB},
+    {780, 0x04B3, 3, 0, nullptr, kFields_L030C_S04B3},
+    {781, 0x04AB, 11, 0, nullptr, kFields_L030D_S04AB},
+    {781, 0x04B4, 2, 0, nullptr, kFields_L030D_S04B4},
+    {782, 0x04AB, 11, 0, nullptr, kFields_L030E_S04AB},
+    {782, 0x04B5, 1, 0, nullptr, kFields_L030E_S04B5},
+    {783, 0x04AB, 11, 0, nullptr, kFields_L030F_S04AB},
+    {783, 0x04B6, 5, 0, nullptr, kFields_L030F_S04B6},
+    {784, 0x04AB, 11, 0, nullptr, kFields_L0310_S04AB},
+    {784, 0x04B7, 3, 0, nullptr, kFields_L0310_S04B7},
+    {785, 0x04AB, 11, 0, nullptr, kFields_L0311_S04AB},
+    {785, 0x04B8, 2, 0, nullptr, kFields_L0311_S04B8},
+    {786, 0x04AB, 11, 0, nullptr, kFields_L0312_S04AB},
+    {786, 0x04B9, 2, 0, nullptr, kFields_L0312_S04B9},
+    {787, 0x04AB, 11, 0, nullptr, kFields_L0313_S04AB},
+    {787, 0x04BA, 3, 0, nullptr, kFields_L0313_S04BA},
+    {788, 0x04AB, 11, 0, nullptr, kFields_L0314_S04AB},
+    {788, 0x04BB, 6, 0, nullptr, kFields_L0314_S04BB},
+    {789, 0x04AB, 11, 0, nullptr, kFields_L0315_S04AB},
+    {789, 0x04BC, 4, 0, nullptr, kFields_L0315_S04BC},
+    {790, 0x04AB, 11, 0, nullptr, kFields_L0316_S04AB},
+    {790, 0x04BD, 1, 0, nullptr, kFields_L0316_S04BD},
+    {791, 0x04AB, 11, 0, nullptr, kFields_L0317_S04AB},
+    {791, 0x04BE, 1, 0, nullptr, kFields_L0317_S04BE},
+    {791, 0x04BF, 1, 0, nullptr, kFields_L0317_S04BF},
+    {792, 0x04AB, 11, 0, nullptr, kFields_L0318_S04AB},
+    {792, 0x04C0, 5, 0, nullptr, kFields_L0318_S04C0},
+    {793, 0x04AB, 11, 0, nullptr, kFields_L0319_S04AB},
+    {793, 0x04C2, 1, 0, nullptr, kFields_L0319_S04C2},
+    {794, 0x04AB, 11, 0, nullptr, kFields_L031A_S04AB},
+    {794, 0x04C3, 1, 0, nullptr, kFields_L031A_S04C3},
+    {795, 0x04AB, 11, 0, nullptr, kFields_L031B_S04AB},
+    {795, 0x04C4, 7, 0, nullptr, kFields_L031B_S04C4},
+    {796, 0x04AB, 11, 0, nullptr, kFields_L031C_S04AB},
+    {796, 0x04C5, 3, 0, nullptr, kFields_L031C_S04C5},
+    {797, 0x04AB, 11, 0, nullptr, kFields_L031D_S04AB},
+    {797, 0x04C6, 2, 0, nullptr, kFields_L031D_S04C6},
+    {798, 0x04AB, 11, 0, nullptr, kFields_L031E_S04AB},
+    {798, 0x04C7, 1, 0, nullptr, kFields_L031E_S04C7},
+    {799, 0x04AB, 11, 0, nullptr, kFields_L031F_S04AB},
+    {799, 0x04C8, 2, 0, nullptr, kFields_L031F_S04C8},
+    {800, 0x04AB, 11, 0, nullptr, kFields_L0320_S04AB},
+    {800, 0x04C9, 1, 0, nullptr, kFields_L0320_S04C9},
+    {801, 0x04AB, 11, 0, nullptr, kFields_L0321_S04AB},
+    {801, 0x04CA, 1, 0, nullptr, kFields_L0321_S04CA},
+    {802, 0x04AB, 11, 0, nullptr, kFields_L0322_S04AB},
+    {802, 0x04CB, 2, 0, nullptr, kFields_L0322_S04CB},
+    {803, 0x04AB, 11, 0, nullptr, kFields_L0323_S04AB},
+    {803, 0x04CC, 1, 0, nullptr, kFields_L0323_S04CC},
+    {804, 0x04AB, 11, 0, nullptr, kFields_L0324_S04AB},
+    {804, 0x04CD, 2, 0, nullptr, kFields_L0324_S04CD},
+    {805, 0x04AB, 11, 0, nullptr, kFields_L0325_S04AB},
+    {805, 0x04CE, 4, 0, nullptr, kFields_L0325_S04CE},
+    {806, 0x04AB, 11, 0, nullptr, kFields_L0326_S04AB},
+    {806, 0x04CF, 1, 0, nullptr, kFields_L0326_S04CF},
+    {807, 0x04AB, 11, 0, nullptr, kFields_L0327_S04AB},
+    {807, 0x04D0, 2, 0, nullptr, kFields_L0327_S04D0},
+    {808, 0x04AB, 11, 0, nullptr, kFields_L0328_S04AB},
+    {808, 0x04D0, 2, 0, nullptr, kFields_L0328_S04D0},
+    {809, 0x04AB, 11, 0, nullptr, kFields_L0329_S04AB},
+    {809, 0x04D2, 4, 0, nullptr, kFields_L0329_S04D2},
+    {810, 0x04AB, 11, 0, nullptr, kFields_L032A_S04AB},
+    {810, 0x04D3, 6, 0, nullptr, kFields_L032A_S04D3},
+    {811, 0x04AB, 11, 0, nullptr, kFields_L032B_S04AB},
+    {811, 0x04D4, 2, 0, nullptr, kFields_L032B_S04D4},
+    {812, 0x04AB, 11, 0, nullptr, kFields_L032C_S04AB},
+    {812, 0x04D5, 3, 0, nullptr, kFields_L032C_S04D5},
+    {813, 0x04AB, 11, 0, nullptr, kFields_L032D_S04AB},
+    {813, 0x04D6, 2, 0, nullptr, kFields_L032D_S04D6},
+    {814, 0x04AB, 11, 0, nullptr, kFields_L032E_S04AB},
+    {814, 0x04D7, 26, 0, nullptr, kFields_L032E_S04D7},
+    {814, 0x04D8, 5, 0, nullptr, kFields_L032E_S04D8},
+    {815, 0x04AB, 11, 0, nullptr, kFields_L032F_S04AB},
+    {815, 0x04D9, 1, 0, nullptr, kFields_L032F_S04D9},
+    {816, 0x04AB, 11, 0, nullptr, kFields_L0330_S04AB},
+    {816, 0x04DA, 1, 0, nullptr, kFields_L0330_S04DA},
+    {817, 0x04AB, 11, 0, nullptr, kFields_L0331_S04AB},
+    {817, 0x04DB, 3, 0, nullptr, kFields_L0331_S04DB},
+    {818, 0x04AB, 11, 0, nullptr, kFields_L0332_S04AB},
+    {818, 0x04DC, 3, 0, nullptr, kFields_L0332_S04DC},
+    {819, 0x04AB, 11, 0, nullptr, kFields_L0333_S04AB},
+    {819, 0x04DD, 3, 0, nullptr, kFields_L0333_S04DD},
+    {820, 0x04AB, 11, 0, nullptr, kFields_L0334_S04AB},
+    {820, 0x04DE, 11, 0, nullptr, kFields_L0334_S04DE},
+    {821, 0x04AB, 11, 0, nullptr, kFields_L0335_S04AB},
+    {821, 0x04DF, 9, 0, nullptr, kFields_L0335_S04DF},
+    {822, 0x04AB, 11, 0, nullptr, kFields_L0336_S04AB},
+    {822, 0x04E0, 1, 0, nullptr, kFields_L0336_S04E0},
+    {823, 0x04AB, 11, 0, nullptr, kFields_L0337_S04AB},
+    {823, 0x04E1, 1, 0, nullptr, kFields_L0337_S04E1},
+    {824, 0x04AB, 11, 0, nullptr, kFields_L0338_S04AB},
+    {824, 0x04E2, 6, 0, nullptr, kFields_L0338_S04E2},
+    {825, 0x04AB, 11, 0, nullptr, kFields_L0339_S04AB},
+    {825, 0x04E3, 1, 0, nullptr, kFields_L0339_S04E3},
+    {826, 0x04AB, 11, 0, nullptr, kFields_L033A_S04AB},
+    {826, 0x04E4, 3, 0, nullptr, kFields_L033A_S04E4},
+    {827, 0x04AB, 11, 0, nullptr, kFields_L033B_S04AB},
+    {827, 0x04E5, 2, 0, nullptr, kFields_L033B_S04E5},
+    {828, 0x04AB, 11, 0, nullptr, kFields_L033C_S04AB},
+    {828, 0x04E6, 2, 0, nullptr, kFields_L033C_S04E6},
+    {829, 0x04AB, 11, 0, nullptr, kFields_L033D_S04AB},
+    {829, 0x04E7, 3, 0, nullptr, kFields_L033D_S04E7},
+    {830, 0x04AB, 11, 0, nullptr, kFields_L033E_S04AB},
+    {830, 0x04E8, 3, 0, nullptr, kFields_L033E_S04E8},
+    {831, 0x04AB, 11, 0, nullptr, kFields_L033F_S04AB},
+    {831, 0x04E9, 3, 0, nullptr, kFields_L033F_S04E9},
+    {832, 0x04AB, 11, 0, nullptr, kFields_L0340_S04AB},
+    {832, 0x04EA, 5, 0, nullptr, kFields_L0340_S04EA},
+    {833, 0x04AB, 11, 0, nullptr, kFields_L0341_S04AB},
+    {833, 0x04EB, 2, 0, nullptr, kFields_L0341_S04EB},
+    {834, 0x04AB, 11, 0, nullptr, kFields_L0342_S04AB},
+    {834, 0x04EC, 2, 0, nullptr, kFields_L0342_S04EC},
+    {835, 0x04AB, 11, 0, nullptr, kFields_L0343_S04AB},
+    {835, 0x04ED, 2, 0, nullptr, kFields_L0343_S04ED},
+    {835, 0x04EE, 3, 0, nullptr, kFields_L0343_S04EE},
+    {835, 0x04EF, 3, 0, nullptr, kFields_L0343_S04EF},
+    {835, 0x04F0, 4, 0, nullptr, kFields_L0343_S04F0},
+    {835, 0x04F1, 5, 0, nullptr, kFields_L0343_S04F1},
+    {835, 0x04F2, 9, 0, nullptr, kFields_L0343_S04F2},
+    {835, 0x04F3, 1, 0, nullptr, kFields_L0343_S04F3},
+    {835, 0x04F4, 17, 0, nullptr, kFields_L0343_S04F4},
+    {835, 0x04F5, 4, 0, nullptr, kFields_L0343_S04F5},
+    {836, 0x04F2, 9, 0, nullptr, kFields_L0344_S04F2},
+    {836, 0x04F6, 1, 0, nullptr, kFields_L0344_S04F6},
+    {837, 0x04F4, 17, 0, nullptr, kFields_L0345_S04F4},
+    {837, 0x04F7, 2, 0, nullptr, kFields_L0345_S04F7},
+    {838, 0x04F4, 17, 0, nullptr, kFields_L0346_S04F4},
+    {838, 0x04F7, 2, 0, nullptr, kFields_L0346_S04F7},
+    {838, 0x04F8, 2, 0, nullptr, kFields_L0346_S04F8},
+    {839, 0x04F4, 17, 0, nullptr, kFields_L0347_S04F4},
+    {839, 0x04F7, 2, 0, nullptr, kFields_L0347_S04F7},
+    {840, 0x04AB, 11, 0, nullptr, kFields_L0348_S04AB},
+    {840, 0x04FA, 1, 0, nullptr, kFields_L0348_S04FA},
+    {841, 0x00AA, 6, 0, nullptr, kFields_L0349_S00AA},
+    {841, 0x00AF, 2, 0, nullptr, kFields_L0349_S00AF},
+    {841, 0x04FB, 1, 0, nullptr, kFields_L0349_S04FB},
+    {841, 0x04FC, 4, 0, nullptr, kFields_L0349_S04FC},
+    {841, 0x04FD, 2, 0, nullptr, kFields_L0349_S04FD},
+    {841, 0x04FE, 2, 0, nullptr, kFields_L0349_S04FE},
+    {841, 0x04FF, 15, 0, nullptr, kFields_L0349_S04FF},
+    {841, 0x0500, 1, 0, nullptr, kFields_L0349_S0500},
+    {841, 0x0501, 3, 0, nullptr, kFields_L0349_S0501},
+    {841, 0x0502, 5, 0, nullptr, kFields_L0349_S0502},
+    {841, 0x0503, 22, 0, nullptr, kFields_L0349_S0503},
+    {841, 0x0504, 10, 0, nullptr, kFields_L0349_S0504},
+    {841, 0x0505, 9, 0, nullptr, kFields_L0349_S0505},
+    {841, 0x0506, 26, 0, nullptr, kFields_L0349_S0506},
+    {842, 0x0505, 9, 0, nullptr, kFields_L034A_S0505},
+    {842, 0x0506, 26, 0, nullptr, kFields_L034A_S0506},
+    {842, 0x0507, 3, 0, nullptr, kFields_L034A_S0507},
+    {843, 0x0505, 9, 0, nullptr, kFields_L034B_S0505},
+    {843, 0x0506, 26, 0, nullptr, kFields_L034B_S0506},
+    {843, 0x0508, 3, 0, nullptr, kFields_L034B_S0508},
+    {843, 0x0509, 1, 0, nullptr, kFields_L034B_S0509},
+    {844, 0x0505, 9, 0, nullptr, kFields_L034C_S0505},
+    {844, 0x050A, 1, 0, nullptr, kFields_L034C_S050A},
+    {845, 0x0505, 9, 0, nullptr, kFields_L034D_S0505},
+    {845, 0x0506, 26, 0, nullptr, kFields_L034D_S0506},
+    {845, 0x050B, 6, 0, nullptr, kFields_L034D_S050B},
+    {846, 0x0505, 9, 0, nullptr, kFields_L034E_S0505},
+    {846, 0x0506, 26, 0, nullptr, kFields_L034E_S0506},
+    {846, 0x050C, 3, 0, nullptr, kFields_L034E_S050C},
+    {847, 0x0505, 9, 0, nullptr, kFields_L034F_S0505},
+    {847, 0x0506, 26, 0, nullptr, kFields_L034F_S0506},
+    {847, 0x050D, 2, 0, nullptr, kFields_L034F_S050D},
+    {848, 0x0505, 9, 0, nullptr, kFields_L0350_S0505},
+    {848, 0x0506, 26, 0, nullptr, kFields_L0350_S0506},
+    {848, 0x050E, 9, 0, nullptr, kFields_L0350_S050E},
+    {849, 0x0505, 9, 0, nullptr, kFields_L0351_S0505},
+    {849, 0x0506, 26, 0, nullptr, kFields_L0351_S0506},
+    {850, 0x0505, 9, 0, nullptr, kFields_L0352_S0505},
+    {850, 0x0506, 26, 0, nullptr, kFields_L0352_S0506},
+    {851, 0x0505, 9, 0, nullptr, kFields_L0353_S0505},
+    {851, 0x0506, 26, 0, nullptr, kFields_L0353_S0506},
+    {851, 0x0511, 1, 0, nullptr, kFields_L0353_S0511},
+    {852, 0x0505, 9, 0, nullptr, kFields_L0354_S0505},
+    {852, 0x0506, 26, 0, nullptr, kFields_L0354_S0506},
+    {852, 0x0512, 1, 0, nullptr, kFields_L0354_S0512},
+    {853, 0x0505, 9, 0, nullptr, kFields_L0355_S0505},
+    {853, 0x0506, 26, 0, nullptr, kFields_L0355_S0506},
+    {853, 0x0513, 3, 0, nullptr, kFields_L0355_S0513},
+    {854, 0x0505, 9, 0, nullptr, kFields_L0356_S0505},
+    {854, 0x0506, 26, 0, nullptr, kFields_L0356_S0506},
+    {854, 0x0514, 2, 0, nullptr, kFields_L0356_S0514},
+    {855, 0x0505, 9, 0, nullptr, kFields_L0357_S0505},
+    {855, 0x0506, 26, 0, nullptr, kFields_L0357_S0506},
+    {855, 0x0515, 6, 0, nullptr, kFields_L0357_S0515},
+    {856, 0x0505, 9, 0, nullptr, kFields_L0358_S0505},
+    {856, 0x0506, 26, 0, nullptr, kFields_L0358_S0506},
+    {856, 0x0516, 1, 0, nullptr, kFields_L0358_S0516},
+    {856, 0x0517, 4, 0, nullptr, kFields_L0358_S0517},
+    {857, 0x0505, 9, 0, nullptr, kFields_L0359_S0505},
+    {857, 0x0506, 26, 0, nullptr, kFields_L0359_S0506},
+    {857, 0x0518, 7, 0, nullptr, kFields_L0359_S0518},
+    {857, 0x0519, 1, 0, nullptr, kFields_L0359_S0519},
+    {858, 0x0505, 9, 0, nullptr, kFields_L035A_S0505},
+    {858, 0x0506, 26, 0, nullptr, kFields_L035A_S0506},
+    {858, 0x051A, 6, 0, nullptr, kFields_L035A_S051A},
+    {858, 0x051B, 1, 0, nullptr, kFields_L035A_S051B},
+    {858, 0x051C, 4, 0, nullptr, kFields_L035A_S051C},
+    {859, 0x051B, 1, 0, nullptr, kFields_L035B_S051B},
+    {859, 0x051D, 3, 0, nullptr, kFields_L035B_S051D},
+    {860, 0x051B, 1, 0, nullptr, kFields_L035C_S051B},
+    {860, 0x051E, 4, 0, nullptr, kFields_L035C_S051E},
+    {861, 0x051B, 1, 0, nullptr, kFields_L035D_S051B},
+    {861, 0x051F, 4, 0, nullptr, kFields_L035D_S051F},
+    {862, 0x051B, 1, 0, nullptr, kFields_L035E_S051B},
+    {862, 0x0520, 4, 0, nullptr, kFields_L035E_S0520},
+    {863, 0x051B, 1, 0, nullptr, kFields_L035F_S051B},
+    {863, 0x0521, 8, 0, nullptr, kFields_L035F_S0521},
+    {864, 0x051B, 1, 0, nullptr, kFields_L0360_S051B},
+    {864, 0x0522, 3, 0, nullptr, kFields_L0360_S0522},
+    {865, 0x051B, 1, 0, nullptr, kFields_L0361_S051B},
+    {865, 0x0523, 5, 0, nullptr, kFields_L0361_S0523},
+    {865, 0x0524, 450, 0, nullptr, kFields_L0361_S0524},
+    {865, 0x0525, 1, 0, nullptr, kFields_L0361_S0525},
+    {865, 0x0527, 1, 0, nullptr, kFields_L0361_S0527},
+    {865, 0x0528, 3, 0, nullptr, kFields_L0361_S0528},
+    {866, 0x0527, 1, 0, nullptr, kFields_L0362_S0527},
+    {866, 0x0529, 2, 0, nullptr, kFields_L0362_S0529},
+    {867, 0x0527, 1, 0, nullptr, kFields_L0363_S0527},
+    {867, 0x052A, 2, 0, nullptr, kFields_L0363_S052A},
+    {868, 0x0527, 1, 0, nullptr, kFields_L0364_S0527},
+    {868, 0x052C, 1, 0, nullptr, kFields_L0364_S052C},
+    {868, 0x052D, 7, 0, nullptr, kFields_L0364_S052D},
+    {868, 0x052E, 1, 0, nullptr, kFields_L0364_S052E},
+    {868, 0x052F, 6, 0, nullptr, kFields_L0364_S052F},
+    {868, 0x0530, 1, 0, nullptr, kFields_L0364_S0530},
+    {868, 0x0531, 2, 0, nullptr, kFields_L0364_S0531},
+    {868, 0x0532, 1, 0, nullptr, kFields_L0364_S0532},
+    {868, 0x0533, 5, 0, nullptr, kFields_L0364_S0533},
+    {868, 0x0534, 7, 0, nullptr, kFields_L0364_S0534},
+    {868, 0x0535, 4, 0, nullptr, kFields_L0364_S0535},
+    {868, 0x0536, 2, 0, nullptr, kFields_L0364_S0536},
+    {869, 0x0533, 5, 0, nullptr, kFields_L0365_S0533},
+    {869, 0x0537, 4, 0, nullptr, kFields_L0365_S0537},
+    {870, 0x0533, 5, 0, nullptr, kFields_L0366_S0533},
+    {870, 0x0538, 6, 0, nullptr, kFields_L0366_S0538},
+    {871, 0x0533, 5, 0, nullptr, kFields_L0367_S0533},
+    {871, 0x0539, 1, 0, nullptr, kFields_L0367_S0539},
+    {871, 0x053A, 3, 0, nullptr, kFields_L0367_S053A},
+    {871, 0x053B, 2, 0, nullptr, kFields_L0367_S053B},
+    {871, 0x053C, 1, 0, nullptr, kFields_L0367_S053C},
+    {872, 0x053B, 2, 0, nullptr, kFields_L0368_S053B},
+    {872, 0x053D, 2, 0, nullptr, kFields_L0368_S053D},
+    {872, 0x053E, 3, 0, nullptr, kFields_L0368_S053E},
+    {872, 0x053F, 3, 0, nullptr, kFields_L0368_S053F},
+    {872, 0x0540, 4, 0, nullptr, kFields_L0368_S0540},
+    {872, 0x0541, 2, 0, nullptr, kFields_L0368_S0541},
+    {873, 0x0540, 4, 0, nullptr, kFields_L0369_S0540},
+    {873, 0x0542, 2, 0, nullptr, kFields_L0369_S0542},
+    {873, 0x0543, 2, 0, nullptr, kFields_L0369_S0543},
+    {874, 0x0540, 4, 0, nullptr, kFields_L036A_S0540},
+    {874, 0x0544, 2, 0, nullptr, kFields_L036A_S0544},
+    {875, 0x0540, 4, 0, nullptr, kFields_L036B_S0540},
+    {875, 0x0546, 2, 0, nullptr, kFields_L036B_S0546},
+    {876, 0x0540, 4, 0, nullptr, kFields_L036C_S0540},
+    {876, 0x0547, 2, 0, nullptr, kFields_L036C_S0547},
+    {877, 0x0540, 4, 0, nullptr, kFields_L036D_S0540},
+    {877, 0x0548, 1, 0, nullptr, kFields_L036D_S0548},
+    {878, 0x0540, 4, 0, nullptr, kFields_L036E_S0540},
+    {878, 0x0549, 2, 0, nullptr, kFields_L036E_S0549},
+    {879, 0x0540, 4, 0, nullptr, kFields_L036F_S0540},
+    {879, 0x054B, 1, 0, nullptr, kFields_L036F_S054B},
+    {880, 0x0540, 4, 0, nullptr, kFields_L0370_S0540},
+    {880, 0x054C, 2, 0, nullptr, kFields_L0370_S054C},
+    {881, 0x0540, 4, 0, nullptr, kFields_L0371_S0540},
+    {881, 0x054D, 2, 0, nullptr, kFields_L0371_S054D},
+    {882, 0x0540, 4, 0, nullptr, kFields_L0372_S0540},
+    {882, 0x054E, 1, 0, nullptr, kFields_L0372_S054E},
+    {883, 0x0540, 4, 0, nullptr, kFields_L0373_S0540},
+    {883, 0x0551, 1, 0, nullptr, kFields_L0373_S0551},
+    {884, 0x0540, 4, 0, nullptr, kFields_L0374_S0540},
+    {884, 0x0552, 1, 0, nullptr, kFields_L0374_S0552},
+    {885, 0x0540, 4, 0, nullptr, kFields_L0375_S0540},
+    {885, 0x0553, 1, 0, nullptr, kFields_L0375_S0553},
+    {886, 0x0540, 4, 0, nullptr, kFields_L0376_S0540},
+    {886, 0x0555, 1, 0, nullptr, kFields_L0376_S0555},
+    {886, 0x0556, 2, 0, nullptr, kFields_L0376_S0556},
+    {887, 0x0555, 1, 0, nullptr, kFields_L0377_S0555},
+    {887, 0x0556, 2, 0, nullptr, kFields_L0377_S0556},
+    {887, 0x0557, 1, 0, nullptr, kFields_L0377_S0557},
+    {888, 0x0555, 1, 0, nullptr, kFields_L0378_S0555},
+    {888, 0x0556, 2, 0, nullptr, kFields_L0378_S0556},
+    {888, 0x0558, 1, 0, nullptr, kFields_L0378_S0558},
+    {889, 0x0555, 1, 0, nullptr, kFields_L0379_S0555},
+    {889, 0x0556, 2, 0, nullptr, kFields_L0379_S0556},
+    {889, 0x0559, 2, 0, nullptr, kFields_L0379_S0559},
+    {890, 0x0555, 1, 0, nullptr, kFields_L037A_S0555},
+    {890, 0x0556, 2, 0, nullptr, kFields_L037A_S0556},
+    {890, 0x055A, 1, 0, nullptr, kFields_L037A_S055A},
+    {891, 0x0555, 1, 0, nullptr, kFields_L037B_S0555},
+    {891, 0x0556, 2, 0, nullptr, kFields_L037B_S0556},
+    {891, 0x055B, 1, 0, nullptr, kFields_L037B_S055B},
+    {892, 0x0555, 1, 0, nullptr, kFields_L037C_S0555},
+    {892, 0x055C, 2, 0, nullptr, kFields_L037C_S055C},
+    {893, 0x0555, 1, 0, nullptr, kFields_L037D_S0555},
+    {893, 0x0556, 2, 0, nullptr, kFields_L037D_S0556},
+    {894, 0x0555, 1, 0, nullptr, kFields_L037E_S0555},
+    {894, 0x055E, 1, 0, nullptr, kFields_L037E_S055E},
+    {895, 0x0555, 1, 0, nullptr, kFields_L037F_S0555},
+    {895, 0x055F, 3, 0, nullptr, kFields_L037F_S055F},
+    {896, 0x0555, 1, 0, nullptr, kFields_L0380_S0555},
+    {896, 0x0560, 1, 0, nullptr, kFields_L0380_S0560},
+    {897, 0x0555, 1, 0, nullptr, kFields_L0381_S0555},
+    {897, 0x0561, 1, 0, nullptr, kFields_L0381_S0561},
+    {898, 0x0555, 1, 0, nullptr, kFields_L0382_S0555},
+    {898, 0x0562, 14, 0, nullptr, kFields_L0382_S0562},
+    {898, 0x0563, 1, 0, nullptr, kFields_L0382_S0563},
+    {898, 0x0564, 3, 0, nullptr, kFields_L0382_S0564},
+    {898, 0x0565, 2, 0, nullptr, kFields_L0382_S0565},
+    {898, 0x0566, 7, 0, nullptr, kFields_L0382_S0566},
+    {898, 0x0567, 3, 0, nullptr, kFields_L0382_S0567},
+    {898, 0x0568, 2, 0, nullptr, kFields_L0382_S0568},
+    {898, 0x0569, 4, 0, nullptr, kFields_L0382_S0569},
+    {898, 0x056A, 3, 0, nullptr, kFields_L0382_S056A},
+    {898, 0x056B, 2, 0, nullptr, kFields_L0382_S056B},
+    {898, 0x056C, 4, 0, nullptr, kFields_L0382_S056C},
+    {898, 0x056D, 3, 0, nullptr, kFields_L0382_S056D},
+    {898, 0x056E, 4, 0, nullptr, kFields_L0382_S056E},
+    {898, 0x056F, 1, 0, nullptr, kFields_L0382_S056F},
+    {898, 0x0570, 3, 0, nullptr, kFields_L0382_S0570},
+    {898, 0x0571, 2, 0, nullptr, kFields_L0382_S0571},
+    {898, 0x0572, 3, 0, nullptr, kFields_L0382_S0572},
+    {898, 0x0573, 4, 0, nullptr, kFields_L0382_S0573},
+    {898, 0x0574, 2, 0, nullptr, kFields_L0382_S0574},
+    {898, 0x0575, 1, 0, nullptr, kFields_L0382_S0575},
+    {899, 0x0574, 2, 0, nullptr, kFields_L0383_S0574},
+    {899, 0x0576, 1, 0, nullptr, kFields_L0383_S0576},
+    {900, 0x0574, 2, 0, nullptr, kFields_L0384_S0574},
+    {900, 0x0577, 1, 0, nullptr, kFields_L0384_S0577},
+    {901, 0x0574, 2, 0, nullptr, kFields_L0385_S0574},
+    {901, 0x0579, 1, 0, nullptr, kFields_L0385_S0579},
+    {901, 0x057A, 6, 0, nullptr, kFields_L0385_S057A},
+    {901, 0x057B, 19, 0, nullptr, kFields_L0385_S057B},
+    {902, 0x0573, 4, 0, nullptr, kFields_L0386_S0573},
+    {902, 0x057C, 2, 0, nullptr, kFields_L0386_S057C},
+    {902, 0x057D, 4, 0, nullptr, kFields_L0386_S057D},
+    {902, 0x057E, 6, 0, nullptr, kFields_L0386_S057E},
+    {902, 0x057F, 3, 0, nullptr, kFields_L0386_S057F},
+    {902, 0x0580, 1, 0, nullptr, kFields_L0386_S0580},
+    {902, 0x0581, 13, 0, nullptr, kFields_L0386_S0581},
+    {902, 0x0582, 6, 0, nullptr, kFields_L0386_S0582},
+    {902, 0x0583, 2, 0, nullptr, kFields_L0386_S0583},
+    {902, 0x0585, 1, 0, nullptr, kFields_L0386_S0585},
+    {902, 0x0586, 1, 0, nullptr, kFields_L0386_S0586},
+    {902, 0x0587, 30, 0, nullptr, kFields_L0386_S0587},
+    {902, 0x0588, 1, 0, nullptr, kFields_L0386_S0588},
+    {902, 0x0589, 3, 0, nullptr, kFields_L0386_S0589},
+    {902, 0x058A, 4, 0, nullptr, kFields_L0386_S058A},
+    {902, 0x058B, 2, 0, nullptr, kFields_L0386_S058B},
+    {902, 0x058C, 1, 0, nullptr, kFields_L0386_S058C},
+    {902, 0x058D, 9, 0, nullptr, kFields_L0386_S058D},
+    {902, 0x058E, 1, 0, nullptr, kFields_L0386_S058E},
+    {902, 0x058F, 1, 0, nullptr, kFields_L0386_S058F},
+    {902, 0x0590, 8, 0, nullptr, kFields_L0386_S0590},
+    {902, 0x0591, 2, 8, "dctools.Exposure$ExposureBiasRampEntry", kFields_L0386_S0591},
+    {902, 0x0592, 2, 0, nullptr, kFields_L0386_S0592},
+    {902, 0x0593, 3, 12, "dctools.ColorCorrection$ColorBalance", kFields_L0386_S0593},
+    {902, 0x0594, 22, 0, nullptr, kFields_L0386_S0594},
+    {902, 0x0595, 6, 32, "dctools.Camera$TweenOverride", kFields_L0386_S0595},
+    {902, 0x0596, 5, 24, "dctools.FlightVolume$Volume", kFields_L0386_S0596},
+    {902, 0x0597, 3, 48, "dctools.Entity$EntityCode", kFields_L0386_S0597},
+    {902, 0x0598, 4, 24, "dctools.ProjectileSpline$Segment", kFields_L0386_S0598},
+    {902, 0x0599, 7, 0, nullptr, kFields_L0386_S0599},
+    {902, 0x059A, 2, 0, nullptr, kFields_L0386_S059A},
+    {902, 0x059B, 4, 0, nullptr, kFields_L0386_S059B},
+    {902, 0x059C, 5, 0, nullptr, kFields_L0386_S059C},
+    {902, 0x059D, 3, 0, nullptr, kFields_L0386_S059D},
+    {902, 0x059E, 3, 0, nullptr, kFields_L0386_S059E},
+    {902, 0x059F, 2, 0, nullptr, kFields_L0386_S059F},
+    {902, 0x05A0, 4, 0, nullptr, kFields_L0386_S05A0},
+    {902, 0x05A1, 3, 0, nullptr, kFields_L0386_S05A1},
+    {902, 0x05A2, 3, 0, nullptr, kFields_L0386_S05A2},
+    {902, 0x05A3, 3, 0, nullptr, kFields_L0386_S05A3},
+    {902, 0x05A4, 5, 0, nullptr, kFields_L0386_S05A4},
+    {902, 0x05A5, 1, 0, nullptr, kFields_L0386_S05A5},
+    {902, 0x05A7, 5, 0, nullptr, kFields_L0386_S05A7},
+    {902, 0x05A8, 2, 0, nullptr, kFields_L0386_S05A8},
+    {902, 0x05A9, 4, 0, nullptr, kFields_L0386_S05A9},
+    {902, 0x05AA, 2, 0, nullptr, kFields_L0386_S05AA},
+    {902, 0x05AB, 2, 0, nullptr, kFields_L0386_S05AB},
+    {902, 0x05AC, 4, 0, nullptr, kFields_L0386_S05AC},
+    {902, 0x05AD, 5, 0, nullptr, kFields_L0386_S05AD},
+    {902, 0x05AE, 1, 0, nullptr, kFields_L0386_S05AE},
+    {902, 0x05AF, 3, 0, nullptr, kFields_L0386_S05AF},
+    {902, 0x05B0, 4, 0, nullptr, kFields_L0386_S05B0},
+    {902, 0x05B1, 5, 0, nullptr, kFields_L0386_S05B1},
+    {902, 0x05B2, 2, 0, nullptr, kFields_L0386_S05B2},
+    {902, 0x05B3, 8, 0, nullptr, kFields_L0386_S05B3},
+    {902, 0x05B4, 3, 0, nullptr, kFields_L0386_S05B4},
+    {902, 0x05B5, 2, 0, nullptr, kFields_L0386_S05B5},
+    {902, 0x05B6, 1, 0, nullptr, kFields_L0386_S05B6},
+    {902, 0x05B7, 5, 0, nullptr, kFields_L0386_S05B7},
+    {902, 0x05B8, 2, 0, nullptr, kFields_L0386_S05B8},
+    {902, 0x05B9, 2, 0, nullptr, kFields_L0386_S05B9},
+    {902, 0x05BA, 2, 0, nullptr, kFields_L0386_S05BA},
+    {902, 0x05BB, 2, 32, "progression.Snapshot$FactState", kFields_L0386_S05BB},
+    {902, 0x05BC, 4, 0, nullptr, kFields_L0386_S05BC},
+    {902, 0x05BD, 8, 0, nullptr, kFields_L0386_S05BD},
+    {902, 0x05BE, 3, 0, nullptr, kFields_L0386_S05BE},
+    {902, 0x05BF, 4, 0, nullptr, kFields_L0386_S05BF},
+    {902, 0x05C0, 8, 0, nullptr, kFields_L0386_S05C0},
+    {902, 0x05C1, 3, 0, nullptr, kFields_L0386_S05C1},
+    {902, 0x05C2, 10, 0, nullptr, kFields_L0386_S05C2},
+    {902, 0x05C3, 3, 0, nullptr, kFields_L0386_S05C3},
+    {902, 0x05C4, 5, 0, nullptr, kFields_L0386_S05C4},
+    {902, 0x05C5, 8, 0, nullptr, kFields_L0386_S05C5},
+    {902, 0x05C6, 5, 0, nullptr, kFields_L0386_S05C6},
+    {902, 0x05C7, 4, 0, nullptr, kFields_L0386_S05C7},
+    {902, 0x05C8, 6, 0, nullptr, kFields_L0386_S05C8},
+    {902, 0x05C9, 4, 0, nullptr, kFields_L0386_S05C9},
+    {902, 0x05CA, 17, 0, nullptr, kFields_L0386_S05CA},
+    {902, 0x05CB, 8, 0, nullptr, kFields_L0386_S05CB},
+    {902, 0x05CC, 4, 0, nullptr, kFields_L0386_S05CC},
+    {902, 0x05CD, 2, 0, nullptr, kFields_L0386_S05CD},
+    {902, 0x05CE, 7, 0, nullptr, kFields_L0386_S05CE},
+    {902, 0x05CF, 2, 0, nullptr, kFields_L0386_S05CF},
+    {902, 0x05D0, 3, 0, nullptr, kFields_L0386_S05D0},
+    {902, 0x05D1, 1, 0, nullptr, kFields_L0386_S05D1},
+    {902, 0x05D2, 2, 0, nullptr, kFields_L0386_S05D2},
+    {902, 0x05D3, 1, 0, nullptr, kFields_L0386_S05D3},
+    {902, 0x05D4, 2, 0, nullptr, kFields_L0386_S05D4},
+    {902, 0x05D5, 14, 0, nullptr, kFields_L0386_S05D5},
+    {902, 0x05D6, 3, 0, nullptr, kFields_L0386_S05D6},
+    {902, 0x05D7, 2, 0, nullptr, kFields_L0386_S05D7},
+    {902, 0x05D8, 3, 0, nullptr, kFields_L0386_S05D8},
+    {902, 0x05D9, 3, 0, nullptr, kFields_L0386_S05D9},
+    {902, 0x05DA, 15, 0, nullptr, kFields_L0386_S05DA},
+    {902, 0x05DB, 2, 0, nullptr, kFields_L0386_S05DB},
+    {902, 0x05DC, 2, 0, nullptr, kFields_L0386_S05DC},
+    {902, 0x05DD, 3, 0, nullptr, kFields_L0386_S05DD},
+    {902, 0x05DE, 2, 0, nullptr, kFields_L0386_S05DE},
+    {902, 0x05DF, 9, 0, nullptr, kFields_L0386_S05DF},
+    {902, 0x05E0, 2, 0, nullptr, kFields_L0386_S05E0},
+    {902, 0x05E1, 2, 0, nullptr, kFields_L0386_S05E1},
+    {902, 0x05E2, 9, 0, nullptr, kFields_L0386_S05E2},
+    {902, 0x05E3, 2, 0, nullptr, kFields_L0386_S05E3},
+    {902, 0x05E4, 6, 0, nullptr, kFields_L0386_S05E4},
+    {902, 0x05E7, 3, 0, nullptr, kFields_L0386_S05E7},
+    {902, 0x05E8, 2, 0, nullptr, kFields_L0386_S05E8},
+    {902, 0x05E9, 1, 0, nullptr, kFields_L0386_S05E9},
+    {902, 0x05EA, 1, 56, "behavior_tree.Runtime.IsStringValid", kFields_L0386_S05EA},
+    {902, 0x05EB, 3, 0, nullptr, kFields_L0386_S05EB},
+    {902, 0x05EC, 2, 0, nullptr, kFields_L0386_S05EC},
+    {902, 0x05ED, 4, 0, nullptr, kFields_L0386_S05ED},
+    {902, 0x05EE, 5, 0, nullptr, kFields_L0386_S05EE},
+    {902, 0x05EF, 2, 0, nullptr, kFields_L0386_S05EF},
+    {902, 0x05F0, 2, 0, nullptr, kFields_L0386_S05F0},
+    {902, 0x05F1, 3, 0, nullptr, kFields_L0386_S05F1},
+    {902, 0x05F2, 3, 0, nullptr, kFields_L0386_S05F2},
+    {902, 0x05F3, 3, 0, nullptr, kFields_L0386_S05F3},
+    {902, 0x05F4, 5, 0, nullptr, kFields_L0386_S05F4},
+    {902, 0x05F5, 2, 0, nullptr, kFields_L0386_S05F5},
+    {902, 0x05F6, 2, 0, nullptr, kFields_L0386_S05F6},
+    {902, 0x05F7, 3, 0, nullptr, kFields_L0386_S05F7},
+    {902, 0x05F8, 5, 0, nullptr, kFields_L0386_S05F8},
+    {902, 0x05F9, 3, 0, nullptr, kFields_L0386_S05F9},
+    {902, 0x05FA, 5, 0, nullptr, kFields_L0386_S05FA},
+    {902, 0x05FB, 1, 0, nullptr, kFields_L0386_S05FB},
+    {903, 0x05FA, 5, 0, nullptr, kFields_L0387_S05FA},
+    {903, 0x05FC, 1, 0, nullptr, kFields_L0387_S05FC},
+    {903, 0x05FD, 6, 0, nullptr, kFields_L0387_S05FD},
+    {903, 0x05FE, 1, 0, nullptr, kFields_L0387_S05FE},
+    {903, 0x05FF, 2, 0, nullptr, kFields_L0387_S05FF},
+    {904, 0x05FE, 1, 0, nullptr, kFields_L0388_S05FE},
+    {904, 0x0600, 1, 56, "behavior_tree.Runtime.IsStringValid", kFields_L0388_S0600},
+    {904, 0x0601, 2, 0, nullptr, kFields_L0388_S0601},
+    {904, 0x0602, 2, 0, nullptr, kFields_L0388_S0602},
+    {904, 0x0603, 2, 0, nullptr, kFields_L0388_S0603},
+    {904, 0x0604, 4, 0, nullptr, kFields_L0388_S0604},
+    {904, 0x0605, 4, 0, nullptr, kFields_L0388_S0605},
+    {904, 0x0606, 1, 0, nullptr, kFields_L0388_S0606},
+    {904, 0x0607, 26, 0, nullptr, kFields_L0388_S0607},
+    {904, 0x0608, 7, 0, nullptr, kFields_L0388_S0608},
+    {905, 0x0607, 26, 0, nullptr, kFields_L0389_S0607},
+    {905, 0x0609, 3, 0, nullptr, kFields_L0389_S0609},
+    {906, 0x0607, 26, 0, nullptr, kFields_L038A_S0607},
+    {906, 0x0609, 3, 0, nullptr, kFields_L038A_S0609},
+    {906, 0x060A, 32, 0, nullptr, kFields_L038A_S060A},
+    {906, 0x060B, 5, 0, nullptr, kFields_L038A_S060B},
+    {907, 0x0607, 26, 0, nullptr, kFields_L038B_S0607},
+    {907, 0x0609, 3, 0, nullptr, kFields_L038B_S0609},
+    {907, 0x060A, 32, 0, nullptr, kFields_L038B_S060A},
+    {907, 0x060C, 45, 0, nullptr, kFields_L038B_S060C},
+    {907, 0x060D, 3, 0, nullptr, kFields_L038B_S060D},
+    {907, 0x060E, 6, 0, nullptr, kFields_L038B_S060E},
+    {907, 0x060F, 2, 0, nullptr, kFields_L038B_S060F},
+    {907, 0x0610, 5, 0, nullptr, kFields_L038B_S0610},
+    {907, 0x0611, 4, 0, nullptr, kFields_L038B_S0611},
+    {907, 0x0612, 2, 0, nullptr, kFields_L038B_S0612},
+    {907, 0x0613, 2, 0, nullptr, kFields_L038B_S0613},
+    {907, 0x0614, 19, 0, nullptr, kFields_L038B_S0614},
+    {907, 0x0615, 1, 0, nullptr, kFields_L038B_S0615},
+    {907, 0x0616, 2, 0, nullptr, kFields_L038B_S0616},
+    {908, 0x0615, 1, 0, nullptr, kFields_L038C_S0615},
+    {908, 0x0617, 1, 0, nullptr, kFields_L038C_S0617},
+    {909, 0x04F2, 9, 0, nullptr, kFields_L038D_S04F2},
+    {909, 0x04F6, 1, 0, nullptr, kFields_L038D_S04F6},
+    {909, 0x0618, 9, 0, nullptr, kFields_L038D_S0618},
+    {910, 0x04F2, 9, 0, nullptr, kFields_L038E_S04F2},
+    {910, 0x04F6, 1, 0, nullptr, kFields_L038E_S04F6},
+    {910, 0x0619, 28, 0, nullptr, kFields_L038E_S0619},
+    {910, 0x061A, 3, 0, nullptr, kFields_L038E_S061A},
+    {910, 0x061B, 4, 0, nullptr, kFields_L038E_S061B},
+    {910, 0x061C, 2, 0, nullptr, kFields_L038E_S061C},
+    {910, 0x061D, 1, 0, nullptr, kFields_L038E_S061D},
+    {910, 0x061E, 2, 0, nullptr, kFields_L038E_S061E},
+    {910, 0x061F, 9, 0, nullptr, kFields_L038E_S061F},
+    {910, 0x0620, 2, 0, nullptr, kFields_L038E_S0620},
+    {910, 0x0621, 2, 0, nullptr, kFields_L038E_S0621},
+    {910, 0x0622, 2, 0, nullptr, kFields_L038E_S0622},
+    {910, 0x0623, 3, 0, nullptr, kFields_L038E_S0623},
+    {910, 0x0624, 2, 0, nullptr, kFields_L038E_S0624},
+    {910, 0x0625, 11, 0, nullptr, kFields_L038E_S0625},
+    {911, 0x0000, 119, 0, nullptr, kFields_L038F_S0000},
+};
+
+inline constexpr int kStructCount = 2975;
+inline constexpr int kLibraryCount = 912;
 
 // The struct carrying a material constant override. It is the same shape the
 // MAT entry's parameter table stores per parameter (see MaterialParser.h's
 // MatParam): a name and a float value. MaterialConstantName is a StringHash,
-// which is exactly why the WAD holds a nameHash and no text.
+// which is exactly why the WAD holds a nameHash and no text. This one has no
+// descriptor in the image, so it is addressed by (library, id).
+inline constexpr uint16_t kMaterialConstantLibrary = 250;
 inline constexpr uint16_t kMaterialConstantStructId = 0x0269;
 
-// Linear lookups over the tables above. Both return nullptr when not found.
-const Struct* FindStruct(uint16_t id);
-const Field*  FindField(uint16_t structId, const char* name);
+// Linear lookups over the tables above. All return nullptr when not found.
+const Struct* FindStruct(uint16_t library, uint16_t id);
+const Struct* FindStructByName(const char* name);
+const Field*  FindField(uint16_t library, uint16_t id, const char* name);
 
 } // namespace Onyx::Gowr::SmSchema

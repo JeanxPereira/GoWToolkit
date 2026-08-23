@@ -1,8 +1,11 @@
-# Turns the TSV that tools/dump_smschema.java produces into the generated
-# header Source/core/formats/gowr/SmSchemaTable.h.
+# Turns the two extracted TSVs into the generated header
+# Source/core/formats/gowr/SmSchemaTable.h.
 #
+#   python tools/dump_smschema.java  (inside Ghidra)  -> smschema_fields.tsv
+#   python tools/smschema_names.py GoWR.exe smschema_fields.tsv \
+#          smschema_names.tsv
 #   python tools/gen_smschema_header.py smschema_fields.tsv \
-#          Source/core/formats/gowr/SmSchemaTable.h
+#          smschema_names.tsv Source/core/formats/gowr/SmSchemaTable.h
 #
 # Records with an implausible owner id, size or offset are dropped HERE rather
 # than in the dumper, so the TSV stays a faithful record of what was read from
@@ -10,11 +13,12 @@
 
 import sys, collections
 
-SRC = sys.argv[1] if len(sys.argv) > 1 else "smschema_fields.tsv"
-DST = sys.argv[2] if len(sys.argv) > 2 else "Source/core/formats/gowr/SmSchemaTable.h"
+FIELDS = sys.argv[1] if len(sys.argv) > 1 else "smschema_fields.tsv"
+NAMES = sys.argv[2] if len(sys.argv) > 2 else "smschema_names.tsv"
+DST = sys.argv[3] if len(sys.argv) > 3 else "Source/core/formats/gowr/SmSchemaTable.h"
 
 rows = []
-for i, l in enumerate(open(SRC, encoding="utf-8")):
+for i, l in enumerate(open(FIELDS, encoding="utf-8")):
     if i == 0:
         continue
     p = l.rstrip("\n").split("\t")
@@ -32,24 +36,43 @@ for i, l in enumerate(open(SRC, encoding="utf-8")):
     if not all(32 <= ord(c) < 127 for c in r["name"]):
         continue
     rows.append(r)
+rows.sort(key=lambda r: r["addr"])
 
-rows.sort(key=lambda r: (r["owner"], r["off"], r["addr"]))
-byowner = collections.OrderedDict()
+# ownerStructId is library-local: it restarts per registered library, so the
+# same id names a different struct in each. Address order preserves library
+# order and the id is non-decreasing within one, so a drop marks a boundary.
+# Grouping on the id alone merged every library's struct 170 into a single
+# impossible 3000-field struct whose field names repeated.
+groups, lib, prev = collections.OrderedDict(), 0, -1
 for r in rows:
-    byowner.setdefault(r["owner"], []).append(r)
+    if r["owner"] < prev:
+        lib += 1
+    prev = r["owner"]
+    groups.setdefault((lib, r["owner"]), []).append(r)
 
-for o, fs in byowner.items():
+for k, fs in groups.items():
     seen, out = set(), []
     for f in fs:
-        k = (f["name"], f["off"], f["size"], f["type"])
-        if k in seen:
+        sig = (f["name"], f["off"], f["size"], f["type"])
+        if sig in seen:
             continue
-        seen.add(k)
+        seen.add(sig)
         out.append(f)
-    byowner[o] = out
+    out.sort(key=lambda f: (f["off"], f["addr"]))
+    groups[k] = out
 
-total = sum(len(v) for v in byowner.values())
-names = {r["name"] for r in rows}
+names = {}
+for i, l in enumerate(open(NAMES, encoding="utf-8")):
+    if i == 0:
+        continue
+    p = l.rstrip("\n").split("\t")
+    if len(p) < 7 or not p[2]:
+        continue
+    names[(int(p[0]), int(p[1]))] = (p[2], int(p[3]))
+
+total = sum(len(v) for v in groups.values())
+distinct = {r["name"] for r in rows}
+libcount = lib + 1
 
 BS = chr(92)
 QT = chr(34)
@@ -61,15 +84,16 @@ def esc(s):
 
 HDR = '''#pragma once
 
-// smschema field table, extracted from GoWR.exe.
+// smschema reflection tables, extracted from GoWR.exe.
 //
 // God of War Ragnarok describes its serialisable data with an in-house
 // reflection system its own error strings name "smschema" (Sony Santa Monica
 // schema -- see the path in that message: Shared/DataLayer/LibCore/
-// core_library_info.cpp). The executable carries the entire table as static
-// data: every field of every schema struct, with byte offset, size and type.
+// core_library_info.cpp). The executable carries the whole thing as static
+// data: every field of every schema struct, with byte offset, size and type,
+// and -- in a second table -- the type names.
 //
-// -- Record layout in the binary (32 bytes) -------------------------------
+// -- Field record layout in the binary (32 bytes) --------------------------
 //
 //   +0x00  u64  namePtr          field name, as a C string
 //   +0x08  u64  namePtr          repeated -- this doubling identifies a record
@@ -79,20 +103,47 @@ HDR = '''#pragma once
 //   +0x16  u16  ownerStructId    which struct the field belongs to
 //   +0x1A  u16  fieldId          global field index
 //
-// -- What is NOT here, and why --------------------------------------------
+// -- ownerStructId is LIBRARY-LOCAL ----------------------------------------
 //
-// Struct NAMES. The binary holds 3132 strings shaped "namespace.TypeName"
-// (core.Vector3, creatureeditor.DrivenBlendNodeData, ...) in a separate
-// region, but nothing found so far links ownerStructId to one of them: the id
-// is not stored in the struct record, does not index that table positionally,
-// and no pointer runs from a struct record into this field table. The link
-// most likely lives in the library registrar -- the function that emits the
-// "Too many smschema library informations are registered" error -- which is
-// where to look next. Until then a struct is identified by its id.
+// The id restarts per registered library, so the same number names a different
+// struct in each one and a struct is only identified by the PAIR
+// (library, id). Grouping on the id alone -- which an earlier revision of this
+// header did -- merges every library's struct 170 into one impossible
+// 3000-field struct whose field names repeat. Records are laid out in address
+// order and the id is non-decreasing within a library, so a drop in id marks
+// the boundary.
+//
+// -- Where the struct names come from --------------------------------------
+//
+// Not from the field record, which never carries one. A second table in .data
+// holds one type descriptor per registered type:
+//
+//   -0x3a  u16   count of the type's OWN fields
+//   -0x2c  u32   runtime size of the C++ struct
+//   +0x00  u64   -> "namespace.TypeName"
+//   +0x28  u64   -> field entries, 56 bytes each, name pointer at +0x10
+//
+// Nothing links a descriptor to an ownerStructId, so tools/smschema_names.py
+// joins the two on the field NAMES both sides carry. It is an exact-name join,
+// not a similarity score: every field name in the descriptor must appear in
+// the struct, and a struct with no descriptor stays unnamed.
+//
+// The join has to allow for the two sides describing different LAYOUTS of the
+// same type. The descriptor is the runtime C++ struct; this field table is the
+// serialised form, which adds a TemplateSymbol and an "<X>_IsNull" companion
+// per optional field, so dctools.Fog holds LightColor at +80 here but at +96
+// there. Byte offsets therefore cannot join them -- only names can.
+//
+// Coverage is partial and deliberately so. The descriptors present in the
+// image are overwhelmingly level_scripting and behavior_tree types, whose
+// fields barely appear in this table, while every dctools descriptor matches:
+// 2143 of its 2144 field names are here. What is named is named exactly; the
+// rest is addressed by (library, id).
 //
 // Extraction is reproducible: tools/dump_smschema.java walks the record shape
-// above over 0x142000000..0x143000000 and writes the TSV this header is
-// generated from. Regenerate when the game patches.
+// above and writes the field TSV, tools/smschema_names.py reads the type
+// descriptors straight out of the PE (no Ghidra, no running game), and this
+// script generates the header. Regenerate when the game patches.
 //
 // GENERATED -- do not edit by hand.
 '''
@@ -100,7 +151,8 @@ HDR = '''#pragma once
 with open(DST, "w", encoding="utf-8", newline="\r\n") as f:
     w = f.write
     w(HDR)
-    w("// Fields: %d   Structs: %d   Distinct field names: %d\n" % (total, len(byowner), len(names)))
+    w("// Fields: %d   Structs: %d   Libraries: %d   Named: %d   Distinct field names: %d\n"
+      % (total, len(groups), libcount, len(names), len(distinct)))
     w("// Source: GoWR.exe (PE x86-64, image base 0x140000000)\n\n")
     w("#include <cstdint>\n\n")
     w("namespace Onyx::Gowr::SmSchema {\n\n")
@@ -133,35 +185,46 @@ struct Field {
 };
 
 struct Struct {
-    uint16_t     id;
+    uint16_t     library;      // which registered library the id belongs to
+    uint16_t     id;           // ownerStructId, unique only within the library
     uint16_t     fieldCount;
+    uint32_t     runtimeSize;  // size of the runtime C++ struct; 0 if unnamed
+    const char*  name;         // "namespace.TypeName", or nullptr if unnamed
     const Field* fields;
 };
 
 ''')
-    for o, fs in byowner.items():
-        w("inline constexpr Field kFields_%04X[] = {\n" % o)
+    for (l_, o), fs in groups.items():
+        w("inline constexpr Field kFields_L%04X_S%04X[] = {\n" % (l_, o))
         for x in fs:
             w('    {"%s", %d, %d, 0x%04X, %d},\n'
               % (esc(x["name"]), x["off"], x["size"], x["type"], x["fid"]))
         w("};\n\n")
     w("inline constexpr Struct kStructs[] = {\n")
-    for o, fs in byowner.items():
-        w("    {0x%04X, %d, kFields_%04X},\n" % (o, len(fs), o))
+    for (l_, o), fs in groups.items():
+        nm, sz = names.get((l_, o), (None, 0))
+        w('    {%d, 0x%04X, %d, %d, %s, kFields_L%04X_S%04X},\n'
+          % (l_, o, len(fs), sz,
+             ('"%s"' % esc(nm)) if nm else "nullptr", l_, o))
     w("};\n\n")
-    w("inline constexpr int kStructCount = %d;\n\n" % len(byowner))
+    w("inline constexpr int kStructCount = %d;\n" % len(groups))
+    w("inline constexpr int kLibraryCount = %d;\n\n" % libcount)
     w('''// The struct carrying a material constant override. It is the same shape the
 // MAT entry's parameter table stores per parameter (see MaterialParser.h's
 // MatParam): a name and a float value. MaterialConstantName is a StringHash,
-// which is exactly why the WAD holds a nameHash and no text.
+// which is exactly why the WAD holds a nameHash and no text. This one has no
+// descriptor in the image, so it is addressed by (library, id).
+inline constexpr uint16_t kMaterialConstantLibrary = 250;
 inline constexpr uint16_t kMaterialConstantStructId = 0x0269;
 
-// Linear lookups over the tables above. Both return nullptr when not found.
-const Struct* FindStruct(uint16_t id);
-const Field*  FindField(uint16_t structId, const char* name);
+// Linear lookups over the tables above. All return nullptr when not found.
+const Struct* FindStruct(uint16_t library, uint16_t id);
+const Struct* FindStructByName(const char* name);
+const Field*  FindField(uint16_t library, uint16_t id, const char* name);
 
 } // namespace Onyx::Gowr::SmSchema
 ''')
 
 print("wrote %s" % DST)
-print("fields=%d structs=%d names=%d" % (total, len(byowner), len(names)))
+print("fields=%d structs=%d libraries=%d named=%d names=%d"
+      % (total, len(groups), libcount, len(names), len(distinct)))
