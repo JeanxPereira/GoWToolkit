@@ -12,6 +12,7 @@
 #include "core/parsers/gowr/ShaderParser.h"
 #include "core/parsers/gowr/MaterialParser.h"
 #include "core/parsers/gowr/TextureDecode.h"
+#include "core/shaders/MaterialSlots.h"
 #include "core/shaders/DxilDisassembler.h"
 #include "ui/CodeView.h"
 #include <Onyx/Parsers/SceneNode.h>
@@ -491,6 +492,71 @@ static MaterialRefIndex BuildMaterialRefIndex(
 }
 // Builds the render-ready scene for a GOWR mesh/rig entry.
 //
+// Reads the channel slots a material's pixel shader declares, or null.
+//
+// Null is an ordinary outcome, not a fault: the material may name no shader,
+// dxcompiler.dll may be absent, or the shader may carry no material buffer.
+// The caller then falls back to reading texture names, which is what it did
+// before this existed.
+using ShaderSlotCache = std::unordered_map<uint64_t, std::vector<MaterialSlot>>;
+
+static const std::vector<MaterialSlot>* ReadShaderSlots(
+        AssetContainer& wad,
+        const std::vector<const AssetEntry*>& flat,
+        const GOWRMaterial& mat,
+        ShaderSlotCache& cache)
+{
+    if (!wad.fileSource) return nullptr;
+
+    // A shader is stored several times at different sizes -- 10524, 11536 and
+    // 15840 bytes for one of Baldur's -- and only the largest carries a
+    // complete DXBC container.
+    const AssetEntry* best = nullptr;
+    for (const auto* sh : mat.Shaders()) {
+        if (sh->name.find("_ps_") == std::string::npos) continue;
+        for (const AssetEntry* e : flat) {
+            if (e->name != sh->name) continue;
+            if (!best || e->source.size > best->source.size) best = e;
+        }
+        if (best) break;
+    }
+    if (!best || best->source.size < 64) return nullptr;
+
+    // A negative result is cached as an empty vector, so a shader without a
+    // material buffer is disassembled once rather than once per material.
+    auto hit = cache.find(best->source.offset);
+    if (hit != cache.end())
+        return hit->second.empty() ? nullptr : &hit->second;
+
+    std::vector<uint8_t> blob(best->source.size);
+    auto file = std::make_shared<Vfs::SliceFile>(wad.fileSource, best->source.offset,
+                                                 best->source.size);
+    if (file->Read(blob.data(), blob.size()) != blob.size()) {
+        cache.emplace(best->source.offset, std::vector<MaterialSlot>{});
+        return nullptr;
+    }
+
+    // The entry opens with a 28-byte header of the game's own; the container
+    // starts at its magic.
+    size_t dxbc = 0;
+    while (dxbc + 4 <= blob.size() && std::memcmp(blob.data() + dxbc, "DXBC", 4) != 0)
+        ++dxbc;
+    if (dxbc + 4 > blob.size()) {
+        cache.emplace(best->source.offset, std::vector<MaterialSlot>{});
+        return nullptr;
+    }
+
+    std::vector<MaterialSlot> slots;
+    std::string err;
+    if (!ReadMaterialSlots(blob.data() + dxbc, blob.size() - dxbc, slots, err)) {
+        ONYX_LOGF_DEBUG("[GOWRLoaders] %s: %s", best->name.c_str(), err.c_str());
+        cache.emplace(best->source.offset, std::vector<MaterialSlot>{});
+        return nullptr;
+    }
+    auto& stored = cache.emplace(best->source.offset, std::move(slots)).first->second;
+    return &stored;
+}
+
 // Split out of what used to be SharedGowrMeshLoad (which built the scene AND
 // wrapped it in a Viewport3D) because the two callers need different halves:
 // the ITypeHandler path wants a viewer, and GowrModule's Scene decoder -- the
@@ -807,6 +873,10 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
         matEntries.push_back(it != matByName.end() ? it->second : nullptr);
     }
 
+    // One per scene build: several materials of a mesh often share a pixel
+    // shader, and reading a shader's slots means a real disassembly.
+    ShaderSlotCache slotCache;
+
     // The roles worth decoding, in the order they are reported. Under v1.1 a
     // material binds textures by ROLE into a flat pool -- there is no layer
     // index any more -- so this list is now just "which roles the renderer has
@@ -847,6 +917,22 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
         if (!refFile) {
             ONYX_LOGF_WARN("[GOWRLoaders] material %s: no reference list found", me->name.c_str());
             continue;
+        }
+
+        // Ask the material's own shader what channels it has. The `_o_` tag is
+        // ambiguous in the data -- ambient occlusion on TX_hair_o, coverage on
+        // TX_baldur00_beard_o -- and a name cannot settle it. A shader that
+        // declares layer_N__alpha and no layer_N__ao can only be using its
+        // `_o_` texture as the mask.
+        if (auto slots = ReadShaderSlots(wad, flat, mat, slotCache)) {
+            if (DeclaresCoverageWithoutOcclusion(*slots)) {
+                const int n = ReclassifyOcclusionAsCoverage(mat);
+                if (n) {
+                    ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: shader declares "
+                                   "coverage and no occlusion -- %d _o_ texture(s) "
+                                   "read as Opacity", mi, me->name.c_str(), n);
+                }
+            }
         }
 
         std::string bound;
@@ -910,6 +996,20 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
         if (!lost.empty()) {
             ONYX_LOGF_DEBUG("[GOWRLoaders]   lost the role to another candidate: %s",
                             lost.c_str());
+        }
+
+        // In list order, which is the only order the file itself defines. The
+        // shader's material cbuffer declares its texture slots in a fixed
+        // order too (layer_0__diffuse, layer_0__normal, layer_0__alpha, ...),
+        // so whether the two correspond positionally is a question about this
+        // sequence -- and it cannot be asked from a set.
+        std::string ordered;
+        for (const auto* tx : mat.Textures()) {
+            if (!ordered.empty()) ordered += ", ";
+            ordered += tx->name;
+        }
+        if (!ordered.empty()) {
+            ONYX_LOGF_DEBUG("[GOWRLoaders]   references in order: %s", ordered.c_str());
         }
 
         ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",

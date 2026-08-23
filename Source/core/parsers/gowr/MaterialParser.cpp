@@ -140,6 +140,24 @@ const char* TextureRoleName(TextureRole role) {
     }
 }
 
+int ReclassifyOcclusionAsCoverage(GOWRMaterial& mat) {
+    int changed = 0;
+    for (auto& r : mat.refs) {
+        if (!r.isTexture || r.role != TextureRole::AmbientOcclusion) continue;
+        // Only the one-letter spelling. `_ao_` states the channel outright
+        // and is left alone whatever the shader declares.
+        const size_t last = r.name.find_last_of('_');
+        if (last == std::string::npos || last < 2) continue;
+        const size_t prev = r.name.find_last_of('_', last - 1);
+        if (prev == std::string::npos) continue;
+        const std::string tag = r.name.substr(prev + 1, last - prev - 1);
+        if (tag != "o" && tag != "0o") continue;
+        r.role = TextureRole::Opacity;
+        ++changed;
+    }
+    return changed;
+}
+
 const MatReference* GOWRMaterial::Texture(TextureRole role) const {
     // Two naming conventions carry a channel, and they are not equivalent:
     //

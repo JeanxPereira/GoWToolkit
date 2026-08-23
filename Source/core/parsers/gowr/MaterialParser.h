@@ -73,6 +73,17 @@ bool GOWRMaterialParse(const std::shared_ptr<Vfs::IFile>& mat,
                        const std::shared_ptr<Vfs::IFile>& refList,
                        GOWRMaterial& out);
 
+// Re-reads every `_o_`-tagged texture in `mat` as coverage rather than
+// ambient occlusion, and reports how many changed.
+//
+// The tag is genuinely ambiguous in the data: TX_hair_o is a gradient AO
+// map, TX_baldur00_beard_o is a bimodal coverage mask, and the name cannot
+// tell them apart. Only the material's own shader can -- call this when it
+// declares a layer_N__alpha slot and no layer_N__ao (see
+// core/shaders/MaterialSlots.h). `_ao_` is never touched: that spelling is
+// unambiguous.
+int ReclassifyOcclusionAsCoverage(GOWRMaterial& mat);
+
 // Parses just a companion reference list. Exposed for the positional link:
 // the caller pairs a MAT with the record that follows it and confirms the
 // pairing by checking that a shader reference is named after the material.
