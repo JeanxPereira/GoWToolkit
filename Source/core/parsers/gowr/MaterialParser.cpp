@@ -55,7 +55,26 @@ TextureRole RoleFromName(const std::string& name) {
     // exactly the position a tag occupies when a name carries no channel at all.
     if (tag == "gen" || tag == "ge") return TextureRole::Unknown;
 
-    if (tag[0] == '0' && tag.size() > 1) tag.erase(0, 1);
+    // A channel tag can be wrapped in digits on both sides:
+    //
+    //   _gen_0d_   leading digit  = the layer this map belongs to
+    //   _hair_d2_  trailing digit = a variant index
+    //
+    // Only a leading '0' used to be stripped, so every variant read as an
+    // unknown channel and was dropped. That is why Baldur's hair and beard
+    // rendered white: their diffuse is named _hair_d2_ and _hair_d4_, their
+    // normal _hair_nm2_, and all three were discarded.
+    while (tag.size() > 1 && tag.front() >= '0' && tag.front() <= '9') tag.erase(0, 1);
+
+    // "m<N>" is the dynamicmaterial region index (m1/m2/m3 alongside a
+    // regionidmap), not a metallic map. Stripping its digit would read it as
+    // one, and no GOWR asset seen so far names a metallic map at all -- the
+    // canonical channel set is d/n/ao/g/h/e/sc/sd.
+    const bool regionIndex = tag.size() > 1 && tag[0] == 'm' &&
+                             tag.find_first_not_of("0123456789", 1) == std::string::npos;
+    if (regionIndex) return TextureRole::Unknown;
+
+    while (tag.size() > 1 && tag.back() >= '0' && tag.back() <= '9') tag.pop_back();
 
     if (tag == "d")  return TextureRole::Diffuse;
     if (tag == "n" || tag == "nm") return TextureRole::Normal;
