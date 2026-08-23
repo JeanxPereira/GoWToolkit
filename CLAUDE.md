@@ -39,9 +39,10 @@ nlohmann_json (both fetched via `FetchContent`, gated on
 `GOWTOOLKIT_BUILD_TESTS`, default `ON`). Run it with
 `ctest --test-dir build-msvc` (or whichever build directory was configured).
 
-CTest lists **19** entries, and only the first 11 are this repo's: `unit`,
+CTest lists **20** entries, and only the first 12 are this repo's: `unit`,
 `Golden_GOW2`, `Golden_GOWR`, `Metrics`, `Threading`, `ThemeContrast`,
-`GowrClassify`, `Gow2Material`, `Logger`, `Selection`, `Visibility`. The
+`GowrClassify`, `Gow2Material`, `Logger`, `Selection`, `Visibility`,
+`SmSchema`. The
 remaining 8 (`VkBootSmoke`, `VkSceneSmoke`, `RenderToImageSmoke`,
 `VkAnimation`, `OracleReproducible`, `VkOracleParity`, `ColdStart`,
 `VkValidationSelfTest`) belong to OnyxSDK, which registers them even though
@@ -57,7 +58,11 @@ pinned JSON snapshot goldens — they are the regression gate for parser
 changes. Fixture provenance is documented in `tests/fixtures/README.md`;
 `tools/make_test_fixtures.py` regenerates them.
 
-**Baseline is green: 19/19, 67 doctest cases, 584 assertions.**
+**Baseline is green: 20/20, 73 doctest cases, 37465 assertions.**
+
+The assertion count jumped from 584 with `SmSchema`, which walks all
+18410 generated field records to check that every type code renders.
+That is one loop, not 36k hand-written checks.
 
 Earlier revisions of this file recorded a 5/7 baseline and blamed a theme
 regression -- "the Onyx theme engine now returns 0.38-0.55" for dark
