@@ -993,6 +993,10 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
             lost += TextureRoleName(tx->role);
             lost += ")";
         }
+        ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",
+                 mi, me->name.c_str(), mat.Textures().size(),
+                 bound.empty() ? "none" : bound.c_str());
+
         if (!lost.empty()) {
             ONYX_LOGF_DEBUG("[GOWRLoaders]   lost the role to another candidate: %s",
                             lost.c_str());
@@ -1011,10 +1015,6 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
         if (!ordered.empty()) {
             ONYX_LOGF_DEBUG("[GOWRLoaders]   references in order: %s", ordered.c_str());
         }
-
-        ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: %zu textures, decoded [%s]",
-                 mi, me->name.c_str(), mat.Textures().size(),
-                 bound.empty() ? "none" : bound.c_str());
         if (!skipped.empty()) {
             ONYX_LOGF_DEBUG("[GOWRLoaders]   not a mapped role: %s", skipped.c_str());
         }
