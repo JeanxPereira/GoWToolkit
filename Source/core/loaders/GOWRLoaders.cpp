@@ -925,7 +925,20 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
         // declares layer_N__alpha and no layer_N__ao can only be using its
         // `_o_` texture as the mask.
         if (auto slots = ReadShaderSlots(wad, flat, mat, slotCache)) {
-            if (DeclaresCoverageWithoutOcclusion(*slots)) {
+            // Best case: as many texture slots as texture references, so the
+            // Nth reference fills the Nth slot and the shader's name for it IS
+            // the channel. That reads maps the file name cannot -- the wound
+            // material's TX_baldur00_damagehealing01_cut_flt carries no
+            // channel tag at all and is its Wound_diffuse.
+            const int assigned = AssignRolesFromShaderSlots(mat, TextureSlotNames(*slots));
+            if (assigned) {
+                ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: %d role(s) taken "
+                               "from the shader's own slot names",
+                               mi, me->name.c_str(), assigned);
+            } else if (DeclaresCoverageWithoutOcclusion(*slots)) {
+                // The counts disagree, so position says nothing. The slot SET
+                // still does: a material with a coverage slot and no occlusion
+                // slot can only be using its `_o_` texture as the mask.
                 const int n = ReclassifyOcclusionAsCoverage(mat);
                 if (n) {
                     ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: shader declares "

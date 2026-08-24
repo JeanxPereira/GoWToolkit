@@ -45,6 +45,7 @@ namespace Onyx {
 
 struct MaterialSlot {
     std::string name;    // e.g. "layer_0__alpha"
+    std::string type;    // "uint", "float", "float2", ...
     uint16_t    offset;  // byte offset in the material constant buffer
 };
 
@@ -54,6 +55,14 @@ struct MaterialSlot {
 // outcomes, not faults: a shader may legitimately declare no material data.
 bool ReadMaterialSlots(const uint8_t* dxbc, size_t size,
                        std::vector<MaterialSlot>& out, std::string& error);
+
+// The names of the buffer's TEXTURE slots, in offset order.
+//
+// A texture binding is a `uint` there -- a descriptor index the game fills
+// in at draw time -- while the material's scalar parameters are floats. The
+// two are interleaved in the buffer, so "the Nth member" is not "the Nth
+// texture" and the filter matters.
+std::vector<std::string> TextureSlotNames(const std::vector<MaterialSlot>& slots);
 
 // True when the material declares a coverage channel (layer_N__alpha or
 // layer_N__opacity) and no ambient-occlusion channel. That combination is

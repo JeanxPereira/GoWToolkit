@@ -140,6 +140,58 @@ const char* TextureRoleName(TextureRole role) {
     }
 }
 
+namespace {
+
+// The channel a shader slot names, or Unknown.
+//
+// Slots come in two shapes -- layer_<N>__<channel> for a surface layer and
+// <Thing>_<channel> for a single-purpose material (Wound_diffuse) -- and the
+// channel is the last underscore-separated word in both.
+TextureRole RoleForSlot(const std::string& slot) {
+    // The region/overlay system: material_mudsnowmask, material_bloodmask,
+    // material_firefrostemissive. Not a channel of the surface itself, and
+    // nothing here samples them.
+    if (slot.rfind("material_", 0) == 0) return TextureRole::Unknown;
+
+    // Only the base layer. A higher layer is a real map, but blending it
+    // needs the region system; binding it as if it were the base would put
+    // the wrong texture on the surface.
+    if (slot.rfind("layer_", 0) == 0 && slot.size() > 6 && slot[6] != '0')
+        return TextureRole::Unknown;
+
+    const size_t u = slot.find_last_of('_');
+    if (u == std::string::npos || u + 1 >= slot.size()) return TextureRole::Unknown;
+    const std::string ch = slot.substr(u + 1);
+
+    if (ch == "diffuse")  return TextureRole::Diffuse;
+    if (ch == "normal")   return TextureRole::Normal;
+    if (ch == "ao")       return TextureRole::AmbientOcclusion;
+    if (ch == "alpha" || ch == "opacity") return TextureRole::Opacity;
+    if (ch == "gloss")    return TextureRole::Gloss;
+    if (ch == "scatter")  return TextureRole::Scatter;
+    if (ch == "emissive") return TextureRole::Emissive;
+    return TextureRole::Unknown;
+}
+
+} // namespace
+
+int AssignRolesFromShaderSlots(GOWRMaterial& mat,
+                               const std::vector<std::string>& slotNames) {
+    std::vector<MatReference*> textures;
+    for (auto& r : mat.refs)
+        if (r.isTexture) textures.push_back(&r);
+    if (textures.empty() || textures.size() != slotNames.size()) return 0;
+
+    int changed = 0;
+    for (size_t i = 0; i < textures.size(); ++i) {
+        const TextureRole role = RoleForSlot(slotNames[i]);
+        if (textures[i]->role == role) continue;
+        textures[i]->role = role;
+        ++changed;
+    }
+    return changed;
+}
+
 int ReclassifyOcclusionAsCoverage(GOWRMaterial& mat) {
     int changed = 0;
     for (auto& r : mat.refs) {

@@ -73,6 +73,29 @@ bool GOWRMaterialParse(const std::shared_ptr<Vfs::IFile>& mat,
                        const std::shared_ptr<Vfs::IFile>& refList,
                        GOWRMaterial& out);
 
+// Assigns every texture's role from the shader's own slot names, and reports
+// how many changed. Does nothing and returns 0 unless the counts match.
+//
+// `slotNames` is the material cbuffer's TEXTURE slots in offset order (see
+// core/shaders/MaterialSlots.h). When there are exactly as many of them as
+// the material has texture references, the Nth reference fills the Nth slot
+// and the shader's name for that slot IS the channel -- Wound_diffuse,
+// layer_0__alpha and so on. That beats reading the file name, which has no
+// tag at all for maps like TX_baldur00_damagehealing01_cut_flt.
+//
+// The equal-count precondition is what makes this exact rather than a guess.
+// It does not always hold: Baldur's beard has eleven slots and ten textures,
+// with one slot (material_firefrostemissive) left unfilled and nothing in
+// the file saying which. The gap runs from 3 to 22 across his materials, so
+// there is no offset to correct by -- when it does not hold, the caller
+// falls back to the name.
+//
+// A slot naming a channel this toolkit cannot use (the region system's
+// material_mudsnow*, a layer above 0) leaves its texture Unknown rather than
+// forcing a role onto it.
+int AssignRolesFromShaderSlots(GOWRMaterial& mat,
+                               const std::vector<std::string>& slotNames);
+
 // Re-reads every `_o_`-tagged texture in `mat` as coverage rather than
 // ambient occlusion, and reports how many changed.
 //

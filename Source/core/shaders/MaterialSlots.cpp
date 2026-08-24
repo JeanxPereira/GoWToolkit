@@ -52,12 +52,14 @@ bool ParseMemberLine(const std::string& line, MaterialSlot& out) {
     const size_t sp = decl.find_last_of(" \t");
     if (sp == std::string::npos) return false;
     std::string name = Trim(decl.substr(sp + 1));
-    if (name.empty()) return false;
+    std::string type = Trim(decl.substr(0, sp));
+    if (name.empty() || type.empty()) return false;
 
     const long v = std::strtol(line.c_str() + off + 9, nullptr, 10);
     if (v < 0 || v > 0xFFFF) return false;
 
     out.name   = std::move(name);
+    out.type   = std::move(type);
     out.offset = static_cast<uint16_t>(v);
     return true;
 }
@@ -108,6 +110,13 @@ bool ReadMaterialSlots(const uint8_t* dxbc, size_t size,
     std::sort(out.begin(), out.end(),
               [](const MaterialSlot& a, const MaterialSlot& b) { return a.offset < b.offset; });
     return true;
+}
+
+std::vector<std::string> TextureSlotNames(const std::vector<MaterialSlot>& slots) {
+    std::vector<std::string> out;
+    for (const auto& s : slots)
+        if (s.type == "uint") out.push_back(s.name);
+    return out;
 }
 
 bool DeclaresCoverageWithoutOcclusion(const std::vector<MaterialSlot>& slots) {
