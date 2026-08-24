@@ -9,6 +9,8 @@
 #include <Onyx/Cli/Render.h>
 #include <Onyx/Exchange/GltfExport.h>
 #include <Onyx/Modules/Workspace.h>
+#include <Onyx/Services/Logger.h>
+#include <Onyx/Services/TaskManager.h>
 #include <Onyx/Parsers/SceneNode.h>
 #include <Onyx/Types/TypeCatalog.h>
 
@@ -60,10 +62,34 @@ int CliApp::Run(int argc, char** argv) {
     // The older per-type ITypeHandler system (which `inspect` reaches through
     // AssetHarness::Load) resolves its handles from this catalog. The modules
     // registered below mint their own, separately -- see main.cpp.
+    // The thread pool that backs Services::TaskManager is started by
+    // App::Window, which a CLI run never constructs -- so every
+    // createBackgroundTask() call queued a job onto a pool with no workers and
+    // nothing ever ran it. The GOWR texture index is built that way: it
+    // reported "0 of 25 packs" indefinitely, and every material came back with
+    // no textures at all.
+    Onyx::Services::TaskManager::init();
+    struct TaskManagerShutdown {
+        ~TaskManagerShutdown() { Onyx::Services::TaskManager::exit(); }
+    } taskManagerShutdown;
+
     Onyx::GameTypes::RegisterGameTypes();
 
     std::vector<std::string> args;
     for (int i = 1; i < argc; ++i) args.push_back(argv[i]);
+
+    // The engine log has no sink in a CLI run, so every warning a parser
+    // emits is discarded. That is not a cosmetic gap: `inspect` reporting
+    // a material with no textures is useless without the line saying WHY
+    // the decode failed, and diagnosing it meant reaching for the GUI.
+    // Off by default so machine-readable output stays clean.
+    for (const auto& a : args) {
+        if (a == "--verbose" || a == "-v") {
+            Onyx::Services::Log::SetMinLevel(Onyx::Services::Log::Level::Debug);
+            Onyx::Services::Log::InstallStderrSink();
+            break;
+        }
+    }
 
     if (args.empty() || args[0] == "help" || args[0] == "-h" || args[0] == "--help") {
         PrintHelp();
@@ -84,6 +110,11 @@ int CliApp::Run(int argc, char** argv) {
     // layouts and have no container to open.
     if (args[0] == "schema") return HandleSchema(args);
 
+    // `texture` reports what a decoded texture actually contains -- notably
+    // whether its alpha is in use, which is what decides whether a cutout
+    // material can mask at all. Onyx's `decode` reports dimensions only.
+    if (args[0] == "texture") return HandleTexture(args);
+
     return Onyx::Cli::Run(GetWorkspace(), argc, argv, std::cout, std::cerr,
                           MakeGltfExport(), Onyx::Cli::CmdRender);
 }
@@ -96,6 +127,8 @@ void CliApp::PrintHelp() {
         << "  inspect <file> <name> [--game gow2|gowr]\n"
         << "        Build the entry's scene and report parts, materials,\n"
         << "        texture roles and joints.\n"
+        << "  texture <file> <name> [--out <path.png>]\n"
+        << "        Decode one texture; report its size and alpha use.\n"
         << "  schema [<lib>:<id> | <namespace.TypeName>]\n"
         << "        Query the smschema reflection tables from GoWR.exe.\n"
         << "        --field <name>   Which structs carry a field of this name.\n"
@@ -109,6 +142,7 @@ void CliApp::PrintHelp() {
         << "  render  <file> <name> --out <p.png> [--width N] [--height N]\n"
         << "                                     [--views iso,front,top,...]\n\n"
         << "  --game gow2|gowr   Skip probing and open with that module.\n"
+        << "  --verbose, -v      Send the engine log to stderr (parser warnings).\n"
         << "  --strict           Exit non-zero when the document has Error diags.\n\n"
         << "Run without arguments to launch the GUI.\n\n"
         << "Examples:\n"

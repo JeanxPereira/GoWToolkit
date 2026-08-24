@@ -55,7 +55,26 @@ TextureRole RoleFromName(const std::string& name) {
     // exactly the position a tag occupies when a name carries no channel at all.
     if (tag == "gen" || tag == "ge") return TextureRole::Unknown;
 
-    if (tag[0] == '0' && tag.size() > 1) tag.erase(0, 1);
+    // A channel tag can be wrapped in digits on both sides:
+    //
+    //   _gen_0d_   leading digit  = the layer this map belongs to
+    //   _hair_d2_  trailing digit = a variant index
+    //
+    // Only a leading '0' used to be stripped, so every variant read as an
+    // unknown channel and was dropped. That is why Baldur's hair and beard
+    // rendered white: their diffuse is named _hair_d2_ and _hair_d4_, their
+    // normal _hair_nm2_, and all three were discarded.
+    while (tag.size() > 1 && tag.front() >= '0' && tag.front() <= '9') tag.erase(0, 1);
+
+    // "m<N>" is the dynamicmaterial region index (m1/m2/m3 alongside a
+    // regionidmap), not a metallic map. Stripping its digit would read it as
+    // one, and no GOWR asset seen so far names a metallic map at all -- the
+    // canonical channel set is d/n/ao/g/h/e/sc/sd.
+    const bool regionIndex = tag.size() > 1 && tag[0] == 'm' &&
+                             tag.find_first_not_of("0123456789", 1) == std::string::npos;
+    if (regionIndex) return TextureRole::Unknown;
+
+    while (tag.size() > 1 && tag.back() >= '0' && tag.back() <= '9') tag.pop_back();
 
     if (tag == "d")  return TextureRole::Diffuse;
     if (tag == "n" || tag == "nm") return TextureRole::Normal;
@@ -68,6 +87,11 @@ TextureRole RoleFromName(const std::string& name) {
     if (tag == "g")  return TextureRole::Gloss;
     if (tag == "sc") return TextureRole::Scatter;
     if (tag == "sd") return TextureRole::Detail;
+    // Coverage lives in its own map here rather than in the diffuse alpha,
+    // which is why hair and a cornea rendered as solid geometry: the diffuse
+    // they ship is fully opaque, so the shader's cutout had nothing to act on.
+    if (tag == "opc" || tag == "op" || tag == "alpha" || tag == "opacity")
+        return TextureRole::Opacity;
     return TextureRole::Unknown;
 }
 
@@ -111,14 +135,122 @@ const char* TextureRoleName(TextureRole role) {
         case TextureRole::Gloss:            return "Gloss";
         case TextureRole::Scatter:          return "Scatter";
         case TextureRole::Detail:           return "Detail";
+        case TextureRole::Opacity:          return "Opacity";
         default:                            return "Unknown";
     }
 }
 
+namespace {
+
+// The channel a shader slot names, or Unknown.
+//
+// Slots come in two shapes -- layer_<N>__<channel> for a surface layer and
+// <Thing>_<channel> for a single-purpose material (Wound_diffuse) -- and the
+// channel is the last underscore-separated word in both.
+TextureRole RoleForSlot(const std::string& slot) {
+    // The region/overlay system: material_mudsnowmask, material_bloodmask,
+    // material_firefrostemissive. Not a channel of the surface itself, and
+    // nothing here samples them.
+    if (slot.rfind("material_", 0) == 0) return TextureRole::Unknown;
+
+    // Only the base layer. A higher layer is a real map, but blending it
+    // needs the region system; binding it as if it were the base would put
+    // the wrong texture on the surface.
+    if (slot.rfind("layer_", 0) == 0 && slot.size() > 6 && slot[6] != '0')
+        return TextureRole::Unknown;
+
+    const size_t u = slot.find_last_of('_');
+    if (u == std::string::npos || u + 1 >= slot.size()) return TextureRole::Unknown;
+    const std::string ch = slot.substr(u + 1);
+
+    if (ch == "diffuse")  return TextureRole::Diffuse;
+    if (ch == "normal")   return TextureRole::Normal;
+    if (ch == "ao")       return TextureRole::AmbientOcclusion;
+    if (ch == "alpha" || ch == "opacity") return TextureRole::Opacity;
+    if (ch == "gloss")    return TextureRole::Gloss;
+    if (ch == "scatter")  return TextureRole::Scatter;
+    if (ch == "emissive") return TextureRole::Emissive;
+    return TextureRole::Unknown;
+}
+
+} // namespace
+
+int AssignRolesFromShaderSlots(GOWRMaterial& mat,
+                               const std::vector<std::string>& slotNames) {
+    std::vector<MatReference*> textures;
+    for (auto& r : mat.refs)
+        if (r.isTexture) textures.push_back(&r);
+    if (textures.empty() || textures.size() != slotNames.size()) return 0;
+
+    int changed = 0;
+    for (size_t i = 0; i < textures.size(); ++i) {
+        const TextureRole role = RoleForSlot(slotNames[i]);
+        if (textures[i]->role == role) continue;
+        textures[i]->role = role;
+        ++changed;
+    }
+    return changed;
+}
+
+int ReclassifyOcclusionAsCoverage(GOWRMaterial& mat) {
+    int changed = 0;
+    for (auto& r : mat.refs) {
+        if (!r.isTexture || r.role != TextureRole::AmbientOcclusion) continue;
+        // Only the one-letter spelling. `_ao_` states the channel outright
+        // and is left alone whatever the shader declares.
+        const size_t last = r.name.find_last_of('_');
+        if (last == std::string::npos || last < 2) continue;
+        const size_t prev = r.name.find_last_of('_', last - 1);
+        if (prev == std::string::npos) continue;
+        const std::string tag = r.name.substr(prev + 1, last - prev - 1);
+        if (tag != "o" && tag != "0o") continue;
+        r.role = TextureRole::Opacity;
+        ++changed;
+    }
+    return changed;
+}
+
 const MatReference* GOWRMaterial::Texture(TextureRole role) const {
-    for (const auto& r : refs)
-        if (r.isTexture && r.role == role) return &r;
-    return nullptr;
+    // Two naming conventions carry a channel, and they are not equivalent:
+    //
+    //   TX_<subject>_gen_0<tag>_<hash>   the subject's own map for that channel
+    //   TX_<something>_<tag>_<hash>      often a SHARED map, not this subject's
+    //
+    // Returning the first match regardless bound TX_wave_flow_n to the normal
+    // slot of Baldur's head, arms, chest, legs and lower body -- one shared FX
+    // map standing in for five different subjects -- because it happened to sit
+    // earlier in a reference list of 39. The canonical form wins when the
+    // material declares one.
+    //
+    // A preference, not a filter: TX_baldur00_beard_d is the beard's real
+    // diffuse and uses the bare form, so excluding it would lose the texture
+    // rather than improve it.
+    // Ranked, best first:
+    //   1. the canonical _gen_0<tag>_ form -- the subject's own map
+    //   2. any other named map
+    //   3. a TX_dynamicmaterial_* map
+    //
+    // The region system's own textures come last because they are not a
+    // subject's channel map at all: they feed the regionidmap/m1/m2/m3 path,
+    // and every material that participates carries the same handful. Left
+    // unranked, TX_dynamicmaterial_nm won the normal slot on eight of
+    // Baldur's materials -- including all three beard materials, where
+    // TX_sindri00_beard_n was sitting right there in the same list.
+    //
+    // Still a preference, not a filter: a material whose only candidate for a
+    // role is a dynamicmaterial map keeps it rather than losing the channel.
+    const MatReference* other = nullptr;
+    const MatReference* shared = nullptr;
+    for (const auto& r : refs) {
+        if (!r.isTexture || r.role != role) continue;
+        if (r.name.rfind("TX_dynamicmaterial", 0) == 0) {
+            if (!shared) shared = &r;
+            continue;
+        }
+        if (r.name.find("_gen_0") != std::string::npos) return &r;
+        if (!other) other = &r;
+    }
+    return other ? other : shared;
 }
 
 std::vector<const MatReference*> GOWRMaterial::Textures() const {

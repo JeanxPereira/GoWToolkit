@@ -14,7 +14,7 @@ include(CTest)
 #   cmake -DFETCHCONTENT_SOURCE_DIR_ONYXSDK=E:/CodingProjects/OnyxSDK ...
 FetchContent_Declare(OnyxSDK
     GIT_REPOSITORY https://github.com/JeanxPereira/OnyxSDK.git
-    GIT_TAG        v1.1.0)
+    GIT_TAG        v1.2.0)
 set(ONYX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(ONYX_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(OnyxSDK)

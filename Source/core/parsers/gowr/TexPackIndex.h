@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <memory>
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <mutex>
 
 namespace Onyx {
@@ -38,8 +40,22 @@ public:
 
     std::shared_ptr<Vfs::IFile> GetFile(uint32_t packIdx);
 
-    void SetLoaded() { m_loaded = true; }
+    void SetLoaded();
     bool IsLoaded() const { return m_loaded; }
+
+    // Blocks until every pack has been indexed, or `timeout` expires. Returns
+    // IsLoaded().
+    //
+    // FindTexture's contract is "poll until IsLoaded()", and for a long time
+    // nothing did: LoadFromGameRoot fans out one background task per pack and
+    // returns with m_loaded false, so a caller that looks up a hash right away
+    // misses every time. The GUI hid it -- a person takes seconds to click a
+    // model, by which point the packs are in -- but a one-shot CLI run has no
+    // frame loop to poll from and reported every GOWR material as untextured.
+    //
+    // Returns immediately when nothing was ever dispatched, so a GOW2 run does
+    // not sit here waiting for an index it has no use for.
+    bool WaitUntilLoaded(std::chrono::milliseconds timeout);
     bool IsLoading() const {
         return m_packCount.load() > 0 && m_packsLoaded.load() < m_packCount.load();
     }
@@ -72,6 +88,11 @@ private:
     std::atomic<bool> m_loaded{false};
     std::atomic<int> m_packCount{0};
     std::atomic<int> m_packsLoaded{0};
+
+    // Dedicated to the completion signal: m_mutex is held during a pack
+    // merge, and a waiter must not contend with indexing work.
+    mutable std::mutex m_doneMutex;
+    std::condition_variable m_doneCv;
 };
 
 } // namespace Onyx

@@ -13,6 +13,7 @@ private:
     static int HandleExtract(const std::vector<std::string>& args);
     static int HandleInspect(const std::vector<std::string>& args);
     static int HandleSchema(const std::vector<std::string>& args);
+    static int HandleTexture(const std::vector<std::string>& args);
     static int HandleParseWad(const std::vector<std::string>& args);
 };
 
