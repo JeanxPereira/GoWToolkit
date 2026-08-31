@@ -58,7 +58,7 @@ pinned JSON snapshot goldens — they are the regression gate for parser
 changes. Fixture provenance is documented in `tests/fixtures/README.md`;
 `tools/make_test_fixtures.py` regenerates them.
 
-**Baseline is green: 20/20, 73 doctest cases, 37465 assertions.**
+**Baseline is green: 20/20, 78 doctest cases, 37486 assertions.**
 
 The assertion count jumped from 584 with `SmSchema`, which walks all
 18410 generated field records to check that every type code renders.
