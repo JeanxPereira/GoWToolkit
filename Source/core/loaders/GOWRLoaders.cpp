@@ -557,6 +557,22 @@ static const std::vector<MaterialSlot>* ReadShaderSlots(
     return &stored;
 }
 
+// Names a material's parameters from the constant buffer its shader declares.
+//
+// Split out because two callers want it -- the scene build and the material
+// viewer -- and neither should have to know how MaterialSlot lines up with
+// ShaderConstant. The conversion lives here rather than in either layer: the
+// parser must not reach into the shader compiler, and MaterialSlots must not
+// reach into the parser.
+static int NameParamsFromSlots(GOWRMaterial& mat,
+                               const std::vector<MaterialSlot>& slots) {
+    std::vector<ShaderConstant> constants;
+    constants.reserve(slots.size());
+    for (const auto& sl : slots)
+        constants.push_back({sl.offset, SlotWidth(sl.type), sl.name});
+    return NameParamsFromShaderConstants(mat, constants);
+}
+
 // Split out of what used to be SharedGowrMeshLoad (which built the scene AND
 // wrapped it in a Viewport3D) because the two callers need different halves:
 // the ITypeHandler path wants a viewer, and GowrModule's Scene decoder -- the
@@ -925,6 +941,17 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
         // declares layer_N__alpha and no layer_N__ao can only be using its
         // `_o_` texture as the mask.
         if (auto slots = ReadShaderSlots(wad, flat, mat, slotCache)) {
+            // The parameter table and this buffer are two descriptions of the
+            // same bytes, so a parameter's offset names it: 8BAAC5A79D4E5FC8
+            // at offset 20 is material_cst_ModifyDepthFadeStartDist.
+            const int namedParams = NameParamsFromSlots(mat, *slots);
+            if (namedParams) {
+                ONYX_LOGF_INFO("[GOWRLoaders] material[%zu] %s: %d of %zu "
+                               "parameter(s) named from the shader's constant "
+                               "buffer", mi, me->name.c_str(), namedParams,
+                               mat.params.size());
+            }
+
             // Best case: as many texture slots as texture references, so the
             // Nth reference fills the Nth slot and the shader's name for it IS
             // the channel. That reads maps the file name cannot -- the wound
@@ -1787,26 +1814,40 @@ public:
         }
 
         if (ImGui::BeginTabItem("Parameters")) {
-            ImGui::TextDisabled("Names are stored hashed; the strings are not in "
-                                "the file. The offset is where the value lands in "
-                                "the shader constant buffer.");
-            if (ImGui::BeginTable("##par", 4,
+            // The file stores only the hash. The name comes from the shader
+            // that consumes the buffer, joined on the byte offset -- so it is
+            // present exactly when this material's pixel shader was readable.
+            size_t named = 0;
+            for (const auto& p : m_mat.params) named += !p.name.empty();
+            if (named == m_mat.params.size() && named)
+                ImGui::TextDisabled("Names recovered from the shader's constant "
+                                    "buffer, joined on the byte offset.");
+            else
+                ImGui::TextDisabled("Names are stored hashed; the strings are not "
+                                    "in the file, and this material's shader was "
+                                    "not readable to recover them.");
+
+            if (ImGui::BeginTable("##par", 5,
                     ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg |
                     ImGuiTableFlags_BordersInnerH)) {
+                ImGui::TableSetupColumn("Name",      ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn("Name hash", ImGuiTableColumnFlags_WidthFixed, 150);
                 ImGui::TableSetupColumn("Type",      ImGuiTableColumnFlags_WidthFixed, 60);
                 ImGui::TableSetupColumn("CB offset", ImGuiTableColumnFlags_WidthFixed, 80);
-                ImGui::TableSetupColumn("Value",     ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Value",     ImGuiTableColumnFlags_WidthFixed, 90);
                 ImGui::TableHeadersRow();
                 for (const auto& p : m_mat.params) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%016llX", (unsigned long long)p.nameHash);
+                    if (p.name.empty()) ImGui::TextDisabled("--");
+                    else                ImGui::TextUnformatted(p.name.c_str());
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%04X", p.typeCode);
+                    ImGui::Text("%016llX", (unsigned long long)p.nameHash);
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("0x%02X", p.cbufferOffset);
+                    ImGui::Text("%04X", p.typeCode);
                     ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", p.cbufferOffset);
+                    ImGui::TableSetColumnIndex(4);
                     ImGui::Text("%g", p.value);
                 }
                 ImGui::EndTable();
@@ -1844,6 +1885,14 @@ std::shared_ptr<Viewers::IDocumentContent> GOWRMaterialHandler::CreateViewer(
 
     GOWRMaterial mat;
     if (!GOWRMaterialParse(matFile, refFile, mat)) return nullptr;
+
+    // Recover the parameter names, which the MAT entry stores only as hashes.
+    // The cache is local because this opens one material: the scene build has
+    // its own, spanning every material in the mesh.
+    ShaderSlotCache cache;
+    if (auto slots = ReadShaderSlots(wad, flat, mat, cache))
+        NameParamsFromSlots(mat, *slots);
+
     return std::make_shared<GOWRMaterialViewer>(entry.name, std::move(mat));
 }
 

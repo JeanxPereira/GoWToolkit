@@ -64,6 +64,15 @@ bool ReadMaterialSlots(const uint8_t* dxbc, size_t size,
 // texture" and the filter matters.
 std::vector<std::string> TextureSlotNames(const std::vector<MaterialSlot>& slots);
 
+// The byte width of a slot's HLSL type, or 0 when the spelling is not one this
+// recognises.
+//
+// A zero is not a fault -- it is how the caller says "I cannot check this
+// one", which matters because the width is used to VERIFY a join rather than
+// to make one (see MaterialParser.h). A matrix or a struct member would land
+// here, and refusing to guess is better than inventing a size for it.
+uint16_t SlotWidth(const std::string& type);
+
 // True when the material declares a coverage channel (layer_N__alpha or
 // layer_N__opacity) and no ambient-occlusion channel. That combination is
 // what makes an `_o_` texture a mask rather than an occlusion map.

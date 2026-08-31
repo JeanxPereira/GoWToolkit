@@ -175,6 +175,53 @@ TextureRole RoleForSlot(const std::string& slot) {
 
 } // namespace
 
+int NameParamsFromShaderConstants(GOWRMaterial& mat,
+                                  const std::vector<ShaderConstant>& constants) {
+    if (mat.params.empty() || constants.empty()) return 0;
+
+    // Resolve every parameter before writing any name. The join is
+    // all-or-nothing (see the header), so a miss anywhere has to abandon the
+    // material rather than leave it half-named.
+    std::vector<const ShaderConstant*> resolved(mat.params.size(), nullptr);
+
+    for (size_t i = 0; i < mat.params.size(); ++i) {
+        const MatParam& p = mat.params[i];
+
+        const ShaderConstant* hit = nullptr;
+        for (const auto& c : constants) {
+            if (c.offset == p.cbufferOffset) { hit = &c; break; }
+        }
+        if (!hit) {
+            ONYX_LOGF_WARN("[GOWRMaterial] %016llX: parameter %zu wants constant "
+                     "buffer offset %u and the shader declares no member there "
+                     "-- leaving all %zu parameters unnamed",
+                     (unsigned long long)mat.hash, i, p.cbufferOffset,
+                     mat.params.size());
+            return 0;
+        }
+        // A width the parameter table and the shader disagree on means the two
+        // are describing different layouts, not the same one.
+        if (hit->width && p.Width() && hit->width != p.Width()) {
+            ONYX_LOGF_WARN("[GOWRMaterial] %016llX: offset %u is %u bytes to the "
+                     "parameter table and %u to the shader's %s -- leaving all "
+                     "%zu parameters unnamed",
+                     (unsigned long long)mat.hash, p.cbufferOffset,
+                     (unsigned)p.Width(), (unsigned)hit->width,
+                     hit->name.c_str(), mat.params.size());
+            return 0;
+        }
+        resolved[i] = hit;
+    }
+
+    int named = 0;
+    for (size_t i = 0; i < mat.params.size(); ++i) {
+        if (mat.params[i].name == resolved[i]->name) continue;
+        mat.params[i].name = resolved[i]->name;
+        ++named;
+    }
+    return named;
+}
+
 int AssignRolesFromShaderSlots(GOWRMaterial& mat,
                                const std::vector<std::string>& slotNames) {
     std::vector<MatReference*> textures;

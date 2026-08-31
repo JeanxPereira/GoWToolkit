@@ -119,6 +119,25 @@ std::vector<std::string> TextureSlotNames(const std::vector<MaterialSlot>& slots
     return out;
 }
 
+uint16_t SlotWidth(const std::string& type) {
+    // The disassembler prints HLSL spellings. A material buffer holds scalars
+    // and short vectors: "uint", "float", "float2". A trailing digit is the
+    // component count; "float3x4" and the like carry an 'x' and are refused.
+    size_t base = 0;
+    if      (type.compare(0, 5, "float") == 0) base = 5;
+    else if (type.compare(0, 4, "uint")  == 0) base = 4;
+    else if (type.compare(0, 3, "int")   == 0) base = 3;
+    else if (type.compare(0, 4, "bool")  == 0) base = 4;
+    else return 0;
+
+    const std::string tail = type.substr(base);
+    if (tail.empty()) return 4;
+    if (tail.size() != 1 || !std::isdigit((unsigned char)tail[0])) return 0;
+    const int n = tail[0] - '0';
+    if (n < 1 || n > 4) return 0;
+    return static_cast<uint16_t>(4 * n);
+}
+
 bool DeclaresCoverageWithoutOcclusion(const std::vector<MaterialSlot>& slots) {
     bool coverage = false, occlusion = false;
     for (const auto& s : slots) {

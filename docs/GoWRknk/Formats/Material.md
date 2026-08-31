@@ -55,6 +55,52 @@ their offsets repeat when a section is empty.
 `CBufferOffset` runs cumulatively across the table, so the entries describe a
 packed constant buffer laid out in declaration order.
 
+### Recovering a parameter's name
+
+`NameHash` is not reversible — FNV-1/FNV-1a, MurmurHash64A, xxh64 (4096 seeds)
+and xxh3 were all tried against known names and none matches. The name comes
+from the other side instead.
+
+The material's pixel shader declares a constant buffer called
+`ConstBuf__materialData`, and its members carry a name **and** a byte offset:
+
+```
+uint  material_particlespawn;                    ; Offset:    0
+uint  layer_0__diffuse;                          ; Offset:    4
+...
+float material_cst_ModifyDepthFadeStartDist;     ; Offset:   20
+float2 material_cst_ParticleSpawnReference;      ; Offset:   32
+```
+
+The parameter table and that buffer are two descriptions of the **same bytes**,
+so `CBufferOffset` is a join key: the parameter hashed `8BAAC5A79D4E5FC8` at
+offset 20 is `material_cst_ModifyDepthFadeStartDist`.
+
+Measured on `r_athena00`, all three materials, 28 of 28 parameters:
+
+| Material | Params | Named |
+|----------|--------|-------|
+| `MAT_DE674F96622453EB` | 10 | 10 |
+| `MAT_DEE24F0F7562F93B` |  9 |  9 |
+| `MAT_14EF18DD481D00DC` |  9 |  9 |
+
+Two details make it a join rather than a lookup table. The offsets are not
+contiguous — the first two materials skip 28, which is the padding the
+8-byte-aligned `float2` at 32 needs — and the third material's shader inserts a
+`layer_1__diffuse` at 20, pushing both floats from 20/24 to 24/28 on **both**
+sides together.
+
+The `TypeCode`'s high byte is the parameter's width in bytes (`0x0409` uint/4,
+`0x0401` float/4, `0x0841` float2/8), which lets the join verify itself. A
+parameter whose offset finds no member, or whose width disagrees with the
+member there, abandons the whole material rather than naming it partly: the
+two sides describe one buffer, so a partial hit means the model is wrong.
+
+Names are only available where the pixel shader is readable — it needs a real
+DXIL disassembly through `dxcompiler.dll`. See
+`Source/core/shaders/MaterialSlots.h` and
+`NameParamsFromShaderConstants` in `Source/core/parsers/gowr/MaterialParser.h`.
+
 ### Companion reference list
 
 | Offset | Size | Type | Name | Description |
