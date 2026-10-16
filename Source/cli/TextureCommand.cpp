@@ -1,7 +1,7 @@
-// `GoWToolkit texture <file> <name> [--out <path.png>]`
+// `GoWToolkit texture <file> <name> [--out <file.png>]`
 //
 // Decodes one GOWR texture and reports what came out, optionally writing it
-// to a PNG.
+// to a PNG in the current directory.
 //
 // Built because the material work kept running into questions the existing
 // commands could not answer. `inspect` says which texture won a role;
@@ -16,6 +16,7 @@
 // with a spread is a mask and the only question left is the threshold.
 
 #include "CliApp.h"
+#include "TextureOutputPath.h"
 
 #include "core/harness/AssetHarness.h"
 #include "core/loaders/GOWRLoaders.h"
@@ -99,7 +100,7 @@ void ReportChannels(const Parsers::TextureData& tex, std::ostream& out) {
 int CliApp::HandleTexture(const std::vector<std::string>& args) {
     if (args.size() < 3) {
         std::cerr << "Usage: GoWToolkit texture <wad-file> <texture-name> "
-                     "[--out <path.png>]\n"
+                     "[--out <file.png>]\n"
                      "Example: GoWToolkit texture r_baldur00.wad "
                      "TX_baldur00_beard_d_C5EB108C24574B6A --out beard.png\n";
         return Onyx::Cli::kUsage;
@@ -108,6 +109,19 @@ int CliApp::HandleTexture(const std::vector<std::string>& args) {
     std::string outPath;
     for (size_t i = 3; i < args.size(); ++i)
         if (args[i] == "--out" && i + 1 < args.size()) outPath = args[++i];
+
+    // Keep the traversal guards next to the filesystem sink as well as in the
+    // reusable validator. Besides making the security boundary obvious here,
+    // this lets static analysis prove that tainted command-line input cannot
+    // reach stb's fopen call as a path.
+    const bool hasPathSyntax = outPath.find("..") != std::string::npos ||
+                               outPath.find('/') != std::string::npos ||
+                               outPath.find('\\') != std::string::npos;
+    if (!outPath.empty() && (hasPathSyntax || !Cli::IsSafeTextureOutputFileName(outPath))) {
+        std::cerr << "--out must be a .png filename in the current directory "
+                     "(paths and '..' are not allowed).\n";
+        return Onyx::Cli::kUsage;
+    }
 
     const std::string& name = args[2];
     uint64_t hash = 0;
