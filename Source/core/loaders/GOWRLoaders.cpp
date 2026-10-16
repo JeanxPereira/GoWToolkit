@@ -402,7 +402,8 @@ static bool DecodeTextureFromWad(AssetContainer& wad,
                                  const std::vector<WadDescriptor>& descs,
                                  const std::vector<const AssetEntry*>& flat,
                                  const std::string& name,
-                                 Parsers::TextureData& out, std::string& error) {
+                                 Parsers::TextureData& out, std::string& error,
+                                 GOWRTextureDecodeInfo* info = nullptr) {
     uint32_t descSize = 0, paySize = 0;
     for (const auto& de : descs) {
         if (de.name != name) continue;
@@ -425,7 +426,7 @@ static bool DecodeTextureFromWad(AssetContainer& wad,
 
     auto dFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, desc->source.offset, desc->source.size);
     auto pFile = std::make_shared<Vfs::SliceFile>(wad.fileSource, pay->source.offset, pay->source.size);
-    return GOWRDecodeResidentTexture(dFile, pFile, name, out, error);
+    return GOWRDecodeResidentTexture(dFile, pFile, name, out, error, info);
 }
 
 // Material names for one mesh, in the order its submeshes index them. Empty
@@ -975,6 +976,15 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
             }
         }
 
+        GOWRNormalConvention normalConvention = GOWRNormalConvention::ConservativeXY;
+        for (const MatReference* shader : mat.Shaders()) {
+            const auto candidate = GOWRNormalConventionFromShaderName(shader->name);
+            if (candidate == GOWRNormalConvention::AuthoredXYZEndpoint) {
+                normalConvention = candidate;
+                break;
+            }
+        }
+
         std::string bound;
         for (size_t L = 0; L < kWantedCount; ++L) {
             const MatReference* ref = mat.Texture(kWantedRoles[L]);
@@ -985,12 +995,14 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
 
             auto tex = std::make_unique<Parsers::TextureData>();
             std::string err;
+            GOWRTextureDecodeInfo decodeInfo;
             bool got = GOWRDecodeTexture(GetTexIndex(), ref->textureHash,
-                                         ref->name, *tex, err);
+                                         ref->name, *tex, err, &decodeInfo);
             if (!got) {
                 // Not in a texpack means it may never stream at all.
                 std::string wadErr;
-                got = DecodeTextureFromWad(wad, wadDescs, flat, ref->name, *tex, wadErr);
+                got = DecodeTextureFromWad(wad, wadDescs, flat, ref->name, *tex,
+                                           wadErr, &decodeInfo);
                 if (!got) err += "; " + wadErr;
             }
             if (got) {
@@ -1004,6 +1016,10 @@ std::unique_ptr<Parsers::SceneData> BuildGowrScene(const AssetEntry& entry, Asse
                 bound += ref->name;
                 texturePool.push_back(std::move(tex));
                 materials[mi].textures[*sceneRole] = static_cast<int>(texturePool.size() - 1);
+                if (*sceneRole == Parsers::TextureRole::Normal) {
+                    materials[mi].normalMap = GOWRNormalMapDescFor(decodeInfo.storage,
+                                                                   normalConvention);
+                }
             } else {
                 ONYX_LOGF_WARN("[GOWRLoaders] %s (%s): %s", ref->name.c_str(),
                          TextureRoleName(kWantedRoles[L]), err.c_str());

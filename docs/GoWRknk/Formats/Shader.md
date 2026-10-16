@@ -3,6 +3,7 @@
 ## Overview
 
 Shader files contain GPU programs compiled for DirectX 12. They follow a two-layer structure: a **GOW-specific 28-byte header** prepended to a completely standard **DXBC (DirectX Bytecode) container**.
+1. [Shader containers](#architecture--hierarchy)
 2. [Real Shader Analysis](#2-real-shader-analysis)
    - [depth_vs — Depth Pre-Pass](#21-depth_vs--depth-pre-pass-vertex-shader)
    - [opaque_vs_ls — Opaque Geometry](#22-opaque_vs_ls--opaque-geometry-vertex-shader)
@@ -10,6 +11,9 @@ Shader files contain GPU programs compiled for DirectX 12. They follow a two-lay
    - [particles_vs — Particle Vertex Shader](#24-particles_vs--particle-vertex-shader)
    - [depvl_hs — Hull Shader (Tessellation Control)](#25-depvl_hs--hull-shader-tessellation-control)
    - [depth_ds_vs — Domain Shader (Tessellation Evaluation)](#26-depth_ds_vs--domain-shader-tessellation-evaluation)
+   - [Athena opaque material — exact G-buffer contract](#27-athena-opaque-material--exact-g-buffer-contract)
+   - [Deferred lighting resolve](#28-deferred-lighting-resolve)
+   - [Root shader pack](#29-root-shader-pack)
 3. [GOWR_UNKNOWN_33 — Scene / Script Bundle](#3-gowr_unknown_33--scene--script-bundle)
 4. [Reading Shaders — Implementation Guide](#4-reading-shaders--implementation-guide)
 5. [PSO Serializer — Decompiled Reference](#5-pso-serializer--decompiled-reference)
@@ -339,6 +343,122 @@ The `SMOOTH_NORMAL` and `SMOOTH_EDGE_NORMALS` semantics indicate the engine impl
 | Semantic | Description |
 |----------|-------------|
 | `SV_Position` | Final clip-space position of tessellated vertex |
+
+---
+
+### 2.7 Athena opaque material — exact G-buffer contract
+
+The `r_athena00` shader `14ef18dd481d00dc_ps_10000207` is a deferred
+material pass, not a forward-lit pixel shader. Its `mainPS` writes four render
+targets and declares these constant buffers:
+
+| Bind | Buffer | Size | Relevant data |
+|------|--------|------|---------------|
+| `cb0` | pass | 204 bytes | wetness and pass controls |
+| `cb1` | model | 172 bytes | per-draw model data |
+| `cb3` | view | 1296 bytes | descriptor-heap base and view controls |
+| `cb4` | material | 44 bytes | texture indices and material constants |
+
+The Athena material table is:
+
+| Offset | Type | Name |
+|--------|------|------|
+| 0 | `uint` | `material_particlespawn` |
+| 4 | `uint` | `layer_0__diffuse` |
+| 8 | `uint` | `layer_0__normal` |
+| 12 | `uint` | `layer_0__ao` |
+| 16 | `uint` | `layer_0__opacity` |
+| 20 | `float` | `material_cst_ModifyDepthFadeStartDist` |
+| 24 | `float` | `material_cst_ModifyDepthFadeEndDist` |
+| 32 | `float2` | `material_cst_ParticleSpawnReference` |
+| 40 | `float` | `material_cst_ParticleSpawnReferenceRange` |
+
+The texture indices are relative to `viewData.materialTextureDescriptorOffset`
+(view-buffer offset 764). Both resource and sampler descriptor heaps are
+indexed directly, requiring Shader Model 6.6 descriptor-heap indexing.
+
+The normal map is sampled as RGB and decoded as:
+
+```text
+tangentNormal = normalize(sample.rgb * 2.00787401199 - 1.00787401199)
+```
+
+The scale and bias are the exact UNORM8 endpoint compensation used by the
+compiled shader. This is materially different from reconstructing Z from RG.
+Athena's decoded normal texture has a meaningful blue channel (observed range
+82..255, mean 246.05), so the viewport's generic BC5 path loses authored data.
+
+The render targets are:
+
+| Target | Contents |
+|--------|----------|
+| RT0 | base color encoded as YCoCg-like luma/chroma plus auxiliary data |
+| RT1 | world normal encoded as `normal * 0.5 + 0.5`, plus reflectance control |
+| RT2 | AO, reflectance (`0.35355338` for this material), gloss/roughness, packed flags |
+| RT3 | scattering/emissive contribution |
+
+The `DE674F96622453EB` material layout additionally declares
+`layer_1__diffuse` at offset 20, but its examined `10000207` permutation never
+samples that descriptor. A declared slot is therefore not proof that a shader
+permutation consumes the layer.
+
+### 2.8 Deferred lighting resolve
+
+The final opaque lighting is performed by the compute shader family
+`forwardplusdeferredcompute_cs`, not by the material pixel shader. The root
+pack contains 130 permutations of this pass. A minimal observed permutation
+uses 64 threads per group and reads four constant buffers:
+
+| Buffer | Size | Purpose |
+|--------|------|---------|
+| `ForwardPlusDeferredComputeData` | 3624 bytes | cubemaps, SSR/SSGI controls, reflection OBBs, outputs |
+| `ForwardPlusDeferredConstants` | 25848 bytes | directional/local lights, shadows, environment and samplers |
+| `GBufferStruct` | 236 bytes | G-buffer descriptors, matrices, viewport and eye position |
+| `GIVolumeConstants` | 6872 bytes | sky SH, GI volumes and AO volumes |
+
+`GBufferStruct` names the five inputs explicitly:
+`linearDepthTexture`, `baseColorTexture`, `normalTexture`,
+`propertiesTexture`, and `scatteringEmissiveTexture`.
+
+The common decode at the start of the compute pass performs these operations:
+
+```text
+worldNormal = normalize(normal.rgb * 2 - 1)
+flags       = uint(properties.a * 255)
+ao          = saturate(properties.r)
+reflectance = properties.g * properties.g * 0.16
+roughness   = 1 - properties.b
+```
+
+Base color is reconstructed from the luma/chroma representation in RT0 and
+then squared before lighting. The resolve supports two directional lights, up
+to 64 local lights, local and directional shadows, cubemap reflections,
+spherical-harmonic sky lighting, GI/AO volumes, SSAO and SSGI. Its primary
+outputs are separate diffuse and specular-plus-emissive buffers.
+
+Consequently, matching the game cannot be achieved by tuning the viewport's
+single fixed directional light. The renderer first needs the game's material
+decode contract (RGB normals, packed properties and YCoCg-like base color),
+then a reduced but structurally equivalent deferred-lighting model.
+
+### 2.9 Root shader pack
+
+`root.shaderpack` is a complete LZ4 frame (`04 22 4D 18`). After frame
+decompression it begins with `SHDRPACK`, format version 11. The examined PC
+pack expands from 193,760,242 to 431,326,528 bytes and contains 11,089 valid
+DXBC/DXIL containers.
+
+The executable's loader validates the `SHDRPACK` magic and version, then reads
+tables containing 104-byte shader records, 3744-byte graphics-pipeline records
+and 904-byte pipeline/cache records. The shader bytecode records are passed to
+the same runtime objects later used to build D3D12 pipeline-state streams.
+
+Relevant IDA/REA evidence:
+
+- `ev_12d0d4647e4f6dc8d1ea3703d7005837771b217502df8b5dd64de6c3557baa9a` — pack open and header validation;
+- `ev_488ac6c637b618e1789ccbdb264967dd96483c7c185f2bdd4c33cdc43614114d` — table reads and shader/PSO reconstruction;
+- `ev_2f8c900552b88c4912d48c1500af4b3ac145fd13647e94759621dcdfd54170fb` — D3D12 pipeline-state stream creation;
+- `ev_0befb19f8c0e0ee24e62a693c60341f8618458de4dc03482e46bfa2836817fd9` — root-signature creation.
 
 ---
 

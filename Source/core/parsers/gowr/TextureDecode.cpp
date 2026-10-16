@@ -9,6 +9,42 @@
 
 namespace Onyx {
 
+GOWRTextureStorage GOWRTextureStorageFromDataFormat(uint32_t dataFormat) {
+    switch (dataFormat) {
+        case 0x29: case 0x2A: return GOWRTextureStorage::BC1;
+        case 0x2F:            return GOWRTextureStorage::BC4;
+        case 0x31:            return GOWRTextureStorage::BC5;
+        case 0x35: case 0x36: return GOWRTextureStorage::BC7;
+        case 0x38:            return GOWRTextureStorage::RGBA8;
+        default:              return GOWRTextureStorage::Unknown;
+    }
+}
+
+GOWRNormalConvention GOWRNormalConventionFromShaderName(std::string_view shaderName) {
+    // This exact Athena permutation was inspected in DXIL and samples RGB
+    // before applying the byte-centred UNORM decode. Other permutations stay
+    // on the conservative XY path until their shader proves otherwise.
+    if (shaderName == "14ef18dd481d00dc_ps_10000207") {
+        return GOWRNormalConvention::AuthoredXYZEndpoint;
+    }
+    return GOWRNormalConvention::ConservativeXY;
+}
+
+Parsers::NormalMapDesc GOWRNormalMapDescFor(GOWRTextureStorage storage,
+                                             GOWRNormalConvention convention) {
+    Parsers::NormalMapDesc normal;
+    const bool carriesZ = storage == GOWRTextureStorage::BC7 ||
+                          storage == GOWRTextureStorage::RGBA8;
+    if (carriesZ && convention == GOWRNormalConvention::AuthoredXYZEndpoint) {
+        normal.encoding = Parsers::NormalMapEncoding::XYZ;
+        // Matches the game's byte-centred UNORM decode:
+        // sample * (255/127) - (128/127).
+        normal.decodeScale = 2.007874011993408f;
+        normal.decodeBias = -1.0078740119934082f;
+    }
+    return normal;
+}
+
 namespace {
 
 // AGC data_format -> block-compression format. 0x38 is uncompressed RGBA8,
@@ -16,11 +52,11 @@ namespace {
 constexpr uint32_t kFmtRgba8 = 0x38;
 
 bool BcFormatFor(uint32_t dataFmt, BcFormat& out) {
-    switch (dataFmt) {
-        case 0x29: case 0x2A: out = BcFormat::BC1; return true;
-        case 0x2F:            out = BcFormat::BC4; return true;
-        case 0x31:            out = BcFormat::BC5; return true;
-        case 0x35: case 0x36: out = BcFormat::BC7; return true;
+    switch (GOWRTextureStorageFromDataFormat(dataFmt)) {
+        case GOWRTextureStorage::BC1: out = BcFormat::BC1; return true;
+        case GOWRTextureStorage::BC4: out = BcFormat::BC4; return true;
+        case GOWRTextureStorage::BC5: out = BcFormat::BC5; return true;
+        case GOWRTextureStorage::BC7: out = BcFormat::BC7; return true;
         default: return false;
     }
 }
@@ -30,7 +66,8 @@ bool BcFormatFor(uint32_t dataFmt, BcFormat& out) {
 bool DecodeMip0(const std::shared_ptr<Vfs::IFile>& file, int64_t dataOffset,
                 uint32_t width, uint32_t height, uint32_t dw1, uint32_t dw3,
                 const std::string& name,
-                Parsers::TextureData& out, std::string& error) {
+                Parsers::TextureData& out, std::string& error,
+                GOWRTextureDecodeInfo* info) {
     const uint32_t swMode      = (dw3 >> 20) & 0x1F;
     const uint32_t pipeBankXor = (dw3 >> 8)  & 0x3FFF;
     const uint32_t dataFmt     = (dw1 >> 20) & 0x3F;
@@ -92,6 +129,10 @@ bool DecodeMip0(const std::shared_ptr<Vfs::IFile>& file, int64_t dataOffset,
     // Task 4 linked this file into gowtoolkit_tests for the first time.
     out.dataSize         = (uint32_t)rgba.size();
     out.pixels           = std::move(rgba);
+    if (info) {
+        info->dataFormat = dataFmt;
+        info->storage = GOWRTextureStorageFromDataFormat(dataFmt);
+    }
     return true;
 }
 
@@ -101,9 +142,11 @@ bool GOWRDecodeResidentTexture(const std::shared_ptr<Vfs::IFile>& descriptor,
                                const std::shared_ptr<Vfs::IFile>& payload,
                                const std::string& name,
                                Parsers::TextureData& out,
-                               std::string& error)
+                               std::string& error,
+                               GOWRTextureDecodeInfo* info)
 {
     error.clear();
+    if (info) *info = {};
     if (!descriptor || !descriptor->IsValid() || !payload || !payload->IsValid()) {
         error = "missing descriptor or payload entry";
         return false;
@@ -131,15 +174,17 @@ bool GOWRDecodeResidentTexture(const std::shared_ptr<Vfs::IFile>& descriptor,
     descriptor->Seek(0x68 + 0x1C, SEEK_SET);
     descriptor->Read(&dw3, 4);
 
-    return DecodeMip0(payload, 0, width, height, dw1, dw3, name, out, error);
+    return DecodeMip0(payload, 0, width, height, dw1, dw3, name, out, error, info);
 }
 bool GOWRDecodeTexture(TexPackIndex& index,
                        uint64_t hash,
                        const std::string& name,
                        Parsers::TextureData& out,
-                       std::string& error)
+                       std::string& error,
+                       GOWRTextureDecodeInfo* info)
 {
     error.clear();
+    if (info) *info = {};
     if (!hash) { error = "no texture hash"; return false; }
 
     // The index is built by background tasks that LoadFromGameRoot fires and
@@ -187,15 +232,9 @@ bool GOWRDecodeTexture(TexPackIndex& index,
     const uint32_t dataFmt     = (dw1 >> 20) & 0x3F;
 
     BcFormat fmt;
-    switch (dataFmt) {
-        case 0x29: case 0x2A: fmt = BcFormat::BC1; break;   // SRGB / UNORM
-        case 0x2F:            fmt = BcFormat::BC4; break;   // ATI1
-        case 0x31:            fmt = BcFormat::BC5; break;   // ATI2
-        case 0x35: case 0x36: fmt = BcFormat::BC7; break;   // SRGB / UNORM
-        default:
-            error = "unsupported AGC data_format 0x" +
-                    std::to_string(dataFmt);
-            return false;
+    if (!BcFormatFor(dataFmt, fmt)) {
+        error = "unsupported AGC data_format 0x" + std::to_string(dataFmt);
+        return false;
     }
 
     const uint32_t blockBytes = BcBlockSize(fmt);
@@ -240,6 +279,10 @@ bool GOWRDecodeTexture(TexPackIndex& index,
     // file's other decode path.
     out.dataSize         = static_cast<uint32_t>(rgba.size());
     out.pixels           = std::move(rgba);
+    if (info) {
+        info->dataFormat = dataFmt;
+        info->storage = GOWRTextureStorageFromDataFormat(dataFmt);
+    }
     return true;
 }
 
