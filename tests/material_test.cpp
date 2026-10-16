@@ -247,3 +247,134 @@ TEST_CASE("Lookups by role and kind") {
     CHECK(diffuse->textureHash == 0xB9A035976FA13B7Bull);
     CHECK(mat.Texture(Onyx::TextureRole::Emissive) == nullptr);
 }
+
+// -- Naming a material's parameters from its shader ---------------------------
+//
+// The MAT entry stores each parameter as a hash and a byte offset; the string
+// is nowhere in the file. The pixel shader's ConstBuf__materialData names a
+// member at every one of those offsets, because the two are descriptions of
+// the SAME buffer -- so the offset is a join key and the names come back.
+//
+// The layouts below are r_athena00's, read off the fixture WAD. Its three
+// materials give the discriminating pair: two share a nine-member buffer, and
+// the third inserts a layer_1__diffuse that pushes the floats along. A fixed
+// table would pass the first and fail the second.
+
+namespace {
+
+// MAT_14EF18DD481D00DC and MAT_DEE24F0F7562F93B, whose parameter tables are
+// identical. Widths come from the parameter's own typeCode, whose high byte is
+// the size in bytes: 0x0409 uint(4), 0x0401 float(4), 0x0841 float2(8).
+std::vector<Onyx::MatParam> AthenaParams() {
+    auto p = [](uint16_t typeCode, uint16_t offset) {
+        Onyx::MatParam m;
+        m.typeCode      = typeCode;
+        m.cbufferOffset = offset;
+        return m;
+    };
+    return { p(0x0409, 0),  p(0x0409, 4),  p(0x0409, 8),
+             p(0x0409, 12), p(0x0409, 16),
+             p(0x0401, 20), p(0x0401, 24),
+             p(0x0841, 32),                 // float2 -- 28 is its alignment pad
+             p(0x0401, 40) };
+}
+
+std::vector<Onyx::ShaderConstant> AthenaConstants() {
+    return { {0,  4, "material_particlespawn"},
+             {4,  4, "layer_0__diffuse"},
+             {8,  4, "layer_0__normal"},
+             {12, 4, "layer_0__ao"},
+             {16, 4, "layer_0__opacity"},
+             {20, 4, "material_cst_ModifyDepthFadeStartDist"},
+             {24, 4, "material_cst_ModifyDepthFadeEndDist"},
+             {32, 8, "material_cst_ParticleSpawnReference"},
+             {40, 4, "material_cst_ParticleSpawnReferenceRange"} };
+}
+
+} // namespace
+
+TEST_CASE("Parameter names are recovered from the shader's constant buffer") {
+    Onyx::GOWRMaterial mat;
+    mat.hash   = 0x14EF18DD481D00DCull;
+    mat.params = AthenaParams();
+
+    CHECK(Onyx::NameParamsFromShaderConstants(mat, AthenaConstants()) == 9);
+    CHECK(mat.params[1].name == "layer_0__diffuse");
+    // The one the file could never have told us: a hash at offset 20.
+    CHECK(mat.params[5].name == "material_cst_ModifyDepthFadeStartDist");
+    // The float2 sits at 32, not 28, and the hole does not derail the join.
+    CHECK(mat.params[7].name == "material_cst_ParticleSpawnReference");
+}
+
+TEST_CASE("The join follows the material, not a fixed layout") {
+    // MAT_DE674F96622453EB's shader declares one more texture slot, and both
+    // sides move together: layer_1__diffuse takes 20 and the two floats shift
+    // from 20/24 to 24/28. Reading the first material's table onto this one
+    // would call offset 24 ModifyDepthFadeEndDist when it is the START one.
+    Onyx::GOWRMaterial mat;
+    mat.hash = 0xDE674F96622453EBull;
+    auto p = [](uint16_t typeCode, uint16_t offset) {
+        Onyx::MatParam m;
+        m.typeCode      = typeCode;
+        m.cbufferOffset = offset;
+        return m;
+    };
+    mat.params = { p(0x0409, 0),  p(0x0409, 4),  p(0x0409, 8),
+                   p(0x0409, 12), p(0x0409, 16), p(0x0409, 20),
+                   p(0x0401, 24), p(0x0401, 28),
+                   p(0x0841, 32), p(0x0401, 40) };
+
+    const std::vector<Onyx::ShaderConstant> constants = {
+        {0,  4, "material_particlespawn"},
+        {4,  4, "layer_0__diffuse"},
+        {8,  4, "layer_0__normal"},
+        {12, 4, "layer_0__ao"},
+        {16, 4, "layer_0__opacity"},
+        {20, 4, "layer_1__diffuse"},
+        {24, 4, "material_cst_ModifyDepthFadeStartDist"},
+        {28, 4, "material_cst_ModifyDepthFadeEndDist"},
+        {32, 8, "material_cst_ParticleSpawnReference"},
+        {40, 4, "material_cst_ParticleSpawnReferenceRange"} };
+
+    CHECK(Onyx::NameParamsFromShaderConstants(mat, constants) == 10);
+    CHECK(mat.params[5].name == "layer_1__diffuse");
+    CHECK(mat.params[6].name == "material_cst_ModifyDepthFadeStartDist");
+    CHECK(mat.params[7].name == "material_cst_ModifyDepthFadeEndDist");
+}
+
+TEST_CASE("One unmatched offset abandons the whole material") {
+    // Eight of the nine would still land. They are dropped anyway: the two
+    // sides describe one buffer, so a partial hit means the model is wrong,
+    // and a table of eight confident names plus one blank invites trusting it.
+    Onyx::GOWRMaterial mat;
+    mat.params = AthenaParams();
+    mat.params[3].cbufferOffset = 13;   // no member sits there
+
+    CHECK(Onyx::NameParamsFromShaderConstants(mat, AthenaConstants()) == 0);
+    for (const auto& p : mat.params) CHECK(p.name.empty());
+}
+
+TEST_CASE("A width the two sides disagree on abandons the material") {
+    // Offset 32 is eight bytes to the parameter table and four to the shader.
+    // That is two different layouts of the same buffer, which is exactly the
+    // trap the smschema join fell into, so nothing is named.
+    Onyx::GOWRMaterial mat;
+    mat.params = AthenaParams();
+    auto constants = AthenaConstants();
+    constants[7].width = 4;
+
+    CHECK(Onyx::NameParamsFromShaderConstants(mat, constants) == 0);
+}
+
+TEST_CASE("A width the shader cannot state is not held against the join") {
+    // SlotWidth returns 0 for a spelling it does not recognise -- a matrix, a
+    // nested struct. That is "cannot check", not "does not match", and the
+    // offset alone still carries the name.
+    Onyx::GOWRMaterial mat;
+    mat.params = AthenaParams();
+    auto constants = AthenaConstants();
+    constants[7].width = 0;
+
+    CHECK(Onyx::NameParamsFromShaderConstants(mat, constants) == 9);
+    CHECK(mat.params[7].name == "material_cst_ParticleSpawnReference");
+}

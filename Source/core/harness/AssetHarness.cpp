@@ -136,6 +136,7 @@ bool LoadContainer(const LoadRequest& req, LoadResult& out)
 
     out.vfs  = doc->mountedVfs;
     out.file = doc->file;
+    if (doc->module) out.moduleId = doc->module->Info().id;
 
     // Bridge onto the legacy AssetContainer BuildSceneData (below) and every
     // downstream ITypeHandler still expect -- Task 4's scope is moving

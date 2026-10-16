@@ -42,6 +42,7 @@ public:
     const char*  GetName()  const override { return "GOWR Mesh"; }
     std::shared_ptr<Schema::AssetNode> Parse(std::shared_ptr<Vfs::IFile> file) override;
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
+    std::unique_ptr<Parsers::SceneData> BuildSceneData(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
 
 // MG_*_gpu -- the mesh group's GPU buffer. Rigged by construction: a mesh
@@ -51,6 +52,7 @@ public:
     Types::TypeId  GetId()    const override { return GowrType("gowr.meshGpu"); }
     const char*  GetName()  const override { return "GOWR Mesh GPU"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
+    std::unique_ptr<Parsers::SceneData> BuildSceneData(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
 
 class GOWRModelInstanceHandler : public Types::ITypeHandler {
@@ -58,6 +60,7 @@ public:
     Types::TypeId  GetId()    const override { return GowrType("gowr.gameObjectInst"); }
     const char*  GetName()  const override { return "GOWR Model Instance"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
+    std::unique_ptr<Parsers::SceneData> BuildSceneData(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
 
 class GOWRTextureHandler : public Types::ITypeHandler {
@@ -73,6 +76,7 @@ public:
     Types::TypeId  GetId()    const override { return GowrType("gowr.gameObjectProto"); }
     const char*  GetName()  const override { return "GOWR Proto Rig"; }
     std::shared_ptr<Viewers::IDocumentContent> CreateViewer(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
+    std::unique_ptr<Parsers::SceneData> BuildSceneData(const Domain::AssetEntry& entry, Domain::AssetContainer& wad) override;
 };
 
 // One instance per shader stage, each holding its module catalog key.

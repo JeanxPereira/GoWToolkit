@@ -44,6 +44,7 @@ list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/theme_stubs.cpp")
 # module-typeId convergence -- that legacy catalog is still a real, tested
 # surface, just no longer the one Gow2Module/GowrModule stamp trees with.
 set(APP_TEST_SOURCES
+    "${CMAKE_SOURCE_DIR}/Source/cli/TextureOutputPath.cpp"
     "${CMAKE_SOURCE_DIR}/Source/core/types/GameTypes.cpp"
     # The smschema reflection tables and their query layer. Pure data plus
     # lookups -- no UI, no Onyx service -- so gowr_smschema_test.cpp can

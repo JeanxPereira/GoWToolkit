@@ -1,10 +1,41 @@
 #pragma once
 #include "TexPackIndex.h"
 #include <Onyx/Parsers/TextureData.h>
+#include <Onyx/Parsers/SceneNode.h>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace Onyx {
+
+/// Compression/storage declared by the AGC T# descriptor before the decoder
+/// expands the texture to TextureData's common RGBA8 representation.
+enum class GOWRTextureStorage : uint8_t {
+    Unknown,
+    RGBA8,
+    BC1,
+    BC4,
+    BC5,
+    BC7,
+};
+
+struct GOWRTextureDecodeInfo {
+    uint32_t dataFormat = 0;
+    GOWRTextureStorage storage = GOWRTextureStorage::Unknown;
+};
+
+/// Shader-observed interpretation of a GOWR normal texture. Unknown shaders
+/// remain conservative: storage capacity alone does not prove that Z is used.
+enum class GOWRNormalConvention : uint8_t {
+    ConservativeXY,
+    AuthoredXYZEndpoint,
+};
+
+GOWRTextureStorage GOWRTextureStorageFromDataFormat(uint32_t dataFormat);
+GOWRNormalConvention GOWRNormalConventionFromShaderName(std::string_view shaderName);
+Parsers::NormalMapDesc GOWRNormalMapDescFor(
+    GOWRTextureStorage storage,
+    GOWRNormalConvention convention = GOWRNormalConvention::ConservativeXY);
 
 // Decodes one GOWR texture from the texpack into RGBA8.
 //
@@ -31,12 +62,14 @@ bool GOWRDecodeResidentTexture(const std::shared_ptr<Vfs::IFile>& descriptor,
                                const std::shared_ptr<Vfs::IFile>& payload,
                                const std::string& name,
                                Parsers::TextureData& out,
-                               std::string& error);
+                               std::string& error,
+                               GOWRTextureDecodeInfo* info = nullptr);
 
 bool GOWRDecodeTexture(TexPackIndex& index,
                        uint64_t hash,
                        const std::string& name,
                        Parsers::TextureData& out,
-                       std::string& error);
+                       std::string& error,
+                       GOWRTextureDecodeInfo* info = nullptr);
 
 } // namespace Onyx
