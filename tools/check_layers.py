@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-check_layers.py — verifies that #include directives in src/ respect the
+check_layers.py — verifies that #include directives in Source/ respect the
 layered hierarchy defined in `tools/layers.yaml`.
 
 How it works:
-  1. Walk every `.h`, `.hpp`, `.cpp`, `.mm` under `src/` (skipping
+  1. Walk every `.h`, `.hpp`, `.cpp`, `.mm` under `Source/` (skipping
      `third_party/`, `build/`, etc.).
   2. For each file, classify it into a layer by longest-prefix match
      against the `layers:` table.
   3. For every `#include "..."` or `#include <...>` line, try to
-     resolve the included path to a file inside `src/`. Unresolved
+     resolve the included path to a file inside `Source/`. Unresolved
      includes (system headers, fetched dependencies, third-party
      vendored headers) are ignored.
   4. Apply the `rules:` constraints (`LX must not include LY` and
@@ -50,7 +50,7 @@ def is_ignored(path: Path, repo_root: Path) -> bool:
 
 
 def iter_sources(repo_root: Path) -> Iterable[Path]:
-    src = repo_root / "src"
+    src = repo_root / "Source"
     for p in src.rglob("*"):
         if not p.is_file():
             continue
@@ -86,13 +86,13 @@ def resolve_include(include_path: str, source_file: Path, repo_root: Path) -> Pa
     """Try to resolve `#include "x"` (or <x>) to a file under src/.
     Resolution order mirrors the project's compile options:
       1. Relative to the including file's directory.
-      2. Relative to `src/` (target_include_directories = src).
+      2. Relative to `Source/` (target_include_directories = Source).
     """
     candidates = [
         (source_file.parent / include_path).resolve(),
-        (repo_root / "src" / include_path).resolve(),
+        (repo_root / "Source" / include_path).resolve(),
     ]
-    src_root = (repo_root / "src").resolve()
+    src_root = (repo_root / "Source").resolve()
     for cand in candidates:
         try:
             cand.relative_to(src_root)
@@ -177,9 +177,9 @@ def main(argv: list[str]) -> int:
     layer_order = list(layers.keys())
     rules = parse_rules(rules_raw, layer_order)
 
-    src_root = (repo_root / "src").resolve()
+    src_root = (repo_root / "Source").resolve()
     if not src_root.is_dir():
-        print(f"error: src/ directory not found: {src_root}", file=sys.stderr)
+        print(f"error: Source/ directory not found: {src_root}", file=sys.stderr)
         return 2
 
     violations = 0
