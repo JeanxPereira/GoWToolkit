@@ -1,4 +1,4 @@
-// `GoWToolkit texture <file> <name> [--out <file.png>]`
+// `GoWToolkit texture <file> <name> [--out texture.png]`
 //
 // Decodes one GOWR texture and reports what came out, optionally writing it
 // to a PNG in the current directory.
@@ -100,9 +100,9 @@ void ReportChannels(const Parsers::TextureData& tex, std::ostream& out) {
 int CliApp::HandleTexture(const std::vector<std::string>& args) {
     if (args.size() < 3) {
         std::cerr << "Usage: GoWToolkit texture <wad-file> <texture-name> "
-                     "[--out <file.png>]\n"
+                     "[--out texture.png]\n"
                      "Example: GoWToolkit texture r_baldur00.wad "
-                     "TX_baldur00_beard_d_C5EB108C24574B6A --out beard.png\n";
+                     "TX_baldur00_beard_d_C5EB108C24574B6A --out texture.png\n";
         return Onyx::Cli::kUsage;
     }
 
@@ -110,16 +110,9 @@ int CliApp::HandleTexture(const std::vector<std::string>& args) {
     for (size_t i = 3; i < args.size(); ++i)
         if (args[i] == "--out" && i + 1 < args.size()) outPath = args[++i];
 
-    // Keep the traversal guards next to the filesystem sink as well as in the
-    // reusable validator. Besides making the security boundary obvious here,
-    // this lets static analysis prove that tainted command-line input cannot
-    // reach stb's fopen call as a path.
-    const bool hasPathSyntax = outPath.find("..") != std::string::npos ||
-                               outPath.find('/') != std::string::npos ||
-                               outPath.find('\\') != std::string::npos;
-    if (!outPath.empty() && (hasPathSyntax || !Cli::IsSafeTextureOutputFileName(outPath))) {
-        std::cerr << "--out must be a .png filename in the current directory "
-                     "(paths and '..' are not allowed).\n";
+    if (!outPath.empty() && !Cli::IsSafeTextureOutputFileName(outPath)) {
+        std::cerr << "--out accepts only '" << Cli::kTextureOutputFileName
+                  << "' in the current directory.\n";
         return Onyx::Cli::kUsage;
     }
 
@@ -152,12 +145,15 @@ int CliApp::HandleTexture(const std::vector<std::string>& args) {
     ReportChannels(tex, std::cout);
 
     if (!outPath.empty()) {
-        if (!stbi_write_png(outPath.c_str(), (int)tex.width, (int)tex.height, 4,
+        // The filesystem sink receives a compile-time constant, never the
+        // command-line argument validated above.
+        if (!stbi_write_png(Cli::kTextureOutputFileName.data(), (int)tex.width,
+                            (int)tex.height, 4,
                             tex.pixels.data(), (int)tex.width * 4)) {
-            std::cerr << "could not write " << outPath << "\n";
+            std::cerr << "could not write " << Cli::kTextureOutputFileName << "\n";
             return Onyx::Cli::kUsage;
         }
-        std::cout << "  wrote " << outPath << "\n";
+        std::cout << "  wrote " << Cli::kTextureOutputFileName << "\n";
     }
     return Onyx::Cli::kOk;
 }

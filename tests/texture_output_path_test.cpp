@@ -2,9 +2,10 @@
 
 #include "cli/TextureOutputPath.h"
 
-TEST_CASE("Texture output accepts a PNG filename in the current directory") {
-    CHECK(Onyx::Cli::IsSafeTextureOutputFileName("athena.png"));
-    CHECK(Onyx::Cli::IsSafeTextureOutputFileName("render-preview_01.PNG"));
+TEST_CASE("Texture output accepts only the fixed export filename") {
+    CHECK(Onyx::Cli::IsSafeTextureOutputFileName("texture.png"));
+    CHECK_FALSE(Onyx::Cli::IsSafeTextureOutputFileName("athena.png"));
+    CHECK_FALSE(Onyx::Cli::IsSafeTextureOutputFileName("TEXTURE.PNG"));
 }
 
 TEST_CASE("Texture output rejects paths and non-PNG destinations") {

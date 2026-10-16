@@ -4,8 +4,10 @@
 
 namespace Onyx::Cli {
 
-// Texture exports are deliberately confined to the process working directory.
-// The CLI accepts a leaf PNG filename, never an absolute or relative path.
+inline constexpr std::string_view kTextureOutputFileName = "texture.png";
+
+// Texture exports use a fixed filename in the process working directory. This
+// keeps command-line input out of the filesystem path entirely.
 bool IsSafeTextureOutputFileName(std::string_view fileName);
 
 } // namespace Onyx::Cli
